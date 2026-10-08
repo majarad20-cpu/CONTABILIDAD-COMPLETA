@@ -10,6 +10,7 @@ datos/
 *.sqlite3
 *.csv
 *.json
+!.devcontainer/devcontainer.json
 
 # Informes y documentos reales (contienen firmas, nombres y RUT)
 ejemplospdf/

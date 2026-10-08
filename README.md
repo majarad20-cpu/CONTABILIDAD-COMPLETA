@@ -8,6 +8,20 @@ Funciona en tu PC y se usa desde el navegador. Los datos quedan en un archivo lo
 Haz doble clic en **`iniciar.bat`**. La primera vez instala lo necesario (requiere Python 3.10 o superior).
 Después se abre el navegador en http://127.0.0.1:5000. Para detener el programa, cierra la ventana negra.
 
+## Probarlo desde GitHub (Codespaces)
+
+Sin instalar nada en el PC:
+
+1. En la página del repositorio en GitHub, pulsa **Code → Codespaces → Create codespace on main**.
+2. Espera unos minutos mientras se prepara. La primera vez instala Python y las librerías.
+3. El programa arranca solo y se abre en una pestaña nueva. Si no se abre, ve a la pestaña **Puertos**
+   (Ports) y pulsa el ícono del globo en el puerto **5000**.
+
+El Codespace parte con una base de datos vacía; los datos reales nunca están en GitHub. La dirección es privada:
+solo entras tú, con tu sesión de GitHub. No cambies el puerto a «Public», porque el programa no tiene usuario ni
+contraseña. Cuando termines, detén el Codespace (en github.com/codespaces: **⋯ → Stop codespace**) para no
+gastar las horas gratuitas del mes. Si lo eliminas, se borra lo que hayas registrado en él.
+
 ## Empresas
 
 - Cambia de empresa con el selector en la parte superior del menú.
