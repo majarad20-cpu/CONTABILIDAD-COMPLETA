@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import filtro_fechas, periodo with context %}
+{% block titulo %}Balance de 8 columnas{% endblock %}
+{% block contenido %}
+{% set cols = ['debitos', 'creditos', 'deudor', 'acreedor', 'activo', 'pasivo', 'perdidas', 'ganancias'] %}
+<h1>Balance tributario de 8 columnas</h1>
+{{ filtro_fechas(desde, hasta, exportar=true) }}
+{{ periodo(desde, hasta) }}
+
+{% if filas %}
+<div class="desplazable">
+<table class="ocho">
+  <thead>
+    <tr><th rowspan="2">Código</th><th rowspan="2">Cuenta</th>
+      <th colspan="2">Sumas</th><th colspan="2">Saldos</th><th colspan="2">Inventario</th><th colspan="2">Resultados</th></tr>
+    <tr><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Deudor</th><th class="num">Acreedor</th>
+      <th class="num">Activo</th><th class="num">Pasivo</th><th class="num">Pérdidas</th><th class="num">Ganancias</th></tr>
+  </thead>
+  <tbody>
+  {% for f in filas %}
+    <tr><td>{{ f.codigo }}</td><td>{{ f.nombre }}</td>
+      {% for k in cols %}<td class="num">{{ f[k]|clp if f[k] }}</td>{% endfor %}</tr>
+  {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr><td></td><td>Sumas</td>{% for k in cols %}<td class="num">{{ totales[k]|clp }}</td>{% endfor %}</tr>
+    <tr><td></td><td>{{ 'Utilidad' if resultado >= 0 else 'Pérdida' }}{{ ' del ejercicio' if not patrimonio_en_resultados else ' (ejercicio y acumulada)' }}</td>
+      {% for k in cols %}<td class="num">{{ ajuste[k]|clp if ajuste[k] }}</td>{% endfor %}</tr>
+    <tr class="total"><td></td><td>Sumas iguales</td>{% for k in cols %}<td class="num">{{ sumas_iguales[k]|clp }}</td>{% endfor %}</tr>
+  </tfoot>
+</table>
+</div>
+{% if patrimonio_en_resultados %}
+<p class="ayuda">Las columnas de Resultados incluyen cuentas de patrimonio (por ejemplo, Utilidades acumuladas):
+  resultado del ejercicio ${{ resultado_ejercicio|clp }} + cuentas de patrimonio ${{ patrimonio_en_resultados|clp }}
+  = ${{ resultado|clp }}. En el Balance General esas cuentas se presentan en el patrimonio.</p>
+{% endif %}
+{% else %}
+<p class="vacio">No hay movimientos para este período.</p>
+{% endif %}
+{% endblock %}

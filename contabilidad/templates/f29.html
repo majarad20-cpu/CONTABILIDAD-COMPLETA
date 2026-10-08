@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import botones_exportar with context %}
+{% block titulo %}Borrador F29{% endblock %}
+{% block contenido %}
+{% set c = f.codigos %}
+<div class="titulo-acciones">
+  <h1>Borrador del F29 — {{ nombre_periodo(periodo)|capitalize }}</h1>
+  <div class="acciones no-imprimir">{{ botones_exportar(csv=false) }}
+    <button type="button" class="secundario" onclick="window.print()">Imprimir</button></div>
+</div>
+
+<form method="get" class="filtro no-imprimir" id="form-f29">
+  <label>Período tributario <input type="month" name="periodo" value="{{ periodo }}" required></label>
+  <label>Remanente mes anterior ($)
+    <input name="remanente_anterior" value="{{ f.entradas.remanente_anterior|clp }}" inputmode="numeric" size="12"></label>
+  <label>UTM mes anterior
+    <input name="utm_anterior" value="{{ f.entradas.utm_anterior|int if f.entradas.utm_anterior else '' }}" inputmode="decimal" size="9" placeholder="Ej. 68.306"></label>
+  <label>UTM mes actual
+    <input name="utm_actual" value="{{ f.entradas.utm_actual|int if f.entradas.utm_actual else '' }}" inputmode="decimal" size="9"></label>
+  <button type="submit">Calcular</button>
+  <span class="espaciador"></span>
+  <button type="submit" formmethod="post" class="secundario">Guardar borrador</button>
+</form>
+<p class="ayuda no-imprimir">Remanente anterior tomado de: {{ f.entradas.origen_remanente }}.
+  {% if f.reajuste %}Reajuste por variación de la UTM: ${{ f.reajuste|clp }}.{% endif %}
+  {% if guardado %}Último guardado: {{ guardado.guardado_en[:10]|fecha }} {{ guardado.guardado_en[11:16] }}.{% endif %}</p>
+
+{% for alerta in f.alertas %}
+  <div class="aviso aviso-info">{{ alerta }}</div>
+{% endfor %}
+
+<table class="informe f29">
+  <thead><tr><th>Concepto</th><th class="num">Cód.</th><th class="num">Cantidad</th><th class="num">Cód.</th><th class="num">Monto</th></tr></thead>
+  <tbody>
+  {% for linea in f.lineas %}
+    {% if linea[0] == 'titulo' %}
+      <tr class="seccion-informe"><td colspan="5">{{ linea[1] }}</td></tr>
+    {% elif linea[0] == 'total' %}
+      <tr class="{{ 'total' if linea[1] == '91' else 'subtotal' }}"><td>{{ linea[2] }}</td><td></td><td></td>
+        <td class="num">{{ linea[1] }}</td><td class="num">${{ c[linea[1]]|clp }}</td></tr>
+    {% else %}
+      <tr><td>{{ linea[2] }}</td>
+        <td class="num codigo-f29">{{ linea[0] or '' }}</td>
+        <td class="num">{{ c[linea[0]] if linea[0] else '' }}</td>
+        <td class="num codigo-f29">{{ linea[1] }}</td>
+        <td class="num">{% if linea[1] == '115' %}{{ ('%g' % c['115'])|replace('.', ',') }} %{% else %}${{ c[linea[1]]|clp }}{% endif %}</td></tr>
+    {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if f.comparacion %}
+<h2>Comparación con la contabilidad</h2>
+<table class="informe">
+  <thead><tr><th>Concepto</th><th class="num">Según RCV</th><th class="num">Según contabilidad</th><th class="num">Diferencia</th></tr></thead>
+  <tbody>
+  {% for concepto, rcv, contable in f.comparacion %}
+    <tr><td>{{ concepto }}</td><td class="num">${{ rcv|clp }}</td><td class="num">${{ contable|clp }}</td>
+      <td class="num {{ 'negativo' if rcv != contable }}">{{ '✔ cuadra' if rcv == contable else '$' ~ (rcv - contable)|clp }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="ayuda">La contabilidad considera los movimientos del mes en las cuentas de IVA, sin los asientos que solo
+  traspasan IVA entre cuentas de IVA (ajustes de remanente).</p>
+{% endif %}
+
+<p class="ayuda">Borrador referencial: los códigos corresponden a las líneas habituales del Formulario 29. Verifica
+  los valores con la propuesta del SII antes de declarar. Las retenciones (códigos 151 y 48) se toman de los abonos
+  del mes a las cuentas configuradas en <a href="{{ url_for('cuentas_tributarias') }}">Cuentas tributarias</a>.</p>
+{% endblock %}

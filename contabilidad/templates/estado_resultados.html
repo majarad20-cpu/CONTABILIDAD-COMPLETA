@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import filtro_fechas, periodo, monto with context %}
+{% from '_arbol.html' import filas_arbol %}
+{% block titulo %}Estado de Resultados{% endblock %}
+{% block contenido %}
+<h1>Estado de Resultados</h1>
+{{ filtro_fechas(desde, hasta, exportar=true) }}
+{{ periodo(desde, hasta) }}
+
+<table class="informe">
+  <tbody>
+    <tr class="seccion-informe"><td>INGRESOS</td><td></td></tr>
+    {{ filas_arbol(ingresos) }}
+    <tr class="subtotal"><td>Total ingresos</td><td class="num">{{ monto(total_ingresos) }}</td></tr>
+
+    <tr class="seccion-informe"><td>GASTOS</td><td></td></tr>
+    {{ filas_arbol(gastos) }}
+    <tr class="subtotal"><td>Total gastos</td><td class="num">{{ monto(total_gastos) }}</td></tr>
+  </tbody>
+  <tfoot>
+    <tr class="total"><td>{{ 'UTILIDAD' if resultado >= 0 else 'PÉRDIDA' }} DEL PERÍODO</td>
+      <td class="num">{{ monto(resultado) }}</td></tr>
+  </tfoot>
+</table>
+{% endblock %}

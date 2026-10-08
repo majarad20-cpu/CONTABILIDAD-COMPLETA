@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block titulo %}Cuentas tributarias{% endblock %}
+{% block contenido %}
+<h1>Cuentas tributarias</h1>
+<p class="ayuda">Cuentas que usa la centralización del Registro de Compras y Ventas y el borrador del F29 de
+  <strong>{{ empresa.razon_social }}</strong>. Si una cuenta no está configurada, el programa sugiere una según su
+  nombre; revísalas y pulsa Guardar. En cada documento del RCV puedes elegir otra cuenta para el neto.</p>
+
+<form method="post" class="formulario formulario-ancho">
+  {% for titulo, claves in grupos %}
+  <h2>{{ titulo }}</h2>
+  {% for clave in claves %}
+  <label>{{ conceptos[clave][0] }}
+    <select name="{{ clave }}">
+      <option value="">— Sin cuenta —</option>
+      {% for c in cuentas %}
+        <option value="{{ c.id }}" {{ 'selected' if c.id == actuales[clave] }}>{{ c.codigo }} {{ c.nombre }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endfor %}
+  {% endfor %}
+
+  <h2>Pagos provisionales mensuales</h2>
+  <label>Tasa de PPM (%)
+    <input name="tasa_ppm" value="{{ ('%g' % empresa.tasa_ppm)|replace('.', ',') }}" inputmode="decimal" placeholder="0,25">
+    <small>Porcentaje que se aplica a los ingresos del giro del mes (código 115 del F29).</small></label>
+
+  <div class="acciones"><button type="submit">Guardar</button>
+    <a class="boton secundario" href="{{ url_for('rcv') }}">Volver al RCV</a></div>
+</form>
+{% endblock %}

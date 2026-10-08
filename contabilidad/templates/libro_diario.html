@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import filtro_fechas, periodo with context %}
+{% block titulo %}Libro Diario{% endblock %}
+{% block contenido %}
+<h1>Libro Diario</h1>
+{{ filtro_fechas(desde, hasta, exportar=true) }}
+{{ periodo(desde, hasta) }}
+
+{% if asientos %}
+<table class="diario">
+  <thead><tr><th>Fecha</th><th>Código</th><th>Cuenta / Glosa</th><th class="num">Debe</th><th class="num">Haber</th></tr></thead>
+  {% for a in asientos %}
+  <tbody>
+    <tr class="cabecera-diario">
+      <td>{{ a.asiento.fecha|fecha }}</td>
+      <td colspan="4"><a href="{{ url_for('ver_asiento', asiento_id=a.asiento.id) }}">{{ comprobante(a.asiento.tipo, a.asiento.numero) }}</a></td>
+    </tr>
+    {% for l in a.lineas %}
+    <tr>
+      <td></td><td>{{ l.codigo }}</td>
+      <td class="{{ 'sangria' if l.haber }}">{{ l.nombre }}{% if l.glosa %} <small>· {{ l.glosa }}</small>{% endif %}</td>
+      <td class="num">{{ l.debe|clp if l.debe }}</td><td class="num">{{ l.haber|clp if l.haber }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="glosa-diario"><td></td><td></td><td colspan="3">{{ a.asiento.glosa }}</td></tr>
+  </tbody>
+  {% endfor %}
+  <tfoot><tr><td colspan="3" class="num">Totales</td>
+    <td class="num">{{ total_debe|clp }}</td><td class="num">{{ total_haber|clp }}</td></tr></tfoot>
+</table>
+{% else %}
+<p class="vacio">No hay comprobantes en este período.</p>
+{% endif %}
+{% endblock %}

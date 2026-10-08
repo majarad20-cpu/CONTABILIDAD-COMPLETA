@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ 'Editar' if existente else 'Nuevo' }} comprobante{% endblock %}
+
+
+{% block contenido %}
+{% macro fila(linea) %}
+<tr class="linea">
+  <td>
+    <select name="cuenta_id">
+      <option value="">— Selecciona cuenta —</option>
+      {% for c in cuentas %}
+        <option value="{{ c.id }}" {{ 'selected' if linea.cuenta_id == c.id|string }}>{{ c.codigo }} {{ c.nombre }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  <td><input name="glosa_linea" value="{{ linea.glosa or '' }}" placeholder="Detalle (opcional)"></td>
+  <td><input name="debe" class="monto" inputmode="numeric" value="{{ linea.debe or '' }}"></td>
+  <td><input name="haber" class="monto" inputmode="numeric" value="{{ linea.haber or '' }}"></td>
+  <td><button type="button" class="quitar" title="Quitar línea">×</button></td>
+</tr>
+{% endmacro %}
+<h1>{% if existente %}Editar comprobante {{ comprobante(existente.asiento.tipo, existente.asiento.numero) }}{% else %}Nuevo comprobante{% endif %}</h1>
+
+<form method="post" id="form-asiento" {% if accion %}action="{{ accion }}"{% endif %}>
+  {% set ids_rcv = rcv_ids or request.form.get('rcv_ids', '') %}
+  {% if ids_rcv %}<input type="hidden" name="rcv_ids" value="{{ ids_rcv }}">{% endif %}
+  {% if centralizacion %}
+  <div class="aviso aviso-info propuesta">
+    <strong>Centralización de {{ 'compras' if centralizacion.registro == 'COMPRA' else 'ventas' }} de
+      {{ nombre_periodo(centralizacion.periodo) }} — aún no se ha guardado.</strong>
+    <p>{{ centralizacion.cantidad }} documento(s) pendiente(s) del RCV: neto ${{ centralizacion.totales.neto|clp }},
+      exento ${{ centralizacion.totales.exento|clp }}, IVA ${{ centralizacion.totales.iva|clp }},
+      total ${{ centralizacion.totales.total|clp }} (las notas de crédito restan).</p>
+    <p>Revisa, cambia cuentas o montos y pulsa <strong>Guardar</strong>. Al guardar, esos documentos quedan marcados
+      como centralizados en este comprobante.
+      <a href="{{ url_for('rcv', periodo=centralizacion.periodo) }}">Volver al RCV</a></p>
+  </div>
+  {% endif %}
+  {% if propuesta %}
+  <div class="aviso aviso-info propuesta">
+    <strong>Propuesta de asiento de apertura {{ propuesta.anio }} — aún no se ha guardado.</strong>
+    <p>Generada con los saldos de las cuentas de balance al 31/12/{{ propuesta.anterior }}:
+      {{ propuesta.lineas|length }} líneas por ${{ propuesta.total|clp }}.
+      {% if propuesta.resultado %}La {{ 'utilidad' if propuesta.resultado > 0 else 'pérdida' }} acumulada de
+      ${{ propuesta.resultado|abs|clp }} se traspasa a <strong>{{ propuesta.destino.codigo }} {{ propuesta.destino.nombre }}</strong>.{% endif %}</p>
+    <p>Revisa, cambia cuentas o montos, agrega o quita líneas, y pulsa <strong>Guardar</strong> para registrarlo.
+      <a href="{{ url_for('apertura', anio=propuesta.anio) }}">Volver a la apertura</a></p>
+  </div>
+  {% if propuesta.existentes %}
+  <div class="aviso aviso-error">Ya existe un asiento de apertura en {{ propuesta.anio }}:
+    {% for a in propuesta.existentes %}<a href="{{ url_for('ver_asiento', asiento_id=a.id) }}">{{ comprobante(a.tipo, a.numero) }} del {{ a.fecha|fecha }}</a>{{ ', ' if not loop.last }}{% endfor %}.
+    Si guardas esta propuesta habrá dos aperturas en el mismo año.</div>
+  {% endif %}
+  {% endif %}
+  {% if periodo_cerrado %}
+  <div class="confirmar-cerrado">
+    <strong>Período cerrado</strong>
+    <p>{{ periodo_cerrado }}</p>
+    <label>Motivo del cambio (opcional, queda registrado)
+      <input name="motivo_cerrado" value="{{ motivo or '' }}" placeholder="Ej.: corrección solicitada por el cliente" autofocus></label>
+    <div class="acciones">
+      <button type="submit" name="confirmar_cerrado" value="1" class="peligro">Confirmar y guardar</button>
+      <a class="boton secundario" href="{{ url_for('ver_asiento', asiento_id=existente.asiento.id) if existente else url_for('asientos') }}">Cancelar</a>
+    </div>
+  </div>
+  {% elif existente and mes_cerrado(existente.asiento.fecha) %}
+  <div class="aviso aviso-info">Este comprobante pertenece a un mes cerrado ({{ nombre_periodo(existente.asiento.fecha) }}).
+    Al guardar se pedirá confirmación.</div>
+  {% endif %}
+  <div class="cabecera-asiento">
+    <label>Tipo
+      <select name="tipo">
+        {% for t, n in [('INGRESO', 'Ingreso'), ('EGRESO', 'Egreso'), ('TRASPASO', 'Traspaso')] %}
+          <option value="{{ t }}" {{ 'selected' if datos.tipo == t }}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Fecha<input type="date" name="fecha" value="{{ datos.fecha }}" required></label>
+    <label class="ancho">Glosa<input name="glosa" value="{{ datos.glosa }}" required placeholder="Ej.: Venta según factura N° 123"></label>
+  </div>
+  <label class="check-apertura">
+    <input type="checkbox" name="apertura" {{ 'checked' if datos.apertura }}>
+    Asiento de apertura: reinicia los saldos desde esta fecha (para empresas que reabren las cuentas cada año)
+  </label>
+
+  <table class="tabla-lineas">
+    <thead><tr><th>Cuenta</th><th>Detalle</th><th class="num">Debe</th><th class="num">Haber</th><th></th></tr></thead>
+    <tbody id="lineas">
+      {% for l in lineas %}{{ fila(l) }}{% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td><button type="button" id="agregar" class="secundario">+ Agregar línea</button></td>
+        <td class="num">Totales</td>
+        <td class="num" id="total-debe">0</td>
+        <td class="num" id="total-haber">0</td>
+        <td></td>
+      </tr>
+      <tr><td colspan="5" id="estado-cuadre" class="estado-cuadre"></td></tr>
+    </tfoot>
+  </table>
+
+  <template id="plantilla-linea">{{ fila({}) }}</template>
+
+  <div class="acciones">
+    {% if periodo_cerrado %}<button type="submit" name="confirmar_cerrado" value="1" class="peligro">Confirmar y guardar</button>
+    {% else %}<button type="submit" id="guardar">Guardar</button>{% endif %}
+    {% if not existente and not periodo_cerrado %}<button type="submit" name="guardar_y_nuevo" class="secundario">Guardar y nuevo</button>{% endif %}
+    <a class="boton secundario" href="{{ url_for('ver_asiento', asiento_id=existente.asiento.id) if existente else url_for('asientos') }}">Cancelar</a>
+  </div>
+  <p class="ayuda">Montos en pesos, sin decimales. Escribe solo en Debe o en Haber en cada línea.
+    Atajo: en una línea vacía, escribe <kbd>=</kbd> en Debe o Haber para completar la diferencia.</p>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='asiento.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block titulo %}Plan de cuentas{% endblock %}
+{% from '_macros.html' import botones_exportar with context %}
+{% block contenido %}
+<div class="titulo-acciones">
+  <h1>Plan de cuentas</h1>
+  <div class="acciones">{{ botones_exportar() }}<a class="boton" href="{{ url_for('editar_cuenta') }}">+ Nueva cuenta</a></div>
+</div>
+<p class="ayuda">Las cuentas en <strong>negrita</strong> son de grupo (títulos). Solo las cuentas imputables reciben movimientos.</p>
+<table>
+  <thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th class="num">Movimientos</th><th class="no-imprimir"></th></tr></thead>
+  <tbody>
+  {% for c in cuentas %}
+    <tr class="{{ 'grupo' if not c.imputable }} {{ 'inactiva' if not c.activa }}">
+      <td>{{ c.codigo }}</td>
+      <td style="padding-left: {{ 0.6 + c.codigo.count('.') * 1.2 }}rem">
+        {{ c.nombre }}{% if not c.activa %} <em>(inactiva)</em>{% endif %}
+      </td>
+      <td>{{ nombres_tipo[c.tipo] if c.imputable else '' }}{% if c.resultados_en_ocho %}
+        <span class="etiqueta" title="En el Balance de 8 columnas va en Resultados">8 col.: resultados</span>{% endif %}</td>
+      <td class="num">{{ c.movimientos or '' }}</td>
+      <td class="no-imprimir acciones-fila">
+        {% if not c.imputable %}<a href="{{ url_for('editar_cuenta', codigo=c.codigo ~ '.') }}">+ Subcuenta</a>{% endif %}
+        {% if c.imputable and c.movimientos %}<a href="{{ url_for('libro_mayor', cuenta=c.id) }}">Mayor</a>{% endif %}
+        <a href="{{ url_for('editar_cuenta', cuenta_id=c.id) }}">Editar</a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

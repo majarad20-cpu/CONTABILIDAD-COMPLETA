@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block titulo %}Cierre de meses{% endblock %}
+{% block contenido %}
+<h1>Cierre de meses</h1>
+<p class="ayuda">Cierra los meses ya declarados o con libros impresos. Para crear, modificar o eliminar un comprobante
+  de un mes cerrado, el programa pedirá confirmación y dejará constancia del cambio.</p>
+
+<form class="filtro" method="get">
+  <label>Año <input type="number" name="anio" value="{{ anio }}" min="1900" max="2100"></label>
+  <button type="submit">Ver</button>
+  <span class="espaciador"></span>
+</form>
+
+<form class="filtro" method="post" action="{{ url_for('cambiar_periodo', accion='cerrar-hasta') }}">
+  <input type="hidden" name="anio" value="{{ anio }}">
+  <label>Cerrar todos los meses de {{ anio }} hasta
+    <select name="mes">
+      {% for m in meses %}<option value="{{ m.mes }}">{{ m.nombre }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit">Cerrar meses</button>
+</form>
+
+<table class="tabla-periodos">
+  <thead><tr><th>Mes</th><th class="num">Comprobantes</th><th class="num">Total debe</th><th>Estado</th><th></th></tr></thead>
+  <tbody>
+  {% for m in meses %}
+    <tr class="{{ 'mes-cerrado' if m.cerrado_en }}">
+      <td>{{ m.nombre }} {{ anio }}</td>
+      <td class="num">{{ m.comprobantes or '' }}</td>
+      <td class="num">{{ m.total|clp if m.total }}</td>
+      <td>{% if m.cerrado_en %}<span class="etiqueta etiqueta-cerrado">Cerrado</span>
+        <small class="ayuda">el {{ m.cerrado_en[:10]|fecha }}</small>{% else %}Abierto{% endif %}</td>
+      <td class="acciones-fila">
+        <form method="post" action="{{ url_for('cambiar_periodo', accion='reabrir' if m.cerrado_en else 'cerrar') }}"
+              style="display:inline"
+              {% if m.cerrado_en %}onsubmit="return confirm('¿Reabrir {{ m.nombre|lower }} {{ anio }}? Se podrá modificar sin confirmación.')"{% endif %}>
+          <input type="hidden" name="anio" value="{{ anio }}">
+          <input type="hidden" name="mes" value="{{ m.mes }}">
+          <button type="submit" class="enlace">{{ 'Reabrir' if m.cerrado_en else 'Cerrar' }}</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Cambios en meses cerrados</h2>
+{% if cambios %}
+<table>
+  <thead><tr><th>Fecha y hora</th><th>Acción</th><th>Comprobante</th><th>Mes cerrado</th><th>Motivo</th></tr></thead>
+  <tbody>
+  {% for c in cambios %}
+    <tr>
+      <td>{{ c.fecha_hora[:10]|fecha }} {{ c.fecha_hora[11:16] }}</td>
+      <td>{{ c.accion }}</td>
+      <td>{{ c.comprobante }}</td>
+      <td>{{ c.periodos|capitalize }}</td>
+      <td>{{ c.motivo or '—' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="vacio">No se han hecho cambios en meses cerrados.</p>
+{% endif %}
+{% endblock %}

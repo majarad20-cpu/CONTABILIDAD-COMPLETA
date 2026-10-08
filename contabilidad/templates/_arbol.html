@@ -1,0 +1,9 @@
+{% from '_macros.html' import monto %}
+{% macro filas_arbol(filas) %}
+  {% for f in filas if f.nivel > 0 %}
+    <tr class="{{ 'grupo' if f.grupo }}">
+      <td style="padding-left: {{ (f.nivel - 1) * 1.2 + 0.6 }}rem">{{ f.nombre }}</td>
+      <td class="num">{{ monto(f.monto) }}</td>
+    </tr>
+  {% endfor %}
+{% endmacro %}

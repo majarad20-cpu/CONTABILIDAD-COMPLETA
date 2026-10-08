@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block titulo %}Confirmar restauración{% endblock %}
+
+{% macro resumen(d) %}
+<dl class="ficha">
+  <dt>{{ 'Empresas' if d.empresas|length > 1 else 'Empresa' }}</dt>
+  <dd>{% for e in d.empresas %}{{ e }}{% if not loop.last %}<br>{% endif %}{% endfor %}</dd>
+  <dt>Cuentas</dt><dd>{{ d.cuentas }}</dd>
+  <dt>Comprobantes</dt><dd>{{ d.asientos }}</dd>
+  <dt>Período</dt><dd>{% if d.asientos %}{{ d.desde|fecha }} al {{ d.hasta|fecha }}{% else %}—{% endif %}</dd>
+</dl>
+{% endmacro %}
+
+{% block contenido %}
+<h1>Confirmar restauración</h1>
+<div class="aviso aviso-info">
+  El archivo es válido. Si confirmas, <strong>todos los datos actuales se reemplazarán</strong> por los del respaldo.
+  Antes se guardará una copia automática de los datos actuales para que puedas deshacerlo.
+</div>
+
+<div class="dos-columnas">
+  <section><h2>Datos actuales</h2>{{ resumen(actual) }}</section>
+  <section><h2>Respaldo a cargar</h2>{{ resumen(nuevo) }}</section>
+</div>
+
+<div class="acciones">
+  <form method="post" action="{{ url_for('restaurar_respaldo') }}">
+    <button type="submit" class="peligro">Reemplazar mis datos con este respaldo</button>
+  </form>
+  <a class="boton secundario" href="{{ url_for('respaldos') }}">Cancelar</a>
+</div>
+{% endblock %}

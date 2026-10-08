@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import filtro_fechas, periodo, monto with context %}
+{% block titulo %}Libro Mayor{% endblock %}
+
+{% block contenido %}
+{% macro naturaleza_saldo(m) -%}
+  {%- set neto = m.saldo_final if m.cuenta.tipo in ('ACTIVO', 'GASTO') else -m.saldo_final -%}
+  {{ 'Saldo deudor' if neto > 0 else 'Saldo acreedor' if neto < 0 else 'Cuenta saldada' }}
+{%- endmacro %}
+
+{# Tabla de movimientos de una cuenta (se usa para una cuenta y para todas) #}
+{% macro tabla_mayor(m) %}
+<table class="tabla-mayor">
+  <thead><tr><th>Fecha</th><th>N°</th><th>Glosa</th><th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th></tr></thead>
+  <tbody>
+    {% if m.saldo_inicial or not todas %}
+    <tr class="grupo"><td colspan="5">Saldo anterior</td><td class="num">{{ monto(m.saldo_inicial) }}</td></tr>
+    {% endif %}
+    {% for x in m.movimientos %}
+    {% if x.reinicio %}
+    <tr class="reinicio"><td>{{ x.fecha|fecha }}</td><td></td>
+      <td colspan="3">Apertura: el saldo anterior ({{ monto(x.saldo_anterior) }}) se reinicia</td>
+      <td class="num">0</td></tr>
+    {% else %}
+    <tr>
+      <td>{{ x.fecha|fecha }}</td>
+      <td><a href="{{ url_for('ver_asiento', asiento_id=x.asiento_id) }}">{{ comprobante(x.tipo, x.numero) }}</a></td>
+      <td>{{ x.glosa or x.glosa_asiento }}</td>
+      <td class="num">{{ x.debe|clp if x.debe }}</td>
+      <td class="num">{{ x.haber|clp if x.haber }}</td>
+      <td class="num saldo">{{ monto(x.saldo) }}</td>
+    </tr>
+    {% endif %}
+    {% else %}
+    <tr><td colspan="6" class="vacio">Sin movimientos en el período.</td></tr>
+    {% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="3" class="num">Totales y saldo cuenta <small>({{ naturaleza_saldo(m)|lower }})</small></td>
+    <td class="num">{{ m.total_debe|clp }}</td><td class="num">{{ m.total_haber|clp }}</td>
+    <td class="num">{{ monto(m.saldo_final) }}</td></tr></tfoot>
+</table>
+{% endmacro %}
+
+<h1>Libro Mayor</h1>
+
+{% macro selector_cuenta() %}
+  <label>Cuenta
+    <select name="cuenta" required>
+      <option value="">— Selecciona cuenta —</option>
+      <option value="todas" {{ 'selected' if todas }}>★ Todas las cuentas</option>
+      {% for c in cuentas %}
+        <option value="{{ c.id }}" {{ 'selected' if cuenta_id == c.id }}>{{ c.codigo }} {{ c.nombre }}</option>
+      {% endfor %}
+    </select>
+  </label>
+{% endmacro %}
+{{ filtro_fechas(desde, hasta, exportar=mayor is not none or todas, extra=selector_cuenta) }}
+
+{% if todas %}
+  {{ periodo(desde, hasta) }}
+  {% if completo.cuentas %}
+  <nav class="indice-cuentas no-imprimir" aria-label="Cuentas del Libro Mayor">
+    <span>{{ completo.cuentas|length }} cuentas con movimiento:</span>
+    {% for m in completo.cuentas %}
+      <a href="#cuenta-{{ m.cuenta.id }}" title="{{ m.cuenta.nombre }}">{{ m.cuenta.codigo }}</a>
+    {% endfor %}
+  </nav>
+
+  {% for m in completo.cuentas %}
+  <section class="seccion-mayor" id="cuenta-{{ m.cuenta.id }}">
+    <h2>
+      <span>{{ m.cuenta.codigo }} {{ m.cuenta.nombre }}</span>
+      <span class="resumen-cuenta">{{ naturaleza_saldo(m) }}: <strong>{{ monto(m.saldo_final) }}</strong>
+        <a class="no-imprimir" href="{{ url_for('libro_mayor', cuenta=m.cuenta.id, desde=desde, hasta=hasta) }}">ver sola</a>
+        <a class="no-imprimir" href="#">↑ arriba</a></span>
+    </h2>
+    {{ tabla_mayor(m) }}
+  </section>
+  {% endfor %}
+
+  {% set cuadra = completo.total_debe == completo.total_haber %}
+  <table class="informe total-mayor">
+    <tbody>
+      <tr class="total"><td>TOTAL GENERAL LIBRO MAYOR</td>
+        <td class="num">Debe {{ completo.total_debe|clp }}</td>
+        <td class="num">Haber {{ completo.total_haber|clp }}</td>
+        <td class="num {{ '' if cuadra else 'negativo' }}">{{ '(CONCORDADO)' if cuadra else '(NO CUADRA)' }}</td></tr>
+    </tbody>
+  </table>
+  {% else %}
+  <p class="vacio">No hay movimientos en el período.</p>
+  {% endif %}
+
+{% elif mayor %}
+  <h2>{{ mayor.cuenta.codigo }} {{ mayor.cuenta.nombre }}</h2>
+  {{ periodo(desde, hasta) }}
+  {{ tabla_mayor(mayor) }}
+  <p class="ayuda">Saldo expresado según la naturaleza de la cuenta
+    ({{ 'deudora' if mayor.cuenta.tipo in ('ACTIVO', 'GASTO') else 'acreedora' }}); un valor negativo indica saldo contrario.</p>
+
+{% else %}
+  <div class="vacio">
+    <p>Selecciona una cuenta para ver sus movimientos, o revisa el mayor completo.</p>
+    <a class="boton" href="{{ url_for('libro_mayor', cuenta='todas', desde=desde, hasta=hasta) }}">Ver todas las cuentas</a>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block titulo %}Compras y ventas (RCV){% endblock %}
+{% block contenido %}
+{% macro tabla_documentos(docs, totales, registro) %}
+  {% if docs %}
+  <div class="desplazable">
+  <table class="tabla-rcv">
+    <thead><tr><th class="no-imprimir"></th><th>Tipo</th><th>Folio</th><th>Fecha</th><th>RUT</th><th>Razón social</th>
+      <th class="num">Exento</th><th class="num">Neto</th><th class="num">IVA</th><th class="num">Total</th>
+      <th>Cuenta del neto</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% for d in docs %}
+      {% set nc = signo(d.tipo_doc) < 0 %}
+      <tr class="{{ 'nota-credito' if nc }}">
+        <td class="no-imprimir">{% if not d.asiento_id %}<input type="checkbox" name="seleccion" value="{{ d.id }}" aria-label="Seleccionar documento {{ d.folio }}">{% endif %}</td>
+        <td title="{{ nombre_tipo(d.tipo_doc) }}">{{ d.tipo_doc }}{% if nc %} <span class="etiqueta">NC</span>{% endif %}{% if d.activo_fijo %} <span class="etiqueta">AF</span>{% endif %}</td>
+        <td>{% if d.cantidad > 1 or d.folio.startswith('RESUMEN') %}Resumen <span class="ayuda">({{ d.cantidad }} doc.)</span>{% else %}{{ d.folio }}{% endif %}</td>
+        <td>{{ d.fecha|fecha }}</td>
+        <td class="rut">{{ d.rut }}</td>
+        <td>{{ d.razon_social }}</td>
+        <td class="num">{{ d.exento|clp if d.exento }}</td>
+        <td class="num">{{ d.neto|clp if d.neto }}</td>
+        <td class="num">{{ d.iva|clp if d.iva }}</td>
+        <td class="num">{{ d.total|clp }}</td>
+        <td>
+          {% if d.asiento_id %}
+            {{ nombres_cuenta.get(d.cuenta_id or defectos[d.id], 'por defecto') }}
+          {% else %}
+          <select name="cuenta_{{ d.id }}" class="selector-cuenta" aria-label="Cuenta del documento {{ d.folio }}">
+            <option value="">Por defecto: {{ nombres_cuenta.get(defectos[d.id], 'sin configurar') }}</option>
+            {% for c in cuentas %}<option value="{{ c.id }}" {{ 'selected' if c.id == d.cuenta_id }}>{{ c.codigo }} {{ c.nombre }}</option>{% endfor %}
+          </select>
+          {% endif %}
+        </td>
+        <td>{% if d.asiento_id %}<a href="{{ url_for('ver_asiento', asiento_id=d.asiento_id) }}">{{ comprobante(d.asiento_tipo, d.asiento_numero) }}</a>
+            {% else %}<span class="etiqueta etiqueta-pendiente">pendiente</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr><td class="no-imprimir"></td>
+      <td colspan="5">{{ totales.cantidad }} documentos ({{ totales.pendientes }} pendientes) · las notas de crédito restan</td>
+      <td class="num">{{ totales.exento|clp }}</td><td class="num">{{ totales.neto|clp }}</td>
+      <td class="num">{{ totales.iva|clp }}</td><td class="num">{{ totales.total|clp }}</td><td colspan="2"></td></tr></tfoot>
+  </table>
+  </div>
+  {% if totales.pendientes %}
+  <div class="acciones no-imprimir">
+    <button type="submit" name="centralizar" value="{{ registro }}">Centralizar {{ 'compras' if registro == 'COMPRA' else 'ventas' }} pendientes</button>
+  </div>
+  {% endif %}
+  {% else %}
+  <p class="vacio">No hay {{ 'compras' if registro == 'COMPRA' else 'ventas' }} importadas para este período.</p>
+  {% endif %}
+{% endmacro %}
+
+<div class="titulo-acciones">
+  <h1>Registro de Compras y Ventas</h1>
+  <a class="boton secundario no-imprimir" href="{{ url_for('cuentas_tributarias') }}">Cuentas tributarias</a>
+</div>
+
+<form class="filtro no-imprimir" method="get">
+  <label>Período tributario <input type="month" name="periodo" value="{{ periodo }}" required></label>
+  <button type="submit">Ver</button>
+  <span class="espaciador"></span>
+  <a class="boton secundario" href="{{ url_for('f29', periodo=periodo) }}">Borrador F29 de este mes</a>
+</form>
+
+<section class="caja no-imprimir">
+  <h2>Importar desde el SII</h2>
+  <p class="ayuda">En el SII entra a <em>Registro de Compras y Ventas</em>, elige el período y descarga en CSV el
+    <strong>detalle</strong> de compras, el <strong>detalle</strong> de ventas y el <strong>resumen</strong> de ventas
+    (este último trae las boletas y los comprobantes de pago electrónico). El programa reconoce cada archivo; toma el
+    período del nombre del archivo y no importa archivos de otro RUT. Si cargas un archivo dos veces no se duplica.</p>
+  <form method="post" action="{{ url_for('importar_rcv') }}" enctype="multipart/form-data" class="fila-form">
+    <input type="hidden" name="periodo" value="{{ periodo }}">
+    <input type="file" name="archivo" accept=".csv,text/csv" required>
+    <button type="submit">Importar a {{ nombre_periodo(periodo) }}</button>
+  </form>
+</section>
+
+<form method="post" action="{{ url_for('documentos_rcv') }}">
+  <input type="hidden" name="periodo" value="{{ periodo }}">
+
+  <h2>Compras — {{ nombre_periodo(periodo)|capitalize }}</h2>
+  {{ tabla_documentos(compras, total_compras, 'COMPRA') }}
+
+  <h2>Ventas — {{ nombre_periodo(periodo)|capitalize }}</h2>
+  {{ tabla_documentos(ventas, total_ventas, 'VENTA') }}
+
+  {% if compras or ventas %}
+  <div class="acciones no-imprimir barra-rcv">
+    <button type="submit" class="secundario">Guardar cuentas elegidas</button>
+    <button type="submit" name="eliminar" value="1" class="peligro"
+            onclick="return confirm('¿Eliminar los documentos marcados? Solo se eliminan los pendientes.')">Eliminar marcados</button>
+    <span class="ayuda">La cuenta que elijas para un documento se recuerda para ese proveedor o cliente en los meses siguientes.</span>
+  </div>
+  {% endif %}
+</form>
+
+<section class="caja no-imprimir" id="resumen-ventas">
+  <h2>Ventas con boleta y comprobantes de pago electrónico</h2>
+  <p class="ayuda">Lo más simple es importar arriba el CSV de <strong>resumen</strong> de ventas del SII: registra las
+    boletas y los comprobantes de pago con los montos exactos del SII. Si no lo tienes, ingrésalos aquí a mano, tal
+    como aparecen en el resumen del Registro de Ventas. Si no ingresas neto e IVA, se calculan desde el total
+    (IVA 19 %); el SII puede diferir en $1 por redondeo. Si vuelves a ingresar el mismo tipo en este mes, se
+    reemplaza.</p>
+  <form method="post" action="{{ url_for('resumen_ventas') }}" class="filtro formulario-resumen">
+    <input type="hidden" name="periodo" value="{{ periodo }}">
+    <label>Tipo de documento
+      <select name="tipo_doc" required>
+        {% for codigo, nombre in tipos_resumen.items() %}<option value="{{ codigo }}">{{ codigo }} · {{ nombre }}</option>{% endfor %}
+      </select></label>
+    <label>Cantidad <input name="cantidad" type="number" min="1" required size="6"></label>
+    <label>Monto total <input name="total" inputmode="numeric" required size="12"></label>
+    <label>Exento (opcional) <input name="exento" inputmode="numeric" size="10"></label>
+    <label>Neto (opcional) <input name="neto" inputmode="numeric" size="10"></label>
+    <label>IVA (opcional) <input name="iva" inputmode="numeric" size="10"></label>
+    <button type="submit">Agregar resumen</button>
+  </form>
+</section>
+{% endblock %}

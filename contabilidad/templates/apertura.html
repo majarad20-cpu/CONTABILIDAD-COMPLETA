@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block titulo %}Apertura de ejercicio{% endblock %}
+{% block contenido %}
+<h1>Apertura de ejercicio</h1>
+<p class="ayuda">Genera una propuesta del asiento de apertura con los saldos de las cuentas de balance al 31 de
+  diciembre del año anterior. Antes de registrarla la verás en el formulario de comprobante, donde puedes modificar
+  cuentas y montos.</p>
+
+<form method="get" action="{{ url_for('propuesta_apertura') }}" class="formulario">
+  <label>Año a abrir
+    <input type="number" name="anio" value="{{ p.anio }}" min="1901" max="2100" required
+           onchange="location='{{ url_for('apertura') }}?anio=' + this.value"></label>
+  <label>Fecha del asiento de apertura
+    <input type="date" name="fecha" value="{{ p.fecha }}" required></label>
+  <label>Si hubo utilidad, traspasarla a
+    <select name="destino_utilidad">
+      {% for c in cuentas %}<option value="{{ c.id }}" {{ 'selected' if c.id == p.destino_utilidad }}>{{ c.codigo }} {{ c.nombre }}</option>{% endfor %}
+    </select></label>
+  <label>Si hubo pérdida, traspasarla a
+    <select name="destino_perdida">
+      {% for c in cuentas %}<option value="{{ c.id }}" {{ 'selected' if c.id == p.destino_perdida }}>{{ c.codigo }} {{ c.nombre }}</option>{% endfor %}
+    </select></label>
+
+  {% if error %}
+    <div class="aviso aviso-error">{{ error }}</div>
+  {% elif propuesta %}
+    <section class="caja">
+      <h2>Saldos al 31/12/{{ propuesta.anterior }}</h2>
+      <dl class="ficha">
+        <dt>Total activo</dt><dd>{{ '-' if propuesta.total_activo < 0 }}${{ propuesta.total_activo|abs|clp }}</dd>
+        <dt>Total pasivo</dt><dd>{{ '-' if propuesta.total_pasivo < 0 }}${{ propuesta.total_pasivo|abs|clp }}</dd>
+        <dt>Total patrimonio</dt><dd>{{ '-' if propuesta.total_patrimonio < 0 }}${{ propuesta.total_patrimonio|abs|clp }}</dd>
+        <dt>{{ 'Utilidad' if propuesta.resultado >= 0 else 'Pérdida' }} a traspasar</dt>
+        <dd>${{ propuesta.resultado|abs|clp }}</dd>
+        <dt>Líneas del asiento</dt><dd>{{ propuesta.lineas|length }}</dd>
+      </dl>
+      {% if propuesta.existentes %}
+      <div class="aviso aviso-error">Ya existe un asiento de apertura en {{ propuesta.anio }}:
+        {% for a in propuesta.existentes %}<a href="{{ url_for('ver_asiento', asiento_id=a.id) }}">{{ comprobante(a.tipo, a.numero) }} del {{ a.fecha|fecha }}</a>{{ ', ' if not loop.last }}{% endfor %}.</div>
+      {% endif %}
+    </section>
+    <div class="acciones"><button type="submit">Ver propuesta</button></div>
+  {% endif %}
+</form>
+{% endblock %}

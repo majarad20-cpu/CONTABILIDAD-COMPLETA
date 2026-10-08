@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import monto %}
+{% block titulo %}Inicio{% endblock %}
+{% block contenido %}
+<h1>Resumen del ejercicio {{ anio }}</h1>
+
+<div class="tarjetas">
+  <div class="tarjeta"><span>Ingresos</span><strong>${{ er.total_ingresos|clp }}</strong></div>
+  <div class="tarjeta"><span>Gastos</span><strong>${{ er.total_gastos|clp }}</strong></div>
+  <div class="tarjeta {{ 'positivo' if er.resultado >= 0 else 'alerta' }}">
+    <span>{{ 'Utilidad' if er.resultado >= 0 else 'Pérdida' }}</span>
+    <strong>${{ er.resultado|abs|clp }}</strong>
+  </div>
+  <div class="tarjeta"><span>Caja y bancos</span><strong>${{ monto(disponible) }}</strong></div>
+</div>
+
+<div class="acciones">
+  <a class="boton" href="{{ url_for('editar_asiento', tipo='INGRESO') }}">Comprobante de ingreso</a>
+  <a class="boton" href="{{ url_for('editar_asiento', tipo='EGRESO') }}">Comprobante de egreso</a>
+  <a class="boton" href="{{ url_for('editar_asiento', tipo='TRASPASO') }}">Comprobante de traspaso</a>
+</div>
+
+<h2>Últimos comprobantes <small>({{ cantidad }} en el ejercicio)</small></h2>
+{% if ultimos %}
+<table>
+  <thead><tr><th>Fecha</th><th>N°</th><th>Glosa</th><th class="num">Monto</th></tr></thead>
+  <tbody>
+  {% for a in ultimos %}
+    <tr class="clic" onclick="location='{{ url_for('ver_asiento', asiento_id=a.id) }}'">
+      <td>{{ a.fecha|fecha }}</td><td>{{ comprobante(a.tipo, a.numero) }}</td>
+      <td>{{ a.glosa }}</td><td class="num">{{ a.total|clp }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="vacio">Todavía no hay comprobantes. Empieza con el <strong>asiento de apertura</strong>
+  (capital inicial, saldos de caja y banco) usando un comprobante de traspaso.</p>
+{% endif %}
+{% endblock %}

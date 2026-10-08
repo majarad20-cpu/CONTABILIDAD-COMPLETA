@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ 'Editar' if cuenta else 'Nueva' }} cuenta{% endblock %}
+{% block contenido %}
+<h1>{{ 'Editar cuenta ' ~ cuenta.codigo if cuenta else 'Nueva cuenta' }}</h1>
+<form method="post" class="formulario">
+  <label>Código *<input name="codigo" value="{{ datos.codigo }}" placeholder="1.1.12" required autofocus>
+    <small>Números separados por puntos. Debe existir una cuenta de grupo superior (p. ej. 1.1 para 1.1.12).</small></label>
+  <label>Nombre *<input name="nombre" value="{{ datos.nombre }}" required></label>
+  <label>Tipo
+    <select name="tipo">
+      <option value="">Igual que su grupo superior</option>
+      {% for clave, nombre in nombres_tipo.items() %}
+        <option value="{{ clave }}" {{ 'selected' if datos.tipo == clave }}>{{ nombre }}</option>
+      {% endfor %}
+    </select>
+    <small>Define en qué informe aparece: Balance General (activo, pasivo, patrimonio) o Estado de Resultados (ingresos, gastos).</small></label>
+  <label class="check"><input type="checkbox" name="imputable" {{ 'checked' if datos.imputable }}>
+    Imputable (recibe movimientos). Desmárcala para crear una cuenta de grupo.</label>
+  <label class="check"><input type="checkbox" name="activa" {{ 'checked' if datos.activa }}>
+    Activa (aparece al registrar comprobantes)</label>
+  <label class="check"><input type="checkbox" name="resultados_en_ocho" {{ 'checked' if datos.resultados_en_ocho }}>
+    Solo para patrimonio: en el Balance de 8 columnas, mostrarla en Resultados (pérdidas/ganancias),
+    por ejemplo Utilidades acumuladas. En el Balance General sigue en patrimonio.</label>
+  <div class="acciones">
+    <button type="submit">Guardar</button>
+    <a class="boton secundario" href="{{ url_for('cuentas') }}">Cancelar</a>
+  </div>
+</form>
+{% if cuenta %}
+<form method="post" action="{{ url_for('eliminar_cuenta', cuenta_id=cuenta.id) }}"
+      onsubmit="return confirm('¿Eliminar la cuenta {{ cuenta.codigo }} {{ cuenta.nombre }}?')">
+  <button class="peligro" type="submit">Eliminar cuenta</button>
+</form>
+{% endif %}
+{% endblock %}

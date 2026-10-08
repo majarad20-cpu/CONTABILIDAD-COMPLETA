@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import filtro_fechas, periodo with context %}
+{% block titulo %}Comprobantes{% endblock %}
+{% block contenido %}
+<div class="titulo-acciones">
+  <h1>Comprobantes contables</h1>
+  <a class="boton no-imprimir" href="{{ url_for('editar_asiento') }}">+ Nuevo comprobante</a>
+</div>
+
+{% macro filtros_extra() %}
+  <label>Tipo
+    <select name="tipo">
+      <option value="">Todos</option>
+      {% for t, n in [('INGRESO', 'Ingreso'), ('EGRESO', 'Egreso'), ('TRASPASO', 'Traspaso')] %}
+        <option value="{{ t }}" {{ 'selected' if tipo == t }}>{{ n }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Buscar <input name="q" value="{{ q }}" placeholder="Texto en la glosa"></label>
+{% endmacro %}
+{{ filtro_fechas(desde, hasta, extra=filtros_extra) }}
+{{ periodo(desde, hasta) }}
+
+{% if asientos %}
+<table>
+  <thead><tr><th>Fecha</th><th>N°</th><th>Glosa</th><th class="num">Monto</th></tr></thead>
+  <tbody>
+  {% for a in asientos %}
+    <tr class="clic" onclick="location='{{ url_for('ver_asiento', asiento_id=a.id) }}'">
+      <td>{{ a.fecha|fecha }}</td>
+      <td>{{ comprobante(a.tipo, a.numero) }}</td>
+      <td>{{ a.glosa }}{% if a.cierre %} <span class="etiqueta">cierre</span>{% endif %}{% if a.apertura %} <span class="etiqueta">apertura</span>{% endif %}{% if mes_cerrado(a.fecha) %} <span class="etiqueta etiqueta-cerrado">mes cerrado</span>{% endif %}</td>
+      <td class="num">{{ a.total|clp }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="3">{{ asientos|length }} comprobantes</td>
+    <td class="num">{{ asientos|sum(attribute='total')|clp }}</td></tr></tfoot>
+</table>
+{% else %}
+<p class="vacio">No hay comprobantes en este período.</p>
+{% endif %}
+{% endblock %}

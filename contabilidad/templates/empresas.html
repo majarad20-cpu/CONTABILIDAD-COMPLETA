@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block titulo %}Empresas{% endblock %}
+{% block contenido %}
+<div class="titulo-acciones">
+  <h1>Empresas</h1>
+  <a class="boton" href="{{ url_for('nueva_empresa') }}">+ Nueva empresa</a>
+</div>
+<table>
+  <thead><tr><th>Razón social</th><th>RUT</th><th>Régimen</th><th class="num">Ejercicio</th>
+    <th class="num">Comprobantes</th><th>Último movimiento</th><th></th></tr></thead>
+  <tbody>
+  {% for e in empresas %}
+    <tr class="{{ 'seleccionada' if e.id == empresa.id }}">
+      <td>{{ e.razon_social or '(sin nombre)' }}</td>
+      <td>{{ e.rut }}</td>
+      <td>{{ e.regimen }}</td>
+      <td class="num">{{ e.ejercicio }}</td>
+      <td class="num">{{ e.asientos }}</td>
+      <td>{{ e.ultimo|fecha }}</td>
+      <td class="acciones-fila">
+        {% if e.id == empresa.id %}<span class="etiqueta">activa</span>{% else %}
+        <form method="post" action="{{ url_for('cambiar_empresa') }}" style="display:inline">
+          <input type="hidden" name="empresa_id" value="{{ e.id }}">
+          <button type="submit" class="enlace">Trabajar con esta</button>
+        </form>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

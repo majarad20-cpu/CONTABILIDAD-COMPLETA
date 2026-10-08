@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block titulo %}Cierre de ejercicio{% endblock %}
+{% block contenido %}
+<h1>Cierre del ejercicio</h1>
+<form class="filtro" method="get">
+  <label>Año <input type="number" name="anio" value="{{ anio }}" min="1900" max="2100"></label>
+  <button type="submit">Ver</button>
+</form>
+
+<p>El cierre genera un comprobante de traspaso al 31-12-{{ anio }} que deja en cero las cuentas de
+  ingresos y gastos del año y traspasa el resultado a la cuenta de patrimonio que elijas.
+  Los informes del año siguen mostrando el resultado normalmente.</p>
+
+<dl class="ficha">
+  <dt>Ingresos {{ anio }}</dt><dd>${{ er.total_ingresos|clp }}</dd>
+  <dt>Gastos {{ anio }}</dt><dd>${{ er.total_gastos|clp }}</dd>
+  <dt>{{ 'Utilidad' if er.resultado >= 0 else 'Pérdida' }}</dt><dd><strong>${{ er.resultado|abs|clp }}</strong></dd>
+</dl>
+
+{% if existente %}
+  <div class="aviso aviso-info">
+    El ejercicio {{ anio }} ya está cerrado:
+    <a href="{{ url_for('ver_asiento', asiento_id=existente.id) }}">ver comprobante {{ comprobante(existente.tipo, existente.numero) }}</a>.
+    Si registras movimientos posteriores en {{ anio }}, elimina ese comprobante y vuelve a cerrar.
+  </div>
+{% elif not cuentas %}
+  <div class="aviso aviso-error">No hay cuentas imputables de patrimonio para recibir el resultado.
+    <a href="{{ url_for('cuentas') }}">Crea una en el plan de cuentas</a>.</div>
+{% else %}
+  <form method="post" class="fila-form" {% if not periodo_cerrado %}onsubmit="return confirm('¿Cerrar el ejercicio {{ anio }}?')"{% endif %}>
+    <input type="hidden" name="anio" value="{{ anio }}">
+    {% if periodo_cerrado %}
+    <div class="confirmar-cerrado ancho-completo">
+      <strong>Período cerrado</strong>
+      <p>{{ periodo_cerrado }} El asiento de cierre se registra el 31/12/{{ anio }}.</p>
+      <label>Motivo (opcional, queda registrado)<input name="motivo_cerrado" placeholder="Ej.: cierre anual" autofocus></label>
+      <input type="hidden" name="confirmar_cerrado" value="1">
+    </div>
+    {% endif %}
+    <label>Traspasar el resultado a
+      <select name="cuenta_destino">
+        {% for c in cuentas %}
+          <option value="{{ c.id }}" {{ 'selected' if c.id == sugerida }}>{{ c.codigo }} {{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="{{ 'peligro' if periodo_cerrado }}">{{ 'Confirmar y cerrar' if periodo_cerrado else 'Cerrar' }} ejercicio {{ anio }}</button>
+  </form>
+{% endif %}
+
+<p class="ayuda">Después del cierre, al comenzar el nuevo año puedes registrar un traspaso del resultado a
+  utilidades o pérdidas acumuladas, y cambiar el ejercicio vigente en
+  <a href="{{ url_for('empresa') }}">Datos de la empresa</a>.</p>
+{% endblock %}

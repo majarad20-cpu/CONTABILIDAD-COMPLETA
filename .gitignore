@@ -1,0 +1,25 @@
+# Entorno de Python
+.venv/
+__pycache__/
+*.pyc
+
+# Datos reales: bases de datos, respaldos e importaciones (NUNCA subir)
+datos/
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+*.json
+
+# Informes y documentos reales (contienen firmas, nombres y RUT)
+ejemplospdf/
+*.pdf
+*.xlsx
+*.xls
+
+# Archivos locales del editor y del asistente
+.claude/
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

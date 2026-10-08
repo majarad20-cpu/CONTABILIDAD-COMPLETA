@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import monto, botones_exportar with context %}
+{% from '_arbol.html' import filas_arbol %}
+{% block titulo %}Balance General{% endblock %}
+{% block contenido %}
+<h1>Balance General</h1>
+<form class="filtro no-imprimir" method="get">
+  <label>Al <input type="date" name="hasta" value="{{ hasta }}"></label>
+  <button type="submit">Ver</button>
+  <span class="espaciador"></span>
+  {{ botones_exportar(folio=true) }}
+  <button type="button" class="secundario" onclick="window.print()">Imprimir</button>
+</form>
+<p class="periodo">Al {{ hasta|fecha }}</p>
+
+{% if total_activo != total_pasivo_patrimonio %}
+<div class="aviso aviso-error">El balance no cuadra; revisa los datos.</div>
+{% endif %}
+
+<div class="dos-columnas">
+  <table class="informe">
+    <tbody>
+      <tr class="seccion-informe"><td>ACTIVO</td><td></td></tr>
+      {{ filas_arbol(activo) }}
+    </tbody>
+    <tfoot><tr class="total"><td>TOTAL ACTIVO</td><td class="num">{{ monto(total_activo) }}</td></tr></tfoot>
+  </table>
+
+  <table class="informe">
+    <tbody>
+      <tr class="seccion-informe"><td>PASIVO</td><td></td></tr>
+      {{ filas_arbol(pasivo) }}
+      <tr class="subtotal"><td>Total pasivo</td><td class="num">{{ monto(total_pasivo) }}</td></tr>
+      <tr class="seccion-informe"><td>PATRIMONIO</td><td></td></tr>
+      {{ filas_arbol(patrimonio) }}
+      {% if resultado_anterior %}
+      <tr><td style="padding-left: .6rem">Resultados anteriores no cerrados</td><td class="num">{{ monto(resultado_anterior) }}</td></tr>
+      {% endif %}
+      <tr><td style="padding-left: .6rem">{{ 'Utilidad' if resultado >= 0 else 'Pérdida' }} del ejercicio ({{ desde|fecha }} – {{ hasta|fecha }})</td>
+        <td class="num">{{ monto(resultado) }}</td></tr>
+      <tr class="subtotal"><td>Total patrimonio</td><td class="num">{{ monto(total_patrimonio) }}</td></tr>
+    </tbody>
+    <tfoot><tr class="total"><td>TOTAL PASIVO Y PATRIMONIO</td><td class="num">{{ monto(total_pasivo_patrimonio) }}</td></tr></tfoot>
+  </table>
+</div>
+{% endblock %}

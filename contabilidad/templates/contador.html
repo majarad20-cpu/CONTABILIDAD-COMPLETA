@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block titulo %}Contador y firma{% endblock %}
+{% block contenido %}
+<h1>Contador y firma</h1>
+<p class="ayuda">Estos datos aparecen en la firma de «CONTADOR GENERAL» de los libros e informes en PDF y Excel,
+  para todas las empresas.</p>
+<form method="post" enctype="multipart/form-data" class="formulario">
+  <label>Nombre del contador<input name="nombre" value="{{ datos.nombre or '' }}" placeholder="Nombre y apellidos"></label>
+  <label>RUT del contador<input name="rut" value="{{ datos.rut or '' }}" placeholder="12.345.678-5"></label>
+  <label>Imagen de la firma (PNG o JPG)
+    <input type="file" name="firma" accept="image/png,image/jpeg">
+    <small>Idealmente una firma escaneada con fondo blanco o transparente. Reemplaza la imagen actual.</small></label>
+  <div class="acciones"><button type="submit">Guardar</button></div>
+</form>
+
+{% if tiene_firma %}
+<section class="caja">
+  <h2>Firma actual</h2>
+  <img class="firma-vista" src="{{ url_for('imagen_firma') }}" alt="Firma del contador">
+  <form method="post" action="{{ url_for('eliminar_firma') }}" onsubmit="return confirm('¿Eliminar la imagen de firma?')">
+    <button type="submit" class="peligro">Eliminar imagen de firma</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

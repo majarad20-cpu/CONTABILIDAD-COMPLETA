@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{% endblock %} · Contabilidad</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+</head>
+<body>
+  <aside class="menu no-imprimir">
+    <div class="marca">
+      {% if empresas|length > 1 %}
+      <form method="post" action="{{ url_for('cambiar_empresa') }}">
+        <input type="hidden" name="volver" value="{{ request.path if request.method == 'GET' and not request.view_args else url_for('inicio') }}">
+        <select name="empresa_id" class="selector-empresa" onchange="this.form.submit()" aria-label="Empresa activa">
+          {% for e in empresas %}
+            <option value="{{ e.id }}" {{ 'selected' if e.id == empresa.id }}>{{ e.razon_social or '(sin nombre)' }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% else %}
+      <strong>{{ empresa.razon_social or 'Mi empresa' }}</strong>
+      {% endif %}
+      <span>{{ empresa.rut or 'RUT sin configurar' }} · Ejercicio {{ empresa.ejercicio }}</span>
+    </div>
+    {% set ep = request.endpoint %}
+    <nav>
+      <a href="{{ url_for('inicio') }}" class="{{ 'activo' if ep == 'inicio' }}">Inicio</a>
+      <span class="seccion">Registro</span>
+      {% set editando = ep in ('editar_asiento', 'eliminar_asiento') and request.view_args %}
+      <a href="{{ url_for('editar_asiento') }}" class="{{ 'activo' if ep == 'editar_asiento' and not editando }}">+ Nuevo comprobante</a>
+      <a href="{{ url_for('asientos') }}" class="{{ 'activo' if ep in ('asientos', 'ver_asiento') or editando }}">Comprobantes</a>
+      <a href="{{ url_for('cuentas') }}" class="{{ 'activo' if ep in ('cuentas', 'editar_cuenta') }}">Plan de cuentas</a>
+      <span class="seccion">Tributario</span>
+      <a href="{{ url_for('rcv') }}" class="{{ 'activo' if ep in ('rcv', 'centralizar_rcv') }}">Compras y ventas (RCV)</a>
+      <a href="{{ url_for('f29') }}" class="{{ 'activo' if ep == 'f29' }}">Borrador F29</a>
+      <a href="{{ url_for('cuentas_tributarias') }}" class="{{ 'activo' if ep == 'cuentas_tributarias' }}">Cuentas tributarias</a>
+      <span class="seccion">Libros</span>
+      <a href="{{ url_for('libro_diario') }}" class="{{ 'activo' if ep == 'libro_diario' }}">Libro Diario</a>
+      <a href="{{ url_for('libro_mayor') }}" class="{{ 'activo' if ep == 'libro_mayor' }}">Libro Mayor</a>
+      <span class="seccion">Informes</span>
+      <a href="{{ url_for('balance_ocho') }}" class="{{ 'activo' if ep == 'balance_ocho' }}">Balance de 8 columnas</a>
+      <a href="{{ url_for('estado_resultados') }}" class="{{ 'activo' if ep == 'estado_resultados' }}">Estado de Resultados</a>
+      <a href="{{ url_for('balance_general') }}" class="{{ 'activo' if ep == 'balance_general' }}">Balance General</a>
+      <span class="seccion">Administración</span>
+      <a href="{{ url_for('periodos') }}" class="{{ 'activo' if ep == 'periodos' }}">Cierre de meses</a>
+      <a href="{{ url_for('cierre') }}" class="{{ 'activo' if ep == 'cierre' }}">Cierre de ejercicio</a>
+      <a href="{{ url_for('apertura') }}" class="{{ 'activo' if ep in ('apertura', 'propuesta_apertura') }}">Apertura de ejercicio</a>
+      <a href="{{ url_for('empresa') }}" class="{{ 'activo' if ep == 'empresa' }}">Datos de la empresa</a>
+      <a href="{{ url_for('empresas') }}" class="{{ 'activo' if ep in ('empresas', 'nueva_empresa') }}">Empresas</a>
+      <a href="{{ url_for('contador') }}" class="{{ 'activo' if ep == 'contador' }}">Contador y firma</a>
+      <a href="{{ url_for('respaldos') }}" class="{{ 'activo' if ep in ('respaldos', 'subir_respaldo', 'usar_copia') }}">Respaldos</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="solo-imprimir encabezado-impresion">
+      <strong>{{ empresa.razon_social }}</strong> · RUT {{ empresa.rut }}<br>
+      {{ empresa.giro }}{% if empresa.direccion %} · {{ empresa.direccion }}, {{ empresa.comuna }}{% endif %}
+    </div>
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for categoria, mensaje in mensajes %}
+        <div class="aviso aviso-{{ categoria }} no-imprimir">{{ mensaje }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% if not empresa.razon_social and request.endpoint not in ('empresa', 'nueva_empresa') %}
+      <div class="aviso aviso-info no-imprimir">
+        Aún no configuras tu empresa. <a href="{{ url_for('empresa') }}">Ingresa razón social y RUT</a>.
+      </div>
+    {% endif %}
+    {% block contenido %}{% endblock %}
+  </main>
+  <dialog id="dialogo-folio" class="dialogo no-imprimir" data-proximo="{{ empresa.ultimo_folio + 1 }}">
+    <form method="dialog">
+      <h2>Folio inicial</h2>
+      <p>¿Con qué número de folio comienza este PDF? Cada página usará el folio siguiente.</p>
+      <label>Folio inicial <input type="number" name="folio" min="1" step="1" required></label>
+      <p class="ayuda">Sugerido: <strong class="folio-sugerido"></strong>, el siguiente al último folio utilizado
+        por {{ empresa.razon_social or 'la empresa' }}.</p>
+      <p class="folio-aviso"></p>
+      <div class="acciones">
+        <button type="submit">Generar PDF</button>
+        <button type="button" class="secundario" data-cerrar>Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="{{ url_for('static', filename='folio.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

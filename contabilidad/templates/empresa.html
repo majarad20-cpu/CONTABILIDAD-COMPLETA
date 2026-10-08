@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ 'Nueva empresa' if nueva else 'Empresa' }}{% endblock %}
+{% block contenido %}
+<h1>{{ 'Nueva empresa' if nueva else 'Datos de la empresa' }}</h1>
+{% if nueva %}<p class="ayuda">La empresa se crea con el plan de cuentas base, que luego puedes modificar.</p>{% endif %}
+<form method="post" class="formulario">
+  <label>Razón social *<input name="razon_social" value="{{ datos.razon_social or '' }}" required></label>
+  <label>RUT<input name="rut" value="{{ datos.rut or '' }}" placeholder="76.123.456-7"></label>
+  <label>Giro<input name="giro" value="{{ datos.giro or '' }}"></label>
+  <label>Dirección<input name="direccion" value="{{ datos.direccion or '' }}"></label>
+  <label>Comuna / ciudad<input name="comuna" value="{{ datos.comuna or '' }}"></label>
+  <label>Representante legal<input name="representante" value="{{ datos.representante or '' }}"></label>
+  <label>Régimen tributario<input name="regimen" value="{{ datos.regimen or '' }}" placeholder="14 D N°3 (Pro Pyme general)" list="regimenes">
+    <datalist id="regimenes">
+      <option value="14 A (semi integrado)">
+      <option value="14D3">
+      <option value="14D8">
+    </datalist></label>
+  <label>Ejercicio vigente *<input name="ejercicio" type="number" min="1900" max="2100" value="{{ datos.ejercicio or '' }}" required>
+    <small>Año que se usa por defecto en informes y filtros.</small></label>
+  {% if not nueva %}
+  {% set ultimo_folio = (datos.ultimo_folio or 0)|int(0) %}
+  <label>Último folio utilizado<input name="ultimo_folio" type="number" min="0" value="{{ ultimo_folio }}">
+    <small>Cada página de los PDF de libros e informes (Diario, Mayor, Balances y Estado de Resultados) usa el
+      folio siguiente. El próximo PDF comenzará en el folio {{ ultimo_folio + 1 }}.</small></label>
+  {% endif %}
+  <div class="acciones">
+    <button type="submit">{{ 'Crear empresa' if nueva else 'Guardar' }}</button>
+    {% if nueva %}<a class="boton secundario" href="{{ url_for('empresas') }}">Cancelar</a>{% endif %}
+  </div>
+</form>
+
+{% if not nueva and empresas|length > 1 %}
+<section class="caja zona-peligro">
+  <h2>Eliminar esta empresa</h2>
+  <p>Se eliminan su plan de cuentas y todos sus comprobantes. Antes se guarda una copia automática de toda la base
+    (la puedes recuperar desde <a href="{{ url_for('respaldos') }}">Respaldos</a>).</p>
+  <form method="post" action="{{ url_for('eliminar_empresa') }}" class="fila-form"
+        onsubmit="return confirm('¿Eliminar definitivamente {{ empresa.razon_social }}?')">
+    <input name="confirmacion" placeholder="Escribe la razón social para confirmar" size="40" required>
+    <button type="submit" class="peligro">Eliminar empresa</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{# folio=true: antes de generar el PDF se pregunta el folio inicial (libros e informes oficiales) #}
+{% macro botones_exportar(csv=true, folio=false) %}
+<span class="exportar no-imprimir">
+  <a class="boton secundario" href="{{ url_exportar('pdf') }}" title="Descargar en PDF"{{ ' data-folio' if folio }}>PDF</a>
+  <a class="boton secundario" href="{{ url_exportar('xlsx') }}" title="Descargar en Excel">Excel</a>
+  {% if csv %}<a class="boton secundario" href="{{ url_exportar('csv') }}" title="Descargar en CSV (datos)">CSV</a>{% endif %}
+</span>
+{% endmacro %}
+
+{% macro filtro_fechas(desde, hasta, exportar=false, extra=none) %}
+<form class="filtro no-imprimir" method="get">
+  {% if extra %}{{ extra() }}{% endif %}
+  <label>Desde <input type="date" name="desde" value="{{ desde }}"></label>
+  <label>Hasta <input type="date" name="hasta" value="{{ hasta }}"></label>
+  <button type="submit">Ver</button>
+  <span class="espaciador"></span>
+  {% if exportar %}{{ botones_exportar(folio=true) }}{% endif %}
+  <button type="button" class="secundario" onclick="window.print()">Imprimir</button>
+</form>
+{% endmacro %}
+
+{% macro periodo(desde, hasta) %}
+<p class="periodo">Período: {{ desde|fecha }} al {{ hasta|fecha }}</p>
+{% endmacro %}
+
+{% macro monto(valor) -%}
+<span class="{{ 'negativo' if valor < 0 }}">{{ valor|clp }}</span>
+{%- endmacro %}
