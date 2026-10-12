@@ -123,7 +123,25 @@ Otras novedades:
 3. **Una sola venta** en septiembre de 2022 (540.000 neto): la actividad comercial es pequeña al comienzo.
 4. **Las hojas de diciembre** dejan una nota de texto libre debajo de la tabla (columna E, fila 22). El importador debe **capturar las notas de texto** que no son parte de la tabla ni de la centralización y mostrarlas en el informe de migración, porque llevan decisiones del contador.
 
-Falta: como máximo un archivo de 2022 (confirmar cuál), una contabilidad completa (diario, mayor o balance) y una simplificada.
+
+**Archivo 6 (último de RCV): `RCV_12-2022_VENTA.xlsx`**
+
+Con este queda **completo el RCV de 2022 a 2026** que el usuario tenía (2022: compras de marzo a diciembre y ventas de abril, mayo, junio, septiembre, octubre y diciembre; no hay archivo de ventas de julio, agosto ni noviembre, que se asumen sin ventas; 2023, 2024, 2025 y 2026 hasta septiembre completos).
+
+Lo nuevo de este archivo, que es una trampa importante:
+1. **No es un Excel aunque se llame `.xlsx`:** es un **archivo de texto CSV con separador «;»** y fin de línea de Windows. El importador no debe fiarse de la extensión: debe **detectar el formato por el contenido** (un .xlsx real empieza con `PK`, el de texto no) y aceptar los dos.
+2. **Números y fechas escritos «a la chilena», como texto:** montos como ` $1.260.000 ` (con signo peso, puntos de miles y espacios), fechas `07-12-2022` y `07-12-2022 8:40` (día-mes-año, hora sin cero inicial). Hay que interpretarlos sin confundir día con mes y sin confundir el punto de miles con decimal. Ya tenemos un lector de números con puntos en el CSV del SII; hay que extenderlo al signo `$` y a los espacios.
+3. **La centralización viene mezclada con los datos** (filas CLIENTES, VENTAS, IVA DÉBITO FISCAL y la fila final de totales), igual que en los Excel; hay que reconocerla y usarla solo para cuadrar.
+
+**Resumen de lo que debe soportar el importador de RCV** (de todos los archivos):
+- Formatos: `.xlsx` real y texto CSV con `;` (detectado por contenido); hojas con o sin título; cabecera encontrada por la fila que empieza con «Nro»; columnas leídas por nombre (9 variantes de compras, 3 de ventas).
+- Períodos: del nombre de la hoja (`01-2023`, `RCV 05-2024`, `RCV_VENTA_<RUT>_202204`), del nombre del archivo (`RCV_07-2022_COMPRA`) o del mes dominante de las fechas de recepción cuando la hoja está truncada. Verificar el RUT de la empresa cuando viene en el nombre.
+- Duplicados: hojas MALO/CORRECTO/BUENO/ERRÓNEO, documentos repetidos y filas de continuación de impuestos específicos.
+- Limpieza: textos con codificación dañada (UTF-8 leído como Latin-1), RUT sin puntos, notas de crédito negativas (pasar a positivo), montos con `$` y puntos de miles.
+- Reglas de negocio: activo fijo (columnas repetidas, ficha automática), combustibles con impuesto específico no informado (marcar y ofrecer las dos opciones), enlace de notas de crédito con su factura, cuenta por proveedor.
+- Salidas: vista previa, informe de migración (qué se cargó, qué se omitió y por qué, notas de texto del contador), y cuadre por mes contra la centralización del Excel.
+
+Falta para completar el estudio: una **contabilidad completa** (libro diario, mayor o balance) y una **simplificada** (libro de caja o de ingresos y egresos). Decisión pendiente del usuario: criterio por defecto para los combustibles (total del RCV o recalcular), a confirmar con las facturas originales.
 
 
 ## Prioridad media (pospuesto por el dueño)
