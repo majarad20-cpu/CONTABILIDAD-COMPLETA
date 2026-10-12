@@ -717,6 +717,34 @@ class PruebasWeb(BaseConDatos):
             self.assertEqual(sum(l["debe"] for l in a["lineas"]), sum(l["haber"] for l in a["lineas"]))
             self.assertTrue(all(l["cuenta"] in ids for l in a["lineas"]))
 
+    def test_nombre_de_archivo_del_sii(self):
+        from contabilidad import tributario
+        self.assertEqual(tributario.datos_nombre_archivo("RCV_COMPRA_REGISTRO_77447556-7_202203_33.csv"), ("77447556", "2022-03", 33))
+        self.assertEqual(tributario.datos_nombre_archivo("RCV_VENTA_77447556-7_202601 (1).csv"), ("77447556", "2026-01", None))
+        self.assertEqual(tributario.datos_nombre_archivo("RCV_RESUMEN_VENTA_77931313_202601.csv"), ("77931313", "2026-01", None))
+        self.assertIsNone(tributario.datos_nombre_archivo("compras.csv"))
+
+    def test_csv_filtrado_por_tipo_sin_columna_tipo(self):
+        from contabilidad import tributario
+        contenido = ("Nro;Tipo Compra;RUT Proveedor;Razon Social;Folio;Fecha Docto;Monto Exento;Monto Neto;Monto IVA Recuperable;Monto Total\r\n"
+                     "1;Activo Fijo;76.086.428-5;Proveedor SpA;10;01/09/2026;0;1000;190;1190\r\n").encode()
+        with self.assertRaises(ErrorValidacion):
+            tributario.leer_csv_rcv(contenido)
+        registro, docs = tributario.leer_csv_rcv(contenido, 33)
+        self.assertEqual((registro, docs[0]["tipo_doc"], docs[0]["activo_fijo"]), ("COMPRA", 33, 1))
+
+    def test_csv_reducido_con_lineas_de_otros_impuestos_y_totales(self):
+        from contabilidad import tributario
+        contenido = ("Nro;Tipo Doc;Tipo Compra;RUT Proveedor;Razon Social;Folio;Fecha Docto;Fecha Recepcion;Monto Neto;Monto IVA Recuperable;Monto Total;Valor Otro Impuesto\r\n"
+                     "1;33;Del Giro;93281000-K;Bebidas SA;99;01-09-2025;;12040;2288;15035;445\r\n"
+                     ";33;Del Giro;93281000-K;Bebidas SA;99;01-09-2025;;;;;262\r\n"
+                     "2;33;Del Giro;76.086.428-5;Otro SpA;5;02-09-2025;;100;19;119;\r\n"
+                     ";;;;;;;;12140;2307;15154;707\r\n"
+                     ";;;;CENTRALIZACION COMPRAS;;;;;;;\r\n").encode()
+        registro, docs = tributario.leer_csv_rcv(contenido)
+        self.assertEqual(len(docs), 2)
+        self.assertEqual((docs[0]["exento"], docs[0]["otros_impuestos"], docs[0]["total"]), (0, 707, 15035))
+
     def test_csv_con_codificaciones_mezcladas(self):
         from contabilidad import tributario
         encabezado = "Nro;Tipo Doc;Tipo Compra;RUT Proveedor;Razon Social;Folio;Fecha Docto;Monto Exento;Monto Neto;Monto IVA Recuperable;Monto Total\r\n"

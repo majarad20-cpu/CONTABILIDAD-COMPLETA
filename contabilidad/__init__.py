@@ -610,22 +610,23 @@ def registrar_rutas(app):
             flash("Selecciona el archivo CSV descargado del SII.", "error")
             return redirect(url_for("rcv", periodo=periodo))
         # El SII nombra los archivos con el RUT y el período: RCV_..._76086428_202609.csv
-        nombre = re.search(r"_(\d{7,8})_(\d{4})(\d{2})\.csv$", archivo.filename, re.IGNORECASE)
+        nombre = tributario.datos_nombre_archivo(archivo.filename)
+        tipo_archivo = nombre[2] if nombre else None
         if nombre:
-            rut_archivo = nucleo.limpiar_rut(nombre.group(1))
+            rut_archivo = nucleo.limpiar_rut(nombre[0])
             rut_empresa = nucleo.limpiar_rut(empresa_activa()["rut"])[:-1]
             if rut_empresa and rut_archivo != rut_empresa:
                 flash(f"El archivo es del RUT {nucleo.formato_clp(int(rut_archivo))} y la empresa activa es "
                       f"{empresa_activa()['razon_social']} ({empresa_activa()['rut']}). No se importó: cambia a la "
                       "empresa correcta en el selector del menú.", "error")
                 return redirect(url_for("rcv", periodo=periodo))
-            periodo_archivo = f"{nombre.group(2)}-{nombre.group(3)}"
+            periodo_archivo = nombre[1]
             if periodo_archivo != periodo:
                 flash(f"El archivo corresponde a {nucleo.nombre_periodo(periodo_archivo)}; se importó en ese período.",
                       "ok")
                 periodo = periodo_archivo
         try:
-            registro, nuevos, otros = tributario.importar_rcv(db.get_db(), eid(), periodo, archivo.read())
+            registro, nuevos, otros = tributario.importar_rcv(db.get_db(), eid(), periodo, archivo.read(), tipo_archivo)
         except ErrorValidacion as e:
             flash(str(e), "error")
         else:

@@ -127,7 +127,23 @@ COLUMNAS = {
     "neto_activo_fijo": ["monto neto activo fijo"],
     "otro_impuesto": ["valor otro impuesto", "valor otro imp"],
     "sin_credito": ["impto sin derecho a credito"],
+    "nro": ["nro"],
+    "tipo_compra": ["tipo compra"],
 }
+
+# Nombre de archivo del SII: RCV_..._76086428_202609.csv, con o sin dígito verificador
+# (…_76086428-5_202609.csv), filtrado por tipo de documento (…_202609_33.csv) y con el
+# sufijo que agrega el navegador al repetir una descarga (… (1).csv).
+NOMBRE_ARCHIVO_SII = re.compile(r"_(\d{7,8})(?:-[\dkK])?_(\d{4})(\d{2})(?:_(\d{1,3}))?(?: \(\d+\))?\.csv$", re.IGNORECASE)
+
+
+def datos_nombre_archivo(nombre):
+    """(RUT sin dígito verificador, período AAAA-MM, tipo de documento o None) según el
+    nombre del archivo del SII, o None si el nombre no sigue ese formato."""
+    m = NOMBRE_ARCHIVO_SII.search(nombre or "")
+    if not m:
+        return None
+    return m.group(1), f"{m.group(2)}-{m.group(3)}", int(m.group(4)) if m.group(4) else None
 
 
 def _leer_resumen(filas, encabezado):
@@ -181,10 +197,11 @@ def _decodificar(contenido):
     return "\n".join(lineas)
 
 
-def leer_csv_rcv(contenido):
+def leer_csv_rcv(contenido, tipo_archivo=None):
     """Lee un CSV del RCV del SII. Devuelve (registro, documentos): registro es
     'COMPRA' o 'VENTA' para los CSV de detalle, o 'RESUMEN' para el resumen de
-    ventas (una línea por tipo de documento)."""
+    ventas (una línea por tipo de documento). `tipo_archivo` es el tipo de
+    documento cuando el archivo está filtrado por tipo y no trae esa columna."""
     if not contenido:
         raise ErrorValidacion("El archivo está vacío.")
     texto = _decodificar(contenido)
@@ -215,9 +232,12 @@ def leer_csv_rcv(contenido):
     else:
         raise ErrorValidacion("No se reconoce el archivo: debe tener la columna «RUT Proveedor» (compras) "
                               "o «Rut cliente» (ventas), como el CSV del Registro de Compras y Ventas del SII.")
-    idx = {clave: columna(clave) for clave in ("tipo_doc", "razon_social", "folio", "fecha", "exento", "neto", "total")}
+    if columna("tipo_doc", False) is None and not tipo_archivo:
+        columna("tipo_doc")  # sin la columna ni el tipo en el nombre del archivo: error
+    idx = {clave: columna(clave) for clave in ("razon_social", "folio", "fecha", "neto", "total")}
     opcionales = {clave: columna(clave, False) for clave in
-                  ("iva_no_recuperable", "neto_activo_fijo", "otro_impuesto", "sin_credito")}
+                  ("tipo_doc", "exento", "iva_no_recuperable", "neto_activo_fijo", "otro_impuesto", "sin_credito",
+                   "nro", "tipo_compra")}
 
     def valor(fila, i):
         return fila[i] if i is not None and i < len(fila) else ""
@@ -226,22 +246,32 @@ def leer_csv_rcv(contenido):
     for numero, fila in enumerate(filas[1:], start=2):
         if not any(c.strip() for c in fila):
             continue
+        # Las líneas sin RUT no son documentos (totales o notas agregadas a mano al archivo)
+        if not valor(fila, rut_col).strip():
+            continue
+        # Algunos archivos repiten el documento en líneas sin número para detallar otros
+        # impuestos; su monto ya está incluido en el total de la primera línea.
+        if (opcionales["nro"] is not None and documentos and not valor(fila, opcionales["nro"]).strip()
+                and valor(fila, idx["folio"]).strip() == documentos[-1]["folio"]
+                and formatear_rut(valor(fila, rut_col).strip()) == documentos[-1]["rut"]):
+            continue
         try:
-            tipo_doc = int(_entero(valor(fila, idx["tipo_doc"])))
+            tipo_doc = int(_entero(valor(fila, opcionales["tipo_doc"]))) if opcionales["tipo_doc"] is not None                 else int(tipo_archivo)
             d = {
                 "tipo_doc": tipo_doc,
                 "rut": formatear_rut(valor(fila, rut_col).strip()),
                 "razon_social": valor(fila, idx["razon_social"]).strip(),
                 "folio": valor(fila, idx["folio"]).strip(),
                 "fecha": _fecha(valor(fila, idx["fecha"])),
-                "exento": _entero(valor(fila, idx["exento"])),
+                "exento": _entero(valor(fila, opcionales["exento"])),
                 "neto": _entero(valor(fila, idx["neto"])),
                 "iva": _entero(valor(fila, iva_col)),
                 "iva_no_recuperable": _entero(valor(fila, opcionales["iva_no_recuperable"])),
                 "otros_impuestos": (_entero(valor(fila, opcionales["otro_impuesto"]))
                                     + _entero(valor(fila, opcionales["sin_credito"]))),
                 "total": _entero(valor(fila, idx["total"])),
-                "activo_fijo": int(_entero(valor(fila, opcionales["neto_activo_fijo"])) > 0),
+                "activo_fijo": int(_entero(valor(fila, opcionales["neto_activo_fijo"])) > 0
+                                   or _normalizar(valor(fila, opcionales["tipo_compra"])) == "activo fijo"),
             }
         except ErrorValidacion as e:
             raise ErrorValidacion(f"Fila {numero}: {e}") from None
@@ -355,12 +385,12 @@ def guardar_cuentas_tributarias(conn, empresa_id, asignacion, tasa_ppm=None):
 # Documentos del RCV
 # ==========================================================================
 
-def importar_rcv(conn, empresa_id, periodo, contenido):
+def importar_rcv(conn, empresa_id, periodo, contenido, tipo_archivo=None):
     """Importa un CSV del RCV al período. Devuelve (registro, nuevos, repetidos).
     Para el resumen de ventas devuelve ('RESUMEN', resúmenes registrados,
     líneas omitidas porque esos documentos vienen en el CSV de detalle)."""
     validar_periodo(periodo)
-    registro, documentos = leer_csv_rcv(contenido)
+    registro, documentos = leer_csv_rcv(contenido, tipo_archivo)
     if registro == "RESUMEN":
         resumenes = [d for d in documentos if d["tipo_doc"] in TIPOS_RESUMEN]
         for d in resumenes:  # verificar todo antes de escribir
