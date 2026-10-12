@@ -169,7 +169,7 @@ Construido con los hallazgos de las 30 planillas. En la pantalla **RCV** hay una
 - Elección del criterio para las facturas de combustible: «neto + IVA + otros impuestos» (como las planillas) o «total del RCV». Ambos dejan el documento marcado y guardan `total_rcv`. **El criterio por defecto queda pendiente de definir por el usuario**, que investigará con las facturas originales.
 - Prueba contra los 20 archivos reales: 1.006 documentos, 102 de 102 centralizaciones cuadran y cero diferencias frente a la migración hecha antes con un script.
 
-Pendiente del importador: importar también el **resumen de ventas** y el CSV del SII con el mismo reparador de textos, y crear las fichas de activo fijo desde las compras marcadas.
+**Versión 1.11.0:** el importador lee también el CSV de detalle del SII y el **resumen de ventas** (boletas) con el mismo reparador de textos, y la pestaña Fichas de activo fijo ofrece crear las fichas desde las compras marcadas como activo fijo (costo = neto; descripción, categoría y vida útil editables por fila; no incluye compras anuladas por nota de crédito; el Revisor avisa de las que faltan).
 
 **Corrección a la migración del 12-10-2026:** 84 razones sociales quedaron con la codificación dañada (el script no trataba los caracteres de Windows-1252). Se corrigieron directamente en la base el mismo día. El importador nuevo ya no tiene ese defecto.
 
