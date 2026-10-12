@@ -85,6 +85,7 @@ Lo que falta por hacer, con su prioridad, está en [PENDIENTES.md](PENDIENTES.md
 El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
 
 - **1.10.0**: importador de RCV desde Excel o planillas de texto (varias hojas, vista previa, reparación de textos, notas de crédito, cuadre con la planilla y elección del criterio para combustibles). Ver PENDIENTES.md.
+- **1.11.0**: el importador de RCV lee también el CSV del SII y el resumen de ventas (con reparación de textos) y se pueden crear las fichas de activo fijo desde las compras marcadas.
 - **1.9.1**: el revisor de datos avisa de las facturas cuyo total del RCV no coincide con neto + IVA + otros impuestos (combustibles) y muestra las observaciones de la migración desde Excel.
 - **1.9.0**: «Panel de clientes» (estado de todas tus empresas respecto del F29 del mes, documentos sin registrar, mes cerrado y remuneraciones; marca de F29 presentado), calendario tributario con próximos vencimientos y recordatorios propios (fechas referenciales), y «Revisor de datos» que detecta asientos descuadrados, saldos contrarios, folios repetidos, IVA distinto del 19 %, RUT inválidos, movimientos de caja inconsistentes y más, con aviso en el inicio y exportación a PDF, Excel y CSV.
 - **1.8.2**: el campo «Ejercicio vigente» pasa a llamarse «Año contable con el que trabajarás» y explica para qué sirve.

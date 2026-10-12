@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.10.0";
+const VERSION = "1.11.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -1696,13 +1696,14 @@ function leerCsvRcv(texto, tipoArchivo = null) {
     if (opc.nro != null && previo && !v(fila, opc.nro).trim() && v(fila, idx.folio).trim() === previo.folio && formatoRut(v(fila, rutCol).trim()) === previo.rut) return;
     let d;
     try {
-      d = { tipo_doc: opc.tipo_doc != null ? enteroCsv(v(fila, opc.tipo_doc)) : +tipoArchivo, rut: formatoRut(v(fila, rutCol).trim()), razon_social: v(fila, idx.razon_social).trim(),
+      d = { tipo_doc: opc.tipo_doc != null ? enteroCsv(v(fila, opc.tipo_doc)) : +tipoArchivo, rut: formatoRut(v(fila, rutCol).trim()), razon_social: repararTexto(v(fila, idx.razon_social)),
         folio: v(fila, idx.folio).trim(), fecha: fechaCsv(v(fila, idx.fecha)), exento: enteroCsv(v(fila, opc.exento)), neto: enteroCsv(v(fila, idx.neto)),
         iva: enteroCsv(v(fila, ivaCol)), iva_no_recuperable: enteroCsv(v(fila, opc.iva_no_recuperable)),
         otros_impuestos: enteroCsv(v(fila, opc.otro_impuesto)) + enteroCsv(v(fila, opc.sin_credito)),
         total: enteroCsv(v(fila, idx.total)), activo_fijo: enteroCsv(v(fila, opc.neto_activo_fijo)) > 0 || normalizar(v(fila, opc.tipo_compra)) === "activo fijo" };
     } catch (e) { throw new ErrorRcv(`Fila ${i + 2}: ${e.message}`); }
     if (!d.folio) throw new ErrorRcv(`Fila ${i + 2}: falta el folio.`);
+    d.otros_declarados = d.otros_impuestos;
     d.otros_impuestos += d.total - (d.exento + d.neto + d.iva + d.iva_no_recuperable + d.otros_impuestos);
     documentos.push(d);
   });
@@ -1780,7 +1781,8 @@ async function importarArchivoRcv(archivo, base) {
   for (const d of documentos) {
     if (buscarDoc(registro, d.tipo_doc, d.rut, d.folio)) continue;
     const cuenta = habituales[`${registro}|${d.rut}`] || "";
-    await guardarDoc("d" + nuevoId(), { ...d, registro, periodo, cantidad: 1, cuenta: S.porId.has(cuenta) ? cuenta : "", asiento: "" });
+    const { otros_declarados: _od, ...limpio } = d;
+    await guardarDoc("d" + nuevoId(), { ...limpio, registro, periodo, cantidad: 1, cuenta: S.porId.has(cuenta) ? cuenta : "", asiento: "" });
     nuevos++;
   }
   let texto = `${registro === "COMPRA" ? "Compras" : "Ventas"} de ${nombrePeriodo(periodo)}: ${nuevos} documento(s) importado(s).`;
@@ -3540,6 +3542,43 @@ function formularioActivo(ae) {
     <div class="acciones"><button class="btn" type="submit">Guardar</button><button class="btn sec" type="button" data-n="cancelar-activo">Cancelar</button></div></form>`;
 }
 
+/* ---------- fichas de activo fijo desde las compras marcadas ---------- */
+const esNotaCredito = (d) => [60, 61, 112].includes(+d.tipo_doc);
+function costoCompraActivo(d) { return (d.neto || 0) + (d.exento || 0) + (d.iva_no_recuperable || 0); }
+/* Compras marcadas como activo fijo que aún no tienen ficha y no fueron anuladas por una nota de crédito. */
+function comprasActivoSinFicha() {
+  const conFicha = new Set(S.activos.map((a) => a.rcv).filter(Boolean));
+  const anulada = (d) => S.rcv.some((n) => n.registro === "COMPRA" && esNotaCredito(n) && n.rut === d.rut && (n.nc_de === `${d.tipo_doc}-${d.folio}` || (n.neto === d.neto && n.total === d.total && n.fecha >= d.fecha)));
+  return S.rcv.filter((d) => d.registro === "COMPRA" && d.activo_fijo && !esNotaCredito(d) && !conFicha.has(d.id) && !anulada(d) && costoCompraActivo(d) > 0).sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+}
+function categoriaSugerida(d) { const t = String(d.razon_social || ""); return /transport|camion|vehic|automot|motor/i.test(t) ? 3 : /computa|notebook|inform|tecnolog/i.test(t) ? 5 : /mueble|oficina/i.test(t) ? 4 : 2; }
+function bloqueComprasActivo() {
+  const c = comprasActivoSinFicha(); if (!c.length || !S.puedeEscribir) return "";
+  return `<section class="caja"><h2>Compras de activo fijo sin ficha (${c.length})</h2>
+    <p class="ayuda">Son compras del RCV marcadas como activo fijo que todavía no tienen ficha (no incluye las anuladas por una nota de crédito). Revisa la descripción, la categoría y la vida útil, y crea las fichas. El costo es el neto de la factura; la fecha de adquisición es la del documento.</p>
+    <div class="tabla"><table><thead><tr><th>Fecha</th><th>Proveedor y documento</th><th class="num">Costo</th><th>Descripción de la ficha</th><th>Categoría</th><th>Vida útil (años)</th><th></th></tr></thead><tbody>${c.map((d) => { const cat = categoriaSugerida(d);
+      return `<tr><td>${fmtFecha(d.fecha)}</td><td>${esc(d.razon_social || d.rut)}<br><small class="ayuda">${esc(TIPOS_DOCUMENTO[+d.tipo_doc] || d.tipo_doc)} ${esc(d.folio)}</small></td><td class="num">${clp(costoCompraActivo(d))}</td>
+        <td><input id="afc-nom-${esc(d.id)}" value="${esc(`Activo fijo · ${d.razon_social || d.rut} · ${TIPOS_DOCUMENTO[+d.tipo_doc] || "Doc."} ${d.folio}`)}"></td>
+        <td><select id="afc-cat-${esc(d.id)}" data-afc="${esc(d.id)}">${CATEGORIAS_ACTIVO.map(([n], i) => `<option value="${i}" ${i === cat ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td>
+        <td><input id="afc-vida-${esc(d.id)}" inputmode="decimal" style="width:5em" value="${CATEGORIAS_ACTIVO[cat][1] || ""}"></td>
+        <td><button class="btn enlace" type="button" data-n="afc-crear" data-id="${esc(d.id)}">Crear ficha</button></td></tr>`; }).join("")}</tbody></table></div>
+    <div class="acciones"><button class="btn" type="button" data-n="afc-crear-todas">Crear las ${c.length} ficha(s)</button></div></section>`;
+}
+async function crearFichasDesdeCompras(ids) {
+  const docs = comprasActivoSinFicha().filter((d) => ids.includes(d.id)), nums = S.activos.map((a) => +String(a.codigo).replace(/\D/g, "")).filter(Number.isFinite);
+  let sig = (nums.length ? Math.max(...nums) : 0) + 1; const cuentaAf = cuentasTributarias().compras_activo_fijo || "", fichas = [];
+  for (const d of docs) {
+    const nombre = ($(`#afc-nom-${d.id}`)?.value || "").trim(), cat = +($(`#afc-cat-${d.id}`)?.value ?? categoriaSugerida(d)), vida = decimal($(`#afc-vida-${d.id}`)?.value);
+    if (!nombre) return aviso("Escribe la descripción de cada ficha.");
+    if (vida == null || Number.isNaN(vida) || vida <= 0 || vida > 100) return aviso(`Vida útil de «${nombre}»: indica los años, por ejemplo 9 o 2,5.`);
+    const normal = Math.round(vida * 12);
+    fichas.push({ id: "f" + nuevoId(), d, doc: { codigo: `AF-${String(sig++).padStart(3, "0")}`, nombre, cat, fecha_adq: d.fecha, costo: costoCompraActivo(d), residual: 0, vida_normal_meses: normal, vida_meses: normal, acelerada: false,
+      cuenta: S.porId.has(cuentaAf) ? cuentaAf : "", documento: `${TIPOS_DOCUMENTO[+d.tipo_doc] || "Doc."} ${d.folio} de ${d.razon_social || d.rut}`, estado: "activo", fecha_baja: "", dep_trib: "igual", rcv: d.id } });
+  }
+  if (!fichas.length) return;
+  await ocupado(async () => { for (const f of fichas) await S.almacen.set(`empresas/${S.eid}/activos/${f.id}`, f.doc); render(); aviso(`${fichas.length} ficha(s) de activo fijo creada(s).`); }, "No se pudieron crear las fichas");
+}
+
 function vistaFichasActivos() {
   const p = periodoActivos(), ae = S.activoEdit;
   const lista = S.activos.slice().sort((a, b) => (a.codigo < b.codigo ? -1 : 1));
@@ -3559,6 +3598,7 @@ function vistaFichasActivos() {
   return `${cabecera("Activo fijo", `${lista.length} bien${lista.length === 1 ? "" : "es"}`)}
   <p class="ayuda">Ficha de cada bien del activo inmovilizado con su costo, vida útil y depreciación. La depreciación de cada mes se contabiliza en la pestaña «Depreciación mensual».</p>
   ${ae ? formularioActivo(ae) : ""}
+  ${bloqueComprasActivo()}
   <div class="barra"><label>Valores al mes<input type="month" id="af-periodo" value="${p}"></label>
     ${puedeEditar(`<button class="btn" type="button" data-n="nuevo-activo">+ Nuevo activo</button>`)}<button class="btn sec" type="button" data-ir="tributarias">Cuentas tributarias</button></div>
   ${lista.length ? `<div class="tabla"><table><thead><tr><th>Código</th><th>Descripción</th><th>Adquisición</th><th class="num">Costo</th><th class="num">Vida útil</th><th class="num">Dep. acumulada</th><th class="num">Valor libro</th><th>Estado</th><th></th></tr></thead>
@@ -5126,6 +5166,8 @@ document.addEventListener("click", (ev) => {
     case "ver-contrato": S.contratoVer = id; render(); window.scrollTo(0, 0); break;
     case "volver-trabajadores": S.contratoVer = null; render(); break;
     case "pdf-contrato": { const tr = trabajadorPorId(id); ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`contrato_${nombreSeguro(tr.nombre)}.pdf`, await pdfContrato(tr), "Contrato descargado."); }, "No se pudo generar el contrato"); break; }
+    case "afc-crear": crearFichasDesdeCompras([id]); break;
+    case "afc-crear-todas": crearFichasDesdeCompras(comprasActivoSinFicha().map((d) => d.id)); break;
     case "mg-hoja": { const h = S.migra.hojas[+id]; h.incluir = t.checked; render(); break; }
     case "mg-criterio": S.migra.criterio = id; render(); break;
     case "mg-cancelar": S.migra = null; render(); break;
@@ -5853,6 +5895,8 @@ function revisarDatos() {
   /* Personal y activos */
   const tb = S.trabajadores.filter((t) => t.activo !== false && (!t.rut || !rutValido(t.rut) || !(t.sueldo_base > 0) || !t.fecha_ingreso));
   if (tb.length) add("aviso", "Personal", "Trabajadores con RUT inválido, sueldo en cero o sin fecha de ingreso.", tb.map((t) => t.nombre), "rrhh");
+  const sinFicha = comprasActivoSinFicha();
+  if (sinFicha.length) add("info", "Activo fijo", "Compras marcadas como activo fijo que aún no tienen ficha.", sinFicha.map((d) => `${fmtFecha(d.fecha)} · ${d.razon_social || d.rut} · ${d.folio} · $${clp(costoCompraActivo(d))}`), "activos");
   const af = S.activos.filter((a) => !(a.costo > 0) || !a.fecha_adq);
   if (af.length) add("aviso", "Activo fijo", "Fichas de activo fijo sin costo o sin fecha de adquisición.", af.map((a) => a.nombre), "activos");
   const ordenN = { mal: 0, aviso: 1, info: 2 };
@@ -5980,16 +6024,6 @@ function fechaRcv(v) {
   const t = String(v ?? ""); let m = t.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/); if (m) return `${m[3]}-${p2(m[2])}-${p2(m[1])}`;
   m = t.match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[0] : "";
 }
-function filasCsv(texto, sep) {
-  const filas = []; let f = [], c = "", q = false;
-  for (let i = 0; i < texto.length; i++) {
-    const ch = texto[i];
-    if (q) { if (ch === '"') { if (texto[i + 1] === '"') { c += '"'; i++; } else q = false; } else c += ch; }
-    else if (ch === '"') q = true; else if (ch === sep) { f.push(c); c = ""; } else if (ch === "\n") { f.push(c.replace(/\r$/, "")); filas.push(f); f = []; c = ""; } else c += ch;
-  }
-  if (c !== "" || f.length) { f.push(c.replace(/\r$/, "")); filas.push(f); }
-  return filas;
-}
 /* Devuelve las hojas de un archivo. El formato se reconoce por el contenido, no por la extensión. */
 async function leerLibroRcv(nombre, buffer) {
   const b = new Uint8Array(buffer, 0, Math.min(4, buffer.byteLength));
@@ -6039,6 +6073,16 @@ function analizarHojaRcv(archivo, hoja) {
   const registros = [...new Set(docs.map((x) => x.registro))];
   return { docs, notas: [...new Set(notas)], esperado, rutArchivo, registros, periodo: periodoDeHoja(archivo, hoja.nombre, docs) };
 }
+/* CSV del SII (detalle sin columna «Nro» o resumen de ventas): se lee con el mismo lector del importador del SII. */
+function analizarCsvSii(nombre, buffer) {
+  const sii = datosNombreArchivo(nombre), base = { archivo: nombre, hoja: "(CSV del SII)", incluir: true, docs: [], notas: [], esperado: {}, registros: [], rutArchivo: sii?.rut || null };
+  try {
+    const { registro, documentos } = leerCsvRcv(textoArchivo(buffer), sii?.tipo ?? null), periodo = periodoDeHoja(nombre, "", []) || sii?.periodo || "";
+    if (registro === "RESUMEN") return { ...base, periodo, registros: ["VENTA"], resumenes: documentos.filter((d) => TIPOS_RESUMEN[d.tipo_doc]), notas: documentos.some((d) => !TIPOS_RESUMEN[d.tipo_doc]) ? ["El resumen trae líneas de facturas o notas: esas se importan con el CSV de detalle."] : [] };
+    return { ...base, periodo, registros: [registro], docs: documentos.map((d) => ({ registro, tipo_doc: d.tipo_doc, rut: d.rut, razon_social: d.razon_social, folio: String(d.folio), fecha: d.fecha, recepcion: "", exento: d.exento, neto: d.neto, iva: d.iva,
+      iva_no_recuperable: d.iva_no_recuperable, otros: d.otros_declarados ?? d.otros_impuestos, total: d.total, activo_fijo: !!d.activo_fijo, continuaciones: 0 })) };
+  } catch (e) { return { ...base, incluir: false, error: e instanceof ErrorRcv ? e.message : `${nombre}: no se pudo leer (${e?.message || "error"}).` }; }
+}
 async function analizarArchivosRcv(archivos) {
   const salida = [];
   for (const { nombre, buffer } of archivos) {
@@ -6046,6 +6090,7 @@ async function analizarArchivosRcv(archivos) {
     const delArchivo = [];
     for (const h of hojas) {
       if (HOJA_DESCARTADA.test(h.nombre)) { delArchivo.push({ archivo: nombre, hoja: h.nombre, descartada: "Versión descartada (marcada como mala o errónea en el nombre de la hoja)", incluir: false, docs: [], notas: [], esperado: {}, registros: [] }); continue; }
+      if (h.nombre === "(texto)" && !h.filas.some((f) => String(valorCelda(f?.[0]) ?? "").trim() === "Nro")) { delArchivo.push(analizarCsvSii(nombre, buffer)); continue; }
       if (!h.filas.some((f) => String(valorCelda(f?.[0]) ?? "").trim() === "Nro")) { if (h.filas.length) delArchivo.push({ archivo: nombre, hoja: h.nombre, descartada: "Sin tabla de documentos", incluir: false, docs: [], notas: [], esperado: {}, registros: [] }); continue; }
       const a = analizarHojaRcv(nombre, h); delArchivo.push({ archivo: nombre, hoja: h.nombre, incluir: true, ...a });
     }
@@ -6084,7 +6129,8 @@ function resumenMigracion() {
   const M = S.migra, { docs, repetidos } = armarDocumentosRcv(M.hojas, M.criterio);
   const nuevos = docs.filter((d) => !buscarDoc(d.registro, d.tipo_doc, d.rut, d.folio));
   const cuadre = (h) => { const r = {}; for (const [reg, et] of [["COMPRA", "PROVEEDORES"], ["VENTA", "CLIENTES"]]) if (h.esperado[et] != null && h.registros.includes(reg)) { const calc = docs.filter((d) => d._hoja === h && d.registro === reg).reduce((x, d) => x + (d.tipo_doc >= 60 && [60, 61, 112].includes(d.tipo_doc) ? -1 : 1) * d.total, 0); r[et] = { esperado: h.esperado[et], calc }; } return r; };
-  return { docs, nuevos, repetidos, cuadre, existentes: docs.length - nuevos.length };
+  const resumenes = M.hojas.filter((h) => h.incluir && h.resumenes?.length).flatMap((h) => h.resumenes.map((r) => ({ ...r, periodo: h.periodo, _hoja: h })));
+  return { docs, nuevos, repetidos, cuadre, existentes: docs.length - nuevos.length, resumenes };
 }
 async function prepararMigracionRcv(archivos) {
   await ocupado(async () => {
@@ -6095,16 +6141,18 @@ async function prepararMigracionRcv(archivos) {
   }, "No se pudieron leer los archivos");
 }
 async function importarMigracionRcv() {
-  const M = S.migra, { nuevos } = resumenMigracion(), habituales = empresa().cuentas_rut || {};
-  if (!nuevos.length) return aviso("No hay documentos nuevos para importar.");
+  const M = S.migra, { nuevos, resumenes } = resumenMigracion(), habituales = empresa().cuentas_rut || {};
+  if (!nuevos.length && !resumenes.length) return aviso("No hay documentos nuevos para importar.");
   await ocupado(async () => {
     let n = 0; M.guardando = true;
     for (const { _hoja, ...d } of nuevos) {
       const cuenta = habituales[`${d.registro}|${d.rut}`] || "";
       await guardarDoc("d" + nuevoId(), { ...d, cantidad: 1, cuenta: S.porId.has(cuenta) ? cuenta : "", asiento: "", origen: "importación Excel" }); n++;
     }
-    const ult = nuevos.map((d) => d.periodo).sort().at(-1);
-    S.rcvMensajes = [`Importación terminada: ${n} documento(s) nuevo(s) en ${new Set(nuevos.map((d) => d.periodo)).size} mes(es). Quedan pendientes de centralizar.`]; S.migra = null; if (ult) { S.rcvPeriodo = ult; S.rcvPeriodoEid = S.eid; } render();
+    const avisosRes = []; let nr = 0;
+    for (const r of resumenes) { try { await registrarResumen(r.periodo, r.tipo_doc, r.cantidad, r.total, r.exento, r.neto, r.iva); nr++; } catch (e) { if (e instanceof ErrorRcv) avisosRes.push(e.message); else throw e; } }
+    const ult = [...nuevos, ...resumenes].map((d) => d.periodo).sort().at(-1);
+    S.rcvMensajes = [`Importación terminada: ${n} documento(s) nuevo(s) y ${nr} resumen(es) de ventas en ${new Set([...nuevos, ...resumenes].map((d) => d.periodo)).size} mes(es). Quedan pendientes de centralizar.`, ...avisosRes]; S.migra = null; if (ult) { S.rcvPeriodo = ult; S.rcvPeriodoEid = S.eid; } render();
   }, "No se pudo completar la importación");
 }
 function vistaMigracionRcv() {
@@ -6119,19 +6167,19 @@ function vistaMigracionRcv() {
     const cuad = c ? Object.entries(c).map(([et, v]) => (v.esperado === v.calc ? `<span class="etiqueta" style="background:var(--ok-bg);color:var(--ok-fg)">${et.toLowerCase()} cuadra</span>` : `<span class="etiqueta cerrado">${et.toLowerCase()}: planilla ${clp(v.esperado)} · calculado ${clp(v.calc)}</span>`)).join(" ") : "";
     const n = R.nuevos.filter((d) => d._hoja === h).length;
     return `<tr><td><input type="checkbox" data-n="mg-hoja" data-id="${i}" ${h.incluir ? "checked" : ""} ${h.descartada || h.error || h.bloqueada ? "disabled" : ""} aria-label="Incluir"></td><td>${esc(h.archivo)}<br><small class="ayuda">${esc(h.hoja)}</small></td>
-      <td>${h.descartada || h.error ? "—" : `<input type="month" id="mg-per-${i}" value="${esc(h.periodo)}" style="width:9.5em">`}</td><td>${esc(tipo)}</td><td class="num">${h.docs.length}</td><td class="num">${h.incluir ? n : ""}</td>
+      <td>${h.descartada || h.error ? "—" : `<input type="month" id="mg-per-${i}" value="${esc(h.periodo)}" style="width:9.5em">`}</td><td>${esc(tipo)}</td><td class="num">${h.docs.length || (h.resumenes?.length ? `${h.resumenes.length} resumen(es)` : 0)}</td><td class="num">${h.incluir ? n || (h.resumenes?.length ? h.resumenes.length : "") : ""}</td>
       <td>${cuad}${h.descartada ? `<small class="ayuda">${esc(h.descartada)}</small>` : ""}${h.error ? `<span class="neg">${esc(h.error)}</span>` : ""}${h.aviso ? `<small class="ayuda">${esc(h.aviso)}</small>` : ""}</td></tr>`; }).join("");
   const notas = M.hojas.filter((h) => h.notas?.length).flatMap((h) => h.notas.map((t) => `${nombrePeriodo(h.periodo)}: ${t}`));
   return `${tarjeta}<section class="caja"><h2>Vista previa de la importación</h2>
     <div class="tarjetas"><div class="tarjeta"><span>Documentos a importar</span><strong>${R.nuevos.length}</strong></div><div class="tarjeta"><span>Ya estaban registrados</span><strong>${R.existentes}</strong></div>
-      <div class="tarjeta ${conDif.length ? "neg" : ""}"><span>Con total distinto del RCV</span><strong>${conDif.length}</strong></div><div class="tarjeta"><span>Notas de crédito enlazadas</span><strong>${ncs}</strong></div></div>
+      <div class="tarjeta ${conDif.length ? "neg" : ""}"><span>Con total distinto del RCV</span><strong>${conDif.length}</strong></div><div class="tarjeta"><span>Notas de crédito enlazadas</span><strong>${ncs}</strong></div>${R.resumenes.length ? `<div class="tarjeta"><span>Resúmenes de ventas (boletas)</span><strong>${R.resumenes.length}</strong></div>` : ""}</div>
     <div class="tabla"><table><thead><tr><th></th><th>Archivo y hoja</th><th>Período</th><th>Tipo</th><th class="num">Docs.</th><th class="num">Nuevos</th><th>Comparación con la planilla</th></tr></thead><tbody>${filas}</tbody></table></div>
     <h3>Facturas cuyo total del RCV es menor que neto + IVA + otros impuestos (${conDif.length})</h3>
     <p class="ayuda">Suele ocurrir en combustibles con impuesto específico no informado. Elige con qué monto se registran; en ambos casos el documento queda marcado y el revisor de datos lo lista, con el total del RCV guardado.</p>
     <div class="ap-grupo"><button type="button" data-n="mg-criterio" data-id="recalcular" aria-pressed="${M.criterio === "recalcular"}">Neto + IVA + otros impuestos (como las planillas)</button><button type="button" data-n="mg-criterio" data-id="rcv" aria-pressed="${M.criterio === "rcv"}">Total del RCV</button></div>
     ${R.repetidos.length ? `<div class="aviso">Documentos repetidos entre hojas (se importa uno solo): ${esc(R.repetidos.slice(0, 6).join("; "))}${R.repetidos.length > 6 ? "…" : ""}</div>` : ""}
     ${notas.length ? `<h3>Notas escritas en las planillas</h3>${notas.map((t) => `<div class="aviso">${esc(t)}</div>`).join("")}` : ""}
-    <div class="acciones"><button class="btn" type="button" data-n="mg-importar" ${R.nuevos.length ? "" : "disabled"}>Importar ${R.nuevos.length} documento(s)</button><button class="btn sec" type="button" data-n="mg-cancelar">Cancelar</button></div></section>`;
+    <div class="acciones"><button class="btn" type="button" data-n="mg-importar" ${R.nuevos.length || R.resumenes.length ? "" : "disabled"}>Importar ${R.nuevos.length} documento(s)${R.resumenes.length ? ` y ${R.resumenes.length} resumen(es)` : ""}</button><button class="btn sec" type="button" data-n="mg-cancelar">Cancelar</button></div></section>`;
 }
 
 /* ------------------------------------------------------------------ resumen ejecutivo para el dueño de la empresa */
@@ -6339,6 +6387,7 @@ function presentar(si) { S.presentando = si; document.body.classList.toggle("pre
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && S.presentando) presentar(false); });
 document.addEventListener("change", (ev) => {
   const cid = ev.target.id;
+  if (ev.target.dataset?.afc) { const v = CATEGORIAS_ACTIVO[+ev.target.value]?.[1]; $(`#afc-vida-${ev.target.dataset.afc}`).value = v || ""; return; }
   if (cid === "caja-anio") { S.cajaAnio = ev.target.value; render(); return; }
   if (cid === "caja-mes") { S.cajaMes = ev.target.value; render(); return; }
   if (cid === "caja-diario") { S.cajaDiario = ev.target.checked; render(); return; }

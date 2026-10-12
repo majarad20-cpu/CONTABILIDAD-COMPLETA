@@ -359,6 +359,50 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("importa los documentos nuevos y una segunda importación no repite", [im.nuevos, im.importados, im.segundaVez], [6, 6, 0]);
   ok("la pantalla del RCV ofrece la importación desde Excel", im.vista);
 
+  console.log("Importador: CSV del SII, resumen de ventas y fichas de activo fijo");
+  const si = await page.evaluate(async () => {
+    const enc = (t) => new TextEncoder().encode(t).buffer;
+    const mojibake = new TextDecoder("utf-8").decode(new TextEncoder().encode("COMPAÑÍA SII LTDA")) && String.fromCharCode(...new TextEncoder().encode("COMPAÑÍA SII LTDA"));
+    const det = "Nro;Tipo Doc;Tipo Compra;RUT Proveedor;Razon Social;Folio;Fecha Docto;Fecha Recepcion;Fecha Acuse;Monto Exento;Monto Neto;Monto IVA Recuperable;Monto Iva No Recuperable;Codigo IVA No Rec.;Monto Total;Monto Neto Activo Fijo;IVA Activo Fijo;IVA uso Comun;Impto. Sin Derecho a Credito;IVA No Retenido;Tabacos Puros;Tabacos Cigarrillos;Tabacos Elaborados;NCE o NDE sobre Fact. de Compra;Codigo Otro Imp.;Valor Otro Imp.;Tasa Otro Imp.\r\n"
+      + `1;33;Del Giro;76123456-0;${mojibake};9001;05-05-2032;05-05-2032 10:00:00;;0;100000;19000;0;;119000;0;0;0;0;0;0;0;0;0;;;\r\n`;
+    const res = "Tipo Documento;Total Documentos;Monto Exento;Monto Neto;Monto IVA;Monto Total\r\nBoleta Electrónica (39);10;0;84034;15966;100000\r\nFactura Electrónica (33);2;0;1000;190;1190\r\n";
+    const hojas = await analizarArchivosRcv([{ nombre: "RCV_COMPRA_REGISTRO_77447556_203205.csv", buffer: enc(det) }, { nombre: "RCV_VENTA_77447556_203205.csv", buffer: enc(res) }]);
+    S.migra = { hojas, criterio: "recalcular" };
+    const R = resumenMigracion();
+    await importarMigracionRcv(); await new Promise((r) => setTimeout(r, 250));
+    const nuevos = S.rcv.filter((x) => x.periodo === "2032-05");
+    const out = { hojas: hojas.map((h) => [h.hoja, h.docs.length, (h.resumenes || []).length, h.error || ""]), nombre: R.docs[0]?.razon_social, resumenes: R.resumenes.length, nuevos: nuevos.map((x) => [x.registro, x.tipo_doc, x.cantidad, x.total]) };
+    for (const x of nuevos) await S.almacen.del(`empresas/e1/rcv/${x.id}`);
+    S.migra = null; await new Promise((r) => setTimeout(r, 150));
+    return out;
+  });
+  igual("el CSV de detalle del SII entra al importador y se repara el nombre", [si.hojas[0].slice(0, 2), si.nombre], [["(texto)", 1], "COMPAÑÍA SII LTDA"]);
+  igual("el resumen de ventas aporta solo las boletas", [si.hojas[1].slice(0, 3), si.resumenes], [["(CSV del SII)", 0, 1], 1]);
+  ok("se importan la factura de compra y el resumen de boletas", si.nuevos.some((x) => x[0] === "COMPRA" && x[3] === 119000) && si.nuevos.some((x) => x[1] === 39 && x[2] === 10 && x[3] === 100000), JSON.stringify(si));
+  const afc = await page.evaluate(async () => {
+    const base = { registro: "COMPRA", periodo: "2032-06", tipo_doc: 33, rut: "76123456-0", razon_social: "TRANSPORTES SUR", iva_no_recuperable: 0, otros_impuestos: 0, exento: 0, activo_fijo: true, cantidad: 1, cuenta: "", asiento: "" };
+    const mk = async (id, o) => guardarDoc(id, { ...base, ...o });
+    await mk("dafA", { folio: "7001", fecha: "2032-06-03", neto: 5000000, iva: 950000, total: 5950000 });
+    await mk("dafB", { folio: "7002", fecha: "2032-06-04", neto: 800000, iva: 152000, total: 952000 });
+    await mk("dafN", { tipo_doc: 61, folio: "7003", fecha: "2032-06-10", neto: 800000, iva: 152000, total: 952000, nc_de: "33-7002" });
+    await new Promise((r) => setTimeout(r, 150));
+    const antes = comprasActivoSinFicha().filter((d) => d.periodo === "2032-06").map((d) => d.folio);
+    S.pestana.activos = "fichas"; ir("activos"); await new Promise((r) => setTimeout(r, 80));
+    const bloque = !!document.querySelector('[data-n="afc-crear-todas"]');
+    const nFichas = S.activos.length;
+    await crearFichasDesdeCompras(["dafA"]); await new Promise((r) => setTimeout(r, 200));
+    const f = S.activos.find((a) => a.rcv === "dafA");
+    const despues = comprasActivoSinFicha().filter((d) => d.periodo === "2032-06").map((d) => d.folio);
+    const out = { antes, bloque, despues, ficha: f && [f.costo, f.fecha_adq, f.estado, f.vida_meses, /^AF-\d{3}$/.test(f.codigo)], nuevas: S.activos.length - nFichas };
+    if (f) await S.almacen.del(`empresas/e1/activos/${f.id}`);
+    for (const id of ["dafA", "dafB", "dafN"]) await S.almacen.del(`empresas/e1/rcv/${id}`);
+    await new Promise((r) => setTimeout(r, 150)); ir("inicio");
+    return out;
+  });
+  igual("las compras de activo fijo anuladas por nota de crédito no piden ficha", afc.antes, ["7001"]);
+  ok("la pestaña Fichas ofrece crear las fichas", afc.bloque);
+  igual("crear la ficha usa el neto como costo y deja de ofrecer la compra", [afc.ficha, afc.nuevas, afc.despues], [[5000000, "2032-06-03", "activo", 84, true], 1, []]);
+
   console.log("Apariencia");
   await page.evaluate(() => ir("apariencia")); await espera();
   ok("la pantalla de apariencia se dibuja con estilos, temas y colores", await page.evaluate(() => document.querySelectorAll("[data-estilo]").length >= 8 && document.querySelectorAll('[data-ap="tema"]').length >= 8 && document.querySelectorAll('[data-ap="acento"]').length >= 9));
