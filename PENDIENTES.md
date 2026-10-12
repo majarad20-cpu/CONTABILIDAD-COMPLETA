@@ -81,7 +81,7 @@ Lo nuevo frente a 2023-2026:
 3. **Corrección manual del total:** en las hojas «CORRECTO» ella reemplazó el «Monto total» del RCV por neto + IVA + otro impuesto (por ejemplo 36.004 → 42.912) y agregó columnas auxiliares de control. Es la evidencia más clara de su criterio (ver corrección en el punto 5 del primer archivo).
 4. **Cabeceras más cortas:** en compras 2022 no hay columna «Monto exento» (12 a 15 columnas); en ventas, 11 columnas sin exento ni fechas de acuse. Las columnas que no existen valen 0.
 5. **Centralización con otros nombres:** «OTROS IMPTOS. NO RECUPERABLES», «IVA CRÉDITO FISCAL» (con tilde), «IVA DF» en vez de «IVA DÉBITO FISCAL», y a veces los montos en la columna F y a veces en la G. Hay que comparar por **significado**, no por texto exacto ni por columna.
-6. **Inicio de la empresa:** la primera compra es del 01-03-2022 y la primera venta es la factura folio 1 del 08-04-2022. Es decir, la empresa empieza en marzo de 2022; el sistema debe permitir un ejercicio parcial y fijar el asiento de apertura en esa fecha.
+6. **Inicio de la empresa (corregido tras revisar los asientos ya cargados):** la empresa se constituyó el 24-09-2021 y ya tenía asientos de apertura y de compras de enero y febrero de 2022; los archivos de RCV recibidos parten en marzo de 2022. Faltan los RCV de enero y febrero de 2022 (la centralización de enero fue de $1.801.492 y la de febrero de $6.387.765).
 7. **Ventas mínimas al comienzo** (una factura por mes en abril y mayo de 2022).
 
 Qué conviene adoptar:
@@ -143,6 +143,21 @@ Lo nuevo de este archivo, que es una trampa importante:
 
 Falta para completar el estudio: una **contabilidad completa** (libro diario, mayor o balance) y una **simplificada** (libro de caja o de ingresos y egresos). Decisión pendiente del usuario: criterio por defecto para los combustibles (total del RCV o recalcular), a confirmar con las facturas originales.
 
+
+
+## Migración realizada
+
+**RCV de 2022 a septiembre de 2026 de SERVICIO MAQUINARIA AGRICOLA ARELLANO SPA (empresa `e77447556`) cargado en el artefacto el 12-10-2026.**
+
+- 1.006 documentos (2022: 96 compras y 12 ventas; 2023: 123 y 32; 2024: 132 y 33; 2025: 169 y 80; 2026: 272 y 57) desde 20 archivos y 61 hojas, descartando las versiones «MALO/ERRÓNEO» y las hojas vacías. Los ids son `m0` a `m1005`.
+- Cuadre: las 102 filas de centralización de las hojas (PROVEEDORES o CLIENTES de cada mes) coinciden **exactamente** con la suma de lo cargado, y las centralizaciones de marzo a diciembre de 2022 que ya estaban en los asientos de la empresa también coinciden (neto, IVA y total). Las propuestas de centralización del sistema para enero de 2023 coinciden con la hoja del Excel.
+- Criterio aplicado a los totales (el mismo de las planillas de la contadora): se registra **neto + IVA + otros impuestos**; el total original del RCV queda en el campo `total_rcv`, la diferencia en `dif_total` y el documento marcado con `revisar_total` (62 documentos, diferencia acumulada de $1.345.681). El revisor de datos los lista. Es **reversible** y falta confirmar el criterio con las facturas originales.
+- Limpieza: textos reparados, RUT con puntos, notas de crédito en positivo, impuesto específico duplicado (campos «Impto. sin derecho a crédito» y «Valor otro impuesto» con el mismo monto) contado una sola vez, y facturas de dos filas unidas.
+- Notas de crédito: 15 de 16 enlazadas con su factura de origen (`nc_de`); la de agosto de 2026 por 20 millones hereda «activo fijo» de la factura que anula. La factura folio 244 de ese mes tiene una observación (misma fecha, proveedor y monto que el folio 243, que es activo fijo).
+- Los documentos de 2022 quedaron ligados a los asientos de centralización que ya existían (108 documentos), para que no aparezcan como pendientes ni se centralicen dos veces. Los de 2023 a 2026 (898 documentos) quedan **pendientes de centralizar**; no se crearon asientos.
+- Se configuraron las cuentas tributarias de la empresa copiando las que ya usan sus asientos (insumos y servicios, maquinarias y equipos, IVA crédito, impuestos no recuperables, proveedores, clientes, ventas e IVA débito). Antes, «clientes» se sugería la cuenta equivocada (1.1.350.1).
+
+Hallazgos del revisor sobre los asientos de 2022 ya existentes (a revisar con la contabilidad): saldo negativo de BANCO al 31-12-2022 ($-11.557.625) y de PROVEEDORES ($-117.789, que coincide con las compras de abril de 2022 acreditadas a Banco en el asiento a17).
 
 ## Prioridad media (pospuesto por el dueño)
 
