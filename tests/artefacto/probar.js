@@ -212,6 +212,20 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   await page.evaluate(() => { cambiarEmpresa("e1"); });
   await espera(150);
 
+  console.log("Apariencia");
+  await page.click("#ap-abrir"); await espera();
+  ok("el panel de apariencia se abre", await page.evaluate(() => !$("#ap-panel").hidden));
+  await page.click('[data-ap="tema"] [data-v="dark"]'); await page.click('[data-ap="acento"] [data-v="azul"]'); await page.click('[data-ap="texto"] [data-v="grande"]'); await page.click('[data-ap="densidad"] [data-v="compacta"]');
+  const ap = await page.evaluate(() => { const r = document.documentElement.dataset; return { t: r.theme, a: r.acento, x: r.texto, d: r.densidad, g: recuerdo("apariencia", {}), c: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() }; });
+  igual("se aplican tema, color, texto y densidad", [ap.t, ap.a, ap.x, ap.d], ["dark", "azul", "grande", "compacta"]);
+  igual("el acento azul oscuro", ap.c, "#7db3f0");
+  ok("se recuerda la elección", ap.g.tema === "dark" && ap.g.acento === "azul");
+  await page.click('[data-ap="tema"] [data-v="papel"]');
+  ok("el tema papel se aplica aunque el sistema sea oscuro", await page.evaluate(() => getComputedStyle(document.body).backgroundColor === "rgb(241, 233, 214)"));
+  await page.click("#ap-reset");
+  igual("restablecer vuelve al valor inicial", await page.evaluate(() => [document.documentElement.dataset.acento, document.documentElement.dataset.texto, document.documentElement.dataset.densidad]), ["verde", "normal", "normal"]);
+  await page.click("#ap-abrir");
+
   console.log("Respaldo y restauración");
   const resp = await page.evaluate(async () => {
     const d = await datosRespaldo();

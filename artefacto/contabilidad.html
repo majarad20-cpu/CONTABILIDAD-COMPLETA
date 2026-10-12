@@ -151,6 +151,39 @@ td input.monto { width: 9em; }
   dl.ficha dd { margin-bottom: 8px; }
 }
 @media (prefers-reduced-motion: no-preference) { tr.clic td, nav button { transition: background .12s; } }
+/* ---- apariencia: tema, color de acento, tamaño de texto, densidad y tipografía */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="papel"] {
+  --bg: #f1e9d6; --surface: #fbf6e9; --surface-2: #f0e6cc; --fg: #3b3226; --muted: #7a6c55; --line: #dccfb0;
+  --accent-soft: #e9ecd9; --warn-bg: #f7e6b8; color-scheme: light;
+}
+:root[data-acento="azul"] { --accent: #1f5fae; --accent-soft: #dce8f7; }
+:root[data-acento="violeta"] { --accent: #6b46c1; --accent-soft: #ebe3f8; }
+:root[data-acento="terracota"] { --accent: #b4532a; --accent-soft: #f8e4da; }
+:root[data-acento="grafito"] { --accent: #3b4752; --accent-soft: #e4e8ec; }
+:root[data-theme="dark"][data-acento="azul"] { --accent: #7db3f0; --accent-soft: #1a2c42; }
+:root[data-theme="dark"][data-acento="violeta"] { --accent: #b69cf2; --accent-soft: #2a2142; }
+:root[data-theme="dark"][data-acento="terracota"] { --accent: #ee9a73; --accent-soft: #3d261b; }
+:root[data-theme="dark"][data-acento="grafito"] { --accent: #b4c0cb; --accent-soft: #262d33; }
+:root[data-fuente="sistema"] { --font-ui: system-ui, "Segoe UI", sans-serif; }
+:root[data-texto="pequeno"] body { zoom: .92; }
+:root[data-texto="grande"] body { zoom: 1.12; }
+:root[data-densidad="compacta"] th, :root[data-densidad="compacta"] td { padding: 3px 8px; }
+:root[data-densidad="compacta"] main { gap: 12px; padding-block: 16px 32px; }
+:root[data-densidad="compacta"] .caja { padding: 12px; gap: 8px; }
+:root[data-densidad="amplia"] th, :root[data-densidad="amplia"] td { padding: 10px 12px; }
+:root[data-densidad="amplia"] main { gap: 24px; }
+.ap-boton { all: unset; cursor: pointer; padding: 6px 8px; border-radius: var(--radius); color: var(--muted); font-size: 13px; }
+.ap-boton:hover { background: var(--surface-2); color: var(--fg); }
+.ap-panel { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.ap-panel[hidden] { display: none; }
+.ap-panel h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.ap-grupo { display: flex; flex-wrap: wrap; gap: 4px; }
+.ap-grupo button { font: 500 12px var(--font-ui); cursor: pointer; padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.ap-grupo button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.ap-grupo button.color { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.ap-grupo button.color[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--fg); }
+@media print { .menu { display: none; } }
 </style>
 
 <div class="app">
@@ -160,6 +193,15 @@ td input.monto { width: 9em; }
       <small id="sub-empresa">Cargando…</small>
     </div>
     <nav id="nav" aria-label="Secciones"></nav>
+    <button class="ap-boton" id="ap-abrir" type="button" aria-expanded="false" aria-controls="ap-panel">Apariencia</button>
+    <div class="ap-panel" id="ap-panel" hidden>
+      <h3>Tema</h3><div class="ap-grupo" data-ap="tema"><button type="button" data-v="sistema">Sistema</button><button type="button" data-v="light">Claro</button><button type="button" data-v="dark">Oscuro</button><button type="button" data-v="papel">Papel</button></div>
+      <h3>Color</h3><div class="ap-grupo" data-ap="acento"><button type="button" class="color" data-v="verde" title="Verde" style="background:#1b6a55"></button><button type="button" class="color" data-v="azul" title="Azul" style="background:#1f5fae"></button><button type="button" class="color" data-v="violeta" title="Violeta" style="background:#6b46c1"></button><button type="button" class="color" data-v="terracota" title="Terracota" style="background:#b4532a"></button><button type="button" class="color" data-v="grafito" title="Grafito" style="background:#3b4752"></button></div>
+      <h3>Texto</h3><div class="ap-grupo" data-ap="texto"><button type="button" data-v="pequeno">Pequeño</button><button type="button" data-v="normal">Normal</button><button type="button" data-v="grande">Grande</button></div>
+      <h3>Densidad</h3><div class="ap-grupo" data-ap="densidad"><button type="button" data-v="compacta">Compacta</button><button type="button" data-v="normal">Normal</button><button type="button" data-v="amplia">Amplia</button></div>
+      <h3>Tipografía</h3><div class="ap-grupo" data-ap="fuente"><button type="button" data-v="plex">IBM Plex</button><button type="button" data-v="sistema">Del sistema</button></div>
+      <button class="ap-boton" type="button" data-v="restablecer" id="ap-reset">Restablecer</button>
+    </div>
     <small class="version" id="version"></small>
   </aside>
   <main id="main">
@@ -174,7 +216,7 @@ td input.monto { width: 9em; }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.4.1";
+const VERSION = "1.5.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5494,6 +5536,25 @@ document.addEventListener("focusout", (ev) => {
 });
 
 /* ------------------------------------------------------------------ inicio */
+/* ------------------------------------------------------------------ apariencia */
+const APARIENCIA_BASE = { tema: "sistema", acento: "verde", texto: "normal", densidad: "normal", fuente: "plex" };
+const oscuroSistema = () => { try { return matchMedia("(prefers-color-scheme: dark)").matches; } catch (_) { return false; } };
+function aplicarApariencia() {
+  const a = { ...APARIENCIA_BASE, ...recuerdo("apariencia", {}) }, r = document.documentElement;
+  r.dataset.theme = a.tema === "sistema" ? (oscuroSistema() ? "dark" : "light") : a.tema;
+  for (const k of ["acento", "texto", "densidad", "fuente"]) r.dataset[k] = a[k];
+  for (const g of document.querySelectorAll("[data-ap]")) for (const b of g.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.v === a[g.dataset.ap]));
+}
+aplicarApariencia();
+try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", aplicarApariencia); } catch (_) {}
+document.addEventListener("click", (ev) => {
+  const abrir = ev.target.closest("#ap-abrir");
+  if (abrir) { const p = $("#ap-panel"); p.hidden = !p.hidden; abrir.setAttribute("aria-expanded", String(!p.hidden)); return; }
+  if (ev.target.closest("#ap-reset")) { recordar("apariencia", {}); aplicarApariencia(); return; }
+  const b = ev.target.closest("[data-ap] button");
+  if (b) { recordar("apariencia", { ...recuerdo("apariencia", {}), [b.parentElement.dataset.ap]: b.dataset.v }); aplicarApariencia(); }
+});
+
 async function iniciar() {
   render();
   const [db, usuario, descargas] = await Promise.all([
