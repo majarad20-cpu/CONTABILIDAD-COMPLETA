@@ -171,7 +171,7 @@ td input.monto { width: 9em; }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -976,8 +976,9 @@ function vistaEmpresa() {
   <form class="caja" data-form="empresa">${formularioEmpresa(e, false)}
     ${puedeEditar(`<div class="acciones"><button class="btn" type="submit">Guardar datos</button></div>`)}
   </form>
+  ${panelRespaldo()}
   ${puedeEditar(`<section class="caja"><h2>Eliminar empresa</h2>
-    <p class="ayuda">Borra la empresa con su plan de cuentas y sus ${S.lista.length} asientos de esta versión en línea. El programa de tu PC no se modifica.</p>
+    <p class="ayuda">Borra la empresa con su plan de cuentas y sus ${S.lista.length} asientos de esta versión en línea. El programa de tu PC no se modifica. Descarga antes un respaldo (arriba) por si necesitas recuperarla.</p>
     ${S.confirmar === "empresa"
       ? `<div class="confirmar"><span>¿Eliminar ${esc(e.razon_social)} y todos sus asientos? No se puede deshacer.</span>
           <button class="btn peligro" type="button" data-accion="eliminar-empresa">Sí, eliminar</button>
@@ -1014,6 +1015,7 @@ function vistaEmpresas() {
     <div class="acciones"><input type="file" id="archivo-json" accept=".json,application/json" aria-label="Archivo .json de la empresa"></div>
   </section>
   ${vistaPrevia}
+  ${panelRestauracion()}
   <form class="caja" data-form="nueva-empresa"><h2>Nueva empresa</h2>${formularioEmpresa(null, true)}
     <div class="acciones"><button class="btn" type="submit">Crear empresa</button></div>
   </form>`)}`;
@@ -3373,6 +3375,7 @@ const CATEGORIAS_ACTIVO = [
   ["Edificios y construcciones", 40], ["Instalaciones", 10], ["Maquinaria y equipos", 15],
   ["Vehículos (automóviles, camionetas, camiones)", 7], ["Muebles y enseres", 7], ["Equipos computacionales", 6], ["Otro (indica la vida útil)", 0],
 ];
+const activoPorId = (id) => S.activos.find((x) => x.id === id);
 const nombreVida = (m) => (m % 12 === 0 ? `${m / 12} año${m === 12 ? "" : "s"}` : `${m} meses`);
 
 /* Depreciación lineal por meses, desde el mes de adquisición. La acumulada se calcula directamente, así el último mes absorbe el redondeo. */
@@ -3488,6 +3491,14 @@ async function guardarActivo() {
   if (acelerada && normal < 36) return aviso("La depreciación acelerada no se permite si la vida útil normal es menor de 3 años.");
   if (estado === "baja" && (!/^\d{4}-\d{2}-\d{2}$/.test(fechaBaja) || fechaBaja < fecha)) return aviso("Ingresa la fecha de baja, posterior a la adquisición.");
   const vida = acelerada ? Math.max(Math.round(normal / 3), 1) : normal;
+  if (ae.id) {
+    const previo = activoPorId(ae.id), meses = S.depreciaciones.filter((d) => (d.items || []).some((i) => i.activo === ae.id && contabilizado(i))).map((d) => d.id).sort();
+    if (meses.length) {
+      if (previo.costo !== costo || (previo.residual || 0) !== residual || previo.fecha_adq !== fecha || previo.vida_meses !== vida)
+        return aviso("Este bien ya tiene depreciación contabilizada: elimina primero esos asientos de depreciación para cambiar su costo, valor residual, vida útil o fecha de adquisición.");
+      if (estado === "baja" && fechaBaja.slice(0, 7) < meses.at(-1)) return aviso(`La fecha de baja es anterior a ${nombrePeriodo(meses.at(-1))}, mes cuya depreciación ya está contabilizada.`);
+    }
+  }
   const numeros = S.activos.map((a) => +String(a.codigo).replace(/\D/g, "")).filter(Number.isFinite);
   const codigo = ae.id ? ae.codigo : `AF-${String((numeros.length ? Math.max(...numeros) : 0) + 1).padStart(3, "0")}`;
   await ocupado(async () => {
@@ -4422,6 +4433,127 @@ document.addEventListener("change", (ev) => {
   else if (el.closest?.("#form-renta") && S.rentaEdit) actualizarRenta();
 });
 
+/* ------------------------------------------------------------------ respaldo y restauración */
+const FORMATO_RESPALDO = "contabilidad-completa-artefacto/1";
+const ID_VALIDO = /^[A-Za-z0-9_-]+$/;
+S.restauracion = null;
+
+/* Todos los datos de la empresa activa, leídos de nuevo desde el almacén, más la configuración compartida. */
+async function datosRespaldo() {
+  const { id, ...empresaDoc } = empresa();
+  const colecciones = {};
+  for (const sub of SUBCOLECCIONES) colecciones[sub] = await S.almacen.leerCol(`empresas/${id}/${sub}`);
+  return { formato: FORMATO_RESPALDO, version: VERSION, creado: new Date().toISOString(), empresa: empresaDoc, colecciones,
+    config: { utm: S.utm, previsional: S.prev, contador: S.contador } };
+}
+async function descargarRespaldo() {
+  if (!S.descargas) return aviso("La descarga de archivos no está disponible en esta vista.");
+  await ocupado(async () => {
+    const d = await datosRespaldo();
+    const total = Object.values(d.colecciones).reduce((s, l) => s + l.length, 0);
+    try { await S.descargas.save({ filename: `respaldo_${slug()}_${hoy()}.json`, data: JSON.stringify(d) }); aviso(`Respaldo descargado: ${total} registros.`); }
+    catch (e) { if (e?.code !== "declined") throw e; }
+  }, "No se pudo generar el respaldo");
+}
+
+function panelRespaldo() {
+  return `<section class="caja"><h2>Respaldo</h2>
+    <p class="ayuda">Descarga todos los datos de ${esc(empresa().razon_social)} (plan de cuentas, asientos, RCV, F29, remuneraciones, activo fijo y renta) en un archivo .json. Guárdalo en un lugar seguro: sirve para recuperar la empresa si se elimina por error o se modifica algo sin querer.</p>
+    <div class="acciones">${S.descargas ? `<button class="btn" type="button" data-n="descargar-respaldo">Descargar respaldo</button>` : `<span class="ayuda">La descarga de archivos no está disponible en esta vista.</span>`}</div></section>`;
+}
+
+/* Valida el archivo antes de tocar nada: formato, identificadores y asientos que cuadran. */
+function analizarRespaldo(texto) {
+  let d;
+  try { d = JSON.parse(texto); } catch (_) { return { error: "El archivo no es un JSON válido." }; }
+  if (d?.formato !== FORMATO_RESPALDO || !d.empresa || typeof d.colecciones !== "object") return { error: "El archivo no es un respaldo de este artefacto (Datos de la empresa → «Descargar respaldo»)." };
+  if (!d.empresa.razon_social || !Array.isArray(d.empresa.cuentas)) return { error: "El respaldo está incompleto: faltan los datos de la empresa o su plan de cuentas." };
+  const colecciones = {};
+  for (const sub of SUBCOLECCIONES) {
+    const lista = d.colecciones[sub] ?? [];
+    if (!Array.isArray(lista)) return { error: `El respaldo está dañado: «${sub}» no es una lista.` };
+    for (const x of lista) if (!x || typeof x.id !== "string" || !ID_VALIDO.test(x.id)) return { error: `El respaldo está dañado: hay un registro de «${sub}» con identificador inválido.` };
+    colecciones[sub] = lista;
+  }
+  const suma = (a, k) => (a.lineas || []).reduce((s, l) => s + (+l[k] || 0), 0);
+  const descuadrados = colecciones.asientos.filter((a) => suma(a, "debe") !== suma(a, "haber")).length;
+  const rut = d.empresa.rut, repetida = rut ? S.empresas.find((e) => e.rut === rut) : null;
+  return { datos: { ...d, colecciones }, total: Object.values(colecciones).reduce((s, l) => s + l.length, 0), descuadrados, repetida: repetida?.id || null, progreso: null };
+}
+function leerRespaldo(archivo) {
+  if (archivo.size > 50 * 1024 * 1024) { S.restauracion = { error: "El archivo es demasiado grande para un respaldo." }; render(); return; }
+  const lector = new FileReader();
+  lector.onload = () => { S.restauracion = analizarRespaldo(String(lector.result)); render(); };
+  lector.onerror = () => { S.restauracion = { error: "No se pudo leer el archivo." }; render(); };
+  lector.readAsText(archivo, "utf-8");
+}
+
+/* Con `reemplazar` se vacía la empresa existente con el mismo RUT (sin borrarla, para no perder la selección) y se escribe el respaldo. */
+async function restaurar(reemplazar) {
+  const r = S.restauracion, d = r.datos;
+  if (r.repetida && !reemplazar) return;
+  const eid = reemplazar ? r.repetida : "e" + nuevoId();
+  r.progreso = 0; render();
+  try {
+    if (reemplazar) for (const sub of SUBCOLECCIONES) for (const x of await S.almacen.leerCol(`empresas/${eid}/${sub}`)) await S.almacen.del(`empresas/${eid}/${sub}/${x.id}`);
+    await BD.setEmpresa(eid, { ...d.empresa, creado: d.empresa.creado || Date.now() });
+    let n = 0;
+    for (const sub of SUBCOLECCIONES) for (const { id, ...doc } of d.colecciones[sub]) { await S.almacen.set(`empresas/${eid}/${sub}/${id}`, doc); r.progreso = ++n; if (n % 10 === 0 && S.vista === "empresas") render(); }
+    const cfg = d.config || {};
+    const utmNuevas = Object.fromEntries(Object.entries(cfg.utm || {}).filter(([k, v]) => Number.isFinite(+v) && UTM_OFICIALES[k] !== +v && !S.utm[k]).map(([k, v]) => [k, +v]));
+    if (Object.keys(utmNuevas).length) { await S.almacen.set("config/utm", { valores: { ...S.utm, ...utmNuevas } }); S.utm = { ...S.utm, ...utmNuevas }; }
+    const uf = { ...(cfg.previsional?.uf || {}), ...S.prev.uf };
+    const propios = new Set((S.prev.parametros || []).map((x) => x.desde));
+    const parametros = [...(S.prev.parametros || []), ...(cfg.previsional?.parametros || []).filter((x) => x && /^\d{4}-\d{2}$/.test(x.desde) && !propios.has(x.desde))];
+    if (Object.keys(uf).length !== Object.keys(S.prev.uf).length || parametros.length !== (S.prev.parametros || []).length) { S.prev = { uf, parametros }; await S.almacen.set("config/previsional", S.prev); }
+    if (!S.contador.nombre && !S.contador.firma && cfg.contador && (cfg.contador.nombre || cfg.contador.firma)) {
+      const c = { nombre: String(cfg.contador.nombre || ""), rut: String(cfg.contador.rut || ""), firma: String(cfg.contador.firma || "") };
+      await S.almacen.set("config/contador", c); S.contador = c;
+    }
+    S.restauracion = null; cambiarEmpresa(eid); ir("inicio");
+    aviso(`${d.empresa.razon_social} restaurada: ${n} registros.`);
+  } catch (err) {
+    r.progreso = null; render();
+    aviso(`La restauración se detuvo (${err?.code || err?.message || "error"}). Los datos de la empresa pueden haber quedado incompletos: vuelve a restaurar el mismo archivo.`);
+  }
+}
+
+function panelRestauracion() {
+  const r = S.restauracion;
+  const previa = !r ? "" : r.error ? `<div class="aviso">${esc(r.error)}</div>` : `<div class="caja">
+      <h2>Revisar restauración</h2>
+      <p><strong>${esc(r.datos.empresa.razon_social)}</strong> · RUT ${esc(r.datos.empresa.rut || "sin RUT")} · Ejercicio ${esc(r.datos.empresa.ejercicio)}</p>
+      <p class="ayuda">${r.total} registros, respaldo del ${fechaHora(r.datos.creado)} (versión ${esc(r.datos.version || "?")}).
+        ${r.descuadrados ? `<strong class="neg">${r.descuadrados} asientos no cuadran.</strong>` : "Todos los asientos cuadran."}</p>
+      ${r.repetida ? `<div class="aviso">Ya existe una empresa con el RUT ${esc(r.datos.empresa.rut)}. Puedes reemplazar sus datos por los del respaldo: se pierde lo registrado después de esa fecha.</div>` : ""}
+      ${r.progreso != null ? `<p>Restaurando… ${r.progreso} de ${r.total} registros.</p>` : `<div class="acciones">
+        ${r.repetida
+          ? (S.confirmar === "restaurar" ? `<span class="confirmar"><span>¿Reemplazar los datos actuales de esa empresa? Esto no se puede deshacer.</span><button class="btn peligro" type="button" data-n="reemplazar-restauracion">Sí, reemplazar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
+            : `<button class="btn" type="button" data-n="pedir-reemplazar">Reemplazar la empresa existente…</button>`)
+          : `<button class="btn" type="button" data-n="confirmar-restauracion">Restaurar como empresa nueva</button>`}
+        <button class="btn sec" type="button" data-n="cancelar-restauracion">Cancelar</button></div>`}
+    </div>`;
+  return `<section class="caja"><h2>Restaurar un respaldo del artefacto</h2>
+    <p class="ayuda">Selecciona un archivo .json descargado con «Descargar respaldo» (Datos de la empresa). Verás un resumen antes de restaurar.</p>
+    <div class="acciones"><input type="file" id="archivo-respaldo" accept=".json,application/json" aria-label="Archivo de respaldo .json"></div></section>${previa}`;
+}
+
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-n]");
+  if (!t || t.disabled) return;
+  switch (t.dataset.n) {
+    case "descargar-respaldo": descargarRespaldo(); break;
+    case "cancelar-restauracion": S.restauracion = null; S.confirmar = null; render(); break;
+    case "confirmar-restauracion": restaurar(false); break;
+    case "pedir-reemplazar": S.confirmar = "restaurar"; render(); break;
+    case "reemplazar-restauracion": restaurar(true); break;
+  }
+});
+document.addEventListener("change", (ev) => { if (ev.target.id === "archivo-respaldo" && ev.target.files[0]) leerRespaldo(ev.target.files[0]); });
+
+/* Errores no previstos: se avisa en pantalla en lugar de fallar en silencio. */
+for (const tipo of ["error", "unhandledrejection"]) window.addEventListener(tipo, (ev) => { console.error(ev.reason || ev.error || ev.message); aviso("Ocurrió un error inesperado. Si el problema continúa, recarga la página."); });
+
 /* ------------------------------------------------------------------ eventos */
 function slug() { return (empresa()?.razon_social || "empresa").normalize("NFD").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").toLowerCase(); }
 
@@ -4488,7 +4620,7 @@ function cambiarEmpresa(id) {
     if (id !== S.eid) return;
     S.lista = numerar(lista); S.cargandoAsientos = false;
     if (S.vista === "editor" && S.edit?.id) { const a = S.lista.find((x) => x.id === S.edit.id); if (a) S.edit.numero = a.numero; return; }
-    if (S.vista === "editor" || (S.vista === "empresas" && S.importacion?.progreso != null)) return;
+    if (S.vista === "editor" || (S.vista === "empresas" && (S.importacion?.progreso != null || S.restauracion?.progreso != null))) return;
     render();
   }, (e) => { aviso("Se perdió la conexión con los datos. Recarga la página."); console.error(e); });
 }
@@ -4699,7 +4831,7 @@ async function iniciar() {
     primera = false;
     prepararCuentas();
     S.lista = S.lista.length ? numerar(S.lista) : S.lista;
-    if (S.vista === "editor" || S.importacion?.progreso != null) { renderMenu(); return; }
+    if (S.vista === "editor" || S.importacion?.progreso != null || S.restauracion?.progreso != null) { renderMenu(); return; }
     render();
   }, (e) => { aviso("No se pudo leer la lista de empresas. Recarga la página."); console.error(e); });
 }

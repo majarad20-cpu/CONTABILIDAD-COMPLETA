@@ -27,3 +27,7 @@ desktop.ini
 
 # Carpeta portable generada por crear_portable.py (contiene datos reales)
 dist/
+
+tests/artefacto/node_modules/
+tests/artefacto/package-lock.json
+!tests/artefacto/package.json
