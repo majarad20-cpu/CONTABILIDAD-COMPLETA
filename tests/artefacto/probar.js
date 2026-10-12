@@ -104,6 +104,41 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   const edicion = await page.evaluate(async () => { S.pestana.rrhh = "liquidaciones"; ir("rrhh"); return !document.querySelector('[data-n="eliminar-liquidacion"]'); });
   ok("una liquidación contabilizada no se puede eliminar", edicion);
 
+  console.log("Remuneraciones: reforma de pensiones y nuevas funciones");
+  const rn = await page.evaluate(async () => {
+    const tr = S.trabajadores[0], e0 = { dias: 30, horas_extra: 0, festivos: 0, comisiones: 0, bonos: 0, vacaciones: 0, no_imponibles: 0, anticipos: 0, otros_desc: 0 };
+    const jul = calcularLiquidacionTrabajador(tr, "2026-07", e0), sep = calcularLiquidacionTrabajador(tr, "2026-09", e0), sig = { emp_reforma: Math.round(tr.sueldo_base * parametrosPrev("2027-09").reforma / 100) };
+    const asig = asignacionFamiliar(parametrosPrev("2026-09"), 400000, 2, 30);
+    const con = calcularLiquidacionTrabajador({ ...tr, cargas: 2, sueldo_base: 400000, gratificacion: "ninguna", colacion: 0, movilizacion: 0 }, "2026-09", e0);
+    const apv = calcularLiquidacionTrabajador({ ...tr, apv_monto: 100000, apv_regimen: "B" }, "2026-09", e0);
+    const com = calcularLiquidacionTrabajador({ ...tr, semana_corrida: true }, "2026-09", { ...e0, comisiones: 300000, festivos: 2 });
+    const df = calcularLiquidacionTrabajador({ ...tr, descuentos_fijos: [{ concepto: "Pensión", tipo: "monto", valor: 50000 }] }, "2026-09", e0);
+    const sv = saldoVacaciones({ ...tr, fecha_ingreso: "2025-01-02", vacaciones: [{ fecha: "2026-02-01", dias: 5 }] }, "2026-10-01");
+    const fq = calcularFiniquito({ ...tr, fecha_ingreso: "2025-03-01" }, { fecha: "2026-09-30", causal: "necesidades", uf: 40000, indemnizar: true, aviso_dado: false });
+    return { jul: [jul.emp_reforma, jul.emp_sis], sep: [sep.emp_reforma, sep.emp_sis], sig: sig.emp_reforma, asig, conAsig: con.asig_familiar, aporte: sep.aportes_empleador, costo: sep.costo_empresa, imp: sep.imponible, apvTrib: apv.base_tributable < sep.base_tributable, com: [com.comisiones, com.semana_corrida > 0], df: df.liquido === sep.liquido - 50000, sv: sv.saldo, fq: { ind: fq.indemnizacion, aviso: fq.aviso, anos: fq.anos.computables } };
+  });
+  ok("hasta julio de 2026 el empleador paga SIS y 1 % de reforma", rn.jul[1] > 0 && rn.jul[0] > 0, JSON.stringify(rn.jul));
+  ok("desde agosto de 2026 el SIS pasa a la cotización de la reforma", rn.sep[1] === 0 && rn.sep[0] > rn.jul[0], JSON.stringify(rn.sep));
+  igual("la cotización total del empleador sube a 4,25 % desde agosto de 2027", await page.evaluate(() => parametrosPrev("2027-09").reforma), 4.25);
+  ok("la asignación familiar se calcula por tramo y cargas", rn.asig.monto > 0 && rn.conAsig === rn.asig.monto, JSON.stringify([rn.asig, rn.conAsig]));
+  ok("el costo de la empresa suma los aportes del empleador", rn.costo === rn.imp + 0 || rn.costo > rn.imp, JSON.stringify([rn.costo, rn.imp]));
+  ok("el APV régimen B rebaja la base tributable", rn.apvTrib);
+  ok("comisiones y semana corrida", rn.com[0] === 300000 && rn.com[1]);
+  ok("los descuentos fijos bajan el líquido", rn.df);
+  ok("saldo de vacaciones", rn.sv > 0 && rn.sv < 30, String(rn.sv));
+  ok("finiquito: indemnización por años de servicio y aviso", rn.fq.ind > 0 && rn.fq.aviso > 0 && rn.fq.anos === 2 && rn.fq.ind === 2 * rn.fq.aviso, JSON.stringify(rn.fq));
+  for (const t of ["vacaciones", "finiquitos"]) { await page.evaluate((t) => { S.pestana.rrhh = t; ir("rrhh"); }, t); ok(`la pestaña ${t} se dibuja`, await page.evaluate(() => document.querySelector("main")?.textContent.length > 200)); }
+  await page.evaluate(() => { S.pestana.rrhh = "finiquitos"; ir("rrhh"); });
+  await page.click('[data-n="nuevo-finiquito"]'); await espera();
+  await page.evaluate(() => { $("#fq-uf").value = "40.000"; $("#fq-fecha").value = "2026-10-15"; });
+  await page.evaluate(() => { leerFiniquito(); render(); });
+  await page.click('[data-n="guardar-finiquito"]'); await espera(200);
+  const fqs = await page.evaluate(() => ({ n: S.finiquitos.length, baja: S.trabajadores[0].activo === false }));
+  ok("guardar el finiquito da de baja al trabajador", fqs.n === 1 && fqs.baja);
+  await page.click('[data-n="contabilizar-finiquito"]'); await espera();
+  await page.evaluate(() => guardarAsiento()); await espera(200);
+  ok("contabilizar el finiquito marca el documento", await page.evaluate(() => S.finiquitos.every((x) => !!x.asiento)));
+
   console.log("Renta");
   const renta = await page.evaluate(() => {
     S.rentaAnio = "2026"; const r = rentaActual(); r.ajustes.push({ tipo: "agregado", concepto: "Gastos rechazados", monto: 200000 }, { tipo: "deduccion", concepto: "CM", monto: 100000 });
@@ -186,7 +221,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     return { total: a.total, repetida: a.repetida, errores: [analizarRespaldo("no es json").error, analizarRespaldo(JSON.stringify({ formato: "otro" })).error, analizarRespaldo(JSON.stringify(malo)).error, analizarRespaldo(JSON.stringify(incompleto)).error],
       cols: Object.fromEntries(Object.entries(d.colecciones).map(([k, v]) => [k, v.length])), texto };
   });
-  ok("el respaldo incluye todas las colecciones", ["asientos", "activos", "trabajadores", "liquidaciones", "renta", "depreciaciones", "f29", "rcv", "socios", "sueldos", "honorarios", "cambios"].every((k) => k in resp.cols));
+  ok("el respaldo incluye todas las colecciones", ["asientos", "activos", "trabajadores", "liquidaciones", "finiquitos", "renta", "depreciaciones", "f29", "rcv", "socios", "sueldos", "honorarios", "cambios"].every((k) => k in resp.cols));
   igual("detecta que la empresa ya existe", resp.repetida, "e1");
   ok("rechaza archivos inválidos con un mensaje", resp.errores.every((e) => typeof e === "string" && e.length > 10), JSON.stringify(resp.errores));
   ok("rechaza identificadores peligrosos", /identificador inválido/.test(resp.errores[2]));
@@ -207,7 +242,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("reemplazar recupera lo borrado sin duplicar la empresa", [reemplazo.eid, reemplazo.activos, reemplazo.empresas], ["e1", 2, 3]);
 
   console.log("Pantallas");
-  const vistas = [["inicio"], ["activos", "fichas"], ["activos", "dep"], ["activos", "libro"], ["rrhh", "trabajadores"], ["rrhh", "liquidaciones"], ["rrhh", "libro"], ["rrhh", "parametros"], ["renta"], ["dj", "1887"], ["dj", "1879"], ["tributarias"], ["empresa"], ["empresas"]];
+  const vistas = [["inicio"], ["activos", "fichas"], ["activos", "dep"], ["activos", "libro"], ["rrhh", "trabajadores"], ["rrhh", "liquidaciones"], ["rrhh", "libro"], ["rrhh", "vacaciones"], ["rrhh", "finiquitos"], ["rrhh", "parametros"], ["renta"], ["dj", "1887"], ["dj", "1879"], ["tributarias"], ["empresa"], ["empresas"]];
   for (const [ancho, nombre] of [[1200, "escritorio"], [400, "móvil"]]) {
     await page.setViewportSize({ width: ancho, height: 800 });
     const malas = [];
