@@ -138,6 +138,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   await page.click('[data-n="contabilizar-finiquito"]'); await espera();
   await page.evaluate(() => guardarAsiento()); await espera(200);
   ok("contabilizar el finiquito marca el documento", await page.evaluate(() => S.finiquitos.every((x) => !!x.asiento)));
+  ok("la DJ 1887 incluye el finiquito (remuneración del mes más indemnizaciones)", await page.evaluate(() => { const q = S.finiquitos[0], p = perceptores1887(2026).find((x) => x.rut === "12.345.678-5"); return !!p && p.meses === 2 && p.no_imponible >= q.indemnizacion + q.aviso; }));
 
   console.log("Renta");
   const renta = await page.evaluate(() => {
