@@ -10,6 +10,8 @@
   <label>Dirección<input name="direccion" value="{{ datos.direccion or '' }}"></label>
   <label>Comuna / ciudad<input name="comuna" value="{{ datos.comuna or '' }}"></label>
   <label>Representante legal<input name="representante" value="{{ datos.representante or '' }}"></label>
+  <label>RUT del representante legal<input name="rut_representante" value="{{ datos.rut_representante or '' }}" placeholder="12.345.678-5">
+    <small>Se imprime bajo su firma en los PDF y Excel de libros e informes.</small></label>
   <label>Régimen tributario<input name="regimen" value="{{ datos.regimen or '' }}" placeholder="14 D N°3 (Pro Pyme general)" list="regimenes">
     <datalist id="regimenes">
       <option value="14 A (semi integrado)">

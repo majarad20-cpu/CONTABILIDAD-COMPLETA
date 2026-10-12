@@ -24,3 +24,6 @@ ejemplospdf/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Carpeta portable generada por crear_portable.py (contiene datos reales)
+dist/

@@ -171,7 +171,7 @@ def importar_empresa(conn, origen, company_id):
             aperturas += es_apertura
             try:
                 nucleo.guardar_asiento(conn, empresa_id, "TRASPASO", e["date"], glosa, lineas,
-                                       apertura=es_apertura, numero=e["number"])
+                                       apertura=es_apertura)
             except ErrorValidacion as error:
                 raise ErrorValidacion(f"Asiento {e['number']} del {e['date']}: {error}") from None
 

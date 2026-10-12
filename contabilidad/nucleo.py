@@ -22,8 +22,6 @@ TIPOS_CUENTA = ("ACTIVO", "PASIVO", "PATRIMONIO", "INGRESO", "GASTO")
 NOMBRES_TIPO = {"ACTIVO": "Activo", "PASIVO": "Pasivo", "PATRIMONIO": "Patrimonio",
                 "INGRESO": "Ingreso (ganancia)", "GASTO": "Gasto (pérdida)"}
 TIPOS_RESULTADO = ("INGRESO", "GASTO")
-TIPOS_ASIENTO = ("INGRESO", "EGRESO", "TRASPASO")
-PREFIJO_ASIENTO = {"INGRESO": "I", "EGRESO": "E", "TRASPASO": "T"}
 SIN_CORTE = "0000-00-00"
 
 
@@ -94,7 +92,9 @@ def saldo_natural(tipo, debe, haber):
 
 
 def numero_comprobante(tipo, numero):
-    return f"{PREFIJO_ASIENTO[tipo]}-{numero}"
+    """Número con que se muestra un asiento. Ya no se clasifican en ingreso,
+    egreso o traspaso: el correlativo es único por año."""
+    return str(numero)
 
 
 # --------------------------------------------------------------------------
@@ -109,6 +109,9 @@ def validar_datos_empresa(datos):
     rut = (datos.get("rut") or "").strip()
     if rut and not validar_rut(rut):
         raise ErrorValidacion("El RUT no es válido (revisa el dígito verificador).")
+    rut_representante = (datos.get("rut_representante") or "").strip()
+    if rut_representante and not validar_rut(rut_representante):
+        raise ErrorValidacion("El RUT del representante legal no es válido (revisa el dígito verificador).")
     try:
         ejercicio = int(datos.get("ejercicio") or "")
     except ValueError:
@@ -130,6 +133,7 @@ def validar_datos_empresa(datos):
         "direccion": (datos.get("direccion") or "").strip(),
         "comuna": (datos.get("comuna") or "").strip(),
         "representante": (datos.get("representante") or "").strip(),
+        "rut_representante": formatear_rut(rut_representante) if rut_representante else "",
         "regimen": (datos.get("regimen") or "").strip(),
         "ejercicio": ejercicio,
     }
@@ -173,7 +177,8 @@ def eliminar_empresa(conn, empresa_id):
     if conn.execute("SELECT COUNT(*) FROM empresas").fetchone()[0] <= 1:
         raise ErrorValidacion("No se puede eliminar la única empresa.")
     with conn:
-        for tabla in ("rcv_documentos", "rcv_cuentas_rut", "cuentas_tributarias", "f29_borradores"):
+        for tabla in ("rcv_documentos", "rcv_cuentas_rut", "cuentas_tributarias", "f29_borradores",
+                      "sueldos_empresariales", "socios", "honorarios"):
             conn.execute(f"DELETE FROM {tabla} WHERE empresa_id = ?", (empresa_id,))
         conn.execute(
             "DELETE FROM lineas WHERE asiento_id IN (SELECT id FROM asientos WHERE empresa_id = ?)", (empresa_id,)
@@ -405,7 +410,7 @@ def verificar_periodos(conn, empresa_id, fechas, confirmado):
 
 
 def _describir_asiento(tipo, numero, fecha, glosa):
-    return f"{numero_comprobante(tipo, numero)} del {fecha[8:10]}/{fecha[5:7]}/{fecha[:4]} · {glosa}"
+    return f"N° {numero_comprobante(tipo, numero)} del {fecha[8:10]}/{fecha[5:7]}/{fecha[:4]} · {glosa}"
 
 
 def _registrar_cambio(conn, empresa_id, accion, comprobante, periodos, motivo):
@@ -474,26 +479,27 @@ def cambios_en_periodos_cerrados(conn, empresa_id, limite=100):
 # Comprobantes (asientos)
 # --------------------------------------------------------------------------
 
-def siguiente_numero(conn, empresa_id, tipo, anio):
-    fila = conn.execute(
-        """SELECT COALESCE(MAX(numero), 0) FROM asientos
-           WHERE empresa_id = ? AND tipo = ? AND substr(fecha, 1, 4) = ?""",
-        (empresa_id, tipo, str(anio)),
-    ).fetchone()
-    return fila[0] + 1
+def renumerar(conn, empresa_id, anio):
+    """Deja los asientos del año numerados 1, 2, 3… en orden cronológico. En una
+    misma fecha va primero la apertura, al final el cierre y el resto en el
+    orden en que se ingresaron. Se llama dentro de una transacción."""
+    ids = [r[0] for r in conn.execute(
+        """SELECT id FROM asientos WHERE empresa_id = ? AND substr(fecha, 1, 4) = ?
+           ORDER BY fecha, apertura DESC, cierre, id""", (empresa_id, str(anio)))]
+    conn.executemany("UPDATE asientos SET numero = ? WHERE id = ? AND numero IS NOT ?",
+                     [(n, i, n) for n, i in enumerate(ids, 1)])
 
 
 def guardar_asiento(conn, empresa_id, tipo, fecha, glosa, lineas, asiento_id=None,
-                    cierre=False, apertura=False, numero=None, confirmado=False, motivo=""):
-    """Valida y guarda un comprobante. `lineas` es una lista de dicts con
+                    cierre=False, apertura=False, confirmado=False, motivo=""):
+    """Valida y guarda un asiento. `lineas` es una lista de dicts con
     cuenta_id, glosa, debe y haber (enteros). Devuelve el id del asiento.
-    `numero` fuerza el correlativo (se usa al importar).
+    El número lo asigna el correlativo cronológico del año (ver `renumerar`);
+    `tipo` se conserva solo por compatibilidad y ya no se usa.
 
     Si la fecha nueva o la original caen en un mes cerrado, lanza
     PeriodoCerrado salvo que `confirmado` sea verdadero; en ese caso el cambio
     queda registrado con su `motivo`."""
-    if tipo not in TIPOS_ASIENTO:
-        raise ErrorValidacion("Tipo de comprobante inválido.")
     f = parse_fecha(fecha)
     glosa = (glosa or "").strip()
     if not glosa:
@@ -533,19 +539,15 @@ def guardar_asiento(conn, empresa_id, tipo, fecha, glosa, lineas, asiento_id=Non
 
     with conn:
         if actual is None:
-            if numero is None:
-                numero = siguiente_numero(conn, empresa_id, tipo, f.year)
             asiento_id = conn.execute(
                 """INSERT INTO asientos (empresa_id, tipo, numero, fecha, glosa, cierre, apertura)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (empresa_id, tipo, numero, f.isoformat(), glosa, int(cierre), int(apertura)),
+                   VALUES (?, 'TRASPASO', 0, ?, ?, ?, ?)""",
+                (empresa_id, f.isoformat(), glosa, int(cierre), int(apertura)),
             ).lastrowid
         else:
-            mismo_correlativo = actual["tipo"] == tipo and actual["fecha"][:4] == str(f.year)
-            numero = actual["numero"] if mismo_correlativo else siguiente_numero(conn, empresa_id, tipo, f.year)
             conn.execute(
-                "UPDATE asientos SET tipo = ?, numero = ?, fecha = ?, glosa = ?, apertura = ? WHERE id = ?",
-                (tipo, numero, f.isoformat(), glosa, int(apertura), asiento_id),
+                "UPDATE asientos SET fecha = ?, glosa = ?, apertura = ? WHERE id = ?",
+                (f.isoformat(), glosa, int(apertura), asiento_id),
             )
             conn.execute("DELETE FROM lineas WHERE asiento_id = ?", (asiento_id,))
         conn.executemany(
@@ -555,9 +557,12 @@ def guardar_asiento(conn, empresa_id, tipo, fecha, glosa, lineas, asiento_id=Non
                 for i, l in enumerate(lineas, 1)
             ],
         )
+        for anio in {f.year, int(actual["fecha"][:4]) if actual else f.year}:
+            renumerar(conn, empresa_id, anio)
         if cerrados:
-            descripcion = _describir_asiento(tipo, numero, f.isoformat(), glosa)
-            if actual is not None and (actual["fecha"], actual["tipo"], actual["numero"]) != (f.isoformat(), tipo, numero):
+            numero = conn.execute("SELECT numero FROM asientos WHERE id = ?", (asiento_id,)).fetchone()[0]
+            descripcion = _describir_asiento("TRASPASO", numero, f.isoformat(), glosa)
+            if actual is not None and (actual["fecha"], actual["numero"]) != (f.isoformat(), numero):
                 anterior = _describir_asiento(actual["tipo"], actual["numero"], actual["fecha"], actual["glosa"])
                 descripcion = f"{anterior} → {descripcion}"
             _registrar_cambio(conn, empresa_id, "Modificación" if actual else "Creación", descripcion, cerrados, motivo)
@@ -573,6 +578,7 @@ def eliminar_asiento(conn, empresa_id, asiento_id, confirmado=False, motivo=""):
     cerrados = verificar_periodos(conn, empresa_id, [actual["fecha"]], confirmado)
     with conn:
         conn.execute("DELETE FROM asientos WHERE id = ? AND empresa_id = ?", (asiento_id, empresa_id))
+        renumerar(conn, empresa_id, int(actual["fecha"][:4]))
         if cerrados:
             _registrar_cambio(conn, empresa_id, "Eliminación",
                               _describir_asiento(actual["tipo"], actual["numero"], actual["fecha"], actual["glosa"]),
@@ -593,15 +599,12 @@ def obtener_asiento(conn, empresa_id, asiento_id):
     return {"asiento": asiento, "lineas": lineas}
 
 
-def listar_asientos(conn, empresa_id, desde, hasta, tipo=None, texto=None, limite=None):
+def listar_asientos(conn, empresa_id, desde, hasta, texto=None, limite=None):
     condiciones, params = ["a.empresa_id = ?", "a.fecha BETWEEN ? AND ?"], [empresa_id, desde, hasta]
-    if tipo:
-        condiciones.append("a.tipo = ?")
-        params.append(tipo)
     if texto:
         condiciones.append("(a.glosa LIKE ? OR EXISTS (SELECT 1 FROM lineas x WHERE x.asiento_id = a.id AND x.glosa LIKE ?))")
         params += [f"%{texto}%"] * 2
-    orden = "a.fecha DESC, a.id DESC" if limite else "a.fecha, a.tipo, a.numero"
+    orden = "a.fecha DESC, a.numero DESC" if limite else "a.fecha, a.numero"
     return conn.execute(
         f"""SELECT a.*, COALESCE(SUM(l.debe), 0) AS total
             FROM asientos a LEFT JOIN lineas l ON l.asiento_id = a.id
@@ -628,7 +631,7 @@ def corte(conn, empresa_id, fecha, incluida=True):
 
 def libro_diario(conn, empresa_id, desde, hasta):
     asientos = conn.execute(
-        "SELECT * FROM asientos WHERE empresa_id = ? AND fecha BETWEEN ? AND ? ORDER BY fecha, tipo, numero",
+        "SELECT * FROM asientos WHERE empresa_id = ? AND fecha BETWEEN ? AND ? ORDER BY fecha, numero",
         (empresa_id, desde, hasta),
     ).fetchall()
     lineas = conn.execute(
@@ -669,7 +672,7 @@ def libro_mayor(conn, empresa_id, cuenta_id, desde, hasta):
                   l.glosa, l.debe, l.haber
            FROM lineas l JOIN asientos a ON a.id = l.asiento_id
            WHERE l.cuenta_id = ? AND a.fecha BETWEEN ? AND ?
-           ORDER BY a.fecha, a.apertura DESC, a.tipo, a.numero, l.orden""",
+           ORDER BY a.fecha, a.numero, l.orden""",
         (cuenta_id, desde, hasta),
     ):
         while aperturas and m["fecha"] >= aperturas[0]:
@@ -793,14 +796,15 @@ def _arbol(conn, empresa_id, tipos, montos):
     """Filas jerárquicas (grupos y cuentas) de las cuentas imputables de los
     tipos indicados. `montos` es {cuenta_id: monto}. Los grupos suman a sus
     descendientes por prefijo de código, sin importar el tipo del grupo (un
-    grupo puede contener ganancias y pérdidas)."""
+    grupo puede contener ganancias y pérdidas). Solo aparecen las cuentas con
+    saldo y los grupos que contienen alguna de ellas."""
     marcas = ",".join("?" * len(tipos))
     cuentas = conn.execute(
         f"""SELECT id, codigo, nombre, imputable FROM cuentas
             WHERE empresa_id = ? AND (imputable = 0 OR tipo IN ({marcas})) ORDER BY codigo""",
         (empresa_id, *tipos),
     ).fetchall()
-    hojas = {c["codigo"]: montos[c["id"]] for c in cuentas if c["imputable"] and c["id"] in montos}
+    hojas = {c["codigo"]: montos[c["id"]] for c in cuentas if c["imputable"] and montos.get(c["id"])}
     filas = []
     for c in cuentas:
         if c["imputable"]:
@@ -989,3 +993,37 @@ def cerrar_ejercicio(conn, empresa_id, anio, cuenta_destino_id, confirmado=False
     asiento_id = guardar_asiento(conn, empresa_id, "TRASPASO", f"{anio}-12-31", f"Cierre del ejercicio {anio}",
                                  lineas, cierre=True, confirmado=confirmado, motivo=motivo)
     return asiento_id, resultado
+
+
+# --------------------------------------------------------------------------
+# Traspaso a la versión en línea (artefacto de Claude)
+# --------------------------------------------------------------------------
+
+FORMATO_EN_LINEA = "contabilidad-completa/1"
+
+
+def exportar_en_linea(conn, empresa_id):
+    """Empresa, plan de cuentas y asientos en un diccionario JSON que importa
+    la versión en línea. Los montos van en pesos enteros."""
+    empresa = conn.execute("SELECT * FROM empresas WHERE id = ?", (empresa_id,)).fetchone()
+    campos = ("razon_social", "rut", "giro", "direccion", "comuna", "representante",
+              "rut_representante", "regimen", "ejercicio")
+    lineas = {}
+    for l in conn.execute(
+            """SELECT l.asiento_id, l.cuenta_id, l.glosa, l.debe, l.haber FROM lineas l
+               JOIN asientos a ON a.id = l.asiento_id WHERE a.empresa_id = ? ORDER BY l.asiento_id, l.orden""",
+            (empresa_id,)):
+        lineas.setdefault(l["asiento_id"], []).append(
+            {"cuenta": str(l["cuenta_id"]), "glosa": l["glosa"] or "", "debe": l["debe"], "haber": l["haber"]})
+    return {
+        "formato": FORMATO_EN_LINEA,
+        "empresa": {k: empresa[k] for k in campos if k in empresa.keys()},
+        "cuentas": [{"id": str(c["id"]), "codigo": c["codigo"], "nombre": c["nombre"], "tipo": c["tipo"],
+                     "imputable": bool(c["imputable"]), "activa": bool(c["activa"]),
+                     "resultados_en_ocho": bool(c["resultados_en_ocho"])}
+                    for c in conn.execute("SELECT * FROM cuentas WHERE empresa_id = ? ORDER BY codigo", (empresa_id,))],
+        "asientos": [{"id": str(a["id"]), "fecha": a["fecha"], "glosa": a["glosa"],
+                      "apertura": bool(a["apertura"]), "cierre": bool(a["cierre"]), "lineas": lineas.get(a["id"], [])}
+                     for a in conn.execute("SELECT * FROM asientos WHERE empresa_id = ? ORDER BY fecha, numero",
+                                           (empresa_id,))],
+    }

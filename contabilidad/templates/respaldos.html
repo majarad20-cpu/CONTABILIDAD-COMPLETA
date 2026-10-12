@@ -10,6 +10,13 @@
 </section>
 
 <section class="caja">
+  <h2>Llevar a la versión en línea</h2>
+  <p>Descarga {{ empresa.razon_social or 'la empresa activa' }} (datos, plan de cuentas y asientos) en un archivo
+    <code>.json</code> para importarlo en la versión en línea de Claude, con el botón «Importar empresa».</p>
+  <a class="boton" href="{{ url_for('exportar_en_linea') }}">Descargar para la versión en línea</a>
+</section>
+
+<section class="caja">
   <h2>Restaurar respaldo</h2>
   <p>Carga un archivo <code>.db</code> descargado desde este programa. Antes de reemplazar nada verás un
     resumen de su contenido para confirmar. Además, tus datos actuales se guardan automáticamente en una copia.</p>

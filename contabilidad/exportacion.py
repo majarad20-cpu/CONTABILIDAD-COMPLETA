@@ -57,7 +57,9 @@ ROJO = "B42318"
 #   subtotal        totales intermedios (negrita, línea superior)
 #   total           totales finales (negrita, línea superior gruesa)
 #   nota            texto informativo en cursiva
-NEGRITA = {"seccion", "glosa", "subtotal", "total"}
+#   destacado       cifra clave (letra más grande, fondo amarillo y borde grueso)
+NEGRITA = {"seccion", "glosa", "subtotal", "total", "destacado"}
+AMARILLO = "FFF4CC"  # fondo de las cifras destacadas (p. ej. total a pagar)
 
 
 @dataclass
@@ -75,6 +77,7 @@ class Fila:
     nivel: int = 0          # sangría de la columna de texto principal
     abarca: int = None      # la celda en esta posición se extiende hasta la última columna
     derecha: bool = False   # alinear a la derecha la etiqueta de texto (totales)
+    bloque: bool = False    # inicia un bloque que en el PDF no se separa entre páginas (p. ej. un asiento)
 
 
 @dataclass
@@ -90,11 +93,12 @@ class Informe:
     firmas: list = field(default_factory=list)   # firmas simples (p. ej. comprobantes)
     vacio: str = ""         # cómo se muestra un monto vacío
     notas: list = field(default_factory=list)
+    recuadro: list = None   # cifras destacadas al final: [(texto, monto)]; la primera, más grande
     csv_columnas: list = None                    # versión plana opcional para CSV
     csv_filas: list = None
 
-    def agregar(self, *valores, estilo="", nivel=0, abarca=None, derecha=False):
-        self.filas.append(Fila(list(valores), estilo, nivel, abarca, derecha))
+    def agregar(self, *valores, estilo="", nivel=0, abarca=None, derecha=False, bloque=False):
+        self.filas.append(Fila(list(valores), estilo, nivel, abarca, derecha, bloque))
 
 
 def fecha_cl(iso):
@@ -259,7 +263,7 @@ def informe_balance_general(bg, hasta):
 
 def informe_comprobante(datos):
     a, lineas = datos["asiento"], datos["lineas"]
-    inf = Informe(f"COMPROBANTE DE {a['tipo']} N° {a['numero']}",
+    inf = Informe(f"ASIENTO CONTABLE N° {a['numero']}",
                   f"FECHA: {fecha_cl(a['fecha'])} · GLOSA: {a['glosa'].upper()}",
                   [Columna("Código", 11), Columna("Cuenta", 36), Columna("Detalle", 30),
                    Columna("Debe", 15, "monto"), Columna("Haber", 15, "monto")],
@@ -293,13 +297,97 @@ def informe_f29(f):
         if cod_monto == "115":
             inf.agregar(cod_monto, concepto, None, None, f"{c['115']:g} %".replace(".", ","))
         elif cod_cantidad == "total":
-            inf.agregar(cod_monto, concepto, None, None, c[cod_monto], estilo="total")
+            inf.agregar(cod_monto, concepto, None, None, c[cod_monto],
+                        estilo="destacado" if cod_monto == "91" else "total")
         else:
             cantidad = c[cod_cantidad] if cod_cantidad else None
             inf.agregar(cod_monto, concepto, cod_cantidad, cantidad, c[cod_monto])
+    inf.recuadro = [("TOTAL A PAGAR (código 91)", c["91"])]
+    if c["77"]:
+        inf.recuadro.append(("Remanente de crédito fiscal para el período siguiente (código 77)", c["77"]))
     inf.notas.append("Borrador referencial calculado a partir del Registro de Compras y Ventas y de la contabilidad. "
                      "Verifica los valores con la propuesta del SII antes de declarar.")
     inf.notas += f["alertas"]
+    return inf
+
+
+def informe_rcv(periodo, compras, ventas, asientos, propuestas, avisos=()):
+    """Registro de Compras y Ventas del mes con sus asientos contables.
+
+    - `compras` / `ventas`: documentos del período.
+    - `asientos`: asientos registrados de centralización ({asiento, lineas}).
+    - `propuestas`: asientos propuestos para documentos pendientes
+      ({glosa, fecha, lineas con codigo/nombre/debe/haber}).
+    Las notas de crédito se muestran con signo negativo."""
+    from .nucleo import nombre_periodo
+    from .tributario import NOTAS_CREDITO, nombre_tipo
+
+    mes = nombre_periodo(periodo).upper()
+    inf = Informe("REGISTRO DE COMPRAS Y VENTAS", f"PERÍODO TRIBUTARIO: {mes}",
+                  [Columna("Tipo / Código", 10), Columna("Folio", 10), Columna("Fecha", 9, "fecha"), Columna("RUT", 12),
+                   Columna("Razón social / Cuenta", 34), Columna("Exento", 11, "monto"), Columna("Neto", 12, "monto"),
+                   Columna("IVA", 11, "monto"), Columna("Otros imp.", 10, "monto"), Columna("Total", 12, "monto")],
+                  nombre_archivo=f"rcv_{periodo}", horizontal=True)
+    inf.csv_columnas = ["Registro", "Tipo", "Documento", "Folio", "Cantidad", "Fecha", "RUT", "Razón social",
+                        "Exento", "Neto", "IVA", "IVA no recuperable", "Otros impuestos", "Total", "Comprobante"]
+    inf.csv_filas = []
+
+    def registro(titulo, docs, nombre_csv):
+        inf.agregar(f"{titulo} — {mes}", estilo="seccion", abarca=0)
+        totales = dict.fromkeys(("exento", "neto", "iva", "otros", "total"), 0)
+        cantidad = 0
+        for d in docs:
+            s = -1 if d["tipo_doc"] in NOTAS_CREDITO else 1
+            otros = d["iva_no_recuperable"] + d["otros_impuestos"]
+            valores = {"exento": s * d["exento"], "neto": s * d["neto"], "iva": s * d["iva"],
+                       "otros": s * otros, "total": s * d["total"]}
+            for k in totales:
+                totales[k] += valores[k]
+            cantidad += d["cantidad"]
+            es_resumen = d["folio"].startswith("RESUMEN")
+            folio = f"Resumen ({d['cantidad']} doc.)" if es_resumen else d["folio"]
+            inf.agregar(str(d["tipo_doc"]) + (" NC" if s < 0 else ""), folio, d["fecha"], d["rut"],
+                        d["razon_social"], *[_sin_ceros(valores[k]) for k in ("exento", "neto", "iva", "otros")],
+                        valores["total"])
+            comprobante = numero_comprobante(d["asiento_tipo"], d["asiento_numero"]) if d["asiento_id"] else "pendiente"
+            inf.csv_filas.append([nombre_csv, d["tipo_doc"], nombre_tipo(d["tipo_doc"]), d["folio"], d["cantidad"],
+                                  d["fecha"], d["rut"], d["razon_social"], s * d["exento"], s * d["neto"], s * d["iva"],
+                                  s * d["iva_no_recuperable"], s * d["otros_impuestos"], s * d["total"], comprobante])
+        if not docs:
+            inf.agregar(None, None, None, None, "Sin documentos en el período.", estilo="nota")
+        inf.agregar(None, None, None, None, f"TOTAL {titulo.split()[-1]} ({cantidad} documentos)",
+                    *[totales[k] for k in ("exento", "neto", "iva", "otros", "total")], estilo="subtotal", derecha=True)
+
+    registro("REGISTRO DE COMPRAS", compras, "Compra")
+    registro("REGISTRO DE VENTAS", ventas, "Venta")
+
+    inf.agregar("ASIENTOS CONTABLES DEL MES", estilo="seccion", abarca=0, bloque=True)
+    inf.csv_filas += [[], ["ASIENTOS CONTABLES"], ["Comprobante", "Fecha", "Glosa", "Estado", "Código", "Cuenta",
+                                                    "Debe", "Haber"]]
+
+    def asiento(encabezado, fecha, glosa, lineas, estado):
+        primero = inf.filas[-1].valores[0] == "ASIENTOS CONTABLES DEL MES"
+        inf.agregar(None, None, fecha, None, f"{encabezado} · {glosa.upper()}" + (f" ({estado})" if estado else ""),
+                    estilo="glosa", abarca=4, bloque=not primero)
+        inf.agregar("Código", None, None, None, "Cuenta", None, None, None, "Debe", "Haber", estilo="subtotal")
+        for l in lineas:
+            inf.agregar(l["codigo"], None, None, None, l["nombre"], None, None, None,
+                        _sin_ceros(l["debe"]), _sin_ceros(l["haber"]), nivel=2 if l["haber"] else 0)
+            inf.csv_filas.append([encabezado, fecha, glosa, estado or "registrado", l["codigo"], l["nombre"],
+                                  l["debe"], l["haber"]])
+        inf.agregar(None, None, None, None, "TOTALES", None, None, None, sum(l["debe"] for l in lineas),
+                    sum(l["haber"] for l in lineas), estilo="subtotal", derecha=True)
+
+    for a in asientos:
+        x = a["asiento"]
+        asiento(numero_comprobante(x["tipo"], x["numero"]), x["fecha"], x["glosa"], a["lineas"], "")
+    for p in propuestas:
+        asiento("Propuesta", p["fecha"], p["glosa"], p["lineas"], "NO REGISTRADA")
+    if not asientos and not propuestas:
+        inf.agregar(None, None, None, None, "No hay asientos de centralización para este período.", estilo="nota")
+    inf.notas.append("Las notas de crédito se muestran con signo negativo. «Otros imp.» incluye el IVA no recuperable "
+                     "y otros impuestos. Los resúmenes de boletas y comprobantes de pago llevan el RUT de la empresa emisora.")
+    inf.notas += list(avisos)
     return inf
 
 
@@ -438,7 +526,11 @@ def a_excel(inf, empresa, contador):
             celda.border = grilla
             if f.estilo == "seccion":
                 celda.fill = fondo
-            if f.estilo in ("subtotal", "total"):
+            if f.estilo == "destacado":
+                celda.font = Font(bold=True, size=12)
+                celda.fill = PatternFill("solid", fgColor=AMARILLO)
+                celda.border = Border(left=negro, right=negro, top=negro, bottom=negro)
+            elif f.estilo in ("subtotal", "total"):
                 celda.border = Border(left=linea, right=linea, top=negro, bottom=negro if f.estilo == "total" else linea)
             if c.tipo in ("monto", "numero") and es_dato:
                 celda.number_format = formato_monto if c.tipo == "monto" else "#,##0"
@@ -456,6 +548,22 @@ def a_excel(inf, empresa, contador):
                     indent=min(f.nivel, 10) if j - 1 == principal and not f.derecha else 0)
         if f.abarca is not None and f.abarca < n - 1:
             ws.merge_cells(start_row=fila, start_column=f.abarca + 1, end_row=fila, end_column=n)
+
+    for k, (texto, valor) in enumerate(inf.recuadro or []):
+        fila += 2 if k == 0 else 1
+        tamano = 14 if k == 0 else 10
+        etiqueta = ws.cell(row=fila, column=1, value=texto)
+        if n > 2:
+            ws.merge_cells(start_row=fila, start_column=1, end_row=fila, end_column=n - 1)
+        monto_celda = ws.cell(row=fila, column=n, value=valor)
+        monto_celda.number_format = formato_monto
+        for j in range(1, n + 1):
+            celda = ws.cell(row=fila, column=j)
+            celda.font = Font(bold=True, size=tamano)
+            celda.fill = PatternFill("solid", fgColor=AMARILLO)
+            celda.border = Border(top=negro, bottom=negro, left=negro if j == 1 else None, right=negro if j == n else None)
+            celda.alignment = Alignment(horizontal="right" if j == n else "left", vertical="center")
+        ws.row_dimensions[fila].height = 26 if k == 0 else 18
 
     for nota in inf.notas:
         fila += 2
@@ -491,8 +599,7 @@ def a_excel(inf, empresa, contador):
         renglones = ["CONTADOR GENERAL"] + [x for x in (contador["nombre"],
                                                         f"R.U.T: {contador['rut']}" if contador["rut"] else "") if x]
         bloque_firma(1, max(mitad - 1, 1), renglones, fila)
-        bloque_firma(min(mitad + 1, n), n, ["REPRESENTANTE LEGAL"]
-                     + ([empresa["representante"].upper()] if empresa["representante"] else []), fila)
+        bloque_firma(min(mitad + 1, n), n, ["REPRESENTANTE LEGAL"] + _datos_representante(empresa), fila)
         fila += len(renglones)
     elif inf.firmas:
         fila += 4
@@ -553,6 +660,14 @@ def _dividir_estilos(estilos, corte):
     return superior, cola
 
 
+def _datos_representante(empresa):
+    """Nombre y RUT del representante legal, para el bloque de firma."""
+    claves = empresa.keys()
+    nombre = empresa["representante"] if "representante" in claves else ""
+    rut = empresa["rut_representante"] if "rut_representante" in claves else ""
+    return [x for x in ((nombre or "").upper(), f"R.U.T: {rut}" if rut else "") if x]
+
+
 def a_pdf(inf, empresa, contador, folio_inicial=None):
     """Genera el PDF. Devuelve (bytes, cantidad de páginas)."""
     tamano = landscape(letter) if inf.horizontal else letter
@@ -575,13 +690,16 @@ def a_pdf(inf, empresa, contador, folio_inicial=None):
         "negrita": ParagraphStyle("negrita", parent=base, fontName="Helvetica-Bold"),
         "glosa": ParagraphStyle("glosa", parent=base, fontName="Helvetica-BoldOblique"),
         "nota": ParagraphStyle("nota", parent=base, fontName="Helvetica-Oblique", textColor=_color(GRIS_TEXTO)),
+        "destacado": ParagraphStyle("destacado", parent=base, fontName="Helvetica-Bold", fontSize=cuerpo + 3,
+                                    leading=cuerpo + 5),
     }
     titulo_col = ParagraphStyle("titulo_col", parent=base, fontName="Helvetica-Bold")
 
-    def estilo_monto(negrita, negativo):
+    def estilo_monto(negrita, negativo, grande=False):
         """Los montos también son párrafos, para alinearse igual que el texto de la fila."""
-        return ParagraphStyle(f"monto_{negrita}_{negativo}", parent=base, alignment=TA_RIGHT,
+        return ParagraphStyle(f"monto_{negrita}_{negativo}_{grande}", parent=base, alignment=TA_RIGHT,
                               fontName="Helvetica-Bold" if negrita else "Helvetica",
+                              fontSize=cuerpo + 3 if grande else cuerpo, leading=cuerpo + 5 if grande else cuerpo + 1.5,
                               textColor=_color(ROJO) if negativo else colors.black)
 
     datos = []
@@ -619,6 +737,8 @@ def a_pdf(inf, empresa, contador, folio_inicial=None):
             clave_p = "glosa"
         elif f.estilo == "nota":
             clave_p = "nota"
+        elif f.estilo == "destacado":
+            clave_p = "destacado"
         elif f.estilo in NEGRITA:
             clave_p = "negrita"
         else:
@@ -640,7 +760,8 @@ def a_pdf(inf, empresa, contador, folio_inicial=None):
                     celdas.append(Paragraph(escape(v), estilo_monto(True, False)))
                 else:
                     texto = inf.vacio if v is None else pesos(v)
-                    celdas.append(Paragraph(escape(texto), estilo_monto(negrita, isinstance(v, int) and v < 0)))
+                    celdas.append(Paragraph(escape(texto), estilo_monto(negrita, isinstance(v, int) and v < 0,
+                                                                        grande=f.estilo == "destacado")))
             elif c.tipo == "fecha" and (f.abarca is None or j < f.abarca):
                 celdas.append(Paragraph(fecha_cl(v) if v else "", estilos_p["negrita" if negrita else ""]))
             else:
@@ -671,6 +792,10 @@ def a_pdf(inf, empresa, contador, folio_inicial=None):
         elif f.estilo == "total":
             estilos.append(("LINEABOVE", (0, i), (-1, i), 1.4, colors.black))
             estilos.append(("LINEBELOW", (0, i), (-1, i), 1.4, colors.black))
+        elif f.estilo == "destacado":
+            estilos += [("BACKGROUND", (0, i), (-1, i), _color(AMARILLO)),
+                        ("BOX", (0, i), (-1, i), 1.6, colors.black),
+                        ("TOPPADDING", (0, i), (-1, i), 5), ("BOTTOMPADDING", (0, i), (-1, i), 5)]
 
     for j, c in enumerate(inf.columnas):
         if c.tipo in ("monto", "numero"):
@@ -694,6 +819,36 @@ def a_pdf(inf, empresa, contador, folio_inicial=None):
         tabla.setStyle(TableStyle(estilos))
         final = []
     elementos = [tabla]
+    cortes = [i for i, f in enumerate(inf.filas, start=n_encabezado) if f.bloque]
+    if cortes and not filas_cola:
+        # Cada bloque (p. ej. un asiento) es una tabla aparte que no se divide entre páginas
+        elementos, desde, restantes = [], 0, estilos
+        for corte in cortes + [len(datos)]:
+            if corte <= desde:
+                continue
+            superior, restantes = _dividir_estilos(restantes, corte - desde)
+            parte = Table(datos[desde:corte], colWidths=anchos, repeatRows=n_encabezado if desde == 0 else 0)
+            parte.setStyle(TableStyle(superior))
+            elementos.append(parte if desde == 0 else KeepTogether(parte))
+            desde = corte
+
+    if inf.recuadro:
+        filas_recuadro, estilos_recuadro = [], [
+            ("BACKGROUND", (0, 0), (-1, -1), _color(AMARILLO)), ("BOX", (0, 0), (-1, -1), 1.8, colors.black),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10), ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6)]
+        for k, (texto, valor) in enumerate(inf.recuadro):
+            tamano = 14 if k == 0 else 9
+            estilo_texto = ParagraphStyle(f"recuadro_t{k}", parent=base, fontName="Helvetica-Bold",
+                                          fontSize=tamano, leading=tamano + 3)
+            estilo_valor = ParagraphStyle(f"recuadro_v{k}", parent=estilo_texto, alignment=TA_RIGHT)
+            filas_recuadro.append([Paragraph(escape(texto), estilo_texto), Paragraph(escape(pesos(valor)), estilo_valor)])
+            if k:
+                estilos_recuadro.append(("LINEABOVE", (0, k), (-1, k), 0.5, _color(GRIS_GRILLA)))
+        recuadro = Table(filas_recuadro, colWidths=[ancho_util * 0.68, ancho_util * 0.32])
+        recuadro.setStyle(TableStyle(estilos_recuadro))
+        final += [Spacer(1, 0.5 * cm), KeepTogether(recuadro)]
 
     pie = ParagraphStyle("pie", parent=base, fontSize=7, leading=9, textColor=_color(GRIS_TEXTO))
     for texto in inf.notas:
@@ -712,8 +867,8 @@ def a_pdf(inf, empresa, contador, folio_inicial=None):
             firma_contador = Image(io.BytesIO(contador["firma"]), width=ancho, height=ancho * alto_img / ancho_img)
         texto_contador = "CONTADOR GENERAL" + "".join(
             f"<br/>{escape(x)}" for x in (contador["nombre"], f"R.U.T: {contador['rut']}" if contador["rut"] else "") if x)
-        texto_representante = "REPRESENTANTE LEGAL" + (
-            f"<br/>{escape(empresa['representante'].upper())}" if empresa["representante"] else "")
+        texto_representante = "REPRESENTANTE LEGAL" + "".join(
+            f"<br/>{escape(x)}" for x in _datos_representante(empresa))
         bloque = [[firma_contador, "", ""], [Paragraph(texto_contador, centrado), "", Paragraph(texto_representante, centrado)]]
         ancho_firma = 6 * cm
         firmas = Table(bloque, colWidths=[ancho_firma, ancho_util - 2 * ancho_firma - 1 * cm, ancho_firma],

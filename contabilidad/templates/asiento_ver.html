@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block titulo %}Comprobante {{ comprobante(asiento.tipo, asiento.numero) }}{% endblock %}
+{% block titulo %}Asiento N° {{ asiento.numero }}{% endblock %}
 {% from '_macros.html' import botones_exportar with context %}
 {% block contenido %}
 <div class="titulo-acciones">
-  <h1>Comprobante de {{ asiento.tipo|lower }} N° {{ asiento.numero }}
+  <h1>Asiento N° {{ asiento.numero }} <small class="ayuda">· {{ asiento.fecha[:4] }}</small>
     {% if mes_cerrado(asiento.fecha) %}<span class="etiqueta etiqueta-cerrado">Mes cerrado</span>{% endif %}</h1>
   <div class="acciones no-imprimir">
     {% if not asiento.cierre %}<a class="boton" href="{{ url_for('editar_asiento', asiento_id=asiento.id) }}">Editar</a>{% endif %}
     {{ botones_exportar(csv=false) }}
     <button type="button" class="secundario" onclick="window.print()">Imprimir</button>
     <form method="post" action="{{ url_for('eliminar_asiento', asiento_id=asiento.id) }}"
-          onsubmit="return confirm('¿Eliminar este comprobante? Esta acción no se puede deshacer.')">
+          onsubmit="return confirm('¿Eliminar este asiento? Los asientos posteriores del año se renumeran.')">
       <button class="peligro" type="submit">Eliminar</button>
     </form>
   </div>
@@ -57,5 +57,5 @@
 <div class="firmas solo-imprimir">
   <div>Preparado por</div><div>Revisado por</div><div>Aprobado por</div>
 </div>
-<p class="no-imprimir"><a href="{{ url_for('asientos') }}">← Volver a comprobantes</a></p>
+<p class="no-imprimir"><a href="{{ url_for('asientos') }}">← Volver a asientos</a></p>
 {% endblock %}

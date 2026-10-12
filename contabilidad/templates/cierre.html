@@ -7,7 +7,7 @@
   <button type="submit">Ver</button>
 </form>
 
-<p>El cierre genera un comprobante de traspaso al 31-12-{{ anio }} que deja en cero las cuentas de
+<p>El cierre genera un asiento al 31-12-{{ anio }} que deja en cero las cuentas de
   ingresos y gastos del año y traspasa el resultado a la cuenta de patrimonio que elijas.
   Los informes del año siguen mostrando el resultado normalmente.</p>
 
@@ -48,7 +48,7 @@
   </form>
 {% endif %}
 
-<p class="ayuda">Después del cierre, al comenzar el nuevo año puedes registrar un traspaso del resultado a
+<p class="ayuda">Después del cierre, al comenzar el nuevo año puedes registrar un asiento que traspase el resultado a
   utilidades o pérdidas acumuladas, y cambiar el ejercicio vigente en
   <a href="{{ url_for('empresa') }}">Datos de la empresa</a>.</p>
 {% endblock %}

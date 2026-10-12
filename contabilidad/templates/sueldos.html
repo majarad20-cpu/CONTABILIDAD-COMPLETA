@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block titulo %}Sueldo empresarial{% endblock %}
+{% block contenido %}
+<h1>Sueldo empresarial</h1>
+<p class="ayuda">Remuneración que se asignan los socios que trabajan en la empresa. Se les retiene el Impuesto Único de
+  Segunda Categoría según la tabla mensual y la UTM del mes. Si el socio cotiza (AFP y salud), esas cotizaciones se
+  descuentan de la base del impuesto.</p>
+
+<form class="filtro no-imprimir" method="get">
+  <label>Mes <input type="month" name="periodo" value="{{ periodo }}" required></label>
+  <button type="submit">Ver</button>
+  <span class="espaciador"></span>
+  <a class="boton secundario" href="{{ url_for('cuentas_tributarias') }}">Cuentas tributarias</a>
+</form>
+
+<section class="caja">
+  <h2>Socios</h2>
+  {% if socios %}
+  <table>
+    <thead><tr><th>Nombre</th><th>RUT</th><th class="num">Sueldo bruto habitual</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+    {% for s in socios %}
+      {% if editar == s.id %}
+      <tr><td colspan="5">
+        <form method="post" action="{{ url_for('guardar_socio') }}" class="fila-form">
+          <input type="hidden" name="id" value="{{ s.id }}"><input type="hidden" name="periodo" value="{{ periodo }}">
+          <input name="nombre" value="{{ s.nombre }}" required aria-label="Nombre">
+          <input name="rut" value="{{ s.rut }}" required size="12" aria-label="RUT">
+          <input name="sueldo_bruto" value="{{ s.sueldo_bruto|clp }}" inputmode="numeric" size="11" aria-label="Sueldo bruto">
+          <label class="check"><input type="checkbox" name="activo" {{ 'checked' if s.activo }}> Activo</label>
+          <button type="submit">Guardar</button>
+          <a class="boton secundario" href="{{ url_for('sueldos', periodo=periodo) }}">Cancelar</a>
+        </form>
+      </td></tr>
+      {% else %}
+      <tr class="{{ 'inactiva' if not s.activo }}">
+        <td>{{ s.nombre }}</td><td>{{ s.rut }}</td><td class="num">{{ s.sueldo_bruto|clp }}</td>
+        <td>{{ 'Activo' if s.activo else 'Inactivo' }}</td>
+        <td class="acciones-fila">
+          <a href="{{ url_for('sueldos', periodo=periodo, editar=s.id) }}">Editar</a>
+          <form method="post" action="{{ url_for('eliminar_socio', socio_id=s.id) }}" style="display:inline"
+                onsubmit="return confirm('¿Eliminar a {{ s.nombre }}?')">
+            <input type="hidden" name="periodo" value="{{ periodo }}">
+            <button type="submit" class="enlace">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <form method="post" action="{{ url_for('guardar_socio') }}" class="fila-form" style="margin-top:.8rem">
+    <input type="hidden" name="periodo" value="{{ periodo }}">
+    <input name="nombre" placeholder="Nombre del socio" required>
+    <input name="rut" placeholder="RUT" required size="12">
+    <input name="sueldo_bruto" placeholder="Sueldo bruto mensual" inputmode="numeric" size="14">
+    <button type="submit" class="secundario">+ Agregar socio</button>
+  </form>
+</section>
+
+{% set activos = socios|selectattr('activo')|list %}
+<form method="post" action="{{ url_for('liquidar_sueldos') }}">
+  <input type="hidden" name="periodo" value="{{ periodo }}">
+  <h2>Liquidaciones de {{ nombre_periodo(periodo) }}</h2>
+  <div class="filtro">
+    <label>UTM de {{ nombre_periodo(periodo) }}
+      <input name="utm" value="{{ utm_mes|clp if utm_mes }}" inputmode="numeric" size="9" placeholder="Ej. 72.151"></label>
+    <span class="ayuda">Valor oficial del SII. Las de 2026 ya vienen cargadas; si falta un mes, ingrésalo aquí.</span>
+  </div>
+  {% if activos or liquidaciones %}
+  <div class="desplazable">
+  <table class="tabla-liquidaciones">
+    <thead><tr><th></th><th>Socio</th><th class="num">Sueldo bruto</th><th class="num">AFP</th><th class="num">Salud</th>
+      <th class="num">Base imponible</th><th class="num">Impuesto único</th><th class="num">Líquido</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+    {% for s in socios if s.activo or s.id in liquidaciones %}
+      {% set l = liquidaciones.get(s.id) %}
+      <tr>
+        {% if l and l.asiento_id %}
+          <td></td><td>{{ s.nombre }}</td><td class="num">{{ l.bruto|clp }}</td><td class="num">{{ l.afp|clp if l.afp }}</td>
+          <td class="num">{{ l.salud|clp if l.salud }}</td>
+        {% else %}
+          <td><input type="checkbox" name="incluir" value="{{ s.id }}" checked aria-label="Incluir a {{ s.nombre }}"></td>
+          <td>{{ s.nombre }}</td>
+          <td class="num"><input name="bruto_{{ s.id }}" value="{{ (l.bruto if l else s.sueldo_bruto)|clp }}" class="monto" inputmode="numeric" size="11" aria-label="Sueldo bruto de {{ s.nombre }}"></td>
+          <td class="num"><input name="afp_{{ s.id }}" value="{{ l.afp|clp if l and l.afp }}" class="monto" inputmode="numeric" size="8" aria-label="AFP de {{ s.nombre }}"></td>
+          <td class="num"><input name="salud_{{ s.id }}" value="{{ l.salud|clp if l and l.salud }}" class="monto" inputmode="numeric" size="8" aria-label="Salud de {{ s.nombre }}"></td>
+        {% endif %}
+        <td class="num">{{ l.base|clp if l }}</td>
+        <td class="num">{{ l.impuesto_unico|clp if l }}</td>
+        <td class="num"><strong>{{ l.liquido|clp if l }}</strong></td>
+        <td>{% if l and l.asiento_id %}<a href="{{ url_for('ver_asiento', asiento_id=l.asiento_id) }}">{{ comprobante(l.asiento_tipo, l.asiento_numero) }}</a>
+            {% elif l %}<span class="etiqueta etiqueta-pendiente">pendiente</span>{% else %}<span class="ayuda">sin calcular</span>{% endif %}</td>
+        <td>{% if l and not l.asiento_id %}<button type="submit" class="enlace" formaction="{{ url_for('eliminar_liquidacion', liquidacion_id=l.id) }}"
+              onclick="return confirm('¿Eliminar la liquidación de {{ s.nombre }}?')">Eliminar</button>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div class="acciones">
+    <button type="submit">Calcular y guardar liquidaciones</button>
+    {% if liquidaciones.values()|rejectattr('asiento_id')|list %}
+      <a class="boton" href="{{ url_for('contabilizar_sueldos', periodo=periodo) }}">Contabilizar sueldos del mes</a>
+    {% endif %}
+  </div>
+  <p class="ayuda">Base imponible = sueldo bruto − AFP − salud. Impuesto único según la tabla mensual vigente (exento
+    hasta 13,5 UTM). «Contabilizar» abre la propuesta del asiento para revisarla antes de guardar.</p>
+  {% else %}
+  <p class="vacio">Agrega un socio para calcular su sueldo empresarial.</p>
+  {% endif %}
+</form>
+{% endblock %}

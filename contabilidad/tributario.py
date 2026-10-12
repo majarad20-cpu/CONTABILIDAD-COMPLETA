@@ -15,6 +15,7 @@ import re
 import unicodedata
 from collections import defaultdict
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 
 from .nucleo import MESES, ErrorValidacion, formatear_rut, libro_mayor, nombre_periodo, obtener_cuenta
 
@@ -38,7 +39,7 @@ IMPORTACIONES = {914}
 # Documentos que el SII informa resumidos por mes (no vienen en el CSV de detalle)
 TIPOS_RESUMEN = {39: "Boleta electrónica", 41: "Boleta exenta electrónica",
                  48: "Comprobante de pago electrónico", 35: "Boleta (papel)", 38: "Boleta exenta (papel)"}
-RUT_CONSUMIDOR_FINAL = "66.666.666-6"
+RUT_CONSUMIDOR_FINAL = "66.666.666-6"  # solo si la empresa aún no tiene RUT registrado
 TASA_IVA = 0.19
 
 
@@ -60,6 +61,12 @@ def validar_periodo(periodo):
 def periodo_anterior(periodo):
     anio, mes = int(periodo[:4]), int(periodo[5:])
     return f"{anio - 1}-12" if mes == 1 else f"{anio}-{mes - 1:02d}"
+
+
+def periodo_siguiente(periodo):
+    """Mes en que se presenta el F29 del período (el mes siguiente)."""
+    anio, mes = int(periodo[:4]), int(periodo[5:])
+    return f"{anio + 1}-01" if mes == 12 else f"{anio}-{mes + 1:02d}"
 
 
 def ultimo_dia(periodo):
@@ -261,6 +268,15 @@ CONCEPTOS = {
     "ventas_boletas": ("Ventas con boleta y comprobantes de pago: cuenta del total (caja, banco o clientes)",
                        ("ACTIVO",), (r"^clientes", r"deudores por ventas?", r"^caja")),
     "remanente_iva": ("Remanente de crédito fiscal (F29)", ("ACTIVO",), (r"remanente",)),
+    "sueldo_empresarial": ("Sueldo empresarial (gasto)", ("GASTO",), (r"sueldo empresarial", r"remuneraciones")),
+    "pago_sueldos": ("Sueldo empresarial: cuenta del líquido (banco o remuneraciones por pagar)", ("ACTIVO", "PASIVO"),
+                     (r"^banco", r"remuneraciones por pagar")),
+    "afp_por_pagar": ("Sueldo empresarial: AFP por pagar", ("PASIVO",), (r"afp", r"cotizaciones previsionales")),
+    "salud_por_pagar": ("Sueldo empresarial: salud por pagar (Fonasa o isapre)", ("PASIVO",),
+                        (r"fonasa", r"isapre", r"salud", r"cotizaciones previsionales")),
+    "honorarios_gasto": ("Honorarios (gasto)", ("GASTO",), (r"^honorarios",)),
+    "honorarios_pago": ("Honorarios: cuenta del líquido (banco u honorarios por pagar)", ("ACTIVO", "PASIVO"),
+                        (r"^honorarios por pagar", r"^banco")),
     "retencion_honorarios": ("Retención de honorarios por pagar (F29)", ("PASIVO",),
                              (r"retenci[oó]n.*(honorario|2da|segunda)",)),
     "impuesto_unico": ("Impuesto único por pagar (F29)", ("PASIVO",), (r"imp(uesto|to\.?) [uú]nico",)),
@@ -269,6 +285,8 @@ CONCEPTOS_COMPRA = ("compras_neto", "compras_activo_fijo", "iva_credito", "compr
 CONCEPTOS_VENTA = ("ventas_neto", "ventas_exento", "iva_debito", "ventas_otros_impuestos", "clientes",
                    "ventas_boletas")
 CONCEPTOS_F29 = ("remanente_iva", "retencion_honorarios", "impuesto_unico")
+CONCEPTOS_REMUNERACIONES = ("sueldo_empresarial", "pago_sueldos", "afp_por_pagar", "salud_por_pagar",
+                            "honorarios_gasto", "honorarios_pago")
 
 
 def _sugerir(cuentas, concepto):
@@ -384,6 +402,13 @@ def totales_rcv(documentos):
     return dict(t)
 
 
+def rut_emisor(conn, empresa_id):
+    """RUT con que se registran los resúmenes de boletas: el de la propia empresa,
+    que es quien las emite (o el genérico si la empresa aún no tiene RUT)."""
+    rut = conn.execute("SELECT rut FROM empresas WHERE id = ?", (empresa_id,)).fetchone()[0]
+    return rut or RUT_CONSUMIDOR_FINAL
+
+
 def registrar_resumen_ventas(conn, empresa_id, periodo, tipo_doc, cantidad, total, exento=0, neto=None, iva=None):
     """Registra (o reemplaza) el resumen mensual de boletas o comprobantes de
     pago electrónico de un tipo. Si no se indican neto e IVA, se calculan
@@ -411,20 +436,98 @@ def registrar_resumen_ventas(conn, empresa_id, periodo, tipo_doc, cantidad, tota
     folio = f"RESUMEN {periodo}"
     existente = conn.execute(
         "SELECT id, asiento_id FROM rcv_documentos WHERE empresa_id = ? AND registro = 'VENTA' AND tipo_doc = ? "
-        "AND rut = ? AND folio = ?", (empresa_id, tipo_doc, RUT_CONSUMIDOR_FINAL, folio)).fetchone()
+        "AND folio = ?", (empresa_id, tipo_doc, folio)).fetchone()
     if existente and existente["asiento_id"] is not None:
         raise ErrorValidacion(f"El resumen de {TIPOS_RESUMEN[tipo_doc].lower()} de {nombre_periodo(periodo)} ya "
                               "está centralizado; elimina primero el asiento de centralización para cambiarlo.")
     with conn:
         if existente:
-            conn.execute("UPDATE rcv_documentos SET cantidad = ?, exento = ?, neto = ?, iva = ?, total = ? WHERE id = ?",
-                         (cantidad, exento, neto, iva, total, existente["id"]))
+            conn.execute("UPDATE rcv_documentos SET cantidad = ?, exento = ?, neto = ?, iva = ?, total = ?, rut = ? "
+                         "WHERE id = ?", (cantidad, exento, neto, iva, total, rut_emisor(conn, empresa_id),
+                                          existente["id"]))
             return existente["id"]
         return conn.execute(
             """INSERT INTO rcv_documentos (empresa_id, registro, periodo, tipo_doc, folio, fecha, rut, razon_social,
                exento, neto, iva, total, cantidad) VALUES (?, 'VENTA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (empresa_id, periodo, tipo_doc, folio, ultimo_dia(periodo), RUT_CONSUMIDOR_FINAL,
+            (empresa_id, periodo, tipo_doc, folio, ultimo_dia(periodo), rut_emisor(conn, empresa_id),
              f"Resumen {TIPOS_RESUMEN[tipo_doc].lower()}", exento, neto, iva, total, cantidad)).lastrowid
+
+
+def guardar_documento(conn, empresa_id, periodo, datos, documento_id=None):
+    """Crea o modifica un documento del RCV a mano. `datos` trae registro,
+    tipo_doc, folio, fecha, rut, razon_social, montos (enteros), activo_fijo,
+    cantidad y cuenta_id. El total se calcula como la suma de los montos.
+    Devuelve el id del documento."""
+    from .nucleo import parse_fecha, validar_rut
+
+    validar_periodo(periodo)
+    actual = None
+    if documento_id is not None:
+        actual = conn.execute("SELECT * FROM rcv_documentos WHERE id = ? AND empresa_id = ?",
+                              (documento_id, empresa_id)).fetchone()
+        if actual is None:
+            raise ErrorValidacion("El documento no existe.")
+        if actual["asiento_id"] is not None:
+            raise ErrorValidacion("El documento ya está centralizado; elimina primero el asiento de "
+                                  "centralización para poder modificarlo.")
+    registro = actual["registro"] if actual else datos.get("registro")
+    if registro not in ("COMPRA", "VENTA"):
+        raise ErrorValidacion("Indica si el documento es una compra o una venta.")
+    try:
+        tipo_doc = int(datos.get("tipo_doc") or 0)
+    except (TypeError, ValueError):
+        tipo_doc = 0
+    if not 1 <= tipo_doc <= 999:
+        raise ErrorValidacion("Selecciona el tipo de documento.")
+    folio = str(datos.get("folio") or "").strip()
+    if not folio:
+        raise ErrorValidacion("El folio es obligatorio.")
+    fecha = parse_fecha(datos.get("fecha")).isoformat()
+    rut = str(datos.get("rut") or "").strip()
+    if not validar_rut(rut):
+        raise ErrorValidacion("El RUT no es válido (revisa el dígito verificador).")
+    rut = formatear_rut(rut)
+    razon_social = str(datos.get("razon_social") or "").strip()
+    if not razon_social:
+        raise ErrorValidacion("La razón social es obligatoria.")
+    montos = {}
+    for campo in ("exento", "neto", "iva", "iva_no_recuperable", "otros_impuestos"):
+        valor = datos.get(campo) or 0
+        if not isinstance(valor, int) or valor < 0:
+            raise ErrorValidacion("Los montos deben ser pesos enteros, sin decimales ni signo negativo.")
+        montos[campo] = valor
+    if registro == "VENTA":
+        montos["iva_no_recuperable"] = 0
+    total = sum(montos.values())
+    if total <= 0:
+        raise ErrorValidacion("El documento debe tener algún monto.")
+    try:
+        cantidad = max(int(datos.get("cantidad") or 1), 1)
+    except (TypeError, ValueError):
+        raise ErrorValidacion("La cantidad debe ser un número entero.") from None
+    activo_fijo = int(bool(datos.get("activo_fijo"))) if registro == "COMPRA" else 0
+    cuenta_id = datos.get("cuenta_id") or None
+    if cuenta_id and obtener_cuenta(conn, empresa_id, cuenta_id) is None:
+        raise ErrorValidacion("La cuenta seleccionada no existe.")
+
+    repetido = conn.execute(
+        "SELECT id FROM rcv_documentos WHERE empresa_id = ? AND registro = ? AND tipo_doc = ? AND rut = ? "
+        "AND folio = ? AND id IS NOT ?", (empresa_id, registro, tipo_doc, rut, folio, documento_id)).fetchone()
+    if repetido:
+        raise ErrorValidacion(f"Ya existe {nombre_tipo(tipo_doc).lower()} folio {folio} del RUT {rut}.")
+
+    valores = {"periodo": periodo if actual is None else actual["periodo"], "tipo_doc": tipo_doc, "folio": folio,
+               "fecha": fecha, "rut": rut, "razon_social": razon_social, **montos, "total": total,
+               "activo_fijo": activo_fijo, "cantidad": cantidad, "cuenta_id": cuenta_id}
+    with conn:
+        if actual is None:
+            columnas = ["empresa_id", "registro", *valores]
+            return conn.execute(
+                f"INSERT INTO rcv_documentos ({', '.join(columnas)}) VALUES ({', '.join('?' * len(columnas))})",
+                [empresa_id, registro, *valores.values()]).lastrowid
+        conn.execute(f"UPDATE rcv_documentos SET {', '.join(f'{k} = ?' for k in valores)} WHERE id = ?",
+                     [*valores.values(), documento_id])
+        return documento_id
 
 
 def asignar_cuentas(conn, empresa_id, asignacion, recordar=True):
@@ -571,17 +674,42 @@ def valores_iniciales_f29(conn, empresa_id, periodo):
     anterior = periodo_anterior(periodo)
     previo = borrador_guardado(conn, empresa_id, anterior)
     if previo:
+        from .remuneraciones import utm
         return {"remanente_anterior": previo["codigos"].get("77", 0),
-                "utm_anterior": previo["entradas"].get("utm_actual"), "utm_actual": None,
+                "utm_anterior": previo["entradas"].get("utm_actual") or utm(conn, periodo),
+                "utm_actual": utm(conn, periodo_siguiente(periodo)),
                 "origen_remanente": f"código 77 del borrador de {nombre_periodo(anterior)}"}
+    from .remuneraciones import utm
     cuenta = cuentas_tributarias(conn, empresa_id)["remanente_iva"]
     remanente = 0
     if cuenta:
         m = libro_mayor(conn, empresa_id, cuenta, f"{anterior}-01", ultimo_dia(anterior))
         remanente = max(m["saldo_final"], 0) if m else 0
-    return {"remanente_anterior": remanente, "utm_anterior": None, "utm_actual": None,
+    return {"remanente_anterior": remanente, "utm_anterior": utm(conn, periodo),
+            "utm_actual": utm(conn, periodo_siguiente(periodo)),
             "origen_remanente": f"saldo contable de la cuenta de remanente al {ultimo_dia(anterior)[8:]}/"
                                 f"{anterior[5:]}/{anterior[:4]}"}
+
+
+def reajustar_remanente(remanente, utm_presentacion_anterior):
+    """Remanente expresado en UTM con dos decimales, como lo hace el SII: el
+    remanente (código 77) se divide por la UTM del mes en que se presentó el
+    F29 anterior y se deja con dos decimales, aproximando desde 5 (0,255 →
+    0,26; 0,2533 → 0,25). Ese número de UTM se multiplica luego por la UTM del
+    mes en que se presenta el nuevo F29 (ver `pesos_desde_utm`).
+
+    Ejemplo real: 18.165 / 71.721 (sept. 2026) = 0,2533 → 0,25 UTM;
+    0,25 × 72.151 (oct. 2026) = 18.037,75 → 18.038, igual que la propuesta del SII."""
+    return float(_aproximar(Decimal(remanente) / Decimal(str(utm_presentacion_anterior)), "0.01"))
+
+
+def pesos_desde_utm(cantidad_utm, utm):
+    """Convierte UTM a pesos enteros, aproximando desde 5 (x,50 sube)."""
+    return int(_aproximar(Decimal(str(cantidad_utm)) * Decimal(str(utm)), "1"))
+
+
+def _aproximar(valor, unidad):
+    return valor.quantize(Decimal(unidad), rounding=ROUND_HALF_UP)
 
 
 def calcular_f29(conn, empresa_id, periodo, remanente_anterior=0, utm_anterior=None, utm_actual=None,
@@ -609,15 +737,27 @@ def calcular_f29(conn, empresa_id, periodo, remanente_anterior=0, utm_anterior=N
     c["538"] = c["502"] + c["111"] + c["759"] + c["513"] - c["510"]
     c["142"] = sum(signo(d["tipo_doc"]) * d["exento"] for d in ventas)
     # Créditos
-    c["519"], c["520"] = suma(compras, FACTURAS, condicion=lambda d: not d["activo_fijo"])
-    c["524"], c["525"] = suma(compras, FACTURAS, condicion=lambda d: d["activo_fijo"])
+    def sin_credito(d):
+        """Factura con todo su IVA no recuperable: no da crédito, va a «sin derecho a crédito»."""
+        return d["iva_no_recuperable"] > 0 and d["iva"] == 0
+
+    c["519"], c["520"] = suma(compras, FACTURAS, condicion=lambda d: not d["activo_fijo"] and not sin_credito(d))
+    c["524"], c["525"] = suma(compras, FACTURAS, condicion=lambda d: d["activo_fijo"] and not sin_credito(d))
+    # Compras sin derecho a crédito (informativo): afectas con IVA no recuperable y exentas o no gravadas
+    afectas_sin_credito = [d for d in compras if d["iva_no_recuperable"] > 0]
+    c["564"] = sum(d["cantidad"] for d in afectas_sin_credito)
+    c["521"] = sum(signo(d["tipo_doc"]) * d["neto"] for d in afectas_sin_credito)
+    exentas = [d for d in compras if d["exento"] > 0]
+    c["584"] = sum(d["cantidad"] for d in exentas)
+    c["562"] = sum(signo(d["tipo_doc"]) * d["exento"] for d in exentas)
     c["531"], c["532"] = suma(compras, NOTAS_DEBITO)
     c["527"], c["528"] = suma(compras, NOTAS_CREDITO)
     c["534"], c["535"] = suma(compras, IMPORTACIONES)
     remanente = int(remanente_anterior or 0)
-    reajuste = 0
+    reajuste, remanente_utm = 0, None
     if remanente and utm_anterior and utm_actual:
-        reajuste = round(remanente * float(utm_actual) / float(utm_anterior)) - remanente
+        remanente_utm = reajustar_remanente(remanente, utm_anterior)
+        reajuste = pesos_desde_utm(remanente_utm, utm_actual) - remanente
     c["504"] = remanente + reajuste
     c["537"] = c["520"] + c["525"] + c["532"] + c["535"] - c["528"] + c["504"]
     c["89"] = max(c["538"] - c["537"], 0)
@@ -649,6 +789,9 @@ def calcular_f29(conn, empresa_id, periodo, remanente_anterior=0, utm_anterior=N
         ("534", "535", "Declaraciones de ingreso (importaciones)"),
         (None, "504", "Remanente de crédito fiscal del mes anterior (reajustado)"),
         ("total", "537", "TOTAL CRÉDITOS"),
+        ("titulo", "COMPRAS SIN DERECHO A CRÉDITO (INFORMATIVO)"),
+        ("564", "521", "Compras internas afectas sin derecho a crédito (monto neto)"),
+        ("584", "562", "Compras internas exentas o no gravadas"),
         ("titulo", "IMPUESTO AL VALOR AGREGADO"),
         (None, "89", "IVA determinado (débitos − créditos)"),
         (None, "77", "Remanente de crédito fiscal para el período siguiente"),
@@ -677,6 +820,12 @@ def calcular_f29(conn, empresa_id, periodo, remanente_anterior=0, utm_anterior=N
     if cuentas.get("iva_credito"):
         debe, haber = _movimiento(conn, empresa_id, cuentas["iva_credito"], periodo, cuentas_iva)
         comparacion.append(("IVA crédito fiscal del mes", c["537"] - c["504"], debe - haber))
+    from .remuneraciones import totales_del_mes
+    modulos = totales_del_mes(conn, empresa_id, periodo)
+    if modulos["boletas"]:
+        comparacion.append(("Retención de honorarios (cód. 151)", modulos["retencion_honorarios"], c["151"]))
+    if modulos["liquidaciones"]:
+        comparacion.append(("Impuesto único sueldo empresarial (cód. 48)", modulos["impuesto_unico"], c["48"]))
     for concepto, segun_rcv, segun_contabilidad in comparacion:
         if segun_rcv != segun_contabilidad:
             alertas.append(f"{concepto}: el RCV indica ${segun_rcv:,.0f}".replace(",", ".")
@@ -688,11 +837,12 @@ def calcular_f29(conn, empresa_id, periodo, remanente_anterior=0, utm_anterior=N
     if not tasa:
         alertas.append("La tasa de PPM es 0 %. Configúrala en Tributario → Cuentas tributarias.")
     if remanente and not (utm_anterior and utm_actual):
-        alertas.append("Ingresa la UTM del mes anterior y la del mes actual para reajustar el remanente.")
+        alertas.append("Ingresa la UTM del mes en que se presentó el F29 anterior y la del mes en que se presenta "
+                       "este F29, para reajustar el remanente.")
 
     return {
         "periodo": periodo, "codigos": c, "lineas": lineas, "alertas": alertas, "comparacion": comparacion,
-        "reajuste": reajuste, "documentos": len(docs), "pendientes": len(pendientes),
+        "reajuste": reajuste, "remanente_utm": remanente_utm, "documentos": len(docs), "pendientes": len(pendientes),
         "entradas": {"remanente_anterior": remanente, "utm_anterior": utm_anterior, "utm_actual": utm_actual,
                      "tasa_ppm": tasa},
     }

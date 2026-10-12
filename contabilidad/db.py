@@ -130,6 +130,59 @@ CREATE TABLE IF NOT EXISTS f29_borradores (
     PRIMARY KEY (empresa_id, periodo)
 );
 
+-- Valor de la UTM de cada mes (común a todas las empresas)
+CREATE TABLE IF NOT EXISTS valores_utm (
+    periodo TEXT PRIMARY KEY,  -- 'AAAA-MM'
+    valor   INTEGER NOT NULL
+);
+
+-- Socios que se asignan sueldo empresarial
+CREATE TABLE IF NOT EXISTS socios (
+    id           INTEGER PRIMARY KEY,
+    empresa_id   INTEGER NOT NULL REFERENCES empresas (id) ON DELETE CASCADE,
+    nombre       TEXT NOT NULL,
+    rut          TEXT NOT NULL,
+    sueldo_bruto INTEGER NOT NULL DEFAULT 0,
+    activo       INTEGER NOT NULL DEFAULT 1,
+    UNIQUE (empresa_id, rut)
+);
+
+-- Liquidaciones mensuales de sueldo empresarial
+CREATE TABLE IF NOT EXISTS sueldos_empresariales (
+    id             INTEGER PRIMARY KEY,
+    empresa_id     INTEGER NOT NULL REFERENCES empresas (id) ON DELETE CASCADE,
+    socio_id       INTEGER NOT NULL REFERENCES socios (id) ON DELETE CASCADE,
+    periodo        TEXT NOT NULL,
+    bruto          INTEGER NOT NULL,
+    afp            INTEGER NOT NULL DEFAULT 0,
+    salud          INTEGER NOT NULL DEFAULT 0,
+    base           INTEGER NOT NULL,   -- base del impuesto único (bruto - cotizaciones)
+    utm            INTEGER NOT NULL,
+    impuesto_unico INTEGER NOT NULL,
+    liquido        INTEGER NOT NULL,
+    asiento_id     INTEGER REFERENCES asientos (id) ON DELETE SET NULL,
+    UNIQUE (socio_id, periodo)
+);
+
+-- Boletas de honorarios recibidas (BHE) y de prestación de servicios de terceros emitidas (BTE)
+CREATE TABLE IF NOT EXISTS honorarios (
+    id         INTEGER PRIMARY KEY,
+    empresa_id INTEGER NOT NULL REFERENCES empresas (id) ON DELETE CASCADE,
+    periodo    TEXT NOT NULL,
+    tipo       TEXT NOT NULL CHECK (tipo IN ('BHE', 'BTE')),
+    folio      TEXT NOT NULL,
+    fecha      TEXT NOT NULL,
+    rut        TEXT NOT NULL,
+    nombre     TEXT NOT NULL,
+    bruto      INTEGER NOT NULL,
+    tasa       REAL NOT NULL,       -- % de retención aplicado (0 si no hubo retención)
+    retencion  INTEGER NOT NULL,
+    liquido    INTEGER NOT NULL,
+    glosa      TEXT NOT NULL DEFAULT '',
+    asiento_id INTEGER REFERENCES asientos (id) ON DELETE SET NULL,
+    UNIQUE (empresa_id, tipo, rut, folio)
+);
+
 CREATE TABLE IF NOT EXISTS config (
     clave TEXT PRIMARY KEY,
     valor TEXT NOT NULL
@@ -196,6 +249,7 @@ def inicializar(conn):
         ("cuentas", "resultados_en_ocho", "INTEGER NOT NULL DEFAULT 0"),
         ("empresas", "ultimo_folio", "INTEGER NOT NULL DEFAULT 0"),
         ("empresas", "tasa_ppm", "REAL NOT NULL DEFAULT 0"),  # % de PPM sobre los ingresos del giro
+        ("empresas", "rut_representante", "TEXT NOT NULL DEFAULT ''"),
         ("rcv_documentos", "cantidad", "INTEGER NOT NULL DEFAULT 1"),
     ]
     for tabla, columna, definicion in columnas_nuevas:
@@ -203,6 +257,19 @@ def inicializar(conn):
             with conn:
                 conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {columna} {definicion}")
     with conn:
+        # Los resúmenes de boletas llevan el RUT de la empresa emisora (antes usaban el genérico 66.666.666-6)
+        conn.execute("""UPDATE rcv_documentos SET rut = (SELECT e.rut FROM empresas e WHERE e.id = empresa_id)
+                        WHERE folio LIKE 'RESUMEN %' AND rut = '66.666.666-6'
+                        AND (SELECT e.rut FROM empresas e WHERE e.id = empresa_id) <> ''""")
+        from .remuneraciones import cargar_utm_oficiales
+        cargar_utm_oficiales(conn)
+        if conn.execute("SELECT 1 FROM config WHERE clave = 'numeracion_cronologica'").fetchone() is None:
+            from .nucleo import renumerar
+            for empresa_id, anio in conn.execute(
+                    "SELECT DISTINCT empresa_id, substr(fecha, 1, 4) FROM asientos").fetchall():
+                renumerar(conn, empresa_id, anio)
+            conn.execute("UPDATE asientos SET tipo = 'TRASPASO' WHERE tipo <> 'TRASPASO'")
+            conn.execute("INSERT INTO config (clave, valor) VALUES ('numeracion_cronologica', '1')")
         if conn.execute("SELECT COUNT(*) FROM empresas").fetchone()[0] == 0:
             empresa_id = conn.execute(
                 "INSERT INTO empresas (ejercicio) VALUES (?)", (date.today().year,)

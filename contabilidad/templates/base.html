@@ -28,11 +28,13 @@
       <a href="{{ url_for('inicio') }}" class="{{ 'activo' if ep == 'inicio' }}">Inicio</a>
       <span class="seccion">Registro</span>
       {% set editando = ep in ('editar_asiento', 'eliminar_asiento') and request.view_args %}
-      <a href="{{ url_for('editar_asiento') }}" class="{{ 'activo' if ep == 'editar_asiento' and not editando }}">+ Nuevo comprobante</a>
-      <a href="{{ url_for('asientos') }}" class="{{ 'activo' if ep in ('asientos', 'ver_asiento') or editando }}">Comprobantes</a>
+      <a href="{{ url_for('editar_asiento') }}" class="{{ 'activo' if ep == 'editar_asiento' and not editando }}">+ Nuevo asiento</a>
+      <a href="{{ url_for('asientos') }}" class="{{ 'activo' if ep in ('asientos', 'ver_asiento') or editando }}">Asientos</a>
       <a href="{{ url_for('cuentas') }}" class="{{ 'activo' if ep in ('cuentas', 'editar_cuenta') }}">Plan de cuentas</a>
       <span class="seccion">Tributario</span>
       <a href="{{ url_for('rcv') }}" class="{{ 'activo' if ep in ('rcv', 'centralizar_rcv') }}">Compras y ventas (RCV)</a>
+      <a href="{{ url_for('sueldos') }}" class="{{ 'activo' if ep in ('sueldos', 'contabilizar_sueldos') }}">Sueldo empresarial</a>
+      <a href="{{ url_for('honorarios') }}" class="{{ 'activo' if ep in ('honorarios', 'contabilizar_honorarios') }}">Honorarios</a>
       <a href="{{ url_for('f29') }}" class="{{ 'activo' if ep == 'f29' }}">Borrador F29</a>
       <a href="{{ url_for('cuentas_tributarias') }}" class="{{ 'activo' if ep == 'cuentas_tributarias' }}">Cuentas tributarias</a>
       <span class="seccion">Libros</span>

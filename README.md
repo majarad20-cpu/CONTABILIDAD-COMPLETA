@@ -8,6 +8,36 @@ Funciona en tu PC y se usa desde el navegador. Los datos quedan en un archivo lo
 Haz doble clic en **`iniciar.bat`**. La primera vez instala lo necesario (requiere Python 3.10 o superior).
 Después se abre el navegador en http://127.0.0.1:5000. Para detener el programa, cierra la ventana negra.
 
+## Versión portable (pendrive)
+
+Para llevar el programa a cualquier PC con Windows 10 u 11, sin instalar Python ni tener internet:
+
+```
+.venv\Scripts\python.exe crear_portable.py E:\Contabilidad
+```
+
+(cambia `E:` por la letra del pendrive; sin destino, se arma en `dist\Contabilidad`). La carpeta pesa unos 52 MB y
+trae su propio Python. En el otro PC basta con doble clic en **Abrir Contabilidad.bat**; para cerrar, se cierra la
+ventana negra. Si se hace doble clic otra vez con el programa abierto, solo se muestra el navegador.
+
+- Los datos viajan en la carpeta `datos` del pendrive. Se copian desde este PC **solo la primera vez**.
+- Para actualizar el programa del pendrive, se vuelve a ejecutar el mismo comando: reemplaza `python` y
+  `programa`, y **nunca toca** la carpeta `datos`.
+- Desde que se usa el pendrive, ese es el lugar de trabajo: los datos de este PC ya no se actualizan solos.
+- Conviene respaldar la carpeta `datos` del pendrive de vez en cuando (perder el pendrive es perder los datos).
+
+## Versión en línea (artefacto de Claude)
+
+`artefacto/contabilidad.html` es una versión del programa que funciona como artefacto de Claude
+(https://claude.ai/artifact/QS67HRARtFdqVpfFghd92y): se abre desde cualquier navegador con la cuenta de Claude y
+guarda los datos en el artefacto. Incluye empresas, plan de cuentas, asientos con correlativo anual, Libro Diario,
+Libro Mayor, Balance de 8 columnas, Estado de Resultados y Balance General, con descarga en CSV. Los cálculos son
+los mismos del programa local.
+
+Para llevar una empresa: en este programa, **Respaldos → Descargar para la versión en línea** genera un `.json`;
+en el artefacto, **Empresas e importación** lo importa después de mostrar un resumen. Los datos de ambas versiones
+son independientes: lo que se registra en una no aparece en la otra.
+
 ## Probarlo desde GitHub (Codespaces)
 
 Sin instalar nada en el PC:
@@ -34,13 +64,13 @@ gastar las horas gratuitas del mes. Si lo eliminas, se borra lo que hayas regist
 1. Revisa el **plan de cuentas**. Cada cuenta tiene un tipo (activo, pasivo, patrimonio, ingreso o gasto),
    que define en qué informe aparece. Puedes agregar subcuentas, renombrar o desactivar cuentas.
 2. Registra el **asiento de apertura** con los saldos iniciales (caja, banco, capital…).
-3. Registra tus operaciones con comprobantes de **Ingreso**, **Egreso** o **Traspaso**.
+3. Registra tus operaciones con **+ Nuevo asiento**.
 
 ## Funciones
 
 | Módulo | Detalle |
 |---|---|
-| Comprobantes | Numeración correlativa por tipo y año (I-1, E-1, T-1…), validación de cuadre, edición y búsqueda |
+| Asientos | Numeración correlativa por fecha que se reinicia cada año: un asiento ingresado hacia el pasado toma su lugar y los siguientes se corren; al eliminar no quedan saltos. Validación de cuadre, edición y búsqueda |
 | Libro Diario | Por período, exportable a CSV |
 | Libro Mayor | Por cuenta, con saldo inicial y saldo acumulado; exportable a CSV |
 | Balance de 8 columnas | Sumas, saldos, inventario y resultados con sumas iguales; exportable a CSV |
@@ -111,6 +141,10 @@ de honorarios e impuesto único). Aquí también va la **tasa de PPM**. Las cuen
    UTF-8 o Latin-1 y no duplica documentos ya cargados.
 3. Revisa los documentos. Si un documento debe ir a otra cuenta (por ejemplo, la factura del contador a
    Servicios contables), elígela: el programa la **recuerda para ese RUT** en los meses siguientes.
+   Para **corregir un documento** (folio, fecha, RUT, montos, cuenta…), pulsa **✎** o haz doble clic en su fila:
+   se abre una ventana para editarlo o eliminarlo. Con **+ Agregar compra** o **+ Agregar venta** ingresas a mano
+   documentos que no vinieron en el CSV. El total se calcula como la suma de los montos. Los documentos ya
+   centralizados solo se pueden ver; para modificarlos, elimina primero el asiento de centralización.
 4. **Centralizar compras** o **Centralizar ventas** abre la propuesta del asiento en el formulario de
    comprobante, sin guardar nada todavía. Al guardar, los documentos quedan marcados como centralizados. Si se
    elimina el asiento, vuelven a quedar pendientes.
@@ -129,16 +163,50 @@ boletas de papel 35 y 38. Si los ingresas a mano, el neto y el IVA se calculan d
 reemplaza. El total de estos resúmenes se centraliza en su propia cuenta (*Cuentas tributarias → Ventas con boleta
 y comprobantes de pago*), por ejemplo Caja o Banco.
 
+**Exportar el RCV del mes** (botones PDF, Excel y CSV en la página del RCV): incluye el registro de compras y el
+de ventas, documento por documento y con totales (las notas de crédito en negativo), y los **asientos contables
+del mes**. Son los asientos de centralización registrados y, si quedan documentos pendientes, la propuesta de su
+asiento, marcada como «no registrada». En el PDF, cada asiento se mantiene completo en una misma página. Los
+resúmenes de boletas y comprobantes de pago llevan el **RUT de la empresa emisora**.
+
 Reglas de la centralización: las notas de crédito restan; las compras con monto de activo fijo van a la cuenta de
 activo fijo; el IVA no recuperable se suma al costo; los impuestos adicionales (por ejemplo, el específico de
 combustibles) van a su cuenta. La glosa sigue el formato «CENTRALIZACIÓN COMPRAS MAYO 2026».
 
 **Borrador F29**: calcula débitos y créditos desde el RCV del mes, con cantidades por tipo de documento. Suma el
-remanente del mes anterior reajustado por la variación de la UTM, y calcula el PPM con la tasa de la empresa.
+remanente del mes anterior reajustado como lo hace el SII, y calcula el PPM con la tasa de la empresa. El
+reajuste divide el remanente (código 77 del F29 anterior) por la UTM del mes en que se presentó ese F29, lo deja
+en UTM con dos decimales, aproximando desde 5 (0,255 → 0,26; 0,2533 → 0,25), y lo multiplica por la UTM del mes en
+que se presenta el nuevo F29. El resultado en pesos también se aproxima desde 5. Por ejemplo:
+$18.165 ÷ 71.721 = 0,25 UTM × 72.151 = $18.038.
+Muestra además, como información, las **compras sin derecho a crédito**: afectas con IVA no recuperable
+(códigos 564 y 521) y exentas o no gravadas (584 y 562). En el PDF y el Excel, el **total a pagar** va destacado
+y al final hay un recuadro con el total a pagar y el remanente para el período siguiente.
 Las retenciones de honorarios y el impuesto único salen de los abonos del mes a sus cuentas. **Compara el IVA
 del RCV con el contabilizado** y avisa las diferencias, los documentos sin centralizar o los datos faltantes. Al
 **guardar el borrador**, su remanente (código 77) se propone como remanente anterior del mes siguiente. Se
 exporta a PDF y Excel. Es un borrador referencial: verifica siempre con la propuesta del SII.
+
+## Sueldo empresarial y honorarios
+
+**Sueldo empresarial** (*Tributario → Sueldo empresarial*):
+- Registra a los socios que se asignan sueldo, con su RUT y su sueldo bruto habitual.
+- Cada mes, el programa calcula la liquidación de cada socio: base (bruto menos AFP y salud, si cotiza),
+  **Impuesto Único de Segunda Categoría** según la tabla mensual y la **UTM del mes**, y líquido.
+- **Contabilizar sueldos del mes** abre la propuesta del asiento (Sueldo empresarial / Impuesto único por pagar /
+  Banco, o las cuentas que configures) para revisarla antes de guardar. La glosa es «SUELDO EMPRESARIAL ENERO 2026».
+
+**Honorarios** (*Tributario → Honorarios*):
+- Registra las boletas de honorarios recibidas (BHE) y las boletas de prestación de servicios de terceros emitidas
+  (BTE).
+- Puedes ingresar el monto **bruto o líquido**. La retención se calcula con la tasa del año de la boleta (15,25 % en
+  2026; 16 % en 2027; 17 % desde 2028). También acepta boletas sin retención.
+- **Contabilizar honorarios del mes** abre la propuesta del asiento (Honorarios / Retención 2ª categoría / Banco).
+
+Las cuentas se configuran en *Cuentas tributarias → Sueldo empresarial y honorarios*. Las UTM oficiales de 2026
+vienen cargadas; si falta un mes, se ingresa en la página de sueldos y también se usa en el borrador F29. El
+**borrador F29** compara la retención de honorarios (código 151) y el impuesto único (código 48) con lo registrado en
+estos módulos.
 
 ## Apertura de ejercicio automática
 

@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from contabilidad import create_app, db, importar_creandogestion, nucleo
+from contabilidad import create_app, db, exportacion, importar_creandogestion, nucleo
 from contabilidad.nucleo import ErrorValidacion
 
 
@@ -81,13 +81,46 @@ class PruebasAsientos(BaseConDatos):
         with self.assertRaises(ErrorValidacion):
             self.asiento("TRASPASO", "2026-01-01", "x", ("1.1", 100, 0), ("3.1.01", 0, 100))
 
-    def test_numeracion_por_tipo_y_anio(self):
-        a = self.asiento("INGRESO", "2026-01-05", "a", ("1.1.01", 1, 0), ("4.1.01", 0, 1))
-        b = self.asiento("INGRESO", "2026-01-06", "b", ("1.1.01", 1, 0), ("4.1.01", 0, 1))
-        c = self.asiento("EGRESO", "2026-01-06", "c", ("5.2.12", 1, 0), ("1.1.01", 0, 1))
-        d = self.asiento("INGRESO", "2027-01-01", "d", ("1.1.01", 1, 0), ("4.1.01", 0, 1))
-        numeros = [nucleo.obtener_asiento(self.conn, self.emp, i)["asiento"]["numero"] for i in (a, b, c, d)]
-        self.assertEqual(numeros, [1, 2, 1, 1])
+    def numeros(self):
+        return [(a["fecha"], a["glosa"], a["numero"]) for a in
+                self.conn.execute("SELECT fecha, glosa, numero FROM asientos ORDER BY fecha, numero")]
+
+    def test_correlativo_cronologico_por_anio(self):
+        mov = (("1.1.01", 1, 0), ("4.1.01", 0, 1))
+        self.asiento("TRASPASO", "2026-01-05", "a", *mov)
+        self.asiento("INGRESO", "2026-01-20", "b", *mov)
+        self.asiento("EGRESO", "2026-02-01", "c", *mov)  # el tipo ya no separa la numeración
+        self.asiento("TRASPASO", "2027-01-03", "d", *mov)  # cada año parte en 1
+        self.assertEqual([n for _, _, n in self.numeros()], [1, 2, 3, 1])
+        # Un asiento hacia el pasado toma su lugar y los posteriores se corren
+        nuevo = self.asiento("TRASPASO", "2026-01-10", "nuevo", *mov)
+        self.assertEqual([(g, n) for _, g, n in self.numeros()],
+                         [("a", 1), ("nuevo", 2), ("b", 3), ("c", 4), ("d", 1)])
+        # Mover la fecha también reordena
+        datos = nucleo.obtener_asiento(self.conn, self.emp, nuevo)
+        nucleo.guardar_asiento(self.conn, self.emp, "TRASPASO", "2026-03-01", "nuevo",
+                               [dict(l) for l in datos["lineas"]], asiento_id=nuevo)
+        self.assertEqual([(g, n) for _, g, n in self.numeros()],
+                         [("a", 1), ("b", 2), ("c", 3), ("nuevo", 4), ("d", 1)])
+        # Al eliminar no quedan saltos
+        primero = self.conn.execute("SELECT id FROM asientos WHERE glosa = 'a'").fetchone()[0]
+        nucleo.eliminar_asiento(self.conn, self.emp, primero)
+        self.assertEqual([(g, n) for _, g, n in self.numeros()], [("b", 1), ("c", 2), ("nuevo", 3), ("d", 1)])
+        # En una misma fecha, la apertura va primero
+        self.asiento("TRASPASO", "2026-01-20", "apertura", ("1.1.01", 1, 0), ("3.1.01", 0, 1), apertura=True)
+        self.assertEqual([g for _, g, _ in self.numeros()][:2], ["apertura", "b"])
+
+    def test_renumera_bases_existentes_al_iniciar(self):
+        mov = (("1.1.01", 1, 0), ("4.1.01", 0, 1))
+        self.asiento("TRASPASO", "2026-01-05", "a", *mov)
+        self.asiento("TRASPASO", "2026-01-06", "b", *mov)
+        # Simula una base antigua: numeración por tipo y sin la marca de migración
+        self.conn.execute("UPDATE asientos SET tipo = 'INGRESO', numero = 7 WHERE glosa = 'a'")
+        self.conn.execute("DELETE FROM config WHERE clave = 'numeracion_cronologica'")
+        self.conn.commit()
+        db.inicializar(self.conn)
+        self.assertEqual([(g, n) for _, g, n in self.numeros()], [("a", 1), ("b", 2)])
+        self.assertEqual(self.conn.execute("SELECT DISTINCT tipo FROM asientos").fetchall()[0][0], "TRASPASO")
 
 
 class PruebasInformes(BaseConDatos):
@@ -107,6 +140,22 @@ class PruebasInformes(BaseConDatos):
         self.assertEqual(er["total_ingresos"], 1_000_000)
         self.assertEqual(er["total_gastos"], 400_000)
         self.assertEqual(er["resultado"], 600_000)
+
+    def test_informes_solo_cuentas_con_saldo(self):
+        self.cargar_ejemplo()
+        antes = [f["codigo"] for f in nucleo.balance_general(self.conn, self.emp, "2026-12-31")["activo"]]
+        self.assertNotIn("1.1.01", antes)
+        # Caja se movió pero quedó en cero: no debe aparecer
+        self.asiento("TRASPASO", "2026-03-01", "ida", ("1.1.01", 5000, 0), ("1.1.02", 0, 5000))
+        self.asiento("TRASPASO", "2026-03-02", "vuelta", ("1.1.02", 5000, 0), ("1.1.01", 0, 5000))
+        bg = nucleo.balance_general(self.conn, self.emp, "2026-12-31")
+        er = nucleo.estado_resultados(self.conn, self.emp, "2026-01-01", "2026-12-31")
+        for filas in (bg["activo"], bg["pasivo"], bg["patrimonio"], er["ingresos"], er["gastos"]):
+            for f in filas:
+                if not f["grupo"]:
+                    self.assertNotEqual(f["monto"], 0, f)
+        self.assertEqual([f["codigo"] for f in bg["activo"]], antes)
+        self.assertEqual(bg["total_activo"], bg["total_pasivo_patrimonio"])
 
     def test_balance_general_cuadra(self):
         self.cargar_ejemplo()
@@ -250,7 +299,7 @@ class PruebasCierreDeMeses(BaseConDatos):
         self.assertIsNone(nucleo.obtener_asiento(self.conn, self.emp, self.venta))
         cambio = self.conn.execute("SELECT * FROM cambios_periodo_cerrado").fetchone()
         self.assertEqual((cambio["accion"], cambio["motivo"]), ("Eliminación", "Duplicado"))
-        self.assertIn("I-1 del 10/02/2026 · Venta factura 1", cambio["comprobante"])
+        self.assertIn("N° 2 del 10/02/2026 · Venta factura 1", cambio["comprobante"])
 
     def test_cierre_de_ejercicio_con_diciembre_cerrado(self):
         nucleo.cerrar_mes(self.conn, self.emp, 2026, 12)
@@ -655,6 +704,30 @@ class PruebasWeb(BaseConDatos):
         rut = self.conn.execute("SELECT rut FROM empresas WHERE id = ?", (self.emp,)).fetchone()[0]
         self.assertEqual(rut, "12.345.678-5")
 
+    def test_exportar_para_version_en_linea(self):
+        import json
+        self.cargar_ejemplo()
+        r = self.app.test_client().get("/respaldo/en-linea")
+        self.assertEqual(r.status_code, 200)
+        datos = json.loads(r.data)
+        self.assertEqual(datos["formato"], "contabilidad-completa/1")
+        ids = {c["id"] for c in datos["cuentas"]}
+        self.assertTrue(datos["asientos"])
+        for a in datos["asientos"]:
+            self.assertEqual(sum(l["debe"] for l in a["lineas"]), sum(l["haber"] for l in a["lineas"]))
+            self.assertTrue(all(l["cuenta"] in ids for l in a["lineas"]))
+
+    def test_rut_representante_legal(self):
+        cliente = self.app.test_client()
+        base = {"razon_social": "Mi Pyme SpA", "ejercicio": "2026", "representante": "Ana Pérez"}
+        r = cliente.post("/empresa", data=base | {"rut_representante": "12345678-9"})
+        self.assertIn("representante legal no es válido", r.get_data(as_text=True))
+        r = cliente.post("/empresa", data=base | {"rut_representante": "123456785"})
+        self.assertEqual(r.status_code, 302)
+        empresa = self.conn.execute("SELECT * FROM empresas WHERE id = ?", (self.emp,)).fetchone()
+        self.assertEqual(empresa["rut_representante"], "12.345.678-5")
+        self.assertEqual(exportacion._datos_representante(empresa), ["ANA PÉREZ", "R.U.T: 12.345.678-5"])
+
     def test_eliminar_empresa_pide_confirmacion(self):
         otra = self.nueva_empresa("Borrable SpA")
         cliente = self.app.test_client()
@@ -942,22 +1015,24 @@ class PruebasRCVyF29(BaseConDatos):
         self.assertEqual((c["503"], c["502"], c["509"], c["510"], c["538"]), (2, 285_000, 1, 19_000, 266_000))
         self.assertEqual((c["519"], c["520"], c["524"], c["525"], c["527"], c["528"]),
                          (3, 231_800, 1, 95_000, 1, 19_000))
-        self.assertEqual((f["reajuste"], c["504"], c["537"]), (200, 10_200, 318_000))
-        self.assertEqual((c["89"], c["77"]), (0, 52_000))
+        # 10.000 / 60.000 = 0,1666 -> 0,17 UTM (dos decimales, aproximando desde 5) x 61.200 = 10.404
+        self.assertEqual((f["remanente_utm"], f["reajuste"], c["504"], c["537"]), (0.17, 404, 10_404, 318_204))
+        self.assertEqual((c["89"], c["77"]), (0, 52_204))
         self.assertEqual((c["563"], c["62"]), (1_600_000, 4_000))
         self.assertEqual((c["151"], c["48"], c["91"]), (50_000, 12_000, 66_000))
         self.assertEqual(f["alertas"], [])  # todo centralizado y cuadrado
         # La página, el PDF y el guardado (el remanente pasa al mes siguiente)
         texto = cliente.get("/f29?periodo=2026-05&remanente_anterior=10.000&utm_anterior=60.000&utm_actual=61.200"
                             ).get_data(as_text=True)
-        self.assertIn("52.000", texto)
+        self.assertIn("52.204", texto)
+        self.assertIn("0,17 UTM", texto)
         self.assertIn("cuadra", texto)
         r = cliente.get("/f29?periodo=2026-05&remanente_anterior=10000&utm_anterior=60000&utm_actual=61200&formato=pdf")
         self.assertTrue(r.data.startswith(b"%PDF"))
         cliente.post("/f29", data={"periodo": "2026-05", "remanente_anterior": "10000",
                                    "utm_anterior": "60000", "utm_actual": "61200"})
         iniciales = tributario.valores_iniciales_f29(self.conn, self.emp, "2026-06")
-        self.assertEqual((iniciales["remanente_anterior"], iniciales["utm_anterior"]), (52_000, 61_200))
+        self.assertEqual((iniciales["remanente_anterior"], iniciales["utm_anterior"]), (52_204, 61_200))
         # Borrar el asiento de centralización deja los documentos pendientes otra vez
         nucleo.eliminar_asiento(self.conn, self.emp, nucleo_id)
         pendientes = self.conn.execute(
@@ -1052,6 +1127,63 @@ class PruebasRCVyF29(BaseConDatos):
         subir("resumen.csv", periodo="2026-08")  # sin RUT ni período en el nombre: usa el de la pantalla
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM rcv_documentos WHERE periodo = '2026-08'").fetchone()[0], 1)
 
+    def test_agregar_editar_y_eliminar_documentos(self):
+        from contabilidad import tributario
+        self.importar()
+        datos = {"registro": "COMPRA", "tipo_doc": 33, "folio": "9001", "fecha": "2026-05-28", "rut": "76086428-5",
+                 "razon_social": "Librería Central", "neto": 10_000, "iva": 1_900}
+        nuevo = tributario.guardar_documento(self.conn, self.emp, "2026-05", datos)
+        doc = self.conn.execute("SELECT * FROM rcv_documentos WHERE id = ?", (nuevo,)).fetchone()
+        self.assertEqual((doc["rut"], doc["total"], doc["periodo"], doc["cantidad"]), ("76.086.428-5", 11_900, "2026-05", 1))
+        # Editar folio y monto: el total se recalcula
+        tributario.guardar_documento(self.conn, self.emp, "2026-05", datos | {"folio": "9002", "neto": 20_000,
+                                                                            "iva": 3_800}, documento_id=nuevo)
+        doc = self.conn.execute("SELECT folio, neto, total FROM rcv_documentos WHERE id = ?", (nuevo,)).fetchone()
+        self.assertEqual(tuple(doc), ("9002", 20_000, 23_800))
+        # Validaciones
+        for malo, texto in (({"rut": "76086428-9"}, "RUT"), ({"folio": ""}, "folio"), ({"neto": 0, "iva": 0}, "monto"),
+                            ({"fecha": "2026-02-30"}, "Fecha"), ({"folio": "9002"}, "Ya existe")):
+            with self.subTest(malo=malo), self.assertRaises(ErrorValidacion) as e:
+                tributario.guardar_documento(self.conn, self.emp, "2026-05", datos | malo)
+            self.assertIn(texto, str(e.exception))
+        # Un documento centralizado no se edita
+        self.configurar_otros_impuestos()
+        p = tributario.propuesta_centralizacion(self.conn, self.emp, "2026-05", "COMPRA")
+        asiento = nucleo.guardar_asiento(self.conn, self.emp, "TRASPASO", p["fecha"], p["glosa"], p["lineas"])
+        tributario.marcar_centralizados(self.conn, self.emp, p["documentos"], asiento)
+        with self.assertRaises(ErrorValidacion):
+            tributario.guardar_documento(self.conn, self.emp, "2026-05", datos, documento_id=nuevo)
+        self.assertEqual(tributario.eliminar_documentos(self.conn, self.emp, [nuevo]), 0)
+
+    def test_ventana_de_documentos_por_la_web(self):
+        cliente = self.app.test_client()
+        self.importar(CSV_VENTAS)
+        texto = cliente.get("/rcv?periodo=2026-05").get_data(as_text=True)
+        self.assertIn('id="dialogo-documento"', texto)
+        self.assertIn("+ Agregar compra", texto)
+        self.assertIn('class="enlace editar-doc"', texto)
+        # Agregar una venta
+        r = cliente.post("/rcv/documento", data={"periodo": "2026-05", "registro": "VENTA", "tipo_doc": "33",
+                                                 "folio": "200", "fecha": "2026-05-31", "rut": "76.086.428-5",
+                                                 "razon_social": "Cliente Nuevo", "neto": "100.000", "iva": "19.000"})
+        self.assertEqual(r.get_json()["ok"], True)
+        nuevo = r.get_json()["id"]
+        # Error de validación: responde el mensaje para mostrarlo en la ventana
+        r = cliente.post("/rcv/documento", data={"periodo": "2026-05", "registro": "VENTA", "tipo_doc": "33",
+                                                 "folio": "201", "fecha": "2026-05-31", "rut": "76.086.428-5",
+                                                 "razon_social": "X", "neto": "12,5"})
+        self.assertEqual((r.status_code, r.get_json()["ok"]), (400, False))
+        self.assertIn("Monto inválido", r.get_json()["error"])
+        # Editar el monto
+        r = cliente.post("/rcv/documento", data={"id": nuevo, "periodo": "2026-05", "tipo_doc": "33", "folio": "200",
+                                                 "fecha": "2026-05-31", "rut": "76.086.428-5",
+                                                 "razon_social": "Cliente Nuevo", "neto": "150.000", "iva": "28.500"})
+        self.assertEqual(self.conn.execute("SELECT total FROM rcv_documentos WHERE id = ?", (nuevo,)).fetchone()[0],
+                         178_500)
+        # Eliminar
+        self.assertTrue(cliente.post(f"/rcv/documento/{nuevo}/eliminar").get_json()["ok"])
+        self.assertEqual(cliente.post(f"/rcv/documento/{nuevo}/eliminar").status_code, 400)
+
     def test_resumen_por_la_web(self):
         cliente = self.app.test_client()
         r = cliente.post("/rcv/resumen", data={"periodo": "2026-05", "tipo_doc": "48", "cantidad": "12",
@@ -1062,6 +1194,90 @@ class PruebasRCVyF29(BaseConDatos):
         r = cliente.post("/rcv/resumen", data={"periodo": "2026-05", "tipo_doc": "39", "cantidad": "1", "total": "abc"},
                          follow_redirects=True)
         self.assertIn("Monto inválido", r.get_data(as_text=True))
+
+    def test_reajuste_del_remanente_como_el_sii(self):
+        """Caso real: remanente de agosto 2026 de $18.165; el SII propone $18.038 en septiembre."""
+        from contabilidad import tributario
+        self.assertEqual(tributario.reajustar_remanente(18_165, 71_721), 0.25)  # UTM sept. 2026
+        f = tributario.calcular_f29(self.conn, self.emp, "2026-09", remanente_anterior=18_165,
+                                    utm_anterior=71_721, utm_actual=72_151)  # UTM oct. 2026
+        self.assertEqual((f["codigos"]["504"], f["reajuste"]), (18_038, -127))
+        self.assertEqual(tributario.periodo_siguiente("2026-12"), "2027-01")
+
+    def test_compras_sin_derecho_a_credito_y_total_destacado(self):
+        from openpyxl import load_workbook
+
+        from contabilidad import exportacion, tributario
+        self.importar()  # incluye una factura exenta de $40.000
+        # Factura con todo el IVA no recuperable (p. ej. compra no relacionada con el giro)
+        tributario.guardar_documento(self.conn, self.emp, "2026-05", {
+            "registro": "COMPRA", "tipo_doc": 33, "folio": "777", "fecha": "2026-05-29", "rut": "76086428-5",
+            "razon_social": "Tienda X", "neto": 100_000, "iva_no_recuperable": 19_000})
+        f = tributario.calcular_f29(self.conn, self.emp, "2026-05")
+        c = f["codigos"]
+        self.assertEqual((c["564"], c["521"]), (1, 100_000))
+        self.assertEqual((c["584"], c["562"]), (1, 40_000))
+        self.assertEqual((c["519"], c["520"]), (3, 231_800))  # la factura sin crédito no se cuenta aquí
+        self.assertIn(("564", "521", "Compras internas afectas sin derecho a crédito (monto neto)"), f["lineas"])
+        # Exportación: total a pagar destacado y recuadro final
+        inf = exportacion.informe_f29(f)
+        self.assertEqual(inf.recuadro[0], ("TOTAL A PAGAR (código 91)", c["91"]))
+        self.assertEqual([x.estilo for x in inf.filas if x.valores[0] == "91"], ["destacado"])
+        empresa = self.conn.execute("SELECT * FROM empresas WHERE id = ?", (self.emp,)).fetchone()
+        contador = nucleo.obtener_contador(self.conn)
+        pdf, paginas = exportacion.a_pdf(inf, empresa, contador)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+        hoja = load_workbook(io.BytesIO(exportacion.a_excel(inf, empresa, contador))).active
+        textos = [celda.value for fila in hoja.iter_rows() for celda in fila if isinstance(celda.value, str)]
+        self.assertIn("TOTAL A PAGAR (código 91)", textos)
+        self.assertIn("COMPRAS SIN DERECHO A CRÉDITO (INFORMATIVO)", textos)
+
+    def test_exportar_rcv_con_asientos(self):
+        from contabilidad import tributario
+        cliente = self.app.test_client()
+        cliente.post("/empresa", data={"razon_social": "Pyme Ejemplo SpA", "rut": "76086428-5", "ejercicio": "2026"})
+        self.importar()
+        self.importar(CSV_VENTAS)
+        tributario.registrar_resumen_ventas(self.conn, self.emp, "2026-05", 39, 17, 168_500, neto=141_598, iva=26_902)
+        self.configurar_otros_impuestos()
+        # Compras centralizadas; ventas pendientes (irán como propuesta)
+        p = tributario.propuesta_centralizacion(self.conn, self.emp, "2026-05", "COMPRA")
+        asiento = nucleo.guardar_asiento(self.conn, self.emp, "TRASPASO", p["fecha"], p["glosa"], p["lineas"])
+        tributario.marcar_centralizados(self.conn, self.emp, p["documentos"], asiento)
+        r = cliente.get("/rcv?periodo=2026-05&formato=csv")
+        self.assertIn("pyme_ejemplo_spa_rcv_2026-05.csv", r.headers["Content-Disposition"])
+        texto = r.data.decode("utf-8-sig")
+        self.assertIn("Compra;61;Nota de crédito electrónica;55;1;2026-05-20;76.999.888-7;Proveedor Uno;0;-100000;-19000", texto)
+        self.assertIn("ASIENTOS CONTABLES", texto)
+        self.assertIn("1;2026-05-31;CENTRALIZACIÓN COMPRAS MAYO 2026;registrado;2.1.01;Proveedores;0;1973300", texto)
+        self.assertIn("Propuesta;2026-05-31;CENTRALIZACIÓN VENTAS MAYO 2026;NO REGISTRADA", texto)
+        # La boleta lleva el RUT de la empresa emisora
+        self.assertIn("Venta;39;Boleta electrónica;RESUMEN 2026-05;17;2026-05-31;76.086.428-5", texto)
+        for formato, firma in (("pdf", b"%PDF"), ("xlsx", b"PK")):
+            with self.subTest(formato=formato):
+                r = cliente.get(f"/rcv?periodo=2026-05&formato={formato}")
+                self.assertTrue(r.data.startswith(firma))
+        self.assertIn("Descargar en PDF", cliente.get("/rcv?periodo=2026-05").get_data(as_text=True))
+
+    def test_resumenes_antiguos_toman_el_rut_de_la_empresa(self):
+        from contabilidad import tributario
+        tributario.registrar_resumen_ventas(self.conn, self.emp, "2026-05", 39, 1, 1190)  # empresa sin RUT aún
+        self.assertEqual(self.conn.execute("SELECT rut FROM rcv_documentos").fetchone()[0], "66.666.666-6")
+        self.conn.execute("UPDATE empresas SET rut = '76.086.428-5'")
+        self.conn.commit()
+        db.inicializar(self.conn)  # al iniciar el programa se corrigen
+        self.assertEqual(self.conn.execute("SELECT rut FROM rcv_documentos").fetchone()[0], "76.086.428-5")
+        tributario.registrar_resumen_ventas(self.conn, self.emp, "2026-05", 39, 2, 2380)  # reemplaza, no duplica
+        self.assertEqual(self.conn.execute("SELECT COUNT(*), MAX(rut) FROM rcv_documentos").fetchone()[:],
+                         (1, "76.086.428-5"))
+
+    def test_aproximacion_desde_cinco(self):
+        from contabilidad import tributario
+        self.assertEqual(tributario.reajustar_remanente(25_500, 100_000), 0.26)   # 0,255  → 0,26
+        self.assertEqual(tributario.reajustar_remanente(25_499, 100_000), 0.25)   # 0,25499 → 0,25
+        self.assertEqual(tributario.reajustar_remanente(18_165, 71_000), 0.26)    # 0,25584 → 0,26
+        self.assertEqual(tributario.pesos_desde_utm(0.25, 72_150), 18_038)        # 18.037,50 → 18.038
+        self.assertEqual(tributario.pesos_desde_utm(0.25, 72_149), 18_037)        # 18.037,25 → 18.037
 
     def test_f29_avisa_diferencias(self):
         from contabilidad import tributario
@@ -1084,6 +1300,103 @@ class PruebasRCVyF29(BaseConDatos):
                 self.assertEqual(cliente.get(url).status_code, 200)
         r = cliente.post("/tributario/cuentas", data={"tasa_ppm": "abc"}, follow_redirects=True)
         self.assertIn("tasa de PPM debe ser un número", r.get_data(as_text=True))
+
+
+class PruebasSueldoEmpresarialYHonorarios(BaseConDatos):
+    def test_impuesto_unico_como_en_la_contabilidad_real(self):
+        from contabilidad import remuneraciones as r
+        # Casos reales de la Escuela de Piano (enero, febrero y abril 2026) y el tramo exento de marzo
+        self.assertEqual(r.impuesto_unico(1_003_000, 69_751), 2_454)
+        self.assertEqual(r.impuesto_unico(1_003_000, 69_611), 2_530)
+        self.assertEqual(r.impuesto_unico(1_003_000, 69_889), 2_380)
+        self.assertEqual(r.impuesto_unico(700_000, 69_889), 0)
+        # Tramos altos: continuidad entre tramos (sin saltos en los límites)
+        u = 70_000
+        for limite in (30, 50, 70, 90, 120, 310):
+            base = limite * u
+            self.assertLessEqual(abs(r.impuesto_unico(base, u) - r.impuesto_unico(base + 1, u)), 1)
+        self.assertEqual(r.impuesto_unico(400 * u, u), round(400 * u * 0.40 - 38.82 * u))
+
+    def test_utm_oficiales_cargadas(self):
+        from contabilidad import remuneraciones as r
+        self.assertEqual((r.utm(self.conn, "2026-09"), r.utm(self.conn, "2026-10")), (71_721, 72_151))
+
+    def test_liquidacion_y_asiento_de_sueldo(self):
+        from contabilidad import remuneraciones as r, tributario
+        socio = r.guardar_socio(self.conn, self.emp, {"nombre": "Ana Pérez", "rut": "12345678-5", "sueldo_bruto": 1_003_000})
+        r.guardar_liquidacion(self.conn, self.emp, socio, "2026-01", 1_003_000)
+        l = r.liquidaciones(self.conn, self.emp, "2026-01")[0]
+        self.assertEqual((l["base"], l["utm"], l["impuesto_unico"], l["liquido"]), (1_003_000, 69_751, 2_454, 1_000_546))
+        # Con cotizaciones, se descuentan de la base
+        r.guardar_liquidacion(self.conn, self.emp, socio, "2026-01", 1_003_000, afp=114_000, salud=70_000)
+        l = r.liquidaciones(self.conn, self.emp, "2026-01")[0]
+        self.assertEqual((l["base"], l["impuesto_unico"], l["liquido"]), (819_000, 0, 819_000))
+        r.guardar_liquidacion(self.conn, self.emp, socio, "2026-01", 1_003_000)  # vuelve sin cotizaciones
+        # Propuesta: Sueldo empresarial / Impuesto único / Banco
+        tributario.guardar_cuentas_tributarias(self.conn, self.emp, {"sueldo_empresarial": self.id_cuenta("5.2.01")})
+        p = r.propuesta_sueldos(self.conn, self.emp, "2026-01")
+        lineas = {nucleo.obtener_cuenta(self.conn, self.emp, x["cuenta_id"])["codigo"]: x["debe"] - x["haber"]
+                  for x in p["lineas"]}
+        self.assertEqual(lineas, {"5.2.01": 1_003_000, "2.1.05": -2_454, "1.1.02": -1_000_546})
+        self.assertEqual(p["glosa"], "SUELDO EMPRESARIAL ENERO 2026")
+        # Al guardarse desde el formulario queda contabilizada y ya no se puede modificar
+        cliente = self.app.test_client()
+        datos = {"tipo": "TRASPASO", "fecha": p["fecha"], "glosa": p["glosa"], "sueldo_ids": str(p["ids"][0]),
+                 "cuenta_id": [str(x["cuenta_id"]) for x in p["lineas"]], "glosa_linea": [""] * 3,
+                 "debe": [str(x["debe"] or "") for x in p["lineas"]], "haber": [str(x["haber"] or "") for x in p["lineas"]]}
+        self.assertEqual(cliente.post("/asientos/nuevo", data=datos).status_code, 302)
+        self.assertIsNotNone(r.liquidaciones(self.conn, self.emp, "2026-01")[0]["asiento_id"])
+        with self.assertRaises(ErrorValidacion):
+            r.guardar_liquidacion(self.conn, self.emp, socio, "2026-01", 900_000)
+        # El F29 compara el impuesto único del módulo con la contabilidad (cuadra)
+        f = tributario.calcular_f29(self.conn, self.emp, "2026-01")
+        self.assertEqual(f["codigos"]["48"], 2_454)
+        self.assertIn(("Impuesto único sueldo empresarial (cód. 48)", 2_454, 2_454), f["comparacion"])
+
+    def test_boletas_de_honorarios(self):
+        from contabilidad import remuneraciones as r
+        self.assertEqual(r.calcular_boleta(30_000, True, 15.25), (35_398, 5_398, 30_000))  # caso real: desde el líquido
+        self.assertEqual(r.calcular_boleta(100_000, False, 15.25), (100_000, 15_250, 84_750))
+        self.assertEqual((r.tasa_retencion(2025), r.tasa_retencion(2026), r.tasa_retencion(2030)), (14.5, 15.25, 17.0))
+        base = {"tipo": "BHE", "folio": "120", "fecha": "2026-09-10", "rut": "12345678-5", "nombre": "Contador Ejemplo",
+                "monto": 30_000, "es_liquido": True}
+        b = r.guardar_boleta(self.conn, self.emp, "2026-09", base)
+        r.guardar_boleta(self.conn, self.emp, "2026-09", base | {"tipo": "BTE", "folio": "5", "monto": 50_000,
+                                                                 "es_liquido": False})
+        r.guardar_boleta(self.conn, self.emp, "2026-09", base | {"folio": "121", "monto": 20_000, "sin_retencion": True})
+        filas = {x["folio"]: (x["bruto"], x["retencion"], x["liquido"]) for x in r.boletas(self.conn, self.emp, "2026-09")}
+        self.assertEqual(filas, {"120": (35_398, 5_398, 30_000), "5": (50_000, 7_625, 42_375), "121": (20_000, 0, 20_000)})
+        for malo in ({"rut": "12345678-9"}, {"folio": ""}, {"monto": 0}, {"tipo": "OTRO"}, {"folio": "120"}):
+            with self.subTest(malo=malo), self.assertRaises(ErrorValidacion):
+                r.guardar_boleta(self.conn, self.emp, "2026-09", base | malo)
+        p = r.propuesta_honorarios(self.conn, self.emp, "2026-09")
+        lineas = {nucleo.obtener_cuenta(self.conn, self.emp, x["cuenta_id"])["codigo"]: x["debe"] - x["haber"]
+                  for x in p["lineas"]}
+        self.assertEqual(lineas, {"5.2.03": 105_398, "2.1.06": -13_023, "1.1.02": -92_375})
+        self.assertEqual(p["glosa"], "HONORARIOS SEPTIEMBRE 2026")
+        self.assertEqual(r.eliminar_boleta(self.conn, self.emp, b), 1)
+
+    def test_paginas(self):
+        cliente = self.app.test_client()
+        r = cliente.post("/sueldos/socio", data={"periodo": "2026-09", "nombre": "Ana", "rut": "12345678-5",
+                                                 "sueldo_bruto": "1.003.000"}, follow_redirects=True)
+        self.assertIn("Socio guardado", r.get_data(as_text=True))
+        socio = self.conn.execute("SELECT id FROM socios").fetchone()[0]
+        r = cliente.post("/sueldos/liquidar", data={"periodo": "2026-09", "incluir": str(socio),
+                                                    f"bruto_{socio}": "1.003.000"}, follow_redirects=True)
+        texto = r.get_data(as_text=True)
+        self.assertIn("Contabilizar sueldos del mes", texto)
+        r = cliente.get("/sueldos/contabilizar?periodo=2026-09")
+        self.assertIn("aún no se ha guardado", r.get_data(as_text=True))
+        self.assertIn(f'name="sueldo_ids" value="', r.get_data(as_text=True))
+        r = cliente.post("/honorarios/boleta", data={"periodo": "2026-09", "tipo": "BHE", "folio": "1", "fecha": "2026-09-05",
+                                                     "rut": "12345678-5", "nombre": "Juan", "monto": "30.000",
+                                                     "base": "liquido"}, follow_redirects=True)
+        self.assertIn("35.398", r.get_data(as_text=True))
+        self.assertIn("aún no se ha guardado", cliente.get("/honorarios/contabilizar?periodo=2026-09").get_data(as_text=True))
+        for url in ("/sueldos", "/honorarios", "/tributario/cuentas", "/f29?periodo=2026-09"):
+            with self.subTest(url=url):
+                self.assertEqual(cliente.get(url).status_code, 200)
 
 
 class PruebasRestaurar(BaseConDatos):

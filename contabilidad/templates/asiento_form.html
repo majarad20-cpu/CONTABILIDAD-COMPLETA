@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block titulo %}{{ 'Editar' if existente else 'Nuevo' }} comprobante{% endblock %}
+{% block titulo %}{{ 'Editar' if existente else 'Nuevo' }} asiento{% endblock %}
 
 
 {% block contenido %}
@@ -19,11 +19,22 @@
   <td><button type="button" class="quitar" title="Quitar línea">×</button></td>
 </tr>
 {% endmacro %}
-<h1>{% if existente %}Editar comprobante {{ comprobante(existente.asiento.tipo, existente.asiento.numero) }}{% else %}Nuevo comprobante{% endif %}</h1>
+<h1>{% if existente %}Editar asiento N° {{ existente.asiento.numero }}{% else %}Nuevo asiento{% endif %}</h1>
 
 <form method="post" id="form-asiento" {% if accion %}action="{{ accion }}"{% endif %}>
   {% set ids_rcv = rcv_ids or request.form.get('rcv_ids', '') %}
   {% if ids_rcv %}<input type="hidden" name="rcv_ids" value="{{ ids_rcv }}">{% endif %}
+  {% for campo in ('sueldo_ids', 'honorario_ids') %}
+    {% set valor = (ids_origen or {}).get(campo) or request.form.get(campo, '') %}
+    {% if valor %}<input type="hidden" name="{{ campo }}" value="{{ valor }}">{% endif %}
+  {% endfor %}
+  {% if aviso_propuesta %}
+  <div class="aviso aviso-info propuesta">
+    <strong>{{ aviso_propuesta.titulo }} — aún no se ha guardado.</strong>
+    <p>Revisa, cambia cuentas o montos y pulsa <strong>Guardar</strong>. Al guardar, quedan marcadas como contabilizadas
+      en este comprobante. <a href="{{ aviso_propuesta.volver }}">Volver</a></p>
+  </div>
+  {% endif %}
   {% if centralizacion %}
   <div class="aviso aviso-info propuesta">
     <strong>Centralización de {{ 'compras' if centralizacion.registro == 'COMPRA' else 'ventas' }} de
@@ -64,17 +75,10 @@
     </div>
   </div>
   {% elif existente and mes_cerrado(existente.asiento.fecha) %}
-  <div class="aviso aviso-info">Este comprobante pertenece a un mes cerrado ({{ nombre_periodo(existente.asiento.fecha) }}).
+  <div class="aviso aviso-info">Este asiento pertenece a un mes cerrado ({{ nombre_periodo(existente.asiento.fecha) }}).
     Al guardar se pedirá confirmación.</div>
   {% endif %}
   <div class="cabecera-asiento">
-    <label>Tipo
-      <select name="tipo">
-        {% for t, n in [('INGRESO', 'Ingreso'), ('EGRESO', 'Egreso'), ('TRASPASO', 'Traspaso')] %}
-          <option value="{{ t }}" {{ 'selected' if datos.tipo == t }}>{{ n }}</option>
-        {% endfor %}
-      </select>
-    </label>
     <label>Fecha<input type="date" name="fecha" value="{{ datos.fecha }}" required></label>
     <label class="ancho">Glosa<input name="glosa" value="{{ datos.glosa }}" required placeholder="Ej.: Venta según factura N° 123"></label>
   </div>

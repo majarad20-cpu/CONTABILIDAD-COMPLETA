@@ -10,7 +10,7 @@ from pathlib import Path
 from flask import (Flask, Response, abort, flash, g, redirect, render_template,
                    request, send_file, url_for)
 
-from . import db, exportacion, nucleo, tributario
+from . import db, exportacion, nucleo, remuneraciones, tributario
 from .nucleo import ErrorValidacion
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -329,11 +329,9 @@ def registrar_rutas(app):
     @app.route("/asientos")
     def asientos():
         desde, hasta = rango_fechas()
-        tipo = request.args.get("tipo") or None
         texto = request.args.get("q", "").strip() or None
-        filas = nucleo.listar_asientos(db.get_db(), eid(), desde, hasta, tipo, texto)
-        return render_template("asientos.html", asientos=filas, desde=desde, hasta=hasta,
-                               tipo=tipo, q=texto or "")
+        filas = nucleo.listar_asientos(db.get_db(), eid(), desde, hasta, texto)
+        return render_template("asientos.html", asientos=filas, desde=desde, hasta=hasta, q=texto or "")
 
     @app.route("/asientos/nuevo", methods=["GET", "POST"])
     @app.route("/asientos/<int:asiento_id>/editar", methods=["GET", "POST"])
@@ -365,6 +363,10 @@ def registrar_rutas(app):
                 return render_template("asiento_form.html", datos=datos, lineas=crudas or [{}, {}],
                                        cuentas=cuentas_imputables(), existente=existente,
                                        periodo_cerrado=periodo_cerrado, motivo=f.get("motivo_cerrado", ""))
+            for campo, tabla in (("sueldo_ids", "sueldos_empresariales"), ("honorario_ids", "honorarios")):
+                ids = [int(x) for x in f.get(campo, "").split(",") if x.strip().isdigit()]
+                if ids:
+                    remuneraciones.marcar_contabilizados(conn, eid(), tabla, ids, nuevo_id)
             ids_rcv = [int(x) for x in f.get("rcv_ids", "").split(",") if x.strip().isdigit()]
             if ids_rcv:
                 tributario.marcar_centralizados(conn, eid(), ids_rcv, nuevo_id)
@@ -548,6 +550,29 @@ def registrar_rutas(app):
                 return tributario.periodo_anterior(f"{hoy.year}-{hoy.month:02d}") if hoy.month > 1 else f"{anio}-01"
             return f"{anio}-12"
 
+    def informe_rcv_del_mes(conn, periodo, compras, ventas):
+        """RCV del mes con sus asientos de centralización registrados y, si hay
+        documentos pendientes, la propuesta de su asiento."""
+        ids = []
+        for d in compras + ventas:
+            if d["asiento_id"] and d["asiento_id"] not in ids:
+                ids.append(d["asiento_id"])
+        asientos = [a for a in (nucleo.obtener_asiento(conn, eid(), i) for i in ids) if a]
+        cuentas = {c["id"]: c for c in conn.execute("SELECT id, codigo, nombre FROM cuentas WHERE empresa_id = ?",
+                                                     (eid(),))}
+        propuestas, avisos = [], []
+        for registro, docs in (("COMPRA", compras), ("VENTA", ventas)):
+            if any(d["asiento_id"] is None for d in docs):
+                try:
+                    p = tributario.propuesta_centralizacion(conn, eid(), periodo, registro)
+                except ErrorValidacion as e:
+                    avisos.append(f"No se pudo proponer el asiento de {registro.lower()}s pendientes: {e}")
+                    continue
+                lineas = [{"codigo": cuentas[l["cuenta_id"]]["codigo"], "nombre": cuentas[l["cuenta_id"]]["nombre"],
+                           "debe": l["debe"], "haber": l["haber"]} for l in p["lineas"]]
+                propuestas.append({"glosa": p["glosa"], "fecha": p["fecha"], "lineas": lineas})
+        return exportacion.informe_rcv(periodo, compras, ventas, asientos, propuestas, avisos)
+
     @app.route("/rcv")
     def rcv():
         conn = db.get_db()
@@ -555,6 +580,8 @@ def registrar_rutas(app):
         documentos = tributario.documentos_rcv(conn, eid(), periodo)
         compras = [d for d in documentos if d["registro"] == "COMPRA"]
         ventas = [d for d in documentos if d["registro"] == "VENTA"]
+        if pide_exportacion():
+            return respuesta_exportada(informe_rcv_del_mes(conn, periodo, compras, ventas))
         defecto = tributario.cuentas_tributarias(conn, eid())
         defectos = {  # cuenta que se usará si el documento no tiene una elegida
             d["id"]: (defecto["compras_activo_fijo"] if d["activo_fijo"] else defecto["compras_neto"])
@@ -566,7 +593,13 @@ def registrar_rutas(app):
             total_compras=tributario.totales_rcv(compras), total_ventas=tributario.totales_rcv(ventas),
             cuentas=cuentas, defectos=defectos,
             nombres_cuenta={c["id"]: f"{c['codigo']} {c['nombre']}" for c in cuentas},
-            tipos_resumen=tributario.TIPOS_RESUMEN,
+            tipos_resumen=tributario.TIPOS_RESUMEN, tipos_documento=tributario.TIPOS_DOCUMENTO,
+            datos_doc={d["id"]: {k: d[k] for k in ("id", "registro", "tipo_doc", "folio", "fecha", "rut",
+                                                   "razon_social", "exento", "neto", "iva", "iva_no_recuperable",
+                                                   "otros_impuestos", "total", "activo_fijo", "cantidad",
+                                                   "cuenta_id", "asiento_id")}
+                       | {"comprobante": nucleo.numero_comprobante(d["asiento_tipo"], d["asiento_numero"])
+                          if d["asiento_id"] else ""} for d in documentos},
             nombre_tipo=tributario.nombre_tipo, signo=tributario.signo)
 
     @app.post("/rcv/importar")
@@ -633,6 +666,37 @@ def registrar_rutas(app):
                   "registrado.", "ok")
         return redirect(url_for("rcv", periodo=periodo) + "#resumen-ventas")
 
+    @app.post("/rcv/documento")
+    def guardar_documento_rcv():
+        """Agrega o modifica un documento del RCV desde la ventana de edición (responde JSON)."""
+        f = request.form
+
+        def monto(nombre):
+            texto = (f.get(nombre) or "").strip()
+            return nucleo.parse_monto(texto) if texto else 0
+
+        try:
+            periodo = tributario.validar_periodo(f.get("periodo", ""))
+            datos = {"registro": f.get("registro"), "tipo_doc": f.get("tipo_doc"), "folio": f.get("folio"),
+                     "fecha": f.get("fecha"), "rut": f.get("rut"), "razon_social": f.get("razon_social"),
+                     "exento": monto("exento"), "neto": monto("neto"), "iva": monto("iva"),
+                     "iva_no_recuperable": monto("iva_no_recuperable"), "otros_impuestos": monto("otros_impuestos"),
+                     "activo_fijo": "activo_fijo" in f, "cantidad": f.get("cantidad") or 1,
+                     "cuenta_id": f.get("cuenta_id", type=int)}
+            documento_id = tributario.guardar_documento(db.get_db(), eid(), periodo, datos,
+                                                        documento_id=f.get("id", type=int))
+        except ErrorValidacion as e:
+            return {"ok": False, "error": str(e)}, 400
+        flash("Documento guardado." if f.get("id") else "Documento agregado.", "ok")
+        return {"ok": True, "id": documento_id}
+
+    @app.post("/rcv/documento/<int:documento_id>/eliminar")
+    def eliminar_documento_rcv(documento_id):
+        if tributario.eliminar_documentos(db.get_db(), eid(), [documento_id]):
+            flash("Documento eliminado.", "ok")
+            return {"ok": True}
+        return {"ok": False, "error": "No se pudo eliminar: el documento no existe o ya está centralizado."}, 400
+
     @app.post("/rcv/documentos")
     def documentos_rcv():
         conn = db.get_db()
@@ -686,7 +750,8 @@ def registrar_rutas(app):
         return render_template("cuentas_tributarias.html", conceptos=tributario.CONCEPTOS,
                                grupos=[("Centralización de compras", tributario.CONCEPTOS_COMPRA),
                                        ("Centralización de ventas", tributario.CONCEPTOS_VENTA),
-                                       ("Borrador del F29", tributario.CONCEPTOS_F29)],
+                                       ("Borrador del F29", tributario.CONCEPTOS_F29),
+                                       ("Sueldo empresarial y honorarios", tributario.CONCEPTOS_REMUNERACIONES)],
                                actuales=tributario.cuentas_tributarias(conn, eid()), cuentas=cuentas_imputables())
 
     @app.route("/f29", methods=["GET", "POST"])
@@ -722,7 +787,149 @@ def registrar_rutas(app):
         if pide_exportacion():
             return respuesta_exportada(exportacion.informe_f29(resultado))
         return render_template("f29.html", periodo=periodo, f=resultado,
+                               presentacion=tributario.periodo_siguiente(periodo),
                                guardado=tributario.borrador_guardado(conn, eid(), periodo))
+
+    # ------------------------------------------------- sueldo empresarial
+    def formulario_propuesta(propuesta, campo_ids, titulo, volver):
+        """Muestra una propuesta de asiento en el formulario de comprobante, sin guardar nada."""
+        datos = {"tipo": "TRASPASO", "fecha": propuesta["fecha"], "glosa": propuesta["glosa"], "apertura": False}
+        lineas = [{"cuenta_id": str(l["cuenta_id"]), "glosa": "",
+                   "debe": nucleo.formato_clp(l["debe"]) if l["debe"] else "",
+                   "haber": nucleo.formato_clp(l["haber"]) if l["haber"] else ""} for l in propuesta["lineas"]]
+        return render_template("asiento_form.html", datos=datos, lineas=lineas, cuentas=cuentas_imputables(),
+                               existente=None, accion=url_for("editar_asiento"),
+                               ids_origen={campo_ids: ",".join(map(str, propuesta["ids"]))},
+                               aviso_propuesta={"titulo": titulo, "volver": volver})
+
+    def monto_formulario(nombre, defecto=0):
+        texto = (request.form.get(nombre) or "").strip()
+        return nucleo.parse_monto(texto) if texto else defecto
+
+    @app.route("/sueldos")
+    def sueldos():
+        conn = db.get_db()
+        periodo = periodo_pedido()
+        liquidas = {l["socio_id"]: l for l in remuneraciones.liquidaciones(conn, eid(), periodo)}
+        return render_template("sueldos.html", periodo=periodo, socios=remuneraciones.socios(conn, eid()),
+                               liquidaciones=liquidas, utm_mes=remuneraciones.utm(conn, periodo),
+                               editar=request.args.get("editar", type=int))
+
+    @app.post("/sueldos/socio")
+    def guardar_socio():
+        f = request.form
+        try:
+            remuneraciones.guardar_socio(db.get_db(), eid(), {
+                "nombre": f.get("nombre"), "rut": f.get("rut"), "sueldo_bruto": monto_formulario("sueldo_bruto"),
+                "activo": "activo" in f or not f.get("id")}, socio_id=f.get("id", type=int))
+        except ErrorValidacion as e:
+            flash(str(e), "error")
+        else:
+            flash("Socio guardado.", "ok")
+        return redirect(url_for("sueldos", periodo=periodo_pedido()))
+
+    @app.post("/sueldos/socio/<int:socio_id>/eliminar")
+    def eliminar_socio(socio_id):
+        try:
+            remuneraciones.eliminar_socio(db.get_db(), eid(), socio_id)
+        except ErrorValidacion as e:
+            flash(str(e), "error")
+        else:
+            flash("Socio eliminado.", "ok")
+        return redirect(url_for("sueldos", periodo=periodo_pedido()))
+
+    @app.post("/sueldos/liquidar")
+    def liquidar_sueldos():
+        conn = db.get_db()
+        periodo = periodo_pedido()
+        f = request.form
+        try:
+            valor_utm = monto_formulario("utm")
+            if valor_utm:
+                remuneraciones.guardar_utm(conn, periodo, valor_utm)
+            elegidos = [int(x) for x in f.getlist("incluir") if x.isdigit()]
+            if not elegidos:
+                raise ErrorValidacion("Marca al menos un socio para calcular su liquidación.")
+            for socio_id in elegidos:
+                remuneraciones.guardar_liquidacion(conn, eid(), socio_id, periodo, monto_formulario(f"bruto_{socio_id}"),
+                                                   monto_formulario(f"afp_{socio_id}"),
+                                                   monto_formulario(f"salud_{socio_id}"))
+        except ErrorValidacion as e:
+            flash(str(e), "error")
+        else:
+            flash(f"Liquidaciones de {nucleo.nombre_periodo(periodo)} calculadas.", "ok")
+        return redirect(url_for("sueldos", periodo=periodo))
+
+    @app.post("/sueldos/liquidacion/<int:liquidacion_id>/eliminar")
+    def eliminar_liquidacion(liquidacion_id):
+        if remuneraciones.eliminar_liquidacion(db.get_db(), eid(), liquidacion_id):
+            flash("Liquidación eliminada.", "ok")
+        else:
+            flash("No se pudo eliminar: la liquidación ya está contabilizada.", "error")
+        return redirect(url_for("sueldos", periodo=periodo_pedido()))
+
+    @app.route("/sueldos/contabilizar")
+    def contabilizar_sueldos():
+        periodo = periodo_pedido()
+        try:
+            propuesta = remuneraciones.propuesta_sueldos(db.get_db(), eid(), periodo)
+        except ErrorValidacion as e:
+            flash(str(e), "error")
+            return redirect(url_for("sueldos", periodo=periodo))
+        return formulario_propuesta(
+            propuesta, "sueldo_ids",
+            f"Sueldo empresarial de {nucleo.nombre_periodo(periodo)}: {propuesta['cantidad']} liquidación(es)",
+            url_for("sueldos", periodo=periodo))
+
+    # ------------------------------------------------------------ honorarios
+    @app.route("/honorarios")
+    def honorarios():
+        conn = db.get_db()
+        periodo = periodo_pedido()
+        lista = remuneraciones.boletas(conn, eid(), periodo)
+        editar = request.args.get("editar", type=int)
+        return render_template(
+            "honorarios.html", periodo=periodo, boletas=lista, tipos=remuneraciones.TIPOS_BOLETA,
+            tasa=remuneraciones.tasa_retencion(int(periodo[:4])),
+            editando=next((b for b in lista if b["id"] == editar and not b["asiento_id"]), None),
+            totales={k: sum(b[k] for b in lista) for k in ("bruto", "retencion", "liquido")})
+
+    @app.post("/honorarios/boleta")
+    def guardar_boleta():
+        periodo = periodo_pedido()
+        f = request.form
+        try:
+            remuneraciones.guardar_boleta(db.get_db(), eid(), periodo, {
+                "tipo": f.get("tipo"), "folio": f.get("folio"), "fecha": f.get("fecha"), "rut": f.get("rut"),
+                "nombre": f.get("nombre"), "monto": monto_formulario("monto"),
+                "es_liquido": f.get("base") == "liquido", "sin_retencion": "sin_retencion" in f,
+                "glosa": f.get("glosa")}, boleta_id=f.get("id", type=int))
+        except ErrorValidacion as e:
+            flash(str(e), "error")
+        else:
+            flash("Boleta guardada.", "ok")
+        return redirect(url_for("honorarios", periodo=periodo))
+
+    @app.post("/honorarios/boleta/<int:boleta_id>/eliminar")
+    def eliminar_boleta(boleta_id):
+        if remuneraciones.eliminar_boleta(db.get_db(), eid(), boleta_id):
+            flash("Boleta eliminada.", "ok")
+        else:
+            flash("No se pudo eliminar: la boleta ya está contabilizada.", "error")
+        return redirect(url_for("honorarios", periodo=periodo_pedido()))
+
+    @app.route("/honorarios/contabilizar")
+    def contabilizar_honorarios():
+        periodo = periodo_pedido()
+        try:
+            propuesta = remuneraciones.propuesta_honorarios(db.get_db(), eid(), periodo)
+        except ErrorValidacion as e:
+            flash(str(e), "error")
+            return redirect(url_for("honorarios", periodo=periodo))
+        return formulario_propuesta(
+            propuesta, "honorario_ids",
+            f"Honorarios de {nucleo.nombre_periodo(periodo)}: {propuesta['cantidad']} boleta(s)",
+            url_for("honorarios", periodo=periodo))
 
     # ------------------------------------------------------- cierre de meses
     @app.route("/periodos")
@@ -763,6 +970,17 @@ def registrar_rutas(app):
         return send_file(io.BytesIO(contenido), as_attachment=True,
                          download_name=f"contabilidad_respaldo_{date.today().isoformat()}.db",
                          mimetype="application/octet-stream")
+
+    @app.route("/respaldo/en-linea")
+    def exportar_en_linea():
+        """Archivo .json de la empresa activa para importarlo en la versión en línea."""
+        import json
+        empresa = empresa_activa()
+        datos = nucleo.exportar_en_linea(db.get_db(), empresa["id"])
+        nombre = re.sub(r"[^A-Za-z0-9]+", "_", empresa["razon_social"] or "empresa").strip("_")
+        return send_file(io.BytesIO(json.dumps(datos, ensure_ascii=False).encode("utf-8")), as_attachment=True,
+                         download_name=f"{nombre}_en_linea_{date.today().isoformat()}.json",
+                         mimetype="application/json")
 
     def archivo_pendiente():
         return carpeta_respaldos(app) / "_pendiente.db"

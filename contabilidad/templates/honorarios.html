@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block titulo %}Honorarios{% endblock %}
+{% block contenido %}
+<h1>Honorarios y boletas de terceros</h1>
+<p class="ayuda">Boletas de honorarios electrónicas <strong>recibidas</strong> (BHE) y boletas de prestación de servicios
+  de terceros <strong>emitidas</strong> por la empresa (BTE). La retención se calcula con la tasa del año:
+  <strong>{{ ('%g' % tasa)|replace('.', ',') }} %</strong> en {{ periodo[:4] }}.</p>
+
+<form class="filtro no-imprimir" method="get">
+  <label>Mes <input type="month" name="periodo" value="{{ periodo }}" required></label>
+  <button type="submit">Ver</button>
+  <span class="espaciador"></span>
+  <a class="boton secundario" href="{{ url_for('cuentas_tributarias') }}">Cuentas tributarias</a>
+</form>
+
+<section class="caja">
+  <h2>{{ 'Editar boleta' if editando else 'Agregar boleta' }}</h2>
+  <form method="post" action="{{ url_for('guardar_boleta') }}" class="grilla-boleta">
+    <input type="hidden" name="periodo" value="{{ periodo }}">
+    {% if editando %}<input type="hidden" name="id" value="{{ editando.id }}">{% endif %}
+    <label class="ancho-doble">Tipo
+      <select name="tipo">
+        {% for clave, nombre in tipos.items() %}<option value="{{ clave }}" {{ 'selected' if editando and editando.tipo == clave }}>{{ nombre }}</option>{% endfor %}
+      </select></label>
+    <label>Folio <input name="folio" value="{{ editando.folio if editando else '' }}" required></label>
+    <label>Fecha <input type="date" name="fecha" value="{{ editando.fecha if editando else periodo ~ '-01' }}" required></label>
+    <label>RUT del prestador <input name="rut" value="{{ editando.rut if editando else '' }}" required></label>
+    <label class="ancho-doble">Nombre del prestador <input name="nombre" value="{{ editando.nombre if editando else '' }}" required></label>
+    <label>Monto <input name="monto" value="{{ editando.bruto|clp if editando else '' }}" inputmode="numeric" required></label>
+    <label>El monto ingresado es
+      <select name="base">
+        <option value="bruto">Bruto (antes de la retención)</option>
+        <option value="liquido">Líquido (lo que se paga)</option>
+      </select></label>
+    <label class="check"><input type="checkbox" name="sin_retencion" {{ 'checked' if editando and not editando.tasa }}> Sin retención</label>
+    <label class="ancho-doble">Detalle (opcional) <input name="glosa" value="{{ editando.glosa if editando else '' }}" placeholder="Ej.: Honorarios contabilidad septiembre"></label>
+    <div class="acciones ancho-completo">
+      <button type="submit">{{ 'Guardar cambios' if editando else 'Agregar boleta' }}</button>
+      {% if editando %}<a class="boton secundario" href="{{ url_for('honorarios', periodo=periodo) }}">Cancelar</a>{% endif %}
+    </div>
+  </form>
+</section>
+
+<h2>Boletas de {{ nombre_periodo(periodo) }}</h2>
+{% if boletas %}
+<div class="desplazable">
+<table>
+  <thead><tr><th>Tipo</th><th>Folio</th><th>Fecha</th><th>RUT</th><th>Prestador</th><th class="num">Bruto</th>
+    <th class="num">Retención</th><th class="num">Líquido</th><th>Estado</th><th></th></tr></thead>
+  <tbody>
+  {% for b in boletas %}
+    <tr>
+      <td title="{{ tipos[b.tipo] }}">{{ b.tipo }}</td><td>{{ b.folio }}</td><td>{{ b.fecha|fecha }}</td><td class="rut">{{ b.rut }}</td>
+      <td>{{ b.nombre }}{% if b.glosa %} <small class="ayuda">· {{ b.glosa }}</small>{% endif %}</td>
+      <td class="num">{{ b.bruto|clp }}</td>
+      <td class="num">{{ b.retencion|clp }}{% if b.tasa %} <small class="ayuda">({{ ('%g' % b.tasa)|replace('.', ',') }} %)</small>{% else %} <small class="ayuda">(sin retención)</small>{% endif %}</td>
+      <td class="num">{{ b.liquido|clp }}</td>
+      <td>{% if b.asiento_id %}<a href="{{ url_for('ver_asiento', asiento_id=b.asiento_id) }}">{{ comprobante(b.asiento_tipo, b.asiento_numero) }}</a>
+          {% else %}<span class="etiqueta etiqueta-pendiente">pendiente</span>{% endif %}</td>
+      <td class="acciones-fila">{% if not b.asiento_id %}
+        <a href="{{ url_for('honorarios', periodo=periodo, editar=b.id) }}">Editar</a>
+        <form method="post" action="{{ url_for('eliminar_boleta', boleta_id=b.id) }}" style="display:inline"
+              onsubmit="return confirm('¿Eliminar la boleta folio {{ b.folio }}?')">
+          <input type="hidden" name="periodo" value="{{ periodo }}">
+          <button type="submit" class="enlace">Eliminar</button>
+        </form>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="5">{{ boletas|length }} boletas</td><td class="num">{{ totales.bruto|clp }}</td>
+    <td class="num">{{ totales.retencion|clp }}</td><td class="num">{{ totales.liquido|clp }}</td><td colspan="2"></td></tr></tfoot>
+</table>
+</div>
+{% if boletas|rejectattr('asiento_id')|list %}
+<div class="acciones"><a class="boton" href="{{ url_for('contabilizar_honorarios', periodo=periodo) }}">Contabilizar honorarios del mes</a></div>
+{% endif %}
+<p class="ayuda">La retención total del mes se declara en el F29 (código 151). «Contabilizar» abre la propuesta del
+  asiento para revisarla antes de guardar.</p>
+{% else %}
+<p class="vacio">No hay boletas registradas en este mes.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,1142 @@
+<title>Contabilidad Completa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Libro contable en pantalla: menú lateral fijo con las secciones del programa local, hoja de trabajo a la derecha. */
+:root {
+  --bg: #f3f6f5;
+  --surface: #ffffff;
+  --surface-2: #eef3f1;
+  --fg: #16201c;
+  --muted: #5a6964;
+  --line: #d6dfdb;
+  --accent: #1b6a55;
+  --accent-fg: #ffffff;
+  --accent-soft: #dfeee8;
+  --neg: #b3261e;
+  --warn-bg: #fff4d6;
+  --warn-fg: #6b4a00;
+  --ok-bg: #e2f3ea;
+  --ok-fg: #1d5c3f;
+  --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1412; --surface: #151d1a; --surface-2: #1b2622; --fg: #e3ebe8; --muted: #94a59f;
+    --line: #2a3733; --accent: #5ec2a2; --accent-fg: #0b1a15; --accent-soft: #19302a; --neg: #f28b82;
+    --warn-bg: #3a2f12; --warn-fg: #f3d58a; --ok-bg: #173226; --ok-fg: #9fdcbd; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1412; --surface: #151d1a; --surface-2: #1b2622; --fg: #e3ebe8; --muted: #94a59f;
+  --line: #2a3733; --accent: #5ec2a2; --accent-fg: #0b1a15; --accent-soft: #19302a; --neg: #f28b82;
+  --warn-bg: #3a2f12; --warn-fg: #f3d58a; --ok-bg: #173226; --ok-fg: #9fdcbd; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; }
+.app { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100vh; }
+.menu { background: var(--surface); border-right: 1px solid var(--line); padding: 16px 12px; display: flex; flex-direction: column; gap: 14px;
+  position: sticky; top: env(safe-area-inset-top, 0px); height: 100vh; overflow-y: auto; }
+.marca { display: grid; gap: 4px; padding: 0 4px; }
+.marca select { font: 600 14px var(--font-ui); width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); color: var(--fg); }
+.marca small { color: var(--muted); font-size: 12px; }
+nav { display: grid; gap: 1px; }
+nav .seccion { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 12px 8px 4px; }
+nav button { all: unset; cursor: pointer; padding: 6px 8px; border-radius: var(--radius); color: var(--fg); }
+nav button:hover { background: var(--surface-2); }
+nav button:disabled { opacity: .4; cursor: default; background: none; }
+nav button[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+nav button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+main { padding-block: 24px 48px; padding-inline: 28px; min-width: 0; display: grid; gap: 18px; align-content: start; }
+h1 { font-size: 22px; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h2 { font-size: 16px; margin: 0; }
+p { margin: 0; }
+.ayuda { color: var(--muted); font-size: 13px; max-width: 70ch; }
+.cabecera { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: baseline; justify-content: space-between; }
+.cabecera .sub { color: var(--muted); }
+.barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.barra label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+input, select, textarea { font: 14px var(--font-ui); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; min-width: 0; }
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+.btn { font: 500 14px var(--font-ui); cursor: pointer; border-radius: var(--radius); padding: 7px 14px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); white-space: nowrap; }
+.btn.sec { background: transparent; color: var(--accent); }
+.btn.peligro { background: var(--neg); border-color: var(--neg); color: #fff; }
+.btn.enlace { background: none; border: none; color: var(--accent); padding: 4px 6px; text-decoration: underline; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.caja { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tarjeta { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 4px; }
+.tarjeta span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.tarjeta strong { font: 500 20px var(--font-num); font-variant-numeric: tabular-nums; }
+.tarjeta.neg strong { color: var(--neg); }
+.tabla { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--surface-2); position: sticky; top: 0; }
+td.num, th.num { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.cod { font-family: var(--font-num); white-space: nowrap; color: var(--muted); }
+tr.clic { cursor: pointer; }
+tr.clic:hover td { background: var(--accent-soft); }
+tr.grupo td { font-weight: 600; }
+tr.total td { font-weight: 700; background: var(--surface-2); border-top: 2px solid var(--fg); }
+tr.sub td { font-weight: 600; background: var(--surface-2); }
+tr.titulo td { font-weight: 700; padding-top: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; font-size: 12px; }
+tr.reinicio td { color: var(--muted); font-style: italic; }
+tr.cab-asiento td { background: var(--surface-2); font-weight: 600; }
+.neg { color: var(--neg); }
+.etiqueta { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; font-weight: 600; vertical-align: 1px; }
+.aviso { padding: 10px 14px; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn-fg); }
+.aviso.ok { background: var(--ok-bg); color: var(--ok-fg); }
+.vacio { padding: 28px; text-align: center; color: var(--muted); display: grid; gap: 12px; justify-items: center; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.form label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.form label.check { display: flex; gap: 8px; align-items: center; color: var(--fg); }
+.acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.confirmar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--neg); border-radius: var(--radius); }
+.lineas input { width: 100%; }
+.lineas td { padding: 4px 6px; }
+.lineas .monto { text-align: right; font-family: var(--font-num); }
+.lineas input.malo { border-color: var(--neg); }
+.cuadre { font-family: var(--font-num); }
+.cuadre.ok { color: var(--ok-fg); }
+.toast { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: var(--radius); max-width: min(420px, calc(100vw - 32px)); z-index: 5; }
+.nivel-1 { padding-left: 22px !important; } .nivel-2 { padding-left: 36px !important; } .nivel-3 { padding-left: 50px !important; } .nivel-4 { padding-left: 64px !important; }
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .menu { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); padding: 12px 16px; }
+  nav { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+  nav .seccion { display: none; }
+  nav button { white-space: nowrap; }
+  main { padding-inline: 16px; }
+}
+@media (prefers-reduced-motion: no-preference) { tr.clic td, nav button { transition: background .12s; } }
+</style>
+
+<div class="app">
+  <aside class="menu">
+    <div class="marca">
+      <select id="sel-empresa" aria-label="Empresa activa"></select>
+      <small id="sub-empresa">Cargando…</small>
+    </div>
+    <nav id="nav" aria-label="Secciones"></nav>
+  </aside>
+  <main id="main">
+    <div class="vacio"><p>Cargando la contabilidad…</p></div>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ utilidades */
+const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
+const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
+const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
+const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const RESULTADO = new Set(["INGRESO", "GASTO"]);
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clp = (n) => (n < 0 ? "-" : "") + Math.round(Math.abs(n || 0)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+const monto = (n) => n ? `<span class="${n < 0 ? "neg" : ""}">${clp(n)}</span>` : "";
+const fmtFecha = (f) => f ? `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}` : "";
+const hoy = () => new Date().toISOString().slice(0, 10);
+const nuevoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const porCodigo = (a, b) => (a.codigo < b.codigo ? -1 : a.codigo > b.codigo ? 1 : 0);
+const saldoNatural = (tipo, d, h) => (tipo === "ACTIVO" || tipo === "GASTO" ? d - h : h - d);
+const nivel = (codigo) => codigo.split(".").length - 1;
+
+function limpiarRut(r) { return String(r || "").replace(/[^0-9kK]/g, "").toUpperCase(); }
+function dv(cuerpo) { let s = 0, m = 2; for (const d of String(cuerpo).split("").reverse()) { s += +d * m; m = m === 7 ? 2 : m + 1; } const r = 11 - (s % 11); return r === 11 ? "0" : r === 10 ? "K" : String(r); }
+function rutValido(r) { const x = limpiarRut(r); return x.length >= 2 && /^\d+$/.test(x.slice(0, -1)) && dv(x.slice(0, -1)) === x.slice(-1); }
+function formatoRut(r) { const x = limpiarRut(r); if (x.length < 2) return r || ""; return clp(+x.slice(0, -1)) + "-" + x.slice(-1); }
+function parseMonto(t) {
+  const s = String(t ?? "").replace(/[$\s.]/g, "").replace(",", ".");
+  if (!s) return 0;
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.round(n) : NaN;
+}
+
+function aviso(texto) {
+  const t = $("#toast"); t.textContent = texto; t.hidden = false;
+  clearTimeout(aviso.timer); aviso.timer = setTimeout(() => (t.hidden = true), 4200);
+}
+function recordar(clave, valor) { try { localStorage.setItem("cc-" + clave, JSON.stringify(valor)); } catch (_) {} }
+function recuerdo(clave, defecto) { try { const v = localStorage.getItem("cc-" + clave); return v == null ? defecto : JSON.parse(v); } catch (_) { return defecto; } }
+
+/* ------------------------------------------------------------------ almacenamiento */
+async function reintentar(fn) {
+  for (let i = 0; ; i++) {
+    try { return await fn(); }
+    catch (e) {
+      const transitorio = e && (e.code === "unavailable" || e.code === "resource_exhausted");
+      if (!transitorio || i >= 5) throw e;
+      await new Promise((r) => setTimeout(r, 400 * (i + 1) + Math.random() * 300));
+    }
+  }
+}
+
+/* Sin conexión con Claude (archivo abierto fuera del artefacto): todo vive en memoria. */
+class AlmacenMemoria {
+  constructor() { this.e = new Map(); this.a = new Map(); this.oe = null; this.oa = null; this.aeid = null; this.enLinea = false; }
+  lista(eid) { return [...(this.a.get(eid) || new Map()).values()].map((x) => ({ ...x })); }
+  avisarE() { this.oe?.([...this.e.values()].map((x) => ({ ...x }))); }
+  avisarA(eid) { if (eid === this.aeid) this.oa?.(this.lista(eid)); }
+  onEmpresas(cb) { this.oe = cb; this.avisarE(); return () => (this.oe = null); }
+  onAsientos(eid, cb) { this.aeid = eid; this.oa = cb; cb(this.lista(eid)); return () => (this.oa = null); }
+  async setEmpresa(id, d) { this.e.set(id, { ...d, id }); this.avisarE(); }
+  async deleteEmpresa(id) { this.e.delete(id); this.a.delete(id); this.avisarE(); this.avisarA(id); }
+  async setAsiento(eid, id, d) { if (!this.a.has(eid)) this.a.set(eid, new Map()); this.a.get(eid).set(id, { ...d, id }); this.avisarA(eid); }
+  async deleteAsiento(eid, id) { this.a.get(eid)?.delete(id); this.avisarA(eid); }
+}
+
+class AlmacenClaude {
+  constructor(db) { this.db = db; this.enLinea = true; }
+  onEmpresas(cb, err) { return this.db.collection("empresas").onSnapshot((s) => cb(s.docs.map((d) => ({ ...d.data(), id: d.id }))), err); }
+  onAsientos(eid, cb, err) { return this.db.collection(`empresas/${eid}/asientos`).onSnapshot((s) => cb(s.docs.map((d) => ({ ...d.data(), id: d.id }))), err); }
+  setEmpresa(id, d) { const { id: _x, ...cuerpo } = d; return reintentar(() => this.db.doc(`empresas/${id}`).set(cuerpo)); }
+  async deleteEmpresa(id) {
+    const s = await reintentar(() => this.db.collection(`empresas/${id}/asientos`).get());
+    for (const d of s.docs) await reintentar(() => this.db.doc(`empresas/${id}/asientos/${d.id}`).delete());
+    await reintentar(() => this.db.doc(`empresas/${id}`).delete());
+  }
+  setAsiento(eid, id, d) { const { id: _x, numero: _n, ...cuerpo } = d; return reintentar(() => this.db.doc(`empresas/${eid}/asientos/${id}`).set(cuerpo)); }
+  deleteAsiento(eid, id) { return reintentar(() => this.db.doc(`empresas/${eid}/asientos/${id}`).delete()); }
+}
+
+/* ------------------------------------------------------------------ estado */
+const S = {
+  almacen: null, puedeEscribir: true, descargas: null,
+  empresas: [], eid: recuerdo("empresa", null), cargandoAsientos: true,
+  cuentas: [], porId: new Map(), lista: [],
+  vista: recuerdo("vista", "inicio"),
+  periodo: null, filtros: { anio: null, mes: "", texto: "" },
+  edit: null, cuentaEdit: null, confirmar: null, importacion: null, csv: null, mayorCuenta: "",
+  ocupado: false, desuscribirAsientos: null,
+};
+
+function empresa() { return S.empresas.find((e) => e.id === S.eid) || null; }
+
+function prepararCuentas() {
+  const e = empresa();
+  S.cuentas = (e?.cuentas || []).map((c) => ({ ...c })).sort(porCodigo);
+  S.porId = new Map(S.cuentas.map((c) => [c.id, c]));
+}
+
+/* Correlativo cronológico: se reinicia cada año; en una misma fecha la apertura va primero y el cierre al final. */
+function numerar(asientos) {
+  const lista = asientos.map((a) => ({ ...a, lineas: (a.lineas || []).map((l) => ({ ...l })) }));
+  lista.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0)
+    || (b.apertura ? 1 : 0) - (a.apertura ? 1 : 0)
+    || (a.cierre ? 1 : 0) - (b.cierre ? 1 : 0)
+    || (a.creado || 0) - (b.creado || 0)
+    || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  let anio = null, n = 0;
+  for (const a of lista) {
+    const y = a.fecha.slice(0, 4);
+    if (y !== anio) { anio = y; n = 0; }
+    a.numero = ++n;
+    a.total = a.lineas.reduce((s, l) => s + (l.debe || 0), 0);
+  }
+  return lista;
+}
+
+/* ------------------------------------------------------------------ contabilidad */
+function corte(fecha, incluida = true) {
+  let c = "0000-00-00";
+  for (const a of S.lista) if (a.apertura && (incluida ? a.fecha <= fecha : a.fecha < fecha) && a.fecha > c) c = a.fecha;
+  return c;
+}
+
+function saldosPeriodo(desde, hasta) {
+  const inicio = corte(hasta);
+  const acc = new Map();
+  let anterior = 0;
+  for (const a of S.lista) {
+    if (a.fecha < inicio || a.fecha > hasta) continue;
+    for (const l of a.lineas) {
+      const c = S.porId.get(l.cuenta);
+      if (!c) continue;
+      const res = RESULTADO.has(c.tipo);
+      if (res && a.fecha < desde) anterior += (l.haber || 0) - (l.debe || 0);
+      const incluir = res ? a.fecha >= desde && !a.cierre : !(a.cierre && a.fecha >= desde);
+      if (!incluir) continue;
+      const x = acc.get(c.id) || { cuenta: c, debe: 0, haber: 0 };
+      x.debe += l.debe || 0; x.haber += l.haber || 0;
+      acc.set(c.id, x);
+    }
+  }
+  return { cuentas: [...acc.values()].sort((a, b) => porCodigo(a.cuenta, b.cuenta)), anterior };
+}
+
+function arbol(tipos, montos) {
+  const hojas = new Map();
+  for (const c of S.cuentas) if (c.imputable && tipos.includes(c.tipo) && montos.get(c.id)) hojas.set(c.codigo, montos.get(c.id));
+  const filas = [];
+  for (const c of S.cuentas) {
+    if (c.imputable) {
+      if (!hojas.has(c.codigo)) continue;
+      filas.push({ codigo: c.codigo, nombre: c.nombre, grupo: false, monto: hojas.get(c.codigo) });
+    } else {
+      let s = 0, hay = false;
+      for (const [cod, v] of hojas) if (cod.startsWith(c.codigo + ".")) { s += v; hay = true; }
+      if (hay) filas.push({ codigo: c.codigo, nombre: c.nombre, grupo: true, monto: s });
+    }
+  }
+  return { filas, total: [...hojas.values()].reduce((s, v) => s + v, 0) };
+}
+
+function balanceOcho(desde, hasta) {
+  const cols = ["debitos", "creditos", "deudor", "acreedor", "activo", "pasivo", "perdidas", "ganancias"];
+  const datos = saldosPeriodo(desde, hasta);
+  const filas = [];
+  const agregar = (codigo, nombre, enRes, debe, haber) => {
+    const f = Object.fromEntries(cols.map((k) => [k, 0]));
+    const deudor = Math.max(debe - haber, 0), acreedor = Math.max(haber - debe, 0);
+    Object.assign(f, { codigo, nombre, debitos: debe, creditos: haber, deudor, acreedor });
+    if (enRes) { f.perdidas = deudor; f.ganancias = acreedor; } else { f.activo = deudor; f.pasivo = acreedor; }
+    filas.push(f);
+  };
+  for (const x of datos.cuentas) agregar(x.cuenta.codigo, x.cuenta.nombre, RESULTADO.has(x.cuenta.tipo) || x.cuenta.resultados_en_ocho, x.debe, x.haber);
+  if (datos.anterior) agregar("", "Resultados de ejercicios anteriores no cerrados", false, Math.max(-datos.anterior, 0), Math.max(datos.anterior, 0));
+  const totales = Object.fromEntries(cols.map((k) => [k, filas.reduce((s, f) => s + f[k], 0)]));
+  const resultado = totales.ganancias - totales.perdidas;
+  const ajuste = Object.fromEntries(cols.map((k) => [k, 0]));
+  if (resultado >= 0) { ajuste.pasivo = ajuste.perdidas = resultado; } else { ajuste.activo = ajuste.ganancias = -resultado; }
+  const iguales = Object.fromEntries(cols.map((k) => [k, totales[k] + ajuste[k]]));
+  return { cols, filas, totales, resultado, ajuste, iguales };
+}
+
+function estadoResultados(desde, hasta) {
+  const datos = saldosPeriodo(desde, hasta);
+  const montos = new Map(datos.cuentas.filter((x) => RESULTADO.has(x.cuenta.tipo)).map((x) => [x.cuenta.id, saldoNatural(x.cuenta.tipo, x.debe, x.haber)]));
+  const ingresos = arbol(["INGRESO"], montos), gastos = arbol(["GASTO"], montos);
+  return { ingresos, gastos, resultado: ingresos.total - gastos.total };
+}
+
+function balanceGeneral(hasta) {
+  const desde = hasta.slice(0, 4) + "-01-01";
+  const datos = saldosPeriodo(desde, hasta);
+  const montos = new Map(datos.cuentas.map((x) => [x.cuenta.id, saldoNatural(x.cuenta.tipo, x.debe, x.haber)]));
+  const activo = arbol(["ACTIVO"], montos), pasivo = arbol(["PASIVO"], montos), patrimonio = arbol(["PATRIMONIO"], montos);
+  let resultado = 0;
+  for (const x of datos.cuentas) if (RESULTADO.has(x.cuenta.tipo)) resultado += montos.get(x.cuenta.id) * (x.cuenta.tipo === "INGRESO" ? 1 : -1);
+  const totalPatrimonio = patrimonio.total + datos.anterior + resultado;
+  return { desde, activo, pasivo, patrimonio, anterior: datos.anterior, resultado, totalPatrimonio, totalPasivoPatrimonio: pasivo.total + totalPatrimonio };
+}
+
+function libroMayor(cuentaId, desde, hasta) {
+  const c = S.porId.get(cuentaId);
+  if (!c) return null;
+  const inicio = corte(desde, false);
+  let d0 = 0, h0 = 0;
+  for (const a of S.lista) if (a.fecha >= inicio && a.fecha < desde) for (const l of a.lineas) if (l.cuenta === cuentaId) { d0 += l.debe || 0; h0 += l.haber || 0; }
+  let saldo = saldoNatural(c.tipo, d0, h0);
+  const saldoInicial = saldo;
+  const aperturas = [...new Set(S.lista.filter((a) => a.apertura && a.fecha >= desde && a.fecha <= hasta).map((a) => a.fecha))].sort();
+  const movimientos = [];
+  let td = 0, th = 0;
+  for (const a of S.lista) {
+    if (a.fecha < desde || a.fecha > hasta) continue;
+    for (const l of a.lineas) {
+      if (l.cuenta !== cuentaId) continue;
+      while (aperturas.length && a.fecha >= aperturas[0]) {
+        aperturas.shift();
+        if (saldo) movimientos.push({ reinicio: true, fecha: a.fecha, anterior: saldo });
+        saldo = 0;
+      }
+      saldo += saldoNatural(c.tipo, l.debe || 0, l.haber || 0);
+      td += l.debe || 0; th += l.haber || 0;
+      movimientos.push({ asiento: a, glosa: l.glosa || a.glosa, debe: l.debe || 0, haber: l.haber || 0, saldo });
+    }
+  }
+  return { cuenta: c, saldoInicial, movimientos, td, th, saldoFinal: saldo };
+}
+
+function cuentasConMovimiento(hasta) {
+  const ids = new Set();
+  for (const a of S.lista) if (a.fecha <= hasta) for (const l of a.lineas) ids.add(l.cuenta);
+  return S.cuentas.filter((c) => ids.has(c.id));
+}
+
+function disponible(hasta) {
+  const datos = saldosPeriodo(hasta.slice(0, 4) + "-01-01", hasta);
+  return datos.cuentas.filter((x) => x.cuenta.tipo === "ACTIVO" && /^(caja|banco)/i.test(x.cuenta.nombre)).reduce((s, x) => s + x.debe - x.haber, 0);
+}
+
+function movimientosPorCuenta() {
+  const usadas = new Set();
+  for (const a of S.lista) for (const l of a.lineas) usadas.add(l.cuenta);
+  return usadas;
+}
+
+/* ------------------------------------------------------------------ navegación */
+const SECCIONES = [
+  [null, [["inicio", "Inicio"]]],
+  ["Registro", [["nuevo", "+ Nuevo asiento"], ["asientos", "Asientos"], ["cuentas", "Plan de cuentas"]]],
+  ["Libros", [["diario", "Libro Diario"], ["mayor", "Libro Mayor"]]],
+  ["Informes", [["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
+  ["Administración", [["empresa", "Datos de la empresa"], ["empresas", "Empresas e importación"]]],
+];
+
+function ir(vista) {
+  if (vista === "nuevo") { abrirEditor(null); return; }
+  S.vista = vista; S.confirmar = null; S.cuentaEdit = null;
+  if (vista !== "editor") recordar("vista", vista);
+  render();
+  window.scrollTo(0, 0);
+}
+
+function renderMenu() {
+  const sel = $("#sel-empresa");
+  sel.innerHTML = S.empresas.length
+    ? S.empresas.slice().sort((a, b) => (a.razon_social || "").localeCompare(b.razon_social || "")).map((e) => `<option value="${esc(e.id)}" ${e.id === S.eid ? "selected" : ""}>${esc(e.razon_social || "(sin nombre)")}</option>`).join("")
+    : `<option>Sin empresas</option>`;
+  sel.disabled = !S.empresas.length;
+  const e = empresa();
+  $("#sub-empresa").textContent = e ? `${e.rut || "RUT sin configurar"} · Ejercicio ${e.ejercicio}` : (S.almacen ? "Crea o importa una empresa" : "Cargando…");
+  const actual = S.vista === "editor" && !S.edit?.id ? "nuevo" : S.vista === "editor" ? "asientos" : S.vista;
+  $("#nav").innerHTML = SECCIONES.map(([titulo, items]) =>
+    (titulo ? `<span class="seccion">${titulo}</span>` : "") +
+    items.map(([v, t]) => `<button type="button" data-ir="${v}" ${v === actual ? 'aria-current="page"' : ""} ${!e && !["empresas"].includes(v) ? "disabled" : ""}>${t}</button>`).join("")
+  ).join("");
+}
+
+function render() {
+  renderMenu();
+  const main = $("#main");
+  S.csv = null;
+  if (!S.almacen) { main.innerHTML = `<div class="vacio"><p>Cargando la contabilidad…</p></div>`; return; }
+  const e = empresa();
+  let html;
+  if (!e && S.vista !== "empresas") html = vistaSinEmpresa();
+  else if (S.cargandoAsientos && !["empresas", "empresa", "cuentas"].includes(S.vista)) html = `<div class="vacio"><p>Cargando asientos de ${esc(e.razon_social)}…</p></div>`;
+  else html = ({ inicio: vistaInicio, asientos: vistaAsientos, editor: vistaEditor, cuentas: vistaCuentas, diario: vistaDiario, mayor: vistaMayor,
+    ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas }[S.vista] || vistaInicio)();
+  const banner = !S.almacen.enLinea
+    ? `<div class="aviso">Esta copia no está conectada con Claude: puedes probarla, pero los cambios se pierden al cerrar. Ábrela como artefacto en claude.ai para guardar.</div>`
+    : !S.puedeEscribir ? `<div class="aviso">Tienes acceso de solo lectura: puedes ver los libros e informes, pero no modificar datos.</div>` : "";
+  main.innerHTML = banner + html;
+  if (S.vista === "editor") actualizarCuadre();
+}
+
+/* ------------------------------------------------------------------ piezas de vista */
+function periodo() {
+  const e = empresa();
+  if (!S.periodo || S.periodo.eid !== S.eid) S.periodo = { eid: S.eid, desde: `${e.ejercicio}-01-01`, hasta: `${e.ejercicio}-12-31` };
+  return S.periodo;
+}
+function barraPeriodo(soloHasta = false, extra = "") {
+  const p = periodo();
+  return `<form class="barra" data-form="periodo">
+    ${soloHasta ? "" : `<label>Desde<input type="date" id="p-desde" value="${p.desde}" required></label>`}
+    <label>${soloHasta ? "Al" : "Hasta"}<input type="date" id="p-hasta" value="${p.hasta}" required></label>
+    ${extra}
+    <button class="btn sec" type="submit">Ver</button>
+    ${S.descargas ? `<button class="btn sec" type="button" data-accion="csv">Descargar CSV</button>` : ""}
+  </form>`;
+}
+function textoPeriodo(desde, hasta) { return desde ? `Del ${fmtFecha(desde)} al ${fmtFecha(hasta)}` : `Al ${fmtFecha(hasta)}`; }
+function cabecera(titulo, sub) {
+  return `<div class="cabecera"><h1>${esc(titulo)}</h1>${sub ? `<span class="sub">${esc(sub)}</span>` : ""}</div>`;
+}
+function puedeEditar(boton) { return S.puedeEscribir ? boton : ""; }
+
+function vistaSinEmpresa() {
+  return `<div class="caja vacio">
+    <h1>Contabilidad Completa en línea</h1>
+    <p class="ayuda">Todavía no hay empresas. Crea una nueva con el plan de cuentas base, o importa una empresa
+      desde el programa de tu PC (Respaldos → «Descargar para la versión en línea»).</p>
+    ${puedeEditar(`<button class="btn" data-ir="empresas">Crear o importar una empresa</button>`)}
+  </div>`;
+}
+
+function vistaInicio() {
+  const e = empresa();
+  const anio = String(e.ejercicio);
+  const er = estadoResultados(`${anio}-01-01`, `${anio}-12-31`);
+  const caja = disponible(`${anio}-12-31`);
+  const delAnio = S.lista.filter((a) => a.fecha.startsWith(anio));
+  const ultimos = delAnio.slice(-8).reverse();
+  return `${cabecera(`Resumen del ejercicio ${anio}`, e.razon_social)}
+  <div class="tarjetas">
+    <div class="tarjeta"><span>Ingresos</span><strong>$${clp(er.ingresos.total)}</strong></div>
+    <div class="tarjeta"><span>Gastos</span><strong>$${clp(er.gastos.total)}</strong></div>
+    <div class="tarjeta ${er.resultado < 0 ? "neg" : ""}"><span>${er.resultado < 0 ? "Pérdida" : "Utilidad"}</span><strong>$${clp(Math.abs(er.resultado))}</strong></div>
+    <div class="tarjeta ${caja < 0 ? "neg" : ""}"><span>Caja y bancos</span><strong>$${clp(caja)}</strong></div>
+  </div>
+  <div class="acciones">${puedeEditar(`<button class="btn" data-ir="nuevo">+ Nuevo asiento</button>`)}</div>
+  <div class="cabecera"><h2>Últimos asientos</h2><span class="sub">${delAnio.length} en el ejercicio</span></div>
+  ${ultimos.length ? tablaAsientos(ultimos) : `<div class="caja vacio"><p>Todavía no hay asientos en ${anio}. Empieza con el asiento de apertura (capital inicial, saldos de caja y banco).</p></div>`}`;
+}
+
+function tablaAsientos(lista) {
+  return `<div class="tabla"><table>
+    <thead><tr><th class="num">N°</th><th>Fecha</th><th>Glosa</th><th class="num">Monto</th></tr></thead>
+    <tbody>${lista.map((a) => `<tr class="clic" data-asiento="${esc(a.id)}">
+      <td class="num">${a.numero}</td><td>${fmtFecha(a.fecha)}</td>
+      <td>${esc(a.glosa)}${a.apertura ? '<span class="etiqueta">apertura</span>' : ""}${a.cierre ? '<span class="etiqueta">cierre</span>' : ""}</td>
+      <td class="num">${clp(a.total)}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function vistaAsientos() {
+  const e = empresa();
+  const f = S.filtros;
+  const anios = [...new Set([String(e.ejercicio), ...S.lista.map((a) => a.fecha.slice(0, 4))])].sort().reverse();
+  if (!f.anio || !anios.includes(f.anio)) f.anio = String(e.ejercicio);
+  const texto = f.texto.trim().toLowerCase();
+  const lista = S.lista.filter((a) => a.fecha.startsWith(f.anio) && (!f.mes || a.fecha.slice(5, 7) === f.mes)
+    && (!texto || a.glosa.toLowerCase().includes(texto) || a.lineas.some((l) => (l.glosa || "").toLowerCase().includes(texto)) || String(a.numero) === texto));
+  return `${cabecera("Asientos contables", `${lista.length} asiento${lista.length === 1 ? "" : "s"}`)}
+  <form class="barra" data-form="filtros">
+    <label>Año<select id="f-anio">${anios.map((y) => `<option ${y === f.anio ? "selected" : ""}>${y}</option>`).join("")}</select></label>
+    <label>Mes<select id="f-mes"><option value="">Todos</option>${MESES.map((m, i) => { const v = String(i + 1).padStart(2, "0"); return `<option value="${v}" ${v === f.mes ? "selected" : ""}>${m}</option>`; }).join("")}</select></label>
+    <label>Buscar<input id="f-texto" value="${esc(f.texto)}" placeholder="Glosa o N°"></label>
+    <button class="btn sec" type="submit">Filtrar</button>
+    ${puedeEditar(`<button class="btn" type="button" data-ir="nuevo">+ Nuevo asiento</button>`)}
+  </form>
+  <p class="ayuda">La numeración es correlativa por fecha y parte en 1 cada año: un asiento ingresado hacia el pasado toma su lugar y los siguientes se corren.</p>
+  ${lista.length ? tablaAsientos(lista) : `<div class="caja vacio"><p>No hay asientos con estos filtros.</p></div>`}`;
+}
+
+/* ------------------------------------------------------------------ editor de asientos */
+function lineaVacia() { return { cuenta: "", texto: "", glosa: "", debe: "", haber: "" }; }
+function etiquetaCuenta(c) { return c ? `${c.codigo} · ${c.nombre}` : ""; }
+
+function abrirEditor(id) {
+  if (!S.puedeEscribir) { aviso("Tienes acceso de solo lectura."); return; }
+  if (id) {
+    const a = S.lista.find((x) => x.id === id);
+    if (!a) return;
+    S.edit = { id, numero: a.numero, fecha: a.fecha, glosa: a.glosa, apertura: !!a.apertura, cierre: !!a.cierre, creado: a.creado,
+      lineas: a.lineas.map((l) => ({ cuenta: l.cuenta, texto: etiquetaCuenta(S.porId.get(l.cuenta)) || "(cuenta eliminada)", glosa: l.glosa || "", debe: l.debe ? clp(l.debe) : "", haber: l.haber ? clp(l.haber) : "" })) };
+  } else {
+    const ultimo = S.lista.filter((a) => a.fecha.startsWith(String(empresa().ejercicio))).at(-1);
+    S.edit = { id: null, fecha: ultimo?.fecha || hoy(), glosa: "", apertura: false, cierre: false, lineas: [lineaVacia(), lineaVacia()] };
+  }
+  S.vista = "editor"; S.confirmar = null;
+  render(); window.scrollTo(0, 0);
+}
+
+function vistaEditor() {
+  const ed = S.edit;
+  if (!ed) return vistaAsientos();
+  const titulo = ed.id ? `Asiento N° ${ed.numero} · ${ed.fecha.slice(0, 4)}` : "Nuevo asiento";
+  const imputables = S.cuentas.filter((c) => c.imputable && c.activa !== false);
+  return `${cabecera(titulo, ed.cierre ? "Asiento de cierre" : "")}
+  <form class="caja" data-form="asiento" autocomplete="off">
+    <div class="form">
+      <label>Fecha<input type="date" id="a-fecha" value="${esc(ed.fecha)}" required></label>
+      <label>Glosa<input id="a-glosa" value="${esc(ed.glosa)}" required placeholder="Ej.: Venta factura 125"></label>
+      <label class="check"><input type="checkbox" id="a-apertura" ${ed.apertura ? "checked" : ""}> Asiento de apertura (reinicia saldos)</label>
+    </div>
+    <datalist id="dl-cuentas">${imputables.map((c) => `<option value="${esc(etiquetaCuenta(c))}"></option>`).join("")}</datalist>
+    <div class="tabla lineas"><table>
+      <thead><tr><th style="min-width:230px">Cuenta</th><th style="min-width:160px">Glosa de la línea</th><th class="num" style="min-width:120px">Debe</th><th class="num" style="min-width:120px">Haber</th><th></th></tr></thead>
+      <tbody>${ed.lineas.map((l, i) => `<tr>
+        <td><input list="dl-cuentas" id="l-${i}-cuenta" data-linea="${i}" data-campo="texto" value="${esc(l.texto)}" placeholder="Código o nombre" class="${l.texto && !l.cuenta ? "malo" : ""}"></td>
+        <td><input id="l-${i}-glosa" data-linea="${i}" data-campo="glosa" value="${esc(l.glosa)}"></td>
+        <td><input id="l-${i}-debe" class="monto" inputmode="numeric" data-linea="${i}" data-campo="debe" value="${esc(l.debe)}"></td>
+        <td><input id="l-${i}-haber" class="monto" inputmode="numeric" data-linea="${i}" data-campo="haber" value="${esc(l.haber)}"></td>
+        <td><button type="button" class="btn enlace" data-accion="quitar-linea" data-linea="${i}" aria-label="Quitar línea ${i + 1}" ${ed.lineas.length <= 2 ? "disabled" : ""}>Quitar</button></td>
+      </tr>`).join("")}</tbody>
+      <tfoot><tr class="total"><td colspan="2">Totales <span id="cuadre" class="cuadre"></span></td><td class="num" id="t-debe"></td><td class="num" id="t-haber"></td><td></td></tr></tfoot>
+    </table></div>
+    <p class="ayuda">Atajo: escribe <strong>=</strong> en Debe o Haber para completar la diferencia.</p>
+    <div class="acciones">
+      <button class="btn sec" type="button" data-accion="agregar-linea">+ Agregar línea</button>
+      <span style="flex:1"></span>
+      <button class="btn" type="submit" id="a-guardar">Guardar asiento</button>
+      <button class="btn sec" type="button" data-ir="asientos">Cancelar</button>
+      ${ed.id ? `<button class="btn enlace" type="button" data-accion="pedir-eliminar-asiento">Eliminar</button>` : ""}
+    </div>
+    ${S.confirmar === "asiento" ? `<div class="confirmar"><span>¿Eliminar el asiento N° ${ed.numero}? Los asientos siguientes del año se corren. No se puede deshacer.</span>
+      <button class="btn peligro" type="button" data-accion="eliminar-asiento">Sí, eliminar</button>
+      <button class="btn sec" type="button" data-accion="cancelar-confirmacion">Cancelar</button></div>` : ""}
+  </form>`;
+}
+
+function cuentaDesdeTexto(texto) {
+  const t = texto.trim();
+  if (!t) return "";
+  const cod = t.split(/[\s·]+/)[0];
+  const imputables = S.cuentas.filter((c) => c.imputable);
+  let c = imputables.find((x) => x.codigo === cod) || imputables.find((x) => etiquetaCuenta(x) === t);
+  if (!c) { const m = imputables.filter((x) => x.nombre.toLowerCase() === t.toLowerCase()); if (m.length === 1) c = m[0]; }
+  return c ? c.id : "";
+}
+
+function totalesEdicion() {
+  let d = 0, h = 0, malo = false;
+  for (const l of S.edit.lineas) {
+    const vd = parseMonto(l.debe), vh = parseMonto(l.haber);
+    if (Number.isNaN(vd) || Number.isNaN(vh)) malo = true; else { d += vd; h += vh; }
+  }
+  return { d, h, malo };
+}
+
+function actualizarCuadre() {
+  if (!S.edit || !$("#cuadre")) return;
+  const { d, h, malo } = totalesEdicion();
+  $("#t-debe").textContent = clp(d); $("#t-haber").textContent = clp(h);
+  const el = $("#cuadre");
+  if (malo) { el.textContent = "· hay montos no válidos"; el.className = "cuadre neg"; }
+  else if (d === h && d > 0) { el.textContent = "· cuadrado"; el.className = "cuadre ok"; }
+  else { el.textContent = `· diferencia ${clp(d - h)}`; el.className = "cuadre neg"; }
+}
+
+function validarAsiento() {
+  const ed = S.edit;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ed.fecha)) return "Ingresa una fecha válida.";
+  if (!ed.glosa.trim()) return "La glosa es obligatoria.";
+  const lineas = [];
+  for (const [i, l] of ed.lineas.entries()) {
+    const debe = parseMonto(l.debe), haber = parseMonto(l.haber);
+    const vacia = !l.texto.trim() && !debe && !haber && !l.glosa.trim();
+    if (vacia) continue;
+    if (!l.cuenta) return `Línea ${i + 1}: elige una cuenta imputable del plan.`;
+    if (Number.isNaN(debe) || Number.isNaN(haber) || debe < 0 || haber < 0) return `Línea ${i + 1}: los montos deben ser números positivos.`;
+    if (debe && haber) return `Línea ${i + 1}: usa solo Debe o solo Haber.`;
+    if (!debe && !haber) return `Línea ${i + 1}: falta el monto.`;
+    lineas.push({ cuenta: l.cuenta, glosa: l.glosa.trim(), debe, haber });
+  }
+  if (lineas.length < 2) return "El asiento necesita al menos dos líneas.";
+  const d = lineas.reduce((s, l) => s + l.debe, 0), h = lineas.reduce((s, l) => s + l.haber, 0);
+  if (d !== h) return `El asiento no cuadra: diferencia de $${clp(d - h)}.`;
+  return lineas;
+}
+
+async function guardarAsiento() {
+  const r = validarAsiento();
+  if (typeof r === "string") { aviso(r); return; }
+  const ed = S.edit;
+  const id = ed.id || nuevoId();
+  const datos = { fecha: ed.fecha, glosa: ed.glosa.trim(), apertura: ed.apertura, cierre: ed.cierre, lineas: r, creado: ed.creado || Date.now() };
+  await ocupado(async () => {
+    await S.almacen.setAsiento(S.eid, id, datos);
+    S.filtros.anio = ed.fecha.slice(0, 4);
+    S.edit = null;
+    ir("asientos");
+    const n = S.lista.find((a) => a.id === id)?.numero;
+    aviso(n ? `Asiento N° ${n} guardado.` : "Asiento guardado.");
+  }, "No se pudo guardar el asiento");
+}
+
+/* ------------------------------------------------------------------ plan de cuentas */
+function vistaCuentas() {
+  const usadas = movimientosPorCuenta();
+  const ce = S.cuentaEdit;
+  const form = ce ? `<form class="caja" data-form="cuenta">
+      <h2>${ce.id ? `Editar cuenta ${esc(ce.codigo)}` : "Nueva cuenta"}</h2>
+      <div class="form">
+        <label>Código<input id="c-codigo" value="${esc(ce.codigo)}" placeholder="1.1.12" required></label>
+        <label>Nombre<input id="c-nombre" value="${esc(ce.nombre)}" required></label>
+        <label class="check"><input type="checkbox" id="c-imputable" ${ce.imputable ? "checked" : ""}> Imputable (recibe movimientos; si no, es un grupo)</label>
+        <label class="check"><input type="checkbox" id="c-activa" ${ce.activa !== false ? "checked" : ""}> Activa</label>
+        <label class="check"><input type="checkbox" id="c-ocho" ${ce.resultados_en_ocho ? "checked" : ""}> En el Balance de 8 columnas, mostrar en Resultados (p. ej. Utilidades acumuladas)</label>
+      </div>
+      <p class="ayuda">El tipo se deduce del primer dígito: 1 Activo, 2 Pasivo, 3 Patrimonio, 4 Ingresos, 5 Gastos.</p>
+      <div class="acciones">
+        <button class="btn" type="submit">Guardar cuenta</button>
+        <button class="btn sec" type="button" data-accion="cancelar-cuenta">Cancelar</button>
+        ${ce.id && !usadas.has(ce.id) ? `<button class="btn enlace" type="button" data-accion="eliminar-cuenta">Eliminar cuenta</button>` : ""}
+      </div>
+    </form>` : "";
+  return `${cabecera("Plan de cuentas", `${S.cuentas.filter((c) => c.imputable).length} cuentas imputables`)}
+  <div class="acciones">${puedeEditar(`<button class="btn" data-accion="nueva-cuenta">+ Nueva cuenta</button>`)}
+    ${S.descargas ? `<button class="btn sec" type="button" data-accion="csv">Descargar CSV</button>` : ""}</div>
+  ${form}
+  <div class="tabla"><table>
+    <thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th></tr></thead>
+    <tbody>${S.cuentas.map((c) => `<tr class="${S.puedeEscribir ? "clic" : ""} ${c.imputable ? "" : "grupo"}" data-cuenta="${esc(c.id)}">
+      <td class="cod">${esc(c.codigo)}</td><td class="nivel-${Math.min(nivel(c.codigo), 4)}">${esc(c.nombre)}</td>
+      <td>${NOMBRE_TIPO[c.tipo] || c.tipo}</td>
+      <td>${c.imputable ? (c.activa === false ? "Inactiva" : usadas.has(c.id) ? "Con movimientos" : "") : "Grupo"}</td></tr>`).join("")}</tbody>
+  </table></div>`;
+}
+
+function datosCsvCuentas() {
+  return { archivo: `plan_de_cuentas_${slug()}.csv`, filas: [["Código", "Nombre", "Tipo", "Imputable", "Activa"],
+    ...S.cuentas.map((c) => [c.codigo, c.nombre, NOMBRE_TIPO[c.tipo], c.imputable ? "Sí" : "No", c.activa === false ? "No" : "Sí"])] };
+}
+
+async function guardarCuenta() {
+  const ce = S.cuentaEdit;
+  const codigo = $("#c-codigo").value.trim(), nombre = $("#c-nombre").value.trim();
+  const imputable = $("#c-imputable").checked, activa = $("#c-activa").checked, ocho = $("#c-ocho").checked;
+  if (!/^\d+(\.\d+)*$/.test(codigo)) return aviso("El código debe tener el formato 1.1.01 (números separados por puntos).");
+  if (!nombre) return aviso("El nombre es obligatorio.");
+  const tipo = TIPO_POR_DIGITO[codigo[0]];
+  if (!tipo) return aviso("El código debe comenzar con 1, 2, 3, 4 o 5.");
+  if (S.cuentas.some((c) => c.codigo === codigo && c.id !== ce.id)) return aviso(`Ya existe la cuenta ${codigo}.`);
+  const partes = codigo.split(".");
+  if (partes.length > 1) {
+    const padre = S.cuentas.find((c) => c.codigo === partes.slice(0, -1).join("."));
+    if (!padre) return aviso(`Primero crea el grupo ${partes.slice(0, -1).join(".")}.`);
+    if (padre.imputable) return aviso(`La cuenta ${padre.codigo} es imputable; no puede tener subcuentas.`);
+  }
+  const anterior = ce.id ? S.porId.get(ce.id) : null;
+  const tieneHijas = anterior && S.cuentas.some((c) => c.codigo.startsWith(anterior.codigo + "."));
+  if (anterior && tieneHijas && (codigo !== anterior.codigo || imputable)) return aviso("Esta cuenta tiene subcuentas: no se puede cambiar su código ni volverla imputable.");
+  if (anterior && !imputable && movimientosPorCuenta().has(ce.id)) return aviso("La cuenta tiene movimientos: debe seguir siendo imputable.");
+  if (anterior && anterior.tipo !== tipo && movimientosPorCuenta().has(ce.id)) return aviso("La cuenta tiene movimientos: no se puede cambiar a otro tipo (primer dígito).");
+  const cuenta = { id: ce.id || "c" + nuevoId(), codigo, nombre, tipo, imputable, activa, resultados_en_ocho: tipo === "PATRIMONIO" && ocho };
+  const cuentas = S.cuentas.filter((c) => c.id !== cuenta.id).concat(cuenta).sort(porCodigo);
+  await ocupado(async () => {
+    await S.almacen.setEmpresa(S.eid, { ...empresa(), cuentas });
+    S.cuentaEdit = null; render(); aviso(`Cuenta ${codigo} guardada.`);
+  }, "No se pudo guardar la cuenta");
+}
+
+async function eliminarCuenta() {
+  const ce = S.cuentaEdit;
+  const c = S.porId.get(ce.id);
+  if (!c) return;
+  if (movimientosPorCuenta().has(c.id)) return aviso("La cuenta tiene movimientos: no se puede eliminar.");
+  if (S.cuentas.some((x) => x.codigo.startsWith(c.codigo + "."))) return aviso("La cuenta tiene subcuentas: elimínalas primero.");
+  await ocupado(async () => {
+    await S.almacen.setEmpresa(S.eid, { ...empresa(), cuentas: S.cuentas.filter((x) => x.id !== c.id) });
+    S.cuentaEdit = null; render(); aviso(`Cuenta ${c.codigo} eliminada.`);
+  }, "No se pudo eliminar la cuenta");
+}
+
+/* ------------------------------------------------------------------ libros */
+function vistaDiario() {
+  const p = periodo();
+  const asientos = S.lista.filter((a) => a.fecha >= p.desde && a.fecha <= p.hasta);
+  let td = 0, th = 0;
+  const filas = [["N°", "Fecha", "Código", "Cuenta", "Glosa", "Debe", "Haber"]];
+  const cuerpo = asientos.map((a) => {
+    const lineas = a.lineas.map((l) => {
+      const c = S.porId.get(l.cuenta) || { codigo: "?", nombre: "(cuenta eliminada)" };
+      td += l.debe || 0; th += l.haber || 0;
+      filas.push([a.numero, a.fecha, c.codigo, c.nombre, l.glosa || a.glosa, l.debe || 0, l.haber || 0]);
+      return `<tr><td></td><td class="cod">${esc(c.codigo)}</td><td>${esc(c.nombre)}${l.glosa ? `<br><small class="ayuda">${esc(l.glosa)}</small>` : ""}</td><td class="num">${monto(l.debe)}</td><td class="num">${monto(l.haber)}</td></tr>`;
+    }).join("");
+    return `<tr class="cab-asiento clic" data-asiento="${esc(a.id)}"><td class="num">${a.numero}</td><td colspan="4">${fmtFecha(a.fecha)} · ${esc(a.glosa)}${a.apertura ? '<span class="etiqueta">apertura</span>' : ""}${a.cierre ? '<span class="etiqueta">cierre</span>' : ""}</td></tr>${lineas}`;
+  }).join("");
+  filas.push(["", "", "", "TOTALES", "", td, th]);
+  S.csv = { archivo: `libro_diario_${slug()}_${p.desde}_${p.hasta}.csv`, filas };
+  return `${cabecera("Libro Diario", textoPeriodo(p.desde, p.hasta))}${barraPeriodo()}
+  ${asientos.length ? `<div class="tabla"><table>
+    <thead><tr><th class="num">N°</th><th>Código</th><th>Cuenta / glosa</th><th class="num">Debe</th><th class="num">Haber</th></tr></thead>
+    <tbody>${cuerpo}</tbody>
+    <tfoot><tr class="total"><td colspan="3">Totales</td><td class="num">${clp(td)}</td><td class="num">${clp(th)}</td></tr></tfoot>
+  </table></div>` : `<div class="caja vacio"><p>No hay asientos en el período.</p></div>`}`;
+}
+
+function tablaMayor(m, filas) {
+  const c = m.cuenta;
+  filas.push([c.codigo, c.nombre, "", "", "Saldo anterior", "", "", m.saldoInicial]);
+  const cuerpo = m.movimientos.map((x) => {
+    if (x.reinicio) {
+      filas.push([c.codigo, c.nombre, "", x.fecha, "Saldo reiniciado por asiento de apertura", "", "", 0]);
+      return `<tr class="reinicio"><td>${fmtFecha(x.fecha)}</td><td></td><td>Saldo reiniciado por asiento de apertura (anterior ${clp(x.anterior)})</td><td></td><td></td><td class="num">0</td></tr>`;
+    }
+    filas.push([c.codigo, c.nombre, x.asiento.numero, x.asiento.fecha, x.glosa, x.debe, x.haber, x.saldo]);
+    return `<tr class="clic" data-asiento="${esc(x.asiento.id)}"><td>${fmtFecha(x.asiento.fecha)}</td><td class="num">${x.asiento.numero}</td><td>${esc(x.glosa)}</td>
+      <td class="num">${monto(x.debe)}</td><td class="num">${monto(x.haber)}</td><td class="num">${monto(x.saldo) || "0"}</td></tr>`;
+  }).join("");
+  return `<div class="tabla"><table>
+    <thead><tr><th colspan="6">${esc(c.codigo)} · ${esc(c.nombre)} <span class="etiqueta">${NOMBRE_TIPO[c.tipo]}</span></th></tr>
+      <tr><th>Fecha</th><th class="num">N°</th><th>Glosa</th><th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th></tr></thead>
+    <tbody><tr class="sub"><td colspan="5">Saldo anterior</td><td class="num">${monto(m.saldoInicial) || "0"}</td></tr>${cuerpo}</tbody>
+    <tfoot><tr class="total"><td colspan="3">Totales y saldo final</td><td class="num">${clp(m.td)}</td><td class="num">${clp(m.th)}</td><td class="num">${monto(m.saldoFinal) || "0"}</td></tr></tfoot>
+  </table></div>`;
+}
+
+function vistaMayor() {
+  const p = periodo();
+  const cuentas = cuentasConMovimiento(p.hasta);
+  if (S.mayorCuenta && !S.porId.has(S.mayorCuenta)) S.mayorCuenta = "";
+  const selector = `<label>Cuenta<select id="p-cuenta"><option value="">Todas las cuentas</option>${cuentas.map((c) => `<option value="${esc(c.id)}" ${c.id === S.mayorCuenta ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}</select></label>`;
+  const filas = [["Código", "Cuenta", "N°", "Fecha", "Glosa", "Debe", "Haber", "Saldo"]];
+  let contenido;
+  if (S.mayorCuenta) {
+    contenido = tablaMayor(libroMayor(S.mayorCuenta, p.desde, p.hasta), filas);
+  } else {
+    const mayores = cuentas.map((c) => libroMayor(c.id, p.desde, p.hasta)).filter((m) => m.movimientos.length || m.saldoInicial);
+    contenido = mayores.length ? mayores.map((m) => tablaMayor(m, filas)).join("") : `<div class="caja vacio"><p>No hay movimientos en el período.</p></div>`;
+  }
+  S.csv = { archivo: `libro_mayor_${slug()}_${p.desde}_${p.hasta}.csv`, filas };
+  return `${cabecera("Libro Mayor", textoPeriodo(p.desde, p.hasta))}${barraPeriodo(false, selector)}${contenido}`;
+}
+
+/* ------------------------------------------------------------------ informes */
+function vistaOcho() {
+  const p = periodo();
+  const b = balanceOcho(p.desde, p.hasta);
+  const etiquetas = ["Débitos", "Créditos", "Deudor", "Acreedor", "Activo", "Pasivo", "Pérdidas", "Ganancias"];
+  const celdas = (f) => b.cols.map((k) => `<td class="num">${monto(f[k])}</td>`).join("");
+  const nombreAjuste = b.resultado >= 0 ? "Utilidad del ejercicio" : "Pérdida del ejercicio";
+  S.csv = { archivo: `balance_8_columnas_${slug()}_${p.desde}_${p.hasta}.csv`, filas: [["Código", "Cuenta", ...etiquetas],
+    ...b.filas.map((f) => [f.codigo, f.nombre, ...b.cols.map((k) => f[k])]),
+    ["", "Sumas", ...b.cols.map((k) => b.totales[k])], ["", nombreAjuste, ...b.cols.map((k) => b.ajuste[k])], ["", "Sumas iguales", ...b.cols.map((k) => b.iguales[k])]] };
+  return `${cabecera("Balance de 8 columnas", textoPeriodo(p.desde, p.hasta))}${barraPeriodo()}
+  ${b.filas.length ? `<div class="tabla"><table>
+    <thead><tr><th>Código</th><th>Cuenta</th>${etiquetas.map((e) => `<th class="num">${e}</th>`).join("")}</tr></thead>
+    <tbody>${b.filas.map((f) => `<tr><td class="cod">${esc(f.codigo)}</td><td>${esc(f.nombre)}</td>${celdas(f)}</tr>`).join("")}</tbody>
+    <tfoot>
+      <tr class="sub"><td></td><td>Sumas</td>${celdas(b.totales)}</tr>
+      <tr><td></td><td>${nombreAjuste}</td>${celdas(b.ajuste)}</tr>
+      <tr class="total"><td></td><td>Sumas iguales</td>${celdas(b.iguales)}</tr>
+    </tfoot></table></div>` : `<div class="caja vacio"><p>No hay movimientos en el período.</p></div>`}`;
+}
+
+function filasArbol(a) {
+  return a.filas.map((f) => `<tr class="${f.grupo ? "grupo" : ""}"><td class="cod">${esc(f.codigo)}</td><td class="nivel-${Math.min(nivel(f.codigo), 4)}">${esc(f.nombre)}</td><td class="num">${monto(f.monto) || "0"}</td></tr>`).join("");
+}
+function csvArbol(a) { return a.filas.map((f) => [f.codigo, f.nombre, f.monto]); }
+
+function vistaResultados() {
+  const p = periodo();
+  const er = estadoResultados(p.desde, p.hasta);
+  const etiqueta = er.resultado >= 0 ? "UTILIDAD DEL EJERCICIO" : "PÉRDIDA DEL EJERCICIO";
+  S.csv = { archivo: `estado_resultados_${slug()}_${p.desde}_${p.hasta}.csv`, filas: [["Código", "Cuenta", "Monto"],
+    ["", "INGRESOS", ""], ...csvArbol(er.ingresos), ["", "TOTAL INGRESOS", er.ingresos.total],
+    ["", "GASTOS", ""], ...csvArbol(er.gastos), ["", "TOTAL GASTOS", er.gastos.total], ["", etiqueta, er.resultado]] };
+  return `${cabecera("Estado de Resultados", textoPeriodo(p.desde, p.hasta))}${barraPeriodo()}
+  <div class="tabla"><table>
+    <thead><tr><th>Código</th><th>Cuenta</th><th class="num">Monto</th></tr></thead>
+    <tbody>
+      <tr class="titulo"><td colspan="3">Ingresos (ganancias)</td></tr>${filasArbol(er.ingresos)}
+      <tr class="sub"><td></td><td>Total ingresos</td><td class="num">${clp(er.ingresos.total)}</td></tr>
+      <tr class="titulo"><td colspan="3">Gastos (pérdidas)</td></tr>${filasArbol(er.gastos)}
+      <tr class="sub"><td></td><td>Total gastos</td><td class="num">${clp(er.gastos.total)}</td></tr>
+    </tbody>
+    <tfoot><tr class="total"><td></td><td>${etiqueta}</td><td class="num">${monto(er.resultado) || "0"}</td></tr></tfoot>
+  </table></div>`;
+}
+
+function vistaGeneral() {
+  const p = periodo();
+  const bg = balanceGeneral(p.hasta);
+  const cuadra = bg.activo.total === bg.totalPasivoPatrimonio;
+  S.csv = { archivo: `balance_general_${slug()}_${p.hasta}.csv`, filas: [["Código", "Cuenta", "Saldo"],
+    ["", "ACTIVO", ""], ...csvArbol(bg.activo), ["", "TOTAL ACTIVO", bg.activo.total],
+    ["", "PASIVO", ""], ...csvArbol(bg.pasivo), ["", "TOTAL PASIVO", bg.pasivo.total],
+    ["", "PATRIMONIO", ""], ...csvArbol(bg.patrimonio), ["", "Utilidades (pérdidas) acumuladas", bg.anterior], ["", "Resultado del ejercicio", bg.resultado],
+    ["", "TOTAL PATRIMONIO", bg.totalPatrimonio], ["", "TOTAL PASIVO Y PATRIMONIO", bg.totalPasivoPatrimonio]] };
+  return `${cabecera("Estado de Situación Financiera", `Al ${fmtFecha(p.hasta)}`)}${barraPeriodo(true)}
+  ${cuadra ? "" : `<div class="aviso">El activo y la suma de pasivo y patrimonio difieren en $${clp(bg.activo.total - bg.totalPasivoPatrimonio)}. Revisa asientos sin cuadrar o cuentas de tipo mal asignado.</div>`}
+  <div class="tabla"><table>
+    <thead><tr><th>Código</th><th>Cuenta</th><th class="num">Saldo</th></tr></thead>
+    <tbody>
+      <tr class="titulo"><td colspan="3">Activo</td></tr>${filasArbol(bg.activo)}
+      <tr class="sub"><td></td><td>Total activo</td><td class="num">${clp(bg.activo.total)}</td></tr>
+      <tr class="titulo"><td colspan="3">Pasivo</td></tr>${filasArbol(bg.pasivo)}
+      <tr class="sub"><td></td><td>Total pasivo</td><td class="num">${clp(bg.pasivo.total)}</td></tr>
+      <tr class="titulo"><td colspan="3">Patrimonio</td></tr>${filasArbol(bg.patrimonio)}
+      ${bg.anterior ? `<tr><td></td><td>Utilidades (pérdidas) acumuladas</td><td class="num">${monto(bg.anterior)}</td></tr>` : ""}
+      <tr><td></td><td>${bg.resultado >= 0 ? "Utilidad" : "Pérdida"} del ejercicio</td><td class="num">${monto(bg.resultado) || "0"}</td></tr>
+      <tr class="sub"><td></td><td>Total patrimonio</td><td class="num">${monto(bg.totalPatrimonio) || "0"}</td></tr>
+    </tbody>
+    <tfoot><tr class="total"><td></td><td>Total pasivo y patrimonio</td><td class="num">${clp(bg.totalPasivoPatrimonio)}</td></tr></tfoot>
+  </table></div>`;
+}
+
+/* ------------------------------------------------------------------ empresas */
+const CAMPOS_EMPRESA = [["razon_social", "Razón social *"], ["rut", "RUT"], ["giro", "Giro"], ["direccion", "Dirección"], ["comuna", "Comuna / ciudad"],
+  ["representante", "Representante legal"], ["rut_representante", "RUT del representante legal"], ["regimen", "Régimen tributario"]];
+
+function formularioEmpresa(e, nueva) {
+  return `<div class="form">
+    ${CAMPOS_EMPRESA.map(([k, t]) => `<label>${t}<input id="e-${k}" value="${esc(e?.[k] || "")}" ${k === "razon_social" ? "required" : ""} ${S.puedeEscribir ? "" : "readonly"}></label>`).join("")}
+    <label>Ejercicio vigente *<input id="e-ejercicio" type="number" min="1900" max="2100" required value="${esc(e?.ejercicio || new Date().getFullYear())}" ${S.puedeEscribir ? "" : "readonly"}></label>
+  </div>${nueva ? `<p class="ayuda">La empresa se crea con el plan de cuentas base, que luego puedes modificar.</p>` : ""}`;
+}
+
+function leerEmpresa() {
+  const d = {};
+  for (const [k] of CAMPOS_EMPRESA) d[k] = $("#e-" + k).value.trim();
+  d.ejercicio = parseInt($("#e-ejercicio").value, 10);
+  if (!d.razon_social) return "La razón social es obligatoria.";
+  if (d.rut && !rutValido(d.rut)) return "El RUT no es válido (revisa el dígito verificador).";
+  if (d.rut_representante && !rutValido(d.rut_representante)) return "El RUT del representante legal no es válido.";
+  if (!(d.ejercicio >= 1900 && d.ejercicio <= 2100)) return "El ejercicio debe ser un año válido, por ejemplo 2026.";
+  if (d.rut) d.rut = formatoRut(d.rut);
+  if (d.rut_representante) d.rut_representante = formatoRut(d.rut_representante);
+  return d;
+}
+
+function vistaEmpresa() {
+  const e = empresa();
+  return `${cabecera("Datos de la empresa", "")}
+  <form class="caja" data-form="empresa">${formularioEmpresa(e, false)}
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="submit">Guardar datos</button></div>`)}
+  </form>
+  ${puedeEditar(`<section class="caja"><h2>Eliminar empresa</h2>
+    <p class="ayuda">Borra la empresa con su plan de cuentas y sus ${S.lista.length} asientos de esta versión en línea. El programa de tu PC no se modifica.</p>
+    ${S.confirmar === "empresa"
+      ? `<div class="confirmar"><span>¿Eliminar ${esc(e.razon_social)} y todos sus asientos? No se puede deshacer.</span>
+          <button class="btn peligro" type="button" data-accion="eliminar-empresa">Sí, eliminar</button>
+          <button class="btn sec" type="button" data-accion="cancelar-confirmacion">Cancelar</button></div>`
+      : `<div class="acciones"><button class="btn sec" type="button" data-accion="pedir-eliminar-empresa">Eliminar esta empresa…</button></div>`}
+  </section>`)}`;
+}
+
+function vistaEmpresas() {
+  const imp = S.importacion;
+  const lista = S.empresas.length ? `<div class="tabla"><table>
+    <thead><tr><th>Razón social</th><th>RUT</th><th class="num">Ejercicio</th><th class="num">Cuentas</th></tr></thead>
+    <tbody>${S.empresas.map((e) => `<tr class="clic" data-empresa="${esc(e.id)}"><td>${esc(e.razon_social)}${e.id === S.eid ? '<span class="etiqueta">activa</span>' : ""}</td>
+      <td>${esc(e.rut)}</td><td class="num">${e.ejercicio}</td><td class="num">${(e.cuentas || []).length}</td></tr>`).join("")}</tbody></table></div>`
+    : `<div class="caja vacio"><p>Aún no hay empresas en la versión en línea.</p></div>`;
+  const vistaPrevia = imp ? `<div class="caja">
+      <h2>Revisar importación</h2>
+      ${imp.error ? `<div class="aviso">${esc(imp.error)}</div>` : `
+      <p><strong>${esc(imp.datos.empresa.razon_social)}</strong> · RUT ${esc(imp.datos.empresa.rut || "sin RUT")} · Ejercicio ${esc(imp.datos.empresa.ejercicio)}</p>
+      <p class="ayuda">${imp.datos.cuentas.length} cuentas y ${imp.datos.asientos.length} asientos (${esc(imp.resumenAnios)}).
+        ${imp.descuadrados ? `<strong class="neg">${imp.descuadrados} asientos no cuadran.</strong>` : "Todos los asientos cuadran."}</p>
+      ${imp.repetida ? `<div class="aviso">Ya existe una empresa con el RUT ${esc(imp.datos.empresa.rut)} en la versión en línea. Elimínala primero en «Datos de la empresa» si quieres reemplazarla.</div>` : ""}
+      ${imp.progreso != null ? `<p>Importando… ${imp.progreso} de ${imp.datos.asientos.length} asientos.</p>` : `
+      <div class="acciones">
+        <button class="btn" type="button" data-accion="confirmar-importacion" ${imp.repetida ? "disabled" : ""}>Importar empresa</button>
+        <button class="btn sec" type="button" data-accion="cancelar-importacion">Cancelar</button>
+      </div>`}`}
+    </div>` : "";
+  return `${cabecera("Empresas e importación", `${S.empresas.length} empresa${S.empresas.length === 1 ? "" : "s"}`)}
+  ${lista}
+  ${puedeEditar(`<section class="caja">
+    <h2>Importar desde el programa de tu PC</h2>
+    <p class="ayuda">En el programa de tu PC, ve a Administración → Respaldos → «Descargar para la versión en línea». Luego selecciona aquí ese archivo .json. Verás un resumen antes de importar.</p>
+    <div class="acciones"><input type="file" id="archivo-json" accept=".json,application/json" aria-label="Archivo .json de la empresa"></div>
+  </section>
+  ${vistaPrevia}
+  <form class="caja" data-form="nueva-empresa"><h2>Nueva empresa</h2>${formularioEmpresa(null, true)}
+    <div class="acciones"><button class="btn" type="submit">Crear empresa</button></div>
+  </form>`)}`;
+}
+
+function planBase() {
+  return PLAN_BASE.map(([codigo, nombre, imputable], i) => ({ id: "c" + (i + 1), codigo, nombre, tipo: TIPO_POR_DIGITO[codigo[0]], imputable: !!imputable, activa: true, resultados_en_ocho: false }));
+}
+
+async function crearEmpresa() {
+  const d = leerEmpresa();
+  if (typeof d === "string") return aviso(d);
+  if (d.rut && S.empresas.some((e) => e.rut === d.rut)) return aviso(`Ya existe una empresa con el RUT ${d.rut}.`);
+  const id = "e" + nuevoId();
+  await ocupado(async () => {
+    await S.almacen.setEmpresa(id, { ...d, cuentas: planBase(), creado: Date.now() });
+    cambiarEmpresa(id); ir("inicio"); aviso(`Empresa ${d.razon_social} creada.`);
+  }, "No se pudo crear la empresa");
+}
+
+async function guardarEmpresa() {
+  const d = leerEmpresa();
+  if (typeof d === "string") return aviso(d);
+  if (d.rut && S.empresas.some((e) => e.rut === d.rut && e.id !== S.eid)) return aviso(`Ya existe otra empresa con el RUT ${d.rut}.`);
+  await ocupado(async () => { await S.almacen.setEmpresa(S.eid, { ...empresa(), ...d }); aviso("Datos de la empresa guardados."); }, "No se pudieron guardar los datos");
+}
+
+async function eliminarEmpresa() {
+  const e = empresa();
+  await ocupado(async () => {
+    await S.almacen.deleteEmpresa(e.id);
+    S.confirmar = null; S.eid = null; recordar("empresa", null);
+    ir("empresas"); aviso(`${e.razon_social} eliminada de la versión en línea.`);
+  }, "No se pudo eliminar la empresa");
+}
+
+function leerArchivo(archivo) {
+  const lector = new FileReader();
+  lector.onload = () => {
+    try {
+      const datos = JSON.parse(lector.result);
+      if (datos.formato !== "contabilidad-completa/1" || !datos.empresa || !Array.isArray(datos.cuentas) || !Array.isArray(datos.asientos))
+        throw new Error("El archivo no es una exportación del programa (Respaldos → «Descargar para la versión en línea»).");
+      const anios = {};
+      let descuadrados = 0;
+      for (const a of datos.asientos) {
+        anios[a.fecha.slice(0, 4)] = (anios[a.fecha.slice(0, 4)] || 0) + 1;
+        const d = a.lineas.reduce((s, l) => s + l.debe, 0), h = a.lineas.reduce((s, l) => s + l.haber, 0);
+        if (d !== h) descuadrados++;
+      }
+      const rut = datos.empresa.rut;
+      S.importacion = { datos, descuadrados, repetida: !!rut && S.empresas.some((e) => e.rut === rut),
+        resumenAnios: Object.entries(anios).sort().map(([y, n]) => `${y}: ${n}`).join(" · ") || "sin asientos" };
+    } catch (err) {
+      S.importacion = { error: err instanceof SyntaxError ? "El archivo no es un JSON válido." : err.message };
+    }
+    render();
+  };
+  lector.readAsText(archivo, "utf-8");
+}
+
+async function importar() {
+  const imp = S.importacion;
+  const { empresa: e, cuentas, asientos } = imp.datos;
+  const eid = "e" + nuevoId();
+  const mapa = new Map(cuentas.map((c) => [String(c.id), "c" + c.id]));
+  const datosEmpresa = { razon_social: e.razon_social || "", rut: e.rut || "", giro: e.giro || "", direccion: e.direccion || "", comuna: e.comuna || "",
+    representante: e.representante || "", rut_representante: e.rut_representante || "", regimen: e.regimen || "", ejercicio: +e.ejercicio || new Date().getFullYear(),
+    creado: Date.now(),
+    cuentas: cuentas.map((c) => ({ id: mapa.get(String(c.id)), codigo: c.codigo, nombre: c.nombre, tipo: c.tipo, imputable: !!c.imputable, activa: c.activa !== false, resultados_en_ocho: !!c.resultados_en_ocho })) };
+  imp.progreso = 0; render();
+  try {
+    await S.almacen.setEmpresa(eid, datosEmpresa);
+    for (const [i, a] of asientos.entries()) {
+      await S.almacen.setAsiento(eid, "a" + a.id, { fecha: a.fecha, glosa: a.glosa || "", apertura: !!a.apertura, cierre: !!a.cierre, creado: i + 1,
+        lineas: a.lineas.map((l) => ({ cuenta: mapa.get(String(l.cuenta)) || "", glosa: l.glosa || "", debe: +l.debe || 0, haber: +l.haber || 0 })) });
+      imp.progreso = i + 1;
+      if (i % 10 === 9 && S.vista === "empresas") render();
+    }
+    S.importacion = null;
+    cambiarEmpresa(eid); ir("inicio");
+    aviso(`${e.razon_social} importada: ${asientos.length} asientos.`);
+  } catch (err) {
+    imp.progreso = null; render();
+    aviso(`La importación se detuvo (${err?.code || err?.message || "error"}). La empresa quedó incompleta: elimínala y vuelve a importarla.`);
+  }
+}
+
+/* ------------------------------------------------------------------ eventos */
+function slug() { return (empresa()?.razon_social || "empresa").normalize("NFD").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").toLowerCase(); }
+
+async function descargarCsv() {
+  const csv = S.csv || (S.vista === "cuentas" ? datosCsvCuentas() : null);
+  if (!csv || !S.descargas) return;
+  const texto = "﻿" + csv.filas.map((f) => f.map((v) => { const s = String(v ?? ""); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(";")).join("\r\n");
+  try { await S.descargas.save({ filename: csv.archivo, data: texto }); aviso("CSV descargado."); }
+  catch (e) { if (e?.code !== "declined") aviso("No se pudo descargar el archivo."); }
+}
+
+async function ocupado(fn, mensaje) {
+  if (S.ocupado) return;
+  S.ocupado = true;
+  try { await fn(); }
+  catch (e) {
+    if (e?.code === "invalid_argument" && S.almacen.enLinea) { S.puedeEscribir = false; render(); aviso("No tienes permiso para modificar datos en este artefacto."); }
+    else aviso(`${mensaje}${e?.code === "quota_exceeded" ? ": se llenó el espacio del artefacto." : ". Inténtalo de nuevo."}`);
+  } finally { S.ocupado = false; }
+}
+
+function cambiarEmpresa(id) {
+  if (S.eid === id && S.desuscribirAsientos) return;
+  S.eid = id; recordar("empresa", id);
+  S.desuscribirAsientos?.(); S.desuscribirAsientos = null;
+  S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
+  prepararCuentas();
+  if (!id) return;
+  S.desuscribirAsientos = S.almacen.onAsientos(id, (lista) => {
+    if (id !== S.eid) return;
+    S.lista = numerar(lista); S.cargandoAsientos = false;
+    if (S.vista === "editor" && S.edit?.id) { const a = S.lista.find((x) => x.id === S.edit.id); if (a) S.edit.numero = a.numero; return; }
+    if (S.vista === "editor" || (S.vista === "empresas" && S.importacion?.progreso != null)) return;
+    render();
+  }, (e) => { aviso("Se perdió la conexión con los datos. Recarga la página."); console.error(e); });
+}
+
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-ir],[data-accion],[data-asiento],[data-cuenta],[data-empresa]");
+  if (!t || t.disabled) return;
+  if (t.dataset.ir) { ev.preventDefault(); ir(t.dataset.ir); return; }
+  if (t.dataset.asiento) { abrirEditor(t.dataset.asiento); return; }
+  if (t.dataset.cuenta) {
+    if (!S.puedeEscribir) return;
+    const c = S.porId.get(t.dataset.cuenta); S.cuentaEdit = { ...c }; render(); window.scrollTo(0, 0); return;
+  }
+  if (t.dataset.empresa) { cambiarEmpresa(t.dataset.empresa); ir("inicio"); return; }
+  const accion = t.dataset.accion;
+  const ed = S.edit;
+  switch (accion) {
+    case "agregar-linea": ed.lineas.push(lineaVacia()); render(); $(`#l-${ed.lineas.length - 1}-cuenta`)?.focus(); break;
+    case "quitar-linea": ed.lineas.splice(+t.dataset.linea, 1); render(); break;
+    case "pedir-eliminar-asiento": S.confirmar = "asiento"; render(); break;
+    case "pedir-eliminar-empresa": S.confirmar = "empresa"; render(); break;
+    case "cancelar-confirmacion": S.confirmar = null; render(); break;
+    case "eliminar-asiento": ocupado(async () => { const n = ed.numero; await S.almacen.deleteAsiento(S.eid, ed.id); S.edit = null; ir("asientos"); aviso(`Asiento N° ${n} eliminado.`); }, "No se pudo eliminar el asiento"); break;
+    case "eliminar-empresa": eliminarEmpresa(); break;
+    case "nueva-cuenta": S.cuentaEdit = { id: null, codigo: "", nombre: "", imputable: true, activa: true }; render(); $("#c-codigo")?.focus(); break;
+    case "cancelar-cuenta": S.cuentaEdit = null; render(); break;
+    case "eliminar-cuenta": eliminarCuenta(); break;
+    case "confirmar-importacion": importar(); break;
+    case "cancelar-importacion": S.importacion = null; render(); break;
+    case "csv": descargarCsv(); break;
+  }
+});
+
+document.addEventListener("submit", (ev) => {
+  const f = ev.target.closest("form[data-form]");
+  if (!f) return;
+  ev.preventDefault();
+  switch (f.dataset.form) {
+    case "periodo": {
+      const p = periodo();
+      const desde = $("#p-desde")?.value || p.desde, hasta = $("#p-hasta").value;
+      if (!hasta || desde > hasta) { aviso("Revisa el período: la fecha inicial debe ser anterior a la final."); return; }
+      p.desde = desde; p.hasta = hasta;
+      if ($("#p-cuenta")) S.mayorCuenta = $("#p-cuenta").value;
+      render(); break;
+    }
+    case "filtros": S.filtros = { anio: $("#f-anio").value, mes: $("#f-mes").value, texto: $("#f-texto").value }; render(); break;
+    case "asiento": guardarAsiento(); break;
+    case "cuenta": guardarCuenta(); break;
+    case "empresa": guardarEmpresa(); break;
+    case "nueva-empresa": crearEmpresa(); break;
+  }
+});
+
+document.addEventListener("input", (ev) => {
+  const el = ev.target;
+  if (S.vista === "editor" && S.edit) {
+    if (el.id === "a-fecha") S.edit.fecha = el.value;
+    else if (el.id === "a-glosa") S.edit.glosa = el.value;
+    else if (el.id === "a-apertura") S.edit.apertura = el.checked;
+    else if (el.dataset.linea != null && el.dataset.campo) {
+      const l = S.edit.lineas[+el.dataset.linea];
+      if (el.value.trim() === "=" && (el.dataset.campo === "debe" || el.dataset.campo === "haber")) {
+        l[el.dataset.campo] = "";
+        const { d, h } = totalesEdicion();
+        const dif = el.dataset.campo === "debe" ? h - d : d - h;
+        el.value = dif > 0 ? clp(dif) : "";
+      }
+      l[el.dataset.campo] = el.value;
+      if (el.dataset.campo === "texto") { l.cuenta = cuentaDesdeTexto(el.value); el.classList.toggle("malo", !!el.value.trim() && !l.cuenta); }
+    }
+    actualizarCuadre();
+  }
+});
+document.addEventListener("change", (ev) => {
+  if (ev.target.id === "a-apertura" && S.edit) S.edit.apertura = ev.target.checked;
+  if (ev.target.id === "sel-empresa") { cambiarEmpresa(ev.target.value); ir(S.vista === "editor" ? "asientos" : S.vista); }
+  if (ev.target.id === "archivo-json" && ev.target.files[0]) leerArchivo(ev.target.files[0]);
+  if (ev.target.id === "p-cuenta") { S.mayorCuenta = ev.target.value; render(); }
+});
+document.addEventListener("focusout", (ev) => {
+  const el = ev.target;
+  if (S.vista === "editor" && S.edit && (el.dataset.campo === "debe" || el.dataset.campo === "haber")) {
+    const v = parseMonto(el.value);
+    if (el.value && !Number.isNaN(v)) { el.value = v ? clp(v) : ""; S.edit.lineas[+el.dataset.linea][el.dataset.campo] = el.value; }
+  }
+});
+
+/* ------------------------------------------------------------------ inicio */
+async function iniciar() {
+  render();
+  const [db, usuario, descargas] = await Promise.all([
+    window.claude?.use?.("db") ?? null, window.claude?.use?.("user") ?? null, window.claude?.use?.("downloads") ?? null,
+  ]).catch(() => [null, null, null]);
+  S.almacen = db ? new AlmacenClaude(db) : new AlmacenMemoria();
+  S.descargas = descargas;
+  if (usuario) { try { const p = await usuario.can("data.write"); if (p === false) S.puedeEscribir = false; } catch (_) {} }
+  let primera = true;
+  S.almacen.onEmpresas((empresas) => {
+    S.empresas = empresas;
+    if (!S.empresas.some((e) => e.id === S.eid)) {
+      const siguiente = S.empresas[0]?.id || null;
+      if (siguiente !== S.eid || primera) cambiarEmpresa(siguiente);
+    } else if (primera) { const eid = S.eid; S.eid = null; cambiarEmpresa(eid); }
+    primera = false;
+    prepararCuentas();
+    S.lista = S.lista.length ? numerar(S.lista) : S.lista;
+    if (S.vista === "editor" || S.importacion?.progreso != null) { renderMenu(); return; }
+    render();
+  }, (e) => { aviso("No se pudo leer la lista de empresas. Recarga la página."); console.error(e); });
+}
+iniciar();
+</script>

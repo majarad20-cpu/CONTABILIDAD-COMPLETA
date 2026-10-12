@@ -1,11 +1,15 @@
 {% extends 'base.html' %}
 {% block titulo %}Compras y ventas (RCV){% endblock %}
+{% from '_macros.html' import botones_exportar with context %}
 {% block contenido %}
 {% macro tabla_documentos(docs, totales, registro) %}
+  <div class="acciones no-imprimir acciones-rcv">
+    <button type="button" class="secundario" data-nuevo="{{ registro }}">+ Agregar {{ 'compra' if registro == 'COMPRA' else 'venta' }}</button>
+  </div>
   {% if docs %}
   <div class="desplazable">
   <table class="tabla-rcv">
-    <thead><tr><th class="no-imprimir"></th><th>Tipo</th><th>Folio</th><th>Fecha</th><th>RUT</th><th>Razón social</th>
+    <thead><tr><th class="no-imprimir"></th><th class="no-imprimir"></th><th>Tipo</th><th>Folio</th><th>Fecha</th><th>RUT</th><th>Razón social</th>
       <th class="num">Exento</th><th class="num">Neto</th><th class="num">IVA</th><th class="num">Total</th>
       <th>Cuenta del neto</th><th>Estado</th></tr></thead>
     <tbody>
@@ -13,6 +17,8 @@
       {% set nc = signo(d.tipo_doc) < 0 %}
       <tr class="{{ 'nota-credito' if nc }}">
         <td class="no-imprimir">{% if not d.asiento_id %}<input type="checkbox" name="seleccion" value="{{ d.id }}" aria-label="Seleccionar documento {{ d.folio }}">{% endif %}</td>
+        <td class="no-imprimir"><button type="button" class="enlace editar-doc" title="{{ 'Ver' if d.asiento_id else 'Editar' }} documento"
+            aria-label="{{ 'Ver' if d.asiento_id else 'Editar' }} documento {{ d.folio }}" data-doc='{{ datos_doc[d.id]|tojson }}'>✎</button></td>
         <td title="{{ nombre_tipo(d.tipo_doc) }}">{{ d.tipo_doc }}{% if nc %} <span class="etiqueta">NC</span>{% endif %}{% if d.activo_fijo %} <span class="etiqueta">AF</span>{% endif %}</td>
         <td>{% if d.cantidad > 1 or d.folio.startswith('RESUMEN') %}Resumen <span class="ayuda">({{ d.cantidad }} doc.)</span>{% else %}{{ d.folio }}{% endif %}</td>
         <td>{{ d.fecha|fecha }}</td>
@@ -37,7 +43,7 @@
       </tr>
     {% endfor %}
     </tbody>
-    <tfoot><tr><td class="no-imprimir"></td>
+    <tfoot><tr><td class="no-imprimir"></td><td class="no-imprimir"></td>
       <td colspan="5">{{ totales.cantidad }} documentos ({{ totales.pendientes }} pendientes) · las notas de crédito restan</td>
       <td class="num">{{ totales.exento|clp }}</td><td class="num">{{ totales.neto|clp }}</td>
       <td class="num">{{ totales.iva|clp }}</td><td class="num">{{ totales.total|clp }}</td><td colspan="2"></td></tr></tfoot>
@@ -62,6 +68,7 @@
   <label>Período tributario <input type="month" name="periodo" value="{{ periodo }}" required></label>
   <button type="submit">Ver</button>
   <span class="espaciador"></span>
+  {{ botones_exportar() }}
   <a class="boton secundario" href="{{ url_for('f29', periodo=periodo) }}">Borrador F29 de este mes</a>
 </form>
 
@@ -118,4 +125,50 @@
     <button type="submit">Agregar resumen</button>
   </form>
 </section>
+<dialog id="dialogo-documento" class="dialogo dialogo-documento no-imprimir">
+  <form id="form-documento">
+    <h2 id="titulo-documento">Documento</h2>
+    <p class="aviso aviso-info aviso-centralizado" hidden>Este documento ya está centralizado en el comprobante
+      <a href="#" class="enlace-comprobante"></a>. Para modificarlo, elimina primero ese asiento de centralización.</p>
+    <input type="hidden" name="id">
+    <input type="hidden" name="registro">
+    <input type="hidden" name="periodo" value="{{ periodo }}">
+    <div class="grilla-documento">
+      <label class="ancho-doble">Tipo de documento
+        <select name="tipo_doc" required>
+          {% for codigo, nombre in tipos_documento.items() %}<option value="{{ codigo }}">{{ codigo }} · {{ nombre }}</option>{% endfor %}
+        </select></label>
+      <label>Folio <input name="folio" required></label>
+      <label>Fecha <input type="date" name="fecha" required></label>
+      <label>RUT <input name="rut" required placeholder="76.123.456-7"></label>
+      <label class="ancho-doble">Razón social <input name="razon_social" required></label>
+      <label class="campo-cantidad">Cantidad de documentos <input type="number" name="cantidad" min="1" value="1"></label>
+      <label>Exento <input name="exento" class="monto-doc" inputmode="numeric"></label>
+      <label>Neto <input name="neto" class="monto-doc" inputmode="numeric"></label>
+      <label>IVA <input name="iva" class="monto-doc" inputmode="numeric"></label>
+      <label class="solo-compra">IVA no recuperable <input name="iva_no_recuperable" class="monto-doc" inputmode="numeric"></label>
+      <label>Otros impuestos <input name="otros_impuestos" class="monto-doc" inputmode="numeric"></label>
+      <label>Total <output name="total" class="total-documento">0</output></label>
+      <label class="check solo-compra"><input type="checkbox" name="activo_fijo"> Compra de activo fijo</label>
+      <label class="ancho-doble">Cuenta del neto
+        <select name="cuenta_id">
+          <option value="">Por defecto (según Cuentas tributarias)</option>
+          {% for c in cuentas %}<option value="{{ c.id }}">{{ c.codigo }} {{ c.nombre }}</option>{% endfor %}
+        </select></label>
+    </div>
+    <p class="ayuda">Las notas de crédito se ingresan con montos positivos; el programa las resta. El total es la suma
+      de los montos.</p>
+    <p class="folio-aviso error-documento"></p>
+    <div class="acciones">
+      <button type="submit" class="guardar-documento">Guardar</button>
+      <button type="button" class="secundario" data-cerrar>Cancelar</button>
+      <span class="espaciador"></span>
+      <button type="button" class="peligro eliminar-documento">Eliminar documento</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='rcv.js') }}"></script>
 {% endblock %}

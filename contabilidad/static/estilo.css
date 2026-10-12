@@ -207,10 +207,35 @@ tr.mes-cerrado td { background: #fbf5f4; }
 .tabla-rcv .selector-cuenta { max-width: 240px; font-size: .82rem; padding: .25rem .35rem; }
 .etiqueta-pendiente { background: var(--info-fondo); color: #8a5a00; }
 .barra-rcv { border-top: 1px solid var(--borde); padding-top: 1rem; }
+.acciones-rcv { margin: .2rem 0 .6rem; }
+.editar-doc { font-size: 1rem; margin: 0; text-decoration: none; }
+.tabla-rcv tbody tr { cursor: default; }
+.tabla-rcv tbody tr:hover td { background: var(--acento-suave); }
+.dialogo-documento { max-width: 720px; }
+.grilla-documento { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7rem 1rem; margin: .8rem 0; }
+.grilla-documento label { font-weight: 600; font-size: .88rem; }
+.dialogo-documento .grilla-documento input, .dialogo-documento .grilla-documento select {
+  width: 100%; font-size: .95rem; max-width: none; }
+[hidden] { display: none !important; }
+.grilla-documento .ancho-doble { grid-column: span 2; }
+.grilla-documento label.check { flex-direction: row; align-items: center; gap: .4rem; font-weight: normal; }
+.grilla-documento label.check input { width: auto; }
+.total-documento { font-size: 1.15rem; font-weight: 700; padding: .35rem 0; }
+#titulo-documento[data-nc="1"]::after { content: " · nota de crédito (resta)"; color: var(--error); font-size: .9rem; }
+@media (max-width: 700px) { .grilla-documento { grid-template-columns: 1fr; } .grilla-documento .ancho-doble { grid-column: auto; } }
 .formulario-ancho { max-width: 680px; }
+.grilla-boleta { display: grid; grid-template-columns: repeat(4, 1fr); gap: .7rem 1rem; }
+.grilla-boleta label { display: flex; flex-direction: column; gap: .25rem; font-weight: 600; font-size: .88rem; }
+.grilla-boleta label.check { flex-direction: row; align-items: center; font-weight: normal; }
+.grilla-boleta .ancho-doble { grid-column: span 2; }
+.grilla-boleta .ancho-completo { grid-column: 1 / -1; margin: 0; }
+.tabla-liquidaciones input.monto { text-align: right; width: 7.5rem; }
+@media (max-width: 860px) { .grilla-boleta { grid-template-columns: 1fr; } .grilla-boleta .ancho-doble { grid-column: auto; } }
 .formulario-ancho h2 { margin-bottom: 0; }
 table.f29 td.codigo-f29 { color: var(--suave); font-size: .85rem; }
 table.f29 th:first-child { width: 60%; }
+table.f29 tr.total td { background: #fff4cc; font-size: 1.15rem; border-top: 2px solid var(--texto);
+  border-bottom: 2px solid var(--texto); }
 .propuesta p { margin: .35rem 0 0; }
 
 /* ---------- empresas ---------- */

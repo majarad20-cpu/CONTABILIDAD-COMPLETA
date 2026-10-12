@@ -11,18 +11,22 @@
 
 <form method="get" class="filtro no-imprimir" id="form-f29">
   <label>Período tributario <input type="month" name="periodo" value="{{ periodo }}" required></label>
-  <label>Remanente mes anterior ($)
+  <label>Remanente F29 anterior (cód. 77) $
     <input name="remanente_anterior" value="{{ f.entradas.remanente_anterior|clp }}" inputmode="numeric" size="12"></label>
-  <label>UTM mes anterior
-    <input name="utm_anterior" value="{{ f.entradas.utm_anterior|int if f.entradas.utm_anterior else '' }}" inputmode="decimal" size="9" placeholder="Ej. 68.306"></label>
-  <label>UTM mes actual
-    <input name="utm_actual" value="{{ f.entradas.utm_actual|int if f.entradas.utm_actual else '' }}" inputmode="decimal" size="9"></label>
+  <label title="Mes en que se presentó el F29 del período anterior">UTM de {{ nombre_periodo(periodo) }}
+    <input name="utm_anterior" value="{{ f.entradas.utm_anterior|int if f.entradas.utm_anterior else '' }}" inputmode="decimal" size="9" placeholder="Ej. 71.721"></label>
+  <label title="Mes en que se presenta este F29">UTM de {{ nombre_periodo(presentacion) }}
+    <input name="utm_actual" value="{{ f.entradas.utm_actual|int if f.entradas.utm_actual else '' }}" inputmode="decimal" size="9" placeholder="Ej. 72.151"></label>
   <button type="submit">Calcular</button>
   <span class="espaciador"></span>
   <button type="submit" formmethod="post" class="secundario">Guardar borrador</button>
 </form>
 <p class="ayuda no-imprimir">Remanente anterior tomado de: {{ f.entradas.origen_remanente }}.
-  {% if f.reajuste %}Reajuste por variación de la UTM: ${{ f.reajuste|clp }}.{% endif %}
+  {% if f.remanente_utm is not none %}Reajuste como el SII: ${{ f.entradas.remanente_anterior|clp }} ÷ UTM de
+    {{ nombre_periodo(periodo) }} = {{ ('%.2f' % f.remanente_utm)|replace('.', ',') }} UTM (dos decimales, aproximando desde 5) ×
+    UTM de {{ nombre_periodo(presentacion) }} = ${{ c['504']|clp }} (reajuste {{ '+' if f.reajuste >= 0 }}{{ f.reajuste|clp }}).
+  {% else %}Para reajustar el remanente ingresa la UTM de {{ nombre_periodo(periodo) }} (cuando se presentó el F29
+    anterior) y la de {{ nombre_periodo(presentacion) }} (cuando se presenta este F29).{% endif %}
   {% if guardado %}Último guardado: {{ guardado.guardado_en[:10]|fecha }} {{ guardado.guardado_en[11:16] }}.{% endif %}</p>
 
 {% for alerta in f.alertas %}
