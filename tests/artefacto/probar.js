@@ -275,6 +275,35 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el PDF del resumen se genera para la empresa simplificada", sm.pdf > 3000);
   await page.evaluate(async () => { cambiarEmpresa("e1"); await new Promise((r) => setTimeout(r, 120)); await BD.deleteEmpresa("e9"); await new Promise((r) => setTimeout(r, 120)); ir("inicio"); });
 
+  console.log("Revisor de datos y panel de clientes");
+  const rv = await page.evaluate(async () => {
+    const mk = (id, folio) => ({ registro: "VENTA", periodo: "2026-09", tipo_doc: 33, folio, fecha: "2026-09-05", rut: "76.111.111-1", razon_social: "Cliente", neto: 1000000, exento: 0, iva: 150000, iva_no_recuperable: 0, otros_impuestos: 0, total: 1150000, cantidad: 1 });
+    await S.almacen.set("empresas/e1/rcv/rv1", mk("rv1", "900")); await S.almacen.set("empresas/e1/rcv/rv2", mk("rv2", "900")); await new Promise((r) => setTimeout(r, 120));
+    const h = revisarDatos(), areas = h.map((x) => `${x.area}:${x.texto.slice(0, 30)}`);
+    ir("revisor"); await new Promise((r) => setTimeout(r, 60));
+    const vista = document.querySelector("main").textContent;
+    ir("inicio"); await new Promise((r) => setTimeout(r, 60));
+    const inicio = /revisor de datos encontró/.test(document.querySelector("main").textContent);
+    await S.almacen.del("empresas/e1/rcv/rv1"); await S.almacen.del("empresas/e1/rcv/rv2"); await new Promise((r) => setTimeout(r, 100));
+    const v1 = proximosVencimientos("2026-10-12"), v2 = proximosVencimientos("2026-10-15"), f29a = v1.find((x) => /F29/.test(x.texto)), f29b = v2.find((x) => /F29/.test(x.texto));
+    return { dup: h.some((x) => x.area === "RCV" && /folio repetido/.test(x.texto)), iva: h.some((x) => /IVA distinto/.test(x.texto)), vista: /Revisor de datos/.test(vista) && /Errores/.test(vista), inicio, n: v1.length, f29a: [f29a.texto, f29a.efectiva], f29b: f29b.efectiva, renta: v1.some((x) => /Operación Renta/.test(x.texto)) || proximosVencimientos("2027-03-20").some((x) => /Operación Renta/.test(x.texto)), adelante: mesesAtras("2026-11", -3), areas };
+  });
+  ok("el revisor detecta folios repetidos y un IVA distinto del 19 %", rv.dup && rv.iva, JSON.stringify(rv.areas));
+  ok("la pantalla del revisor y el aviso del inicio aparecen", rv.vista && rv.inicio);
+  igual("el calendario ubica el F29 de septiembre el día 12", rv.f29a, ["F29 y PPM de septiembre 2026", "2026-10-12"]);
+  igual("pasado el día 12 el plazo efectivo es el 20 (por internet)", rv.f29b, "2026-10-20");
+  ok("el calendario incluye vencimientos anuales y avanza meses correctamente", rv.n >= 4 && rv.renta && rv.adelante === "2027-02", String(rv.adelante));
+  const pc = await page.evaluate(async () => { await cargarCartera(); await new Promise((r) => setTimeout(r, 100)); ir("panel"); await new Promise((r) => setTimeout(r, 60));
+    const filas = S.cartera.filas.length, tabla = document.querySelectorAll("main tbody tr").length; const id = S.cartera.filas[0].id;
+    return { filas, esperado: S.empresas.length, tabla, id }; });
+  ok("el panel lee el estado de todas las empresas", pc.filas === pc.esperado && pc.filas >= 1 && pc.tabla >= pc.filas, JSON.stringify(pc));
+  await page.click('[data-n="panel-presentado"]'); await espera(150);
+  ok("se puede marcar el F29 como presentado", await page.evaluate(() => S.cartera.filas.some((f) => f.f29Presentado)));
+  await page.click('[data-n="panel-presentado"]'); await espera(150);
+  await page.fill("#rec-texto", "Llamar al cliente"); await page.press("#rec-texto", "Enter"); await espera();
+  ok("los recordatorios propios aparecen en el calendario", await page.evaluate(() => /Llamar al cliente/.test(document.querySelector("main").textContent)));
+  await page.evaluate(() => { recordar("recordatorios", []); ir("inicio"); });
+
   console.log("Apariencia");
   await page.evaluate(() => ir("apariencia")); await espera();
   ok("la pantalla de apariencia se dibuja con estilos, temas y colores", await page.evaluate(() => document.querySelectorAll("[data-estilo]").length >= 8 && document.querySelectorAll('[data-ap="tema"]').length >= 8 && document.querySelectorAll('[data-ap="acento"]').length >= 9));
@@ -328,7 +357,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("reemplazar recupera lo borrado sin duplicar la empresa", [reemplazo.eid, reemplazo.activos, reemplazo.empresas], ["e1", 2, 3]);
 
   console.log("Pantallas");
-  const vistas = [["inicio"], ["activos", "fichas"], ["activos", "dep"], ["activos", "libro"], ["rrhh", "trabajadores"], ["rrhh", "liquidaciones"], ["rrhh", "libro"], ["rrhh", "vacaciones"], ["rrhh", "finiquitos"], ["rrhh", "parametros"], ["apariencia"], ["resumen"], ["renta"], ["dj", "1887"], ["dj", "1879"], ["tributarias"], ["empresa"], ["empresas"]];
+  const vistas = [["inicio"], ["activos", "fichas"], ["activos", "dep"], ["activos", "libro"], ["rrhh", "trabajadores"], ["rrhh", "liquidaciones"], ["rrhh", "libro"], ["rrhh", "vacaciones"], ["rrhh", "finiquitos"], ["rrhh", "parametros"], ["apariencia"], ["resumen"], ["panel"], ["revisor"], ["renta"], ["dj", "1887"], ["dj", "1879"], ["tributarias"], ["empresa"], ["empresas"]];
   for (const [ancho, nombre] of [[1200, "escritorio"], [400, "móvil"]]) {
     await page.setViewportSize({ width: ancho, height: 800 });
     const malas = [];
