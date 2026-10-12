@@ -1008,7 +1008,7 @@ def exportar_en_linea(conn, empresa_id):
     la versión en línea. Los montos van en pesos enteros."""
     empresa = conn.execute("SELECT * FROM empresas WHERE id = ?", (empresa_id,)).fetchone()
     campos = ("razon_social", "rut", "giro", "direccion", "comuna", "representante",
-              "rut_representante", "regimen", "ejercicio")
+              "rut_representante", "regimen", "ejercicio", "ultimo_folio")
     lineas = {}
     for l in conn.execute(
             """SELECT l.asiento_id, l.cuenta_id, l.glosa, l.debe, l.haber FROM lineas l

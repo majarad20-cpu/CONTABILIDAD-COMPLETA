@@ -252,6 +252,7 @@ const S = {
   contador: { nombre: "", rut: "", firma: "" }, cambios: [], desuscribirCambios: null,
   periodosAnio: null, cierreAnio: null, apertura: null,
   f29Borradores: [], desuscribirF29: null, f29: null, utm: {},
+  informe: null, folioPendiente: false,
   socios: [], sueldos: [], honorarios: [], desuscribirRem: [], remPeriodo: null, remPeriodoEid: null, socioEdit: null, boletaEdit: null,
   rcv: [], desuscribirRcv: null, rcvPeriodo: null, rcvPeriodoEid: null, rcvSel: new Set(), rcvMensajes: null, docEdit: null,
 };
@@ -424,7 +425,7 @@ const SECCIONES = [
 
 function ir(vista) {
   if (vista === "nuevo") { abrirEditor(null); return; }
-  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.docEdit = null; S.rcvMensajes = null; S.socioEdit = null; S.boletaEdit = null;
+  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.docEdit = null; S.rcvMensajes = null; S.socioEdit = null; S.boletaEdit = null;
   if (vista !== "editor") recordar("vista", vista);
   render();
   window.scrollTo(0, 0);
@@ -448,7 +449,7 @@ function renderMenu() {
 function render() {
   renderMenu();
   const main = $("#main");
-  S.csv = null;
+  S.csv = null; S.informe = null;
   if (!S.almacen) { main.innerHTML = `<div class="vacio"><p>Cargando la contabilidad…</p></div>`; return; }
   const e = empresa();
   let html;
@@ -461,7 +462,7 @@ function render() {
   const banner = !S.almacen.enLinea
     ? `<div class="aviso">Esta copia no está conectada con Claude: puedes probarla, pero los cambios se pierden al cerrar. Ábrela como artefacto en claude.ai para guardar.</div>`
     : !S.puedeEscribir ? `<div class="aviso">Tienes acceso de solo lectura: puedes ver los libros e informes, pero no modificar datos.</div>` : "";
-  main.innerHTML = banner + html;
+  main.innerHTML = banner + panelFolio() + html;
   if (S.vista === "editor") actualizarCuadre();
 }
 
@@ -478,7 +479,7 @@ function barraPeriodo(soloHasta = false, extra = "") {
     <label>${soloHasta ? "Al" : "Hasta"}<input type="date" id="p-hasta" value="${p.hasta}" required></label>
     ${extra}
     <button class="btn sec" type="submit">Ver</button>
-    ${S.descargas ? `<button class="btn sec" type="button" data-accion="csv">Descargar CSV</button>` : ""}
+    ${botonesExportar()}
   </form>`;
 }
 function textoPeriodo(desde, hasta) { return desde ? `Del ${fmtFecha(desde)} al ${fmtFecha(hasta)}` : `Al ${fmtFecha(hasta)}`; }
@@ -596,6 +597,7 @@ function vistaEditor() {
       <span style="flex:1"></span>
       <button class="btn" type="submit" id="a-guardar">Guardar asiento</button>
       <button class="btn sec" type="button" data-ir="asientos">Cancelar</button>
+      ${ed.id && S.descargas ? `<button class="btn sec" type="button" data-accion="pdf-asiento">PDF del asiento</button>` : ""}
       ${ed.id ? `<button class="btn enlace" type="button" data-accion="pedir-eliminar-asiento">Eliminar</button>` : ""}
     </div>
     ${S.confirmar === "cerrado" ? `<div class="confirmar"><span><strong>Período cerrado.</strong> ${esc(textoCerrados(cerradosAfectados))} Confirma si de todas formas quieres guardar este cambio.</span>
@@ -690,6 +692,7 @@ async function guardarAsiento(confirmado = false) {
 
 /* ------------------------------------------------------------------ plan de cuentas */
 function vistaCuentas() {
+  S.informe = informePlan;
   const usadas = movimientosPorCuenta();
   const ce = S.cuentaEdit;
   const form = ce ? `<form class="caja" data-form="cuenta">
@@ -710,7 +713,7 @@ function vistaCuentas() {
     </form>` : "";
   return `${cabecera("Plan de cuentas", `${S.cuentas.filter((c) => c.imputable).length} cuentas imputables`)}
   <div class="acciones">${puedeEditar(`<button class="btn" data-accion="nueva-cuenta">+ Nueva cuenta</button>`)}
-    ${S.descargas ? `<button class="btn sec" type="button" data-accion="csv">Descargar CSV</button>` : ""}</div>
+    ${botonesExportar()}</div>
   ${form}
   <div class="tabla"><table>
     <thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th></tr></thead>
@@ -782,6 +785,7 @@ function vistaDiario() {
     return `<tr class="cab-asiento clic" data-asiento="${esc(a.id)}"><td class="num">${a.numero}</td><td colspan="4">${fmtFecha(a.fecha)} · ${esc(a.glosa)}${a.apertura ? '<span class="etiqueta">apertura</span>' : ""}${a.cierre ? '<span class="etiqueta">cierre</span>' : ""}</td></tr>${lineas}`;
   }).join("");
   filas.push(["", "", "", "TOTALES", "", td, th]);
+  S.informe = () => informeDiario(p.desde, p.hasta);
   S.csv = { archivo: `libro_diario_${slug()}_${p.desde}_${p.hasta}.csv`, filas };
   return `${cabecera("Libro Diario", textoPeriodo(p.desde, p.hasta))}${barraPeriodo()}
   ${asientos.length ? `<div class="tabla"><table>
@@ -824,6 +828,7 @@ function vistaMayor() {
     const mayores = cuentas.map((c) => libroMayor(c.id, p.desde, p.hasta)).filter((m) => m.movimientos.length || m.saldoInicial);
     contenido = mayores.length ? mayores.map((m) => tablaMayor(m, filas)).join("") : `<div class="caja vacio"><p>No hay movimientos en el período.</p></div>`;
   }
+  S.informe = () => informeMayor(S.mayorCuenta, p.desde, p.hasta);
   S.csv = { archivo: `libro_mayor_${slug()}_${p.desde}_${p.hasta}.csv`, filas };
   return `${cabecera("Libro Mayor", textoPeriodo(p.desde, p.hasta))}${barraPeriodo(false, selector)}${contenido}`;
 }
@@ -835,6 +840,7 @@ function vistaOcho() {
   const etiquetas = ["Débitos", "Créditos", "Deudor", "Acreedor", "Activo", "Pasivo", "Pérdidas", "Ganancias"];
   const celdas = (f) => b.cols.map((k) => `<td class="num">${monto(f[k])}</td>`).join("");
   const nombreAjuste = b.resultado >= 0 ? "Utilidad del ejercicio" : "Pérdida del ejercicio";
+  S.informe = () => informeOcho(p.desde, p.hasta);
   S.csv = { archivo: `balance_8_columnas_${slug()}_${p.desde}_${p.hasta}.csv`, filas: [["Código", "Cuenta", ...etiquetas],
     ...b.filas.map((f) => [f.codigo, f.nombre, ...b.cols.map((k) => f[k])]),
     ["", "Sumas", ...b.cols.map((k) => b.totales[k])], ["", nombreAjuste, ...b.cols.map((k) => b.ajuste[k])], ["", "Sumas iguales", ...b.cols.map((k) => b.iguales[k])]] };
@@ -858,6 +864,7 @@ function vistaResultados() {
   const p = periodo();
   const er = estadoResultados(p.desde, p.hasta);
   const etiqueta = er.resultado >= 0 ? "UTILIDAD DEL EJERCICIO" : "PÉRDIDA DEL EJERCICIO";
+  S.informe = () => informeResultados(p.desde, p.hasta);
   S.csv = { archivo: `estado_resultados_${slug()}_${p.desde}_${p.hasta}.csv`, filas: [["Código", "Cuenta", "Monto"],
     ["", "INGRESOS", ""], ...csvArbol(er.ingresos), ["", "TOTAL INGRESOS", er.ingresos.total],
     ["", "GASTOS", ""], ...csvArbol(er.gastos), ["", "TOTAL GASTOS", er.gastos.total], ["", etiqueta, er.resultado]] };
@@ -878,6 +885,7 @@ function vistaGeneral() {
   const p = periodo();
   const bg = balanceGeneral(p.hasta);
   const cuadra = bg.activo.total === bg.totalPasivoPatrimonio;
+  S.informe = () => informeGeneral(p.hasta);
   S.csv = { archivo: `balance_general_${slug()}_${p.hasta}.csv`, filas: [["Código", "Cuenta", "Saldo"],
     ["", "ACTIVO", ""], ...csvArbol(bg.activo), ["", "TOTAL ACTIVO", bg.activo.total],
     ["", "PASIVO", ""], ...csvArbol(bg.pasivo), ["", "TOTAL PASIVO", bg.pasivo.total],
@@ -909,6 +917,8 @@ function formularioEmpresa(e, nueva) {
   return `<div class="form">
     ${CAMPOS_EMPRESA.map(([k, t]) => `<label>${t}<input id="e-${k}" value="${esc(e?.[k] || "")}" ${k === "razon_social" ? "required" : ""} ${S.puedeEscribir ? "" : "readonly"}></label>`).join("")}
     <label>Ejercicio vigente *<input id="e-ejercicio" type="number" min="1900" max="2100" required value="${esc(e?.ejercicio || new Date().getFullYear())}" ${S.puedeEscribir ? "" : "readonly"}></label>
+    ${nueva ? "" : `<label>Último folio utilizado<input id="e-ultimo_folio" type="number" min="0" value="${esc(e?.ultimo_folio || 0)}" ${S.puedeEscribir ? "" : "readonly"}>
+      <small>Cada página de los PDF de libros e informes (Diario, Mayor, Balances y Estado de Resultados) usa el folio siguiente. El próximo PDF comenzará en el folio ${(e?.ultimo_folio || 0) + 1}.</small></label>`}
   </div>${nueva ? `<p class="ayuda">La empresa se crea con el plan de cuentas base, que luego puedes modificar.</p>` : ""}`;
 }
 
@@ -916,6 +926,10 @@ function leerEmpresa() {
   const d = {};
   for (const [k] of CAMPOS_EMPRESA) d[k] = $("#e-" + k).value.trim();
   d.ejercicio = parseInt($("#e-ejercicio").value, 10);
+  if ($("#e-ultimo_folio")) {
+    d.ultimo_folio = Number($("#e-ultimo_folio").value || 0);
+    if (!Number.isInteger(d.ultimo_folio) || d.ultimo_folio < 0) return "El último folio debe ser un número entero, 0 o mayor.";
+  }
   if (!d.razon_social) return "La razón social es obligatoria.";
   if (d.rut && !rutValido(d.rut)) return "El RUT no es válido (revisa el dígito verificador).";
   if (d.rut_representante && !rutValido(d.rut_representante)) return "El RUT del representante legal no es válido.";
@@ -1036,7 +1050,7 @@ async function importar() {
   const eid = "e" + nuevoId();
   const mapa = new Map(cuentas.map((c) => [String(c.id), "c" + c.id]));
   const datosEmpresa = { razon_social: e.razon_social || "", rut: e.rut || "", giro: e.giro || "", direccion: e.direccion || "", comuna: e.comuna || "",
-    representante: e.representante || "", rut_representante: e.rut_representante || "", regimen: e.regimen || "", ejercicio: +e.ejercicio || new Date().getFullYear(),
+    representante: e.representante || "", rut_representante: e.rut_representante || "", regimen: e.regimen || "", ultimo_folio: +e.ultimo_folio || 0, ejercicio: +e.ejercicio || new Date().getFullYear(),
     creado: Date.now(), cerrados: imp.datos.cerrados || {}, tasa_ppm: +imp.datos.tasa_ppm || 0,
     tributarias: Object.fromEntries(Object.entries(imp.datos.tributarias || {}).map(([k, v]) => [k, "c" + v])),
     cuentas_rut: Object.fromEntries(Object.entries(imp.datos.cuentas_rut || {}).map(([k, v]) => [k, "c" + v])),
@@ -1882,12 +1896,13 @@ function csvRcv() {
 function vistaRcv() {
   if (!S.rcvPeriodo || S.rcvPeriodoEid !== S.eid) { S.rcvPeriodo = periodoRcvInicial(); S.rcvPeriodoEid = S.eid; }
   S.csv = csvRcv();
+  S.informe = () => informeRcv(S.rcvPeriodo);
   const hay = docsPeriodo(S.rcvPeriodo).length;
   return `<div class="cabecera"><h1>Registro de Compras y Ventas</h1>
     <div class="acciones"><button class="btn sec" type="button" data-accion="f29-del-mes">Borrador F29 de este mes</button><button class="btn sec" type="button" data-ir="tributarias">Cuentas tributarias</button></div></div>
   <div class="barra">
     <label>Período tributario<input type="month" id="rcv-periodo" value="${S.rcvPeriodo}"></label>
-    ${S.descargas ? `<button class="btn sec" type="button" data-accion="csv">Descargar CSV</button>` : ""}
+    ${botonesExportar()}
   </div>
   ${(S.rcvMensajes || []).map((m) => `<div class="aviso ok">${esc(m)}</div>`).join("")}
   ${puedeEditar(`<section class="caja"><h2>Importar desde el SII</h2>
@@ -2125,6 +2140,7 @@ function vistaF29() {
     return `<tr><td>${l[2]}</td><td class="num cod">${l[0] || ""}</td><td class="num">${l[0] ? c[l[0]] : ""}</td><td class="num cod">${l[1]}</td>
       <td class="num">${l[1] === "115" ? `${String(c["115"]).replace(".", ",")} %` : pesos(l[1])}</td></tr>`;
   }).join("");
+  S.informe = informeF29;
   S.csv = { archivo: `borrador_f29_${slug()}_${p.periodo}.csv`, filas: [["Código", "Concepto", "Cód. cantidad", "Cantidad", "Monto"],
     ...LINEAS_F29.filter((l) => l[0] !== "titulo").map((l) => [l[1], l[2], l[0] && l[0] !== "total" ? l[0] : "", l[0] && l[0] !== "total" ? c[l[0]] : "", c[l[1]]])] };
   const utmTxt = (v) => (v ? clp(v) : "");
@@ -2136,7 +2152,7 @@ function vistaF29() {
     <label title="Mes en que se presenta este F29">UTM de ${nombrePeriodo(presentacion)}<input id="f29-utm-actual" inputmode="decimal" placeholder="Ej. 72.151" value="${utmTxt(f.entradas.utm_actual)}"></label>
     <button class="btn sec" type="submit">Calcular</button>
     ${puedeEditar(`<button class="btn" type="button" data-accion="guardar-f29">Guardar borrador</button>`)}
-    ${S.descargas ? `<button class="btn sec" type="button" data-accion="csv">Descargar CSV</button>` : ""}
+    ${botonesExportar()}
   </form>
   <p class="ayuda">Remanente anterior tomado de: ${esc(f.entradas.origen_remanente)}.
     ${f.remanenteUtm != null ? `Reajuste como el SII: $${clp(f.entradas.remanente_anterior)} ÷ UTM de ${nombrePeriodo(p.periodo)} = ${f.remanenteUtm.toFixed(2).replace(".", ",")} UTM (dos decimales, aproximando desde 5) × UTM de ${nombrePeriodo(presentacion)} = $${clp(c["504"])} (reajuste ${f.reajuste >= 0 ? "+" : ""}${clp(f.reajuste)}).`
@@ -2445,6 +2461,575 @@ async function liberarRemuneraciones(asientoId) {
     for (const x of lista.filter((y) => y.asiento === asientoId)) await S.almacen.set(`empresas/${S.eid}/${coleccion}/${x.id}`, { ...x, asiento: "" });
 }
 
+/* ------------------------------------------------------------------ exportación: modelo de informe */
+/* Cada informe se describe una vez (columnas y filas con un estilo) y se convierte a PDF o Excel,
+   con el mismo formato del programa de escritorio. Estilos de fila: "" normal, seccion, glosa,
+   subtotal, total, nota, destacado. */
+const NOMBRE_PROGRAMA = "CONTABILIDAD COMPLETA";
+const ARTICULO_100 = "Artículo 100 Código Tributario: Declaración jurada de que los datos corresponden a los registros contables de la empresa.";
+const MESES_MAYUS = MESES.map((m) => m.toUpperCase());
+const NEGRITA_FILA = new Set(["seccion", "glosa", "subtotal", "total", "destacado"]);
+const NOMBRES_TIPO_INFORME = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
+
+const col = (titulo, ancho, tipo = "texto", negrita = false) => ({ titulo, ancho, tipo, negrita });
+class Informe {
+  constructor(titulo, subtitulo, columnas, nombre, opciones = {}) {
+    Object.assign(this, { titulo, subtitulo, columnas, nombre, filas: [], grupos: [], horizontal: false, oficial: false, firmas: [], vacio: "", notas: [], recuadro: null }, opciones);
+  }
+  agregar(valores, opciones = {}) { this.filas.push({ valores, estilo: "", nivel: 0, abarca: null, derecha: false, bloque: false, ...opciones }); }
+}
+const periodoTexto = (desde, hasta) => `PERÍODO: ${fmtFecha(desde)} a ${fmtFecha(hasta)}`;
+const pesosTexto = (v) => (v < 0 ? `-$${clp(-v)}` : `$${clp(v)}`);
+const sinCeros = (v) => v || null;
+const nombreSeguro = (t) => (t || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60) || "empresa";
+const cuentaDe = (id) => S.porId.get(id) || { codigo: "?", nombre: "(cuenta eliminada)", tipo: "ACTIVO" };
+
+function informeDiario(desde, hasta) {
+  const inf = new Informe("LIBRO DIARIO", periodoTexto(desde, hasta),
+    [col("Fecha", 11, "fecha"), col("As. N°", 7), col("Código", 10), col("Cuenta / Glosa / Detalle", 46), col("Debe", 15, "monto"), col("Haber", 15, "monto")],
+    `libro_diario_${desde}_${hasta}`, { oficial: true });
+  let mes = null, td = 0, th = 0;
+  for (const a of S.lista.filter((x) => x.fecha >= desde && x.fecha <= hasta)) {
+    if (a.fecha.slice(0, 7) !== mes) { mes = a.fecha.slice(0, 7); inf.agregar([`--- ${MESES_MAYUS[+mes.slice(5) - 1]} ${mes.slice(0, 4)} ---`], { estilo: "seccion", abarca: 0 }); }
+    const marca = a.apertura ? " (APERTURA)" : a.cierre ? " (CIERRE)" : "";
+    inf.agregar([a.fecha, String(a.numero), `GLOSA: ${a.glosa.toUpperCase()}${marca}`], { estilo: "glosa", abarca: 2 });
+    for (const l of a.lineas) {
+      const c = cuentaDe(l.cuenta);
+      inf.agregar([null, null, c.codigo, c.nombre + (l.glosa ? ` · ${l.glosa}` : ""), sinCeros(l.debe), sinCeros(l.haber)], { nivel: l.haber ? 2 : 0 });
+      td += l.debe || 0; th += l.haber || 0;
+    }
+    inf.agregar([null, null, null, "TOTAL ASIENTO:", a.lineas.reduce((s, l) => s + (l.debe || 0), 0), a.lineas.reduce((s, l) => s + (l.haber || 0), 0)], { estilo: "subtotal", derecha: true });
+  }
+  inf.agregar([null, null, null, "TOTAL GENERAL LIBRO DIARIO:", td, th], { estilo: "total", derecha: true });
+  return inf;
+}
+
+function seccionMayor(inf, m) {
+  const c = m.cuenta;
+  inf.agregar([`CUENTA: ${c.codigo} - ${c.nombre}`], { estilo: "seccion", abarca: 0 });
+  if (m.saldoInicial) inf.agregar([null, null, "SALDO ANTERIOR", null, null, m.saldoInicial], { estilo: "nota" });
+  for (const x of m.movimientos) {
+    if (x.reinicio) inf.agregar([x.fecha, null, `Apertura: el saldo anterior (${pesosTexto(x.anterior)}) se reinicia`, null, null, 0], { estilo: "nota" });
+    else inf.agregar([x.asiento.fecha, String(x.asiento.numero), (x.glosa || "").toUpperCase(), sinCeros(x.debe), sinCeros(x.haber), x.saldo]);
+  }
+  const neto = c.tipo === "ACTIVO" || c.tipo === "GASTO" ? m.saldoFinal : -m.saldoFinal;
+  const naturaleza = neto > 0 ? "SALDO DEUDOR" : neto < 0 ? "SALDO ACREEDOR" : "CUENTA SALDADA";
+  inf.agregar([null, null, "TOTALES Y SALDO CUENTA:", m.td, m.th, [m.saldoFinal, naturaleza]], { estilo: "subtotal", derecha: true });
+}
+function informeMayor(cuentaId, desde, hasta) {
+  const base = (nombre) => new Informe("LIBRO MAYOR", periodoTexto(desde, hasta),
+    [col("Fecha", 11, "fecha"), col("As. N°", 7), col("Glosa / Descripción", 44), col("Debe", 14, "monto"), col("Haber", 14, "monto"), col("Saldo", 15, "monto", true)],
+    nombre, { oficial: true, vacio: "-" });
+  if (cuentaId) {
+    const m = libroMayor(cuentaId, desde, hasta);
+    const inf = base(`mayor_${m.cuenta.codigo}_${desde}_${hasta}`);
+    seccionMayor(inf, m);
+    return inf;
+  }
+  const inf = base(`libro_mayor_${desde}_${hasta}`);
+  const mayores = cuentasConMovimiento(hasta).map((c) => libroMayor(c.id, desde, hasta)).filter((m) => m.movimientos.length || m.saldoInicial);
+  for (const m of mayores) seccionMayor(inf, m);
+  const td = mayores.reduce((s, m) => s + m.td, 0), th = mayores.reduce((s, m) => s + m.th, 0);
+  inf.agregar([null, null, "TOTAL GENERAL LIBRO MAYOR:", td, th, td === th ? "(CONCORDADO)" : "(NO CUADRA)"], { estilo: "total", derecha: true });
+  return inf;
+}
+
+function informeOcho(desde, hasta) {
+  const b = balanceOcho(desde, hasta);
+  const titulos = ["DEBE", "HABER", "DEUDOR", "ACREEDOR", "ACTIVO", "PASIVO", "PÉRDIDA", "GANANCIA"];
+  const inf = new Informe("BALANCE DE 8 COLUMNAS", periodoTexto(desde, hasta), [col("COD.", 8), col("CUENTA CONTABLE", 30, "texto", true), ...titulos.map((t) => col(t, 12.5, "monto"))],
+    `balance_8_columnas_${desde}_${hasta}`, { grupos: [["", 2], ["1. SUMAS", 2], ["2. SALDOS", 2], ["3. INVENTARIO", 2], ["4. RESULTADOS", 2]], horizontal: true, oficial: true, vacio: "-" });
+  for (const f of b.filas) inf.agregar([f.codigo, f.nombre.toUpperCase(), f.debitos, f.creditos, ...b.cols.slice(2).map((k) => sinCeros(f[k]))]);
+  inf.agregar([null, "SUBTOTALES:", ...b.cols.map((k) => b.totales[k])], { estilo: "subtotal" });
+  inf.agregar([null, b.resultado >= 0 ? "RESULTADO (UTILIDAD):" : "RESULTADO (PÉRDIDA):", ...b.cols.map((k) => sinCeros(b.ajuste[k]))], { estilo: "subtotal" });
+  inf.agregar([null, "TOTALES GENERALES:", ...b.cols.map((k) => b.iguales[k])], { estilo: "total" });
+  return inf;
+}
+const hojasArbol = (a) => a.filas.filter((f) => !f.grupo && f.monto);
+
+function informeResultados(desde, hasta) {
+  const er = estadoResultados(desde, hasta);
+  const inf = new Informe("ESTADO DE RESULTADOS", periodoTexto(desde, hasta), [col("Código", 12), col("Cuenta / Detalle", 52), col("Resultado", 18, "monto")], `estado_resultados_${desde}_${hasta}`, { oficial: true });
+  inf.agregar(["INGRESOS (GANANCIAS)"], { estilo: "seccion", abarca: 0 });
+  for (const f of hojasArbol(er.ingresos)) inf.agregar([f.codigo, f.nombre, f.monto]);
+  inf.agregar([null, "TOTAL INGRESOS", er.ingresos.total], { estilo: "subtotal", derecha: true });
+  inf.agregar(["GASTOS (PÉRDIDAS)"], { estilo: "seccion", abarca: 0 });
+  for (const f of hojasArbol(er.gastos)) inf.agregar([f.codigo, f.nombre, f.monto]);
+  inf.agregar([null, "TOTAL GASTOS", er.gastos.total], { estilo: "subtotal", derecha: true });
+  inf.agregar([null, "RESULTADO NETO DEL EJERCICIO", er.resultado], { estilo: "total", derecha: true });
+  return inf;
+}
+
+function informeGeneral(hasta) {
+  const bg = balanceGeneral(hasta);
+  const inf = new Informe("ESTADO DE SITUACIÓN FINANCIERA", periodoTexto(bg.desde, hasta), [col("Código", 12), col("Cuenta / Detalle", 52), col("Saldo", 18, "monto")], `estado_situacion_financiera_${hasta}`, { oficial: true });
+  for (const [titulo, arbolX, total] of [["ACTIVOS", bg.activo, "TOTAL ACTIVOS"], ["PASIVOS", bg.pasivo, "TOTAL PASIVOS"]]) {
+    inf.agregar([titulo], { estilo: "seccion", abarca: 0 });
+    for (const f of hojasArbol(arbolX)) inf.agregar([f.codigo, f.nombre, f.monto]);
+    inf.agregar([null, total, arbolX.total], { estilo: "subtotal", derecha: true });
+  }
+  inf.agregar(["PATRIMONIO"], { estilo: "seccion", abarca: 0 });
+  for (const f of hojasArbol(bg.patrimonio)) inf.agregar([f.codigo, f.nombre, f.monto]);
+  if (bg.anterior) inf.agregar([null, "Resultados anteriores no cerrados", bg.anterior]);
+  inf.agregar([null, "Utilidad / (Pérdida) del Ejercicio", bg.resultado]);
+  inf.agregar([null, "TOTAL PATRIMONIO", bg.totalPatrimonio], { estilo: "subtotal", derecha: true });
+  inf.agregar([null, "TOTAL PASIVO + PATRIMONIO", bg.totalPasivoPatrimonio], { estilo: "total", derecha: true });
+  if (bg.activo.total !== bg.totalPasivoPatrimonio) inf.notas.push("Atención: el balance no cuadra; revisa los datos.");
+  return inf;
+}
+
+function informeComprobante(a) {
+  const inf = new Informe(`ASIENTO CONTABLE N° ${a.numero}`, `FECHA: ${fmtFecha(a.fecha)} · GLOSA: ${a.glosa.toUpperCase()}`,
+    [col("Código", 11), col("Cuenta", 36), col("Detalle", 30), col("Debe", 15, "monto"), col("Haber", 15, "monto")],
+    `comprobante_${a.numero}_${a.fecha.slice(0, 4)}`, { firmas: ["PREPARADO POR", "REVISADO POR", "APROBADO POR"] });
+  for (const l of a.lineas) { const c = cuentaDe(l.cuenta); inf.agregar([c.codigo, c.nombre, l.glosa || "", sinCeros(l.debe), sinCeros(l.haber)]); }
+  inf.agregar([null, null, "TOTALES:", a.lineas.reduce((s, l) => s + (l.debe || 0), 0), a.lineas.reduce((s, l) => s + (l.haber || 0), 0)], { estilo: "total", derecha: true });
+  if (a.apertura) inf.notas.push("Asiento de apertura: los saldos se reinician desde esta fecha.");
+  if (a.cierre) inf.notas.push("Asiento de cierre del ejercicio.");
+  return inf;
+}
+
+function informePlan() {
+  const inf = new Informe("PLAN DE CUENTAS", `${S.cuentas.length} CUENTAS`, [col("Código", 13), col("Nombre", 52), col("Tipo", 20), col("Estado", 10)], "plan_de_cuentas");
+  for (const c of S.cuentas) inf.agregar([c.codigo, c.nombre, c.imputable ? NOMBRES_TIPO_INFORME[c.tipo] : "Grupo", c.activa === false ? "Inactiva" : ""],
+    { estilo: !c.imputable && !c.codigo.includes(".") ? "subtotal" : "", nivel: nivel(c.codigo) });
+  return inf;
+}
+
+function informeF29() {
+  const f = resultadoF29(), c = f.codigos;
+  const inf = new Informe("BORRADOR FORMULARIO 29", `PERÍODO TRIBUTARIO: ${nombrePeriodo(f.periodo).toUpperCase()}`,
+    [col("Código", 9), col("Concepto", 52), col("Cód.", 7), col("Cantidad", 10, "numero"), col("Monto", 16, "monto")], `borrador_f29_${f.periodo}`);
+  for (const l of LINEAS_F29) {
+    if (l[0] === "titulo") { inf.agregar([l[1]], { estilo: "seccion", abarca: 0 }); continue; }
+    const [cc, cm, concepto] = l;
+    if (cm === "115") inf.agregar([cm, concepto, null, null, `${String(c["115"]).replace(".", ",")} %`]);
+    else if (cc === "total") inf.agregar([cm, concepto, null, null, c[cm]], { estilo: cm === "91" ? "destacado" : "total" });
+    else inf.agregar([cm, concepto, cc, cc ? c[cc] : null, c[cm]]);
+  }
+  inf.recuadro = [["TOTAL A PAGAR (código 91)", c["91"]]];
+  if (c["77"]) inf.recuadro.push(["Remanente de crédito fiscal para el período siguiente (código 77)", c["77"]]);
+  inf.notas.push("Borrador referencial calculado a partir del Registro de Compras y Ventas y de la contabilidad. Verifica los valores con la propuesta del SII antes de declarar.");
+  inf.notas.push(...f.alertas);
+  return inf;
+}
+
+function informeRcv(periodo) {
+  const mes = nombrePeriodo(periodo).toUpperCase();
+  const inf = new Informe("REGISTRO DE COMPRAS Y VENTAS", `PERÍODO TRIBUTARIO: ${mes}`,
+    [col("Tipo / Código", 10), col("Folio", 10), col("Fecha", 9, "fecha"), col("RUT", 12), col("Razón social / Cuenta", 34), col("Exento", 11, "monto"), col("Neto", 12, "monto"),
+      col("IVA", 11, "monto"), col("Otros imp.", 10, "monto"), col("Total", 12, "monto")], `rcv_${periodo}`, { horizontal: true });
+  const asientos = [];
+  for (const [registro, titulo] of [["COMPRA", "REGISTRO DE COMPRAS"], ["VENTA", "REGISTRO DE VENTAS"]]) {
+    inf.agregar([`${titulo} — ${mes}`], { estilo: "seccion", abarca: 0 });
+    const docs = docsPeriodo(periodo, registro);
+    const t = { exento: 0, neto: 0, iva: 0, otros: 0, total: 0 };
+    let cantidad = 0;
+    for (const d of docs) {
+      const s = signoDoc(d.tipo_doc), otros = (d.iva_no_recuperable || 0) + (d.otros_impuestos || 0);
+      const v = { exento: s * d.exento, neto: s * d.neto, iva: s * d.iva, otros: s * otros, total: s * d.total };
+      for (const k in t) t[k] += v[k];
+      cantidad += d.cantidad || 1;
+      const a = pendiente(d) ? null : S.lista.find((x) => x.id === d.asiento);
+      if (a && !asientos.includes(a)) asientos.push(a);
+      inf.agregar([String(d.tipo_doc) + (s < 0 ? " NC" : ""), esResumen(d) ? `Resumen (${d.cantidad} doc.)` : String(d.folio), d.fecha, d.rut, d.razon_social,
+        sinCeros(v.exento), sinCeros(v.neto), sinCeros(v.iva), sinCeros(v.otros), v.total]);
+    }
+    if (!docs.length) inf.agregar([null, null, null, null, "Sin documentos en el período."], { estilo: "nota" });
+    inf.agregar([null, null, null, null, `TOTAL ${titulo.split(" ").at(-1)} (${cantidad} documentos)`, t.exento, t.neto, t.iva, t.otros, t.total], { estilo: "subtotal", derecha: true });
+  }
+  inf.agregar(["ASIENTOS CONTABLES DEL MES"], { estilo: "seccion", abarca: 0, bloque: true });
+  let primero = true;
+  const asiento = (enc, fecha, glosa, lineas, estado) => {
+    inf.agregar([null, null, fecha, null, `${enc} · ${glosa.toUpperCase()}${estado ? ` (${estado})` : ""}`], { estilo: "glosa", abarca: 4, bloque: !primero });
+    primero = false;
+    inf.agregar(["Código", null, null, null, "Cuenta", null, null, null, "Debe", "Haber"], { estilo: "subtotal" });
+    for (const l of lineas) { const c = cuentaDe(l.cuenta); inf.agregar([c.codigo, null, null, null, c.nombre, null, null, null, sinCeros(l.debe), sinCeros(l.haber)], { nivel: l.haber ? 2 : 0 }); }
+    inf.agregar([null, null, null, null, "TOTALES", null, null, null, lineas.reduce((s, l) => s + (l.debe || 0), 0), lineas.reduce((s, l) => s + (l.haber || 0), 0)], { estilo: "subtotal", derecha: true });
+  };
+  for (const a of asientos) asiento(String(a.numero), a.fecha, a.glosa, a.lineas, "");
+  let propuestas = 0;
+  for (const registro of ["COMPRA", "VENTA"]) {
+    if (!docsPeriodo(periodo, registro).some(pendiente)) continue;
+    try { const p = propuestaCentralizacion(periodo, registro); asiento("Propuesta", p.fecha, p.glosa, p.lineas, "NO REGISTRADA"); propuestas++; }
+    catch (e) { inf.notas.push(`No se pudo proponer el asiento de ${registro.toLowerCase()}s pendientes: ${e.message}`); }
+  }
+  if (!asientos.length && !propuestas) inf.agregar([null, null, null, null, "No hay asientos de centralización para este período."], { estilo: "nota" });
+  inf.notas.unshift("Las notas de crédito se muestran con signo negativo. «Otros imp.» incluye el IVA no recuperable y otros impuestos. Los resúmenes de boletas y comprobantes de pago llevan el RUT de la empresa emisora.");
+  return inf;
+}
+
+/* ------------------------------------------------------------------ exportación: librerías */
+const LIBRERIAS = {
+  jspdf: "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+  autotable: "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js",
+  exceljs: "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js",
+};
+const scriptsCargados = {};
+function cargarScript(clave) {
+  if (!scriptsCargados[clave]) scriptsCargados[clave] = new Promise((ok, mal) => {
+    const s = document.createElement("script");
+    s.src = LIBRERIAS[clave]; s.onload = ok; s.onerror = () => { delete scriptsCargados[clave]; mal(new Error("No se pudo cargar la librería de exportación. Revisa tu conexión a internet.")); };
+    document.head.appendChild(s);
+  });
+  return scriptsCargados[clave];
+}
+function lineasEmpresa(e) {
+  return [`RAZON SOCIAL: ${e.razon_social || ""}`.toUpperCase(), `R.U.T.: ${e.rut || ""}`, `GIRO: ${e.giro || ""}`.toUpperCase(),
+    `DIRECCION: ${e.direccion || ""}`.toUpperCase(), `CIUDAD: ${e.comuna || ""}`.toUpperCase()];
+}
+function datosRepresentante(e) { return [(e.representante || "").toUpperCase(), e.rut_representante ? `R.U.T: ${e.rut_representante}` : ""].filter(Boolean); }
+function datosContador() { return [S.contador.nombre, S.contador.rut ? `R.U.T: ${S.contador.rut}` : ""].filter(Boolean); }
+function textoPrincipal(inf) { let m = -1; inf.columnas.forEach((c, j) => { if (c.tipo === "texto" && (m < 0 || c.ancho > inf.columnas[m].ancho)) m = j; }); return m; }
+/* Las fuentes estándar del PDF no traen algunos signos: se reemplazan por equivalentes. */
+const textoPdf = (t) => String(t ?? "").replace(/[−–]/g, "-").replace(/✔/g, "OK").replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+
+/* ------------------------------------------------------------------ PDF */
+const CM = 28.3465;
+const GRIS_FONDO = [238, 238, 238], GRIS_GRILLA = [158, 158, 158], GRIS_TEXTO = [85, 85, 85], ROJO = [180, 35, 24], AMARILLO = [255, 244, 204];
+
+async function aPdf(inf, folioInicial = null) {
+  await cargarScript("jspdf"); await cargarScript("autotable");
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "letter", orientation: inf.horizontal ? "landscape" : "portrait", compress: true });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+  const margen = 1.5 * CM, arribaMargen = 3.5 * CM, abajoMargen = 1.7 * CM, anchoUtil = W - 2 * margen;
+  const n = inf.columnas.length, principal = textoPrincipal(inf);
+  const peso = inf.columnas.reduce((s, c) => s + c.ancho, 0);
+  const anchos = inf.columnas.map((c) => (anchoUtil * c.ancho) / peso);
+  const cuerpo = n > 7 ? 7 : 7.5;
+  const e = empresa();
+  doc.setProperties({ title: `${inf.titulo} – ${e.razon_social}`, author: e.razon_social });
+
+  const celdaDe = (f, j, c, v) => {
+    const dentro = f.abarca === null || j < f.abarca;
+    const negrita = c.negrita || NEGRITA_FILA.has(f.estilo);
+    const st = { fontStyle: negrita ? "bold" : "normal" };
+    let texto;
+    if ((c.tipo === "monto" || c.tipo === "numero") && dentro) {
+      st.halign = "right";
+      if (Array.isArray(v)) { texto = `${pesosTexto(v[0])}\n${v[1]}`; st.fontStyle = "bold"; if (v[0] < 0) st.textColor = ROJO; }
+      else if (typeof v === "string") { texto = v; st.fontStyle = "bold"; }
+      else if (c.tipo === "numero") texto = v == null ? "" : clp(v);
+      else { texto = v == null ? inf.vacio : pesosTexto(v); if (typeof v === "number" && v < 0) st.textColor = ROJO; }
+      if (f.estilo === "destacado") st.fontSize = cuerpo + 3;
+    } else if (c.tipo === "fecha" && dentro) texto = v ? fmtFecha(v) : "";
+    else {
+      texto = v == null ? "" : String(v);
+      if (f.estilo === "glosa") st.fontStyle = j < f.abarca ? "bold" : "bolditalic";
+      else if (f.estilo === "nota") { st.fontStyle = "italic"; st.textColor = GRIS_TEXTO; }
+      if (j === principal && f.nivel && !f.derecha) st.cellPadding = { left: 4 + f.nivel * 7, right: 4, top: 2.3, bottom: 2.3 };
+      if (f.derecha && j === principal) st.halign = "right";
+    }
+    if (f.estilo === "seccion") st.fillColor = GRIS_FONDO;
+    if (f.estilo === "destacado") st.fillColor = AMARILLO;
+    return { content: textoPdf(texto), styles: st, linea: f.estilo };
+  };
+  const filaPdf = (f) => {
+    const valores = [...f.valores, ...Array(Math.max(n - f.valores.length, 0)).fill(null)];
+    const celdas = [];
+    for (let j = 0; j < n; j++) {
+      if (f.abarca !== null && j > f.abarca) break;
+      const celda = celdaDe(f, j, inf.columnas[j], valores[j]);
+      if (f.abarca !== null && j === f.abarca && f.abarca < n - 1) celda.colSpan = n - f.abarca;
+      celdas.push(celda);
+    }
+    return celdas;
+  };
+  const cabeza = [];
+  if (inf.grupos.length) {
+    const fila = [];
+    let j = 0;
+    for (const [titulo, span] of inf.grupos) {
+      if (!titulo) for (let k = j; k < j + span; k++) fila.push({ content: textoPdf(inf.columnas[k].titulo), rowSpan: 2 });
+      else fila.push({ content: textoPdf(titulo), colSpan: span });
+      j += span;
+    }
+    cabeza.push(fila);
+    let jj = 0;
+    const segunda = [];
+    for (const [titulo, span] of inf.grupos) { if (titulo) for (let k = jj; k < jj + span; k++) segunda.push(textoPdf(inf.columnas[k].titulo)); jj += span; }
+    cabeza.push(segunda);
+  } else cabeza.push(inf.columnas.map((c) => textoPdf(c.titulo)));
+
+  const base = {
+    margin: { top: arribaMargen, bottom: abajoMargen, left: margen, right: margen },
+    theme: "grid", tableWidth: anchoUtil,
+    styles: { font: "helvetica", fontSize: cuerpo, cellPadding: { top: 2.3, bottom: 2.3, left: 4, right: 4 }, lineColor: GRIS_GRILLA, lineWidth: 0.5, textColor: [0, 0, 0], valign: "middle", overflow: "linebreak" },
+    headStyles: { fillColor: GRIS_FONDO, textColor: [0, 0, 0], fontStyle: "bold", lineColor: GRIS_GRILLA, lineWidth: 0.5 },
+    columnStyles: Object.fromEntries(anchos.map((w, j) => [j, { cellWidth: w }])),
+    rowPageBreak: "avoid",
+    didDrawCell: (d) => {
+      if (d.section !== "body") return;
+      const l = d.cell.raw?.linea, x = d.cell.x, y = d.cell.y, w = d.cell.width, h = d.cell.height;
+      doc.setDrawColor(0, 0, 0);
+      if (l === "glosa") { doc.setLineWidth(0.9); doc.line(x, y, x + w, y); }
+      else if (l === "subtotal") { doc.setLineWidth(0.9); doc.line(x, y, x + w, y); doc.line(x, y + h, x + w, y + h); }
+      else if (l === "total") { doc.setLineWidth(1.4); doc.line(x, y, x + w, y); doc.line(x, y + h, x + w, y + h); }
+      else if (l === "destacado") { doc.setLineWidth(1.6); doc.line(x, y, x + w, y); doc.line(x, y + h, x + w, y + h); if (d.column.index === 0) doc.line(x, y, x, y + h); if (d.column.index + (d.cell.colSpan || 1) >= n) doc.line(x + w, y, x + w, y + h); }
+    },
+  };
+  const alto = (filas) => filas.reduce((s, f) => s + Math.max(...f.valores.map((v, j) => {
+    const w = j < anchos.length ? anchos[j] : anchoUtil;
+    return Math.ceil((String(v ?? "").length * cuerpo * 0.5) / Math.max(w - 8, 10)) || 1;
+  }), 1) * (cuerpo * 1.15) + 4.6 + (f.estilo === "destacado" ? 6 : 0), 0);
+  const dibujar = (filas, opciones = {}) => {
+    if (!filas.length) return;
+    doc.autoTable({ ...base, head: opciones.sinCabeza ? [] : cabeza, showHead: opciones.sinCabeza ? "never" : "everyPage", body: filas.map(filaPdf), startY: opciones.y ?? arribaMargen });
+  };
+  let y = arribaMargen;
+  const yFinal = () => doc.lastAutoTable?.finalY ?? y;
+  const nuevaPagina = () => { doc.addPage(); y = arribaMargen; };
+
+  const filasCola = inf.oficial ? Math.min(4, inf.filas.length - 1) : 0;
+  const cuerpoFilas = filasCola > 0 ? inf.filas.slice(0, inf.filas.length - filasCola) : inf.filas;
+  const cola = filasCola > 0 ? inf.filas.slice(inf.filas.length - filasCola) : [];
+  const cortes = inf.filas.map((f, i) => (f.bloque ? i : -1)).filter((i) => i > 0);
+  if (cortes.length && !filasCola) {
+    let desde = 0;
+    for (const corte of [...cortes, inf.filas.length]) {
+      const parte = inf.filas.slice(desde, corte);
+      if (!parte.length) continue;
+      if (desde > 0) { y = yFinal(); if (y + alto(parte) > H - abajoMargen && alto(parte) < H - arribaMargen - abajoMargen) nuevaPagina(); }
+      dibujar(parte, { y, sinCabeza: desde > 0 });
+      desde = corte;
+    }
+  } else dibujar(cuerpoFilas, { y });
+  y = yFinal();
+
+  // Cola (últimas filas, recuadro, notas, Art. 100 y firmas): se mantiene junta en la misma página
+  const firmaH = inf.oficial ? 0.5 * CM + 20 + 0.3 * CM + 1.8 * CM + 34 : inf.firmas.length ? 0.8 * CM + 1.6 * CM + 14 : 0;
+  const recuadroH = inf.recuadro ? 0.5 * CM + inf.recuadro.length * 26 + 8 : 0;
+  doc.setFontSize(7);
+  const notasLineas = inf.notas.map((t) => doc.splitTextToSize(textoPdf(t), anchoUtil));
+  const notasH = notasLineas.reduce((s, ls) => s + 0.3 * CM + ls.length * 9, 0);
+  const colaH = alto(cola) + recuadroH + notasH + firmaH;
+  if (y + colaH > H - abajoMargen && colaH < H - arribaMargen - abajoMargen) nuevaPagina();
+  if (cola.length) { dibujar(cola, { y, sinCabeza: true }); y = yFinal(); }
+  if (inf.recuadro) {
+    y += 0.5 * CM;
+    doc.autoTable({ startY: y, margin: { left: margen, right: margen, top: arribaMargen, bottom: abajoMargen }, theme: "plain", tableWidth: anchoUtil,
+      body: inf.recuadro.map(([t, v], k) => [{ content: textoPdf(t), styles: { fontSize: k ? 9 : 14, fontStyle: "bold" } }, { content: pesosTexto(v), styles: { fontSize: k ? 9 : 14, fontStyle: "bold", halign: "right" } }]),
+      styles: { fillColor: AMARILLO, textColor: [0, 0, 0], cellPadding: { left: 10, right: 10, top: 6, bottom: 6 }, valign: "middle" },
+      columnStyles: { 0: { cellWidth: anchoUtil * 0.68 }, 1: { cellWidth: anchoUtil * 0.32 } },
+      didDrawCell: (d) => { if (d.row.index > 0 && d.column.index === 1) { doc.setDrawColor(...GRIS_GRILLA); doc.setLineWidth(0.5); doc.line(margen, d.cell.y, margen + anchoUtil, d.cell.y); } } });
+    const t = doc.lastAutoTable;
+    doc.setDrawColor(0, 0, 0); doc.setLineWidth(1.8); doc.rect(margen, y, anchoUtil, t.finalY - y);
+    y = t.finalY;
+  }
+  for (const ls of notasLineas) { y += 0.3 * CM; doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GRIS_TEXTO); doc.text(ls, margen, y + 7); y += ls.length * 9; }
+  doc.setTextColor(0, 0, 0);
+  if (inf.oficial) {
+    y += 0.5 * CM;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+    doc.text(doc.splitTextToSize(ARTICULO_100, anchoUtil), W - margen, y + 8, { align: "right" });
+    y += 20 + 0.3 * CM;
+    const anchoFirma = 6 * CM, x0 = (W - (anchoUtil - 1 * CM)) / 2, x2 = x0 + (anchoUtil - 1 * CM) - anchoFirma;
+    const lineaY = y + 1.8 * CM;
+    if (S.contador.firma) {
+      try {
+        const prop = doc.getImageProperties(S.contador.firma);
+        let h = 1.5 * CM, w = (h * prop.width) / prop.height;
+        if (w > 5 * CM) { w = 5 * CM; h = (w * prop.height) / prop.width; }
+        doc.addImage(S.contador.firma, "PNG", x0 + (anchoFirma - w) / 2, lineaY - h - 2, w, h, "firma", "FAST");
+      } catch (_) { /* firma ilegible: se omite la imagen */ }
+    }
+    doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.6);
+    doc.line(x0, lineaY, x0 + anchoFirma, lineaY); doc.line(x2, lineaY, x2 + anchoFirma, lineaY);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+    ["CONTADOR GENERAL", ...datosContador()].forEach((t, k) => doc.text(textoPdf(t), x0 + anchoFirma / 2, lineaY + 10 + k * 9.5, { align: "center" }));
+    ["REPRESENTANTE LEGAL", ...datosRepresentante(e)].forEach((t, k) => doc.text(textoPdf(t), x2 + anchoFirma / 2, lineaY + 10 + k * 9.5, { align: "center" }));
+  } else if (inf.firmas.length) {
+    const k = inf.firmas.length, anchoFirma = Math.min(anchoUtil / k - 0.8 * CM, 5.5 * CM), hueco = (anchoUtil / k - anchoFirma) / 2;
+    const lineaY = y + 0.8 * CM + 1.6 * CM;
+    doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.6); doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+    inf.firmas.forEach((t, i) => { const x = margen + i * (anchoUtil / k) + hueco; doc.line(x, lineaY, x + anchoFirma, lineaY); doc.text(t, x + anchoFirma / 2, lineaY + 10, { align: "center" }); });
+  }
+
+  // Encabezado, pie, página y folio en todas las páginas
+  const total = doc.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    const arriba = 1.2 * CM;
+    doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "bold"); doc.setFontSize(6.5);
+    lineasEmpresa(e).forEach((t, k) => doc.text(doc.splitTextToSize(textoPdf(t), anchoUtil * 0.7)[0], margen, arriba + k * 0.28 * CM));
+    doc.setFontSize(11); doc.text(textoPdf(inf.titulo), W / 2, arriba + 1.55 * CM, { align: "center" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.text(doc.splitTextToSize(textoPdf(inf.subtitulo), anchoUtil)[0], W / 2, arriba + 1.9 * CM, { align: "center" });
+    doc.setDrawColor(...GRIS_GRILLA); doc.setLineWidth(0.5);
+    doc.line(margen, arriba + 2.1 * CM, W - margen, arriba + 2.1 * CM);
+    doc.line(margen, H - 1.35 * CM, W - margen, H - 1.35 * CM);
+    doc.setFontSize(7); doc.text(NOMBRE_PROGRAMA, margen, H - 1.0 * CM);
+    doc.text(`PÁGINA ${p} DE ${total}`, W - margen, H - 1.0 * CM, { align: "right" });
+    if (folioInicial != null) { doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(`FOLIO: ${folioInicial + p - 1}`, W - margen, arriba, { align: "right" }); }
+  }
+  return { blob: doc.output("blob"), paginas: total };
+}
+
+/* ------------------------------------------------------------------ Excel */
+/* Ancho y alto de una imagen PNG en data URL (cabecera IHDR), sin esperar a que el navegador la dibuje. */
+function medidasPng(dataUrl) {
+  const bytes = Uint8Array.from(atob(dataUrl.split(",")[1].slice(0, 64)), (c) => c.charCodeAt(0));
+  const leer = (i) => ((bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | bytes[i + 3]) >>> 0;
+  return { ancho: leer(16), alto: leer(20) };
+}
+async function aExcel(inf) {
+  await cargarScript("exceljs");
+  const wb = new window.ExcelJS.Workbook();
+  const e = empresa();
+  wb.title = inf.titulo; wb.creator = e.razon_social;
+  const ws = wb.addWorksheet(inf.titulo.replace(/[[\]:*?/\\]/g, "").toLowerCase().replace(/(^|\s)\S/g, (m) => m.toUpperCase()).slice(0, 31), { views: [{ showGridLines: false }] });
+  const n = inf.columnas.length, principal = textoPrincipal(inf);
+  const linea = { style: "thin", color: { argb: "FF9E9E9E" } }, negro = { style: "medium", color: { argb: "FF000000" } };
+  const grilla = { top: linea, left: linea, bottom: linea, right: linea };
+  const fondo = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEEEEE" } }, amarillo = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF4CC" } };
+  const formatoMonto = '"$"#,##0;[Red]-"$"#,##0';
+  const unir = (f, c1, c2) => { if (c2 > c1) ws.mergeCells(f, c1, f, c2); };
+  let fila = 0;
+  for (const t of lineasEmpresa(e)) { fila++; const c = ws.getCell(fila, 1); c.value = t; c.font = { bold: true, size: 8 }; unir(fila, 1, n); }
+  fila++; Object.assign(ws.getCell(fila, 1), { value: inf.titulo, font: { bold: true, size: 13 }, alignment: { horizontal: "center" } }); unir(fila, 1, n); ws.getRow(fila).height = 20;
+  fila++; Object.assign(ws.getCell(fila, 1), { value: inf.subtitulo, font: { size: 9, color: { argb: "FF555555" } }, alignment: { horizontal: "center" } }); unir(fila, 1, n);
+  fila += 2;
+  const primeraEncabezado = fila;
+  if (inf.grupos.length) {
+    let c0 = 1;
+    for (const [titulo, span] of inf.grupos) {
+      for (let j = c0; j < c0 + span; j++) Object.assign(ws.getCell(fila, j), { fill: fondo, border: grilla });
+      if (titulo) { Object.assign(ws.getCell(fila, c0), { value: titulo, font: { bold: true, size: 9 } }); if (span > 1) unir(fila, c0, c0 + span - 1); }
+      c0 += span;
+    }
+    fila++;
+  }
+  inf.columnas.forEach((c, j) => {
+    Object.assign(ws.getCell(fila, j + 1), { value: c.titulo, font: { bold: true, size: 9 }, fill: fondo, border: grilla, alignment: { vertical: "middle", wrapText: true } });
+    ws.getColumn(j + 1).width = c.ancho;
+  });
+  if (inf.grupos.length) {
+    let c0 = 1;
+    for (const [titulo, span] of inf.grupos) {
+      if (!titulo) { for (let j = c0; j < c0 + span; j++) { Object.assign(ws.getCell(fila - 1, j), { value: inf.columnas[j - 1].titulo, font: { bold: true, size: 9 }, alignment: { vertical: "middle" } }); ws.getCell(fila, j).value = null; ws.mergeCells(fila - 1, j, fila, j); } break; }
+      c0 += span;
+    }
+  }
+  ws.getRow(fila).height = 18;
+  const filaTitulos = fila;
+  ws.views = [{ state: "frozen", ySplit: fila, showGridLines: false }];
+
+  for (const f of inf.filas) {
+    fila++;
+    const valores = [...f.valores, ...Array(Math.max(n - f.valores.length, 0)).fill(null)];
+    for (let j = 1; j <= n; j++) {
+      const c = inf.columnas[j - 1];
+      let v = valores[j - 1], sub = null;
+      if (Array.isArray(v)) [v, sub] = v;
+      const dato = f.abarca === null || j - 1 < f.abarca;
+      const celda = ws.getCell(fila, j);
+      if (c.tipo === "fecha" && v && dato) { const [a, m, d] = v.split("-").map(Number); v = new Date(Date.UTC(a, m - 1, d)); }
+      celda.value = v ?? (c.tipo === "monto" && inf.vacio && f.abarca === null ? inf.vacio : null);
+      const negrita = NEGRITA_FILA.has(f.estilo) || c.negrita;
+      celda.font = { bold: negrita, italic: f.estilo === "glosa" || f.estilo === "nota", size: 9, ...(f.estilo === "nota" ? { color: { argb: "FF555555" } } : {}) };
+      celda.border = grilla;
+      if (f.estilo === "seccion") celda.fill = fondo;
+      if (f.estilo === "destacado") { celda.font = { bold: true, size: 12 }; celda.fill = amarillo; celda.border = { top: negro, left: negro, bottom: negro, right: negro }; }
+      else if (f.estilo === "subtotal" || f.estilo === "total") celda.border = { left: linea, right: linea, top: negro, bottom: f.estilo === "total" ? negro : linea };
+      if ((c.tipo === "monto" || c.tipo === "numero") && dato) {
+        celda.numFmt = c.tipo === "monto" ? formatoMonto : "#,##0";
+        celda.alignment = { horizontal: "right", vertical: "top" };
+        if (sub) { const et = ws.getCell(fila, principal + 1); et.value = et.value ? `${et.value} (${sub})` : sub; }
+      } else if (c.tipo === "fecha" && dato) { celda.numFmt = "DD/MM/YYYY"; celda.alignment = { horizontal: "left", vertical: "top" }; }
+      else celda.alignment = { vertical: "top", wrapText: f.abarca === null, horizontal: f.derecha && j - 1 === principal ? "right" : "left", indent: j - 1 === principal && !f.derecha ? Math.min(f.nivel, 10) : 0 };
+    }
+    if (f.abarca !== null && f.abarca < n - 1) ws.mergeCells(fila, f.abarca + 1, fila, n);
+  }
+  (inf.recuadro || []).forEach(([texto, valor], k) => {
+    fila += k === 0 ? 2 : 1;
+    const tam = k === 0 ? 14 : 10;
+    ws.getCell(fila, 1).value = texto;
+    if (n > 2) ws.mergeCells(fila, 1, fila, n - 1);
+    ws.getCell(fila, n).value = valor; ws.getCell(fila, n).numFmt = formatoMonto;
+    for (let j = 1; j <= n; j++) Object.assign(ws.getCell(fila, j), { font: { bold: true, size: tam }, fill: amarillo,
+      border: { top: negro, bottom: negro, ...(j === 1 ? { left: negro } : {}), ...(j === n ? { right: negro } : {}) }, alignment: { horizontal: j === n ? "right" : "left", vertical: "middle" } });
+    ws.getRow(fila).height = k === 0 ? 26 : 18;
+  });
+  for (const nota of inf.notas) { fila += 2; Object.assign(ws.getCell(fila, 1), { value: nota, font: { italic: true, size: 8, color: { argb: "FF555555" } }, alignment: { wrapText: true, vertical: "top" } }); unir(fila, 1, n); ws.getRow(fila).height = 26; }
+  const bloqueFirma = (c1, c2, renglones, f0) => {
+    for (let j = c1; j <= c2; j++) ws.getCell(f0, j).border = { top: { style: "thin", color: { argb: "FF000000" } } };
+    renglones.forEach((t, k) => { Object.assign(ws.getCell(f0 + k, c1), { value: t, font: { bold: true, size: 8 }, alignment: { horizontal: "center" } }); unir(f0 + k, c1, c2); });
+  };
+  const mitad = Math.max(Math.floor(n / 2), 1);
+  if (inf.oficial) {
+    fila += 2; Object.assign(ws.getCell(fila, 1), { value: ARTICULO_100, font: { bold: true, size: 8 } }); unir(fila, 1, n);
+    fila += 5;
+    if (S.contador.firma) {
+      try {
+        const { ancho, alto } = medidasPng(S.contador.firma);
+        const id = wb.addImage({ base64: S.contador.firma, extension: "png" });
+        ws.addImage(id, { tl: { col: 0, row: fila - 4 }, ext: { width: (ancho * 55) / alto, height: 55 } });
+      } catch (_) { /* firma ilegible: se omite la imagen */ }
+    }
+    const renglones = ["CONTADOR GENERAL", ...datosContador()];
+    bloqueFirma(1, Math.max(mitad - 1, 1), renglones, fila);
+    bloqueFirma(Math.min(mitad + 1, n), n, ["REPRESENTANTE LEGAL", ...datosRepresentante(e)], fila);
+    fila += renglones.length;
+  } else if (inf.firmas.length) {
+    fila += 4;
+    const tramo = Math.max(Math.floor(n / inf.firmas.length), 1);
+    inf.firmas.forEach((t, i) => { const ini = 1 + i * tramo; bloqueFirma(ini, Math.min(ini + Math.max(tramo - 2, 0), n), [t], fila); });
+  }
+  ws.pageSetup = { paperSize: 1, orientation: inf.horizontal ? "landscape" : "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+    printTitlesRow: `${primeraEncabezado}:${filaTitulos}`, margins: { left: 0.5, right: 0.5, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 } };
+  ws.headerFooter = { oddFooter: `&L&7${NOMBRE_PROGRAMA}&R&7PÁGINA &P DE &N` };
+  return new Blob([await wb.xlsx.writeBuffer()], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+/* ------------------------------------------------------------------ exportación: pantalla */
+/* Informe de la pantalla actual (cada vista lo deja en S.informe). */
+async function guardarArchivo(nombre, blob) {
+  if (!S.descargas) throw new Error("La descarga de archivos no está disponible en esta vista.");
+  try { await S.descargas.save({ filename: nombre, data: blob }); return true; }
+  catch (err) { if (err?.code === "declined") return false; throw err; }
+}
+function nombreArchivo(inf, ext) { return `${nombreSeguro(empresa().razon_social)}_${inf.nombre}.${ext}`; }
+
+async function exportar(formato) {
+  if (!S.informe) return;
+  const inf = S.informe();
+  if (formato === "pdf" && inf.oficial) { S.folioPendiente = true; render(); $("#folio-inicial")?.select(); return; }
+  await ocupado(async () => {
+    aviso(formato === "pdf" ? "Generando PDF…" : "Generando Excel…");
+    const blob = formato === "pdf" ? (await aPdf(inf)).blob : await aExcel(inf);
+    if (await guardarArchivo(nombreArchivo(inf, formato === "pdf" ? "pdf" : "xlsx"), blob)) aviso(formato === "pdf" ? "PDF descargado." : "Excel descargado.");
+  }, formato === "pdf" ? "No se pudo generar el PDF" : "No se pudo generar el Excel");
+}
+
+async function generarPdfConFolio() {
+  const folio = Number($("#folio-inicial").value);
+  if (!Number.isInteger(folio) || folio < 1) return aviso("Ingresa un número entero mayor o igual a 1.");
+  const inf = S.informe();
+  await ocupado(async () => {
+    aviso("Generando PDF…");
+    const { blob, paginas } = await aPdf(inf, folio);
+    if (!(await guardarArchivo(nombreArchivo(inf, "pdf"), blob))) { aviso("Descarga cancelada: los folios no se usaron."); return; }
+    const ultimo = folio + paginas - 1;
+    if (ultimo > (empresa().ultimo_folio || 0)) await BD.setEmpresa(S.eid, { ...empresa(), ultimo_folio: ultimo });
+    S.folioPendiente = false; render();
+    aviso(`${paginas === 1 ? `PDF generado con el folio ${folio}.` : `PDF generado con los folios ${folio} al ${ultimo}.`} Próximo folio sugerido: ${Math.max(empresa().ultimo_folio || 0, ultimo) + 1}.`);
+  }, "No se pudo generar el PDF");
+}
+
+function panelFolio() {
+  if (!S.folioPendiente) return "";
+  const proximo = (empresa().ultimo_folio || 0) + 1;
+  return `<form class="caja" data-form="folio"><h2>Folio inicial</h2>
+    <p>¿Con qué número de folio comienza este PDF? Cada página usará el folio siguiente.</p>
+    <div class="barra"><label>Folio inicial<input type="number" id="folio-inicial" min="1" step="1" value="${proximo}"></label>
+      <button class="btn" type="submit">Generar PDF</button><button class="btn sec" type="button" data-accion="cancelar-folio">Cancelar</button></div>
+    <p class="ayuda">Sugerido: <strong>${proximo}</strong>, el siguiente al último folio utilizado por ${esc(empresa().razon_social)}.</p></form>`;
+}
+function botonesExportar(csv = true) {
+  if (!S.descargas) return "";
+  return `<button class="btn sec" type="button" data-accion="pdf">PDF</button><button class="btn sec" type="button" data-accion="excel">Excel</button>${csv ? `<button class="btn sec" type="button" data-accion="csv">CSV</button>` : ""}`;
+}
+
 /* ------------------------------------------------------------------ eventos */
 function slug() { return (empresa()?.razon_social || "empresa").normalize("NFD").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").toLowerCase(); }
 
@@ -2552,6 +3137,10 @@ document.addEventListener("click", (ev) => {
     case "pedir-eliminar-marcados": S.confirmar = "docs"; render(); break;
     case "eliminar-marcados": eliminarDocs([...S.rcvSel]); break;
     case "guardar-f29": guardarF29(); break;
+    case "pdf": exportar("pdf"); break;
+    case "excel": exportar("excel"); break;
+    case "cancelar-folio": S.folioPendiente = false; render(); break;
+    case "pdf-asiento": { const a = S.lista.find((x) => x.id === ed.id); if (a) { S.informe = () => informeComprobante(a); exportar("pdf"); } break; }
     case "nuevo-socio": S.socioEdit = { id: null, nombre: "", rut: "", sueldo_bruto: 0 }; render(); $("#so-nombre")?.focus(); break;
     case "editar-socio": S.socioEdit = { ...socioPorId(t.dataset.id) }; render(); break;
     case "cancelar-socio": S.socioEdit = null; render(); break;
@@ -2600,6 +3189,7 @@ document.addEventListener("submit", (ev) => {
     case "tributarias": guardarTributarias(); break;
     case "f29": if (leerEntradasF29()) render(); break;
     case "socio": guardarSocio(); break;
+    case "folio": generarPdfConFolio(); break;
     case "boleta": guardarBoleta(); break;
   }
 });
