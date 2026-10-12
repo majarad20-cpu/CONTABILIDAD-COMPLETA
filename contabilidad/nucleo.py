@@ -1026,4 +1026,9 @@ def exportar_en_linea(conn, empresa_id):
                       "apertura": bool(a["apertura"]), "cierre": bool(a["cierre"]), "lineas": lineas.get(a["id"], [])}
                      for a in conn.execute("SELECT * FROM asientos WHERE empresa_id = ? ORDER BY fecha, numero",
                                            (empresa_id,))],
+        "cerrados": {r["periodo"]: r["cerrado_en"].replace(" ", "T") for r in conn.execute(
+            "SELECT periodo, cerrado_en FROM periodos_cerrados WHERE empresa_id = ?", (empresa_id,))},
+        "cambios": [{"fecha_hora": r["fecha_hora"].replace(" ", "T"), "accion": r["accion"], "comprobante": r["comprobante"],
+                     "periodos": r["periodos"], "motivo": r["motivo"] or ""}
+                    for r in conn.execute("SELECT * FROM cambios_periodo_cerrado WHERE empresa_id = ? ORDER BY id", (empresa_id,))],
     }

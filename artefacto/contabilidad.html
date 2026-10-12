@@ -87,6 +87,7 @@ tr.titulo td { font-weight: 700; padding-top: 14px; color: var(--accent); text-t
 tr.reinicio td { color: var(--muted); font-style: italic; }
 tr.cab-asiento td { background: var(--surface-2); font-weight: 600; }
 .neg { color: var(--neg); }
+.etiqueta.cerrado { background: var(--warn-bg); color: var(--warn-fg); }
 .etiqueta { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; font-weight: 600; vertical-align: 1px; }
 .aviso { padding: 10px 14px; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn-fg); }
 .aviso.ok { background: var(--ok-bg); color: var(--ok-fg); }
@@ -95,6 +96,11 @@ tr.cab-asiento td { background: var(--surface-2); font-weight: 600; }
 .form label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 .form label.check { display: flex; gap: 8px; align-items: center; color: var(--fg); }
 .acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.confirmar label { display: grid; gap: 4px; font-size: 13px; flex: 1 1 260px; }
+.firma-vista { max-width: 320px; max-height: 120px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
+dl.ficha { display: grid; grid-template-columns: max-content auto; gap: 6px 18px; margin: 0; }
+dl.ficha dt { color: var(--muted); }
+dl.ficha dd { margin: 0; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .confirmar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--neg); border-radius: var(--radius); }
 .lineas input { width: 100%; }
 .lineas td { padding: 4px 6px; }
@@ -179,33 +185,52 @@ async function reintentar(fn) {
   }
 }
 
-/* Sin conexión con Claude (archivo abierto fuera del artefacto): todo vive en memoria. */
+/* Subcolecciones de cada empresa (se borran junto con ella). */
+const SUBCOLECCIONES = ["asientos", "cambios", "rcv", "f29", "socios", "sueldos", "honorarios"];
+
+/* Acceso a datos por ruta («empresas/e1/asientos/a1»). Dos implementaciones con la misma interfaz:
+   memoria (archivo abierto fuera del artefacto, para probar) y la base del artefacto de Claude. */
 class AlmacenMemoria {
-  constructor() { this.e = new Map(); this.a = new Map(); this.oe = null; this.oa = null; this.aeid = null; this.enLinea = false; }
-  lista(eid) { return [...(this.a.get(eid) || new Map()).values()].map((x) => ({ ...x })); }
-  avisarE() { this.oe?.([...this.e.values()].map((x) => ({ ...x }))); }
-  avisarA(eid) { if (eid === this.aeid) this.oa?.(this.lista(eid)); }
-  onEmpresas(cb) { this.oe = cb; this.avisarE(); return () => (this.oe = null); }
-  onAsientos(eid, cb) { this.aeid = eid; this.oa = cb; cb(this.lista(eid)); return () => (this.oa = null); }
-  async setEmpresa(id, d) { this.e.set(id, { ...d, id }); this.avisarE(); }
-  async deleteEmpresa(id) { this.e.delete(id); this.a.delete(id); this.avisarE(); this.avisarA(id); }
-  async setAsiento(eid, id, d) { if (!this.a.has(eid)) this.a.set(eid, new Map()); this.a.get(eid).set(id, { ...d, id }); this.avisarA(eid); }
-  async deleteAsiento(eid, id) { this.a.get(eid)?.delete(id); this.avisarA(eid); }
+  constructor() { this.docs = new Map(); this.oyentes = new Set(); this.enLinea = false; }
+  coleccion(ruta) {
+    const n = ruta.split("/").length + 1;
+    return [...this.docs].filter(([k]) => k.startsWith(ruta + "/") && k.split("/").length === n).map(([k, v]) => ({ ...v, id: k.split("/").pop() }));
+  }
+  avisar(ruta) {
+    const padre = ruta.split("/").slice(0, -1).join("/");
+    for (const o of this.oyentes) {
+      if (o.tipo === "col" && o.ruta === padre) o.cb(this.coleccion(o.ruta));
+      if (o.tipo === "doc" && o.ruta === ruta) o.cb(this.docs.has(ruta) ? { ...this.docs.get(ruta), id: ruta.split("/").pop() } : null);
+    }
+  }
+  onCol(ruta, cb) { const o = { tipo: "col", ruta, cb }; this.oyentes.add(o); cb(this.coleccion(ruta)); return () => this.oyentes.delete(o); }
+  onDoc(ruta, cb) { const o = { tipo: "doc", ruta, cb }; this.oyentes.add(o); cb(this.docs.has(ruta) ? { ...this.docs.get(ruta), id: ruta.split("/").pop() } : null); return () => this.oyentes.delete(o); }
+  async leerCol(ruta) { return this.coleccion(ruta); }
+  async set(ruta, d) { const { id: _i, numero: _n, ...cuerpo } = d; this.docs.set(ruta, JSON.parse(JSON.stringify(cuerpo))); this.avisar(ruta); }
+  async del(ruta) { this.docs.delete(ruta); this.avisar(ruta); }
 }
 
 class AlmacenClaude {
   constructor(db) { this.db = db; this.enLinea = true; }
-  onEmpresas(cb, err) { return this.db.collection("empresas").onSnapshot((s) => cb(s.docs.map((d) => ({ ...d.data(), id: d.id }))), err); }
-  onAsientos(eid, cb, err) { return this.db.collection(`empresas/${eid}/asientos`).onSnapshot((s) => cb(s.docs.map((d) => ({ ...d.data(), id: d.id }))), err); }
-  setEmpresa(id, d) { const { id: _x, ...cuerpo } = d; return reintentar(() => this.db.doc(`empresas/${id}`).set(cuerpo)); }
-  async deleteEmpresa(id) {
-    const s = await reintentar(() => this.db.collection(`empresas/${id}/asientos`).get());
-    for (const d of s.docs) await reintentar(() => this.db.doc(`empresas/${id}/asientos/${d.id}`).delete());
-    await reintentar(() => this.db.doc(`empresas/${id}`).delete());
-  }
-  setAsiento(eid, id, d) { const { id: _x, numero: _n, ...cuerpo } = d; return reintentar(() => this.db.doc(`empresas/${eid}/asientos/${id}`).set(cuerpo)); }
-  deleteAsiento(eid, id) { return reintentar(() => this.db.doc(`empresas/${eid}/asientos/${id}`).delete()); }
+  onCol(ruta, cb, err) { return this.db.collection(ruta).onSnapshot((s) => cb(s.docs.map((d) => ({ ...d.data(), id: d.id }))), err); }
+  onDoc(ruta, cb, err) { return this.db.doc(ruta).onSnapshot((d) => cb(d.exists ? { ...d.data(), id: d.id } : null), err); }
+  async leerCol(ruta) { const s = await reintentar(() => this.db.collection(ruta).get()); return s.docs.map((d) => ({ ...d.data(), id: d.id })); }
+  set(ruta, d) { const { id: _i, numero: _n, ...cuerpo } = d; return reintentar(() => this.db.doc(ruta).set(cuerpo)); }
+  del(ruta) { return reintentar(() => this.db.doc(ruta).delete()); }
 }
+
+/* Operaciones de alto nivel, iguales para ambos almacenes. */
+const BD = {
+  onEmpresas: (cb, err) => S.almacen.onCol("empresas", cb, err),
+  onAsientos: (eid, cb, err) => S.almacen.onCol(`empresas/${eid}/asientos`, cb, err),
+  setEmpresa: (id, d) => S.almacen.set(`empresas/${id}`, d),
+  setAsiento: (eid, id, d) => S.almacen.set(`empresas/${eid}/asientos/${id}`, d),
+  deleteAsiento: (eid, id) => S.almacen.del(`empresas/${eid}/asientos/${id}`),
+  async deleteEmpresa(id) {
+    for (const sub of SUBCOLECCIONES) for (const d of await S.almacen.leerCol(`empresas/${id}/${sub}`)) await S.almacen.del(`empresas/${id}/${sub}/${d.id}`);
+    await S.almacen.del(`empresas/${id}`);
+  },
+};
 
 /* ------------------------------------------------------------------ estado */
 const S = {
@@ -216,6 +241,8 @@ const S = {
   periodo: null, filtros: { anio: null, mes: "", texto: "" },
   edit: null, cuentaEdit: null, confirmar: null, importacion: null, csv: null, mayorCuenta: "",
   ocupado: false, desuscribirAsientos: null,
+  contador: { nombre: "", rut: "", firma: "" }, cambios: [], desuscribirCambios: null,
+  periodosAnio: null, cierreAnio: null, apertura: null,
 };
 
 function empresa() { return S.empresas.find((e) => e.id === S.eid) || null; }
@@ -379,7 +406,8 @@ const SECCIONES = [
   ["Registro", [["nuevo", "+ Nuevo asiento"], ["asientos", "Asientos"], ["cuentas", "Plan de cuentas"]]],
   ["Libros", [["diario", "Libro Diario"], ["mayor", "Libro Mayor"]]],
   ["Informes", [["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
-  ["Administración", [["empresa", "Datos de la empresa"], ["empresas", "Empresas e importación"]]],
+  ["Administración", [["periodos", "Cierre de meses"], ["cierre", "Cierre de ejercicio"], ["apertura", "Apertura de ejercicio"],
+    ["empresa", "Datos de la empresa"], ["contador", "Contador y firma"], ["empresas", "Empresas e importación"]]],
 ];
 
 function ir(vista) {
@@ -401,7 +429,7 @@ function renderMenu() {
   const actual = S.vista === "editor" && !S.edit?.id ? "nuevo" : S.vista === "editor" ? "asientos" : S.vista;
   $("#nav").innerHTML = SECCIONES.map(([titulo, items]) =>
     (titulo ? `<span class="seccion">${titulo}</span>` : "") +
-    items.map(([v, t]) => `<button type="button" data-ir="${v}" ${v === actual ? 'aria-current="page"' : ""} ${!e && !["empresas"].includes(v) ? "disabled" : ""}>${t}</button>`).join("")
+    items.map(([v, t]) => `<button type="button" data-ir="${v}" ${v === actual ? 'aria-current="page"' : ""} ${!e && !["empresas", "contador"].includes(v) ? "disabled" : ""}>${t}</button>`).join("")
   ).join("");
 }
 
@@ -412,10 +440,11 @@ function render() {
   if (!S.almacen) { main.innerHTML = `<div class="vacio"><p>Cargando la contabilidad…</p></div>`; return; }
   const e = empresa();
   let html;
-  if (!e && S.vista !== "empresas") html = vistaSinEmpresa();
-  else if (S.cargandoAsientos && !["empresas", "empresa", "cuentas"].includes(S.vista)) html = `<div class="vacio"><p>Cargando asientos de ${esc(e.razon_social)}…</p></div>`;
+  if (!e && !["empresas", "contador"].includes(S.vista)) html = vistaSinEmpresa();
+  else if (S.cargandoAsientos && !["empresas", "empresa", "cuentas", "contador"].includes(S.vista)) html = `<div class="vacio"><p>Cargando asientos de ${esc(e.razon_social)}…</p></div>`;
   else html = ({ inicio: vistaInicio, asientos: vistaAsientos, editor: vistaEditor, cuentas: vistaCuentas, diario: vistaDiario, mayor: vistaMayor,
-    ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas }[S.vista] || vistaInicio)();
+    ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas,
+    periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador }[S.vista] || vistaInicio)();
   const banner = !S.almacen.enLinea
     ? `<div class="aviso">Esta copia no está conectada con Claude: puedes probarla, pero los cambios se pierden al cerrar. Ábrela como artefacto en claude.ai para guardar.</div>`
     : !S.puedeEscribir ? `<div class="aviso">Tienes acceso de solo lectura: puedes ver los libros e informes, pero no modificar datos.</div>` : "";
@@ -478,7 +507,7 @@ function tablaAsientos(lista) {
     <thead><tr><th class="num">N°</th><th>Fecha</th><th>Glosa</th><th class="num">Monto</th></tr></thead>
     <tbody>${lista.map((a) => `<tr class="clic" data-asiento="${esc(a.id)}">
       <td class="num">${a.numero}</td><td>${fmtFecha(a.fecha)}</td>
-      <td>${esc(a.glosa)}${a.apertura ? '<span class="etiqueta">apertura</span>' : ""}${a.cierre ? '<span class="etiqueta">cierre</span>' : ""}</td>
+      <td>${esc(a.glosa)}${a.apertura ? '<span class="etiqueta">apertura</span>' : ""}${a.cierre ? '<span class="etiqueta">cierre</span>' : ""}${mesCerrado(a.fecha) ? '<span class="etiqueta cerrado">mes cerrado</span>' : ""}</td>
       <td class="num">${clp(a.total)}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
@@ -511,7 +540,7 @@ function abrirEditor(id) {
   if (id) {
     const a = S.lista.find((x) => x.id === id);
     if (!a) return;
-    S.edit = { id, numero: a.numero, fecha: a.fecha, glosa: a.glosa, apertura: !!a.apertura, cierre: !!a.cierre, creado: a.creado,
+    S.edit = { id, numero: a.numero, fecha: a.fecha, fechaOriginal: a.fecha, glosaOriginal: a.glosa, glosa: a.glosa, apertura: !!a.apertura, cierre: !!a.cierre, creado: a.creado,
       lineas: a.lineas.map((l) => ({ cuenta: l.cuenta, texto: etiquetaCuenta(S.porId.get(l.cuenta)) || "(cuenta eliminada)", glosa: l.glosa || "", debe: l.debe ? clp(l.debe) : "", haber: l.haber ? clp(l.haber) : "" })) };
   } else {
     const ultimo = S.lista.filter((a) => a.fecha.startsWith(String(empresa().ejercicio))).at(-1);
@@ -526,7 +555,10 @@ function vistaEditor() {
   if (!ed) return vistaAsientos();
   const titulo = ed.id ? `Asiento N° ${ed.numero} · ${ed.fecha.slice(0, 4)}` : "Nuevo asiento";
   const imputables = S.cuentas.filter((c) => c.imputable && c.activa !== false);
+  const cerradosAfectados = mesesCerradosAfectados();
+  const motivo = `<label>Motivo (opcional, queda registrado)<input id="a-motivo" value="${esc(ed.motivo || "")}" placeholder="Ej.: corrección de glosa"></label>`;
   return `${cabecera(titulo, ed.cierre ? "Asiento de cierre" : "")}
+  ${ed.propuesta ? `<div class="aviso ok">${esc(ed.propuesta)} Revisa cuentas y montos; nada se guarda hasta que pulses «Guardar asiento».</div>` : ""}
   <form class="caja" data-form="asiento" autocomplete="off">
     <div class="form">
       <label>Fecha<input type="date" id="a-fecha" value="${esc(ed.fecha)}" required></label>
@@ -553,7 +585,13 @@ function vistaEditor() {
       <button class="btn sec" type="button" data-ir="asientos">Cancelar</button>
       ${ed.id ? `<button class="btn enlace" type="button" data-accion="pedir-eliminar-asiento">Eliminar</button>` : ""}
     </div>
-    ${S.confirmar === "asiento" ? `<div class="confirmar"><span>¿Eliminar el asiento N° ${ed.numero}? Los asientos siguientes del año se corren. No se puede deshacer.</span>
+    ${S.confirmar === "cerrado" ? `<div class="confirmar"><span><strong>Período cerrado.</strong> ${esc(textoCerrados(cerradosAfectados))} Confirma si de todas formas quieres guardar este cambio.</span>
+      ${motivo}
+      <button class="btn peligro" type="button" data-accion="confirmar-guardar">Confirmar y guardar</button>
+      <button class="btn sec" type="button" data-accion="cancelar-confirmacion">Cancelar</button></div>` : ""}
+    ${S.confirmar === "asiento" ? `<div class="confirmar"><span>¿Eliminar el asiento N° ${ed.numero}? Los asientos siguientes del año se corren. No se puede deshacer.
+      ${mesCerrado(ed.fechaOriginal) ? `<strong>${esc(textoCerrados([ed.fechaOriginal.slice(0, 7)]))}</strong>` : ""}</span>
+      ${mesCerrado(ed.fechaOriginal) ? motivo : ""}
       <button class="btn peligro" type="button" data-accion="eliminar-asiento">Sí, eliminar</button>
       <button class="btn sec" type="button" data-accion="cancelar-confirmacion">Cancelar</button></div>` : ""}
   </form>`;
@@ -609,19 +647,28 @@ function validarAsiento() {
   return lineas;
 }
 
-async function guardarAsiento() {
+async function guardarAsiento(confirmado = false) {
   const r = validarAsiento();
   if (typeof r === "string") { aviso(r); return; }
   const ed = S.edit;
+  if (ed.apertura && ed.cierre) { aviso("Un asiento no puede ser de apertura y de cierre a la vez."); return; }
+  const afectados = mesesCerradosAfectados();
+  if (afectados.length && !confirmado) { S.confirmar = "cerrado"; render(); $("#a-motivo")?.focus(); return; }
   const id = ed.id || nuevoId();
   const datos = { fecha: ed.fecha, glosa: ed.glosa.trim(), apertura: ed.apertura, cierre: ed.cierre, lineas: r, creado: ed.creado || Date.now() };
   await ocupado(async () => {
-    await S.almacen.setAsiento(S.eid, id, datos);
+    const nuevo = numeroPrevisto(id, datos);
+    await BD.setAsiento(S.eid, id, datos);
+    if (afectados.length) {
+      let descripcion = describirAsiento(nuevo, datos.fecha, datos.glosa);
+      if (ed.id && (ed.fechaOriginal !== datos.fecha || ed.numero !== nuevo)) descripcion = `${describirAsiento(ed.numero, ed.fechaOriginal, ed.glosaOriginal)} → ${descripcion}`;
+      await registrarCambio(ed.id ? "Modificación" : "Creación", descripcion, afectados, ed.motivo);
+    }
+    S.confirmar = null;
     S.filtros.anio = ed.fecha.slice(0, 4);
     S.edit = null;
     ir("asientos");
-    const n = S.lista.find((a) => a.id === id)?.numero;
-    aviso(n ? `Asiento N° ${n} guardado.` : "Asiento guardado.");
+    aviso(`Asiento N° ${nuevo} guardado.`);
   }, "No se pudo guardar el asiento");
 }
 
@@ -686,7 +733,7 @@ async function guardarCuenta() {
   const cuenta = { id: ce.id || "c" + nuevoId(), codigo, nombre, tipo, imputable, activa, resultados_en_ocho: tipo === "PATRIMONIO" && ocho };
   const cuentas = S.cuentas.filter((c) => c.id !== cuenta.id).concat(cuenta).sort(porCodigo);
   await ocupado(async () => {
-    await S.almacen.setEmpresa(S.eid, { ...empresa(), cuentas });
+    await BD.setEmpresa(S.eid, { ...empresa(), cuentas });
     S.cuentaEdit = null; render(); aviso(`Cuenta ${codigo} guardada.`);
   }, "No se pudo guardar la cuenta");
 }
@@ -698,7 +745,7 @@ async function eliminarCuenta() {
   if (movimientosPorCuenta().has(c.id)) return aviso("La cuenta tiene movimientos: no se puede eliminar.");
   if (S.cuentas.some((x) => x.codigo.startsWith(c.codigo + "."))) return aviso("La cuenta tiene subcuentas: elimínalas primero.");
   await ocupado(async () => {
-    await S.almacen.setEmpresa(S.eid, { ...empresa(), cuentas: S.cuentas.filter((x) => x.id !== c.id) });
+    await BD.setEmpresa(S.eid, { ...empresa(), cuentas: S.cuentas.filter((x) => x.id !== c.id) });
     S.cuentaEdit = null; render(); aviso(`Cuenta ${c.codigo} eliminada.`);
   }, "No se pudo eliminar la cuenta");
 }
@@ -921,7 +968,7 @@ async function crearEmpresa() {
   if (d.rut && S.empresas.some((e) => e.rut === d.rut)) return aviso(`Ya existe una empresa con el RUT ${d.rut}.`);
   const id = "e" + nuevoId();
   await ocupado(async () => {
-    await S.almacen.setEmpresa(id, { ...d, cuentas: planBase(), creado: Date.now() });
+    await BD.setEmpresa(id, { ...d, cuentas: planBase(), creado: Date.now() });
     cambiarEmpresa(id); ir("inicio"); aviso(`Empresa ${d.razon_social} creada.`);
   }, "No se pudo crear la empresa");
 }
@@ -930,13 +977,13 @@ async function guardarEmpresa() {
   const d = leerEmpresa();
   if (typeof d === "string") return aviso(d);
   if (d.rut && S.empresas.some((e) => e.rut === d.rut && e.id !== S.eid)) return aviso(`Ya existe otra empresa con el RUT ${d.rut}.`);
-  await ocupado(async () => { await S.almacen.setEmpresa(S.eid, { ...empresa(), ...d }); aviso("Datos de la empresa guardados."); }, "No se pudieron guardar los datos");
+  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), ...d }); aviso("Datos de la empresa guardados."); }, "No se pudieron guardar los datos");
 }
 
 async function eliminarEmpresa() {
   const e = empresa();
   await ocupado(async () => {
-    await S.almacen.deleteEmpresa(e.id);
+    await BD.deleteEmpresa(e.id);
     S.confirmar = null; S.eid = null; recordar("empresa", null);
     ir("empresas"); aviso(`${e.razon_social} eliminada de la versión en línea.`);
   }, "No se pudo eliminar la empresa");
@@ -974,17 +1021,18 @@ async function importar() {
   const mapa = new Map(cuentas.map((c) => [String(c.id), "c" + c.id]));
   const datosEmpresa = { razon_social: e.razon_social || "", rut: e.rut || "", giro: e.giro || "", direccion: e.direccion || "", comuna: e.comuna || "",
     representante: e.representante || "", rut_representante: e.rut_representante || "", regimen: e.regimen || "", ejercicio: +e.ejercicio || new Date().getFullYear(),
-    creado: Date.now(),
+    creado: Date.now(), cerrados: imp.datos.cerrados || {},
     cuentas: cuentas.map((c) => ({ id: mapa.get(String(c.id)), codigo: c.codigo, nombre: c.nombre, tipo: c.tipo, imputable: !!c.imputable, activa: c.activa !== false, resultados_en_ocho: !!c.resultados_en_ocho })) };
   imp.progreso = 0; render();
   try {
-    await S.almacen.setEmpresa(eid, datosEmpresa);
+    await BD.setEmpresa(eid, datosEmpresa);
     for (const [i, a] of asientos.entries()) {
-      await S.almacen.setAsiento(eid, "a" + a.id, { fecha: a.fecha, glosa: a.glosa || "", apertura: !!a.apertura, cierre: !!a.cierre, creado: i + 1,
+      await BD.setAsiento(eid, "a" + a.id, { fecha: a.fecha, glosa: a.glosa || "", apertura: !!a.apertura, cierre: !!a.cierre, creado: i + 1,
         lineas: a.lineas.map((l) => ({ cuenta: mapa.get(String(l.cuenta)) || "", glosa: l.glosa || "", debe: +l.debe || 0, haber: +l.haber || 0 })) });
       imp.progreso = i + 1;
       if (i % 10 === 9 && S.vista === "empresas") render();
     }
+    for (const c of imp.datos.cambios || []) await S.almacen.set(`empresas/${eid}/cambios/${nuevoId()}`, c);
     S.importacion = null;
     cambiarEmpresa(eid); ir("inicio");
     aviso(`${e.razon_social} importada: ${asientos.length} asientos.`);
@@ -992,6 +1040,304 @@ async function importar() {
     imp.progreso = null; render();
     aviso(`La importación se detuvo (${err?.code || err?.message || "error"}). La empresa quedó incompleta: elimínala y vuelve a importarla.`);
   }
+}
+
+/* ------------------------------------------------------------------ meses cerrados */
+const MESES_MIN = MESES.map((m) => m.toLowerCase());
+function nombrePeriodo(p) { return `${MESES_MIN[+p.slice(5, 7) - 1]} ${p.slice(0, 4)}`; }
+function cerrados() { return empresa()?.cerrados || {}; }
+function mesCerrado(fecha) { return !!fecha && !!cerrados()[fecha.slice(0, 7)]; }
+function mesesCerradosAfectados() {
+  const ed = S.edit;
+  if (!ed) return [];
+  return [...new Set([ed.fecha, ed.fechaOriginal].filter(Boolean).map((f) => f.slice(0, 7)))].filter((p) => cerrados()[p]).sort();
+}
+function textoCerrados(periodos) {
+  const nombres = periodos.map(nombrePeriodo).join(", ");
+  return `${nombres.charAt(0).toUpperCase()}${nombres.slice(1)} ${periodos.length === 1 ? "está cerrado" : "están cerrados"}.`;
+}
+function describirAsiento(numero, fecha, glosa) { return `N° ${numero} del ${fmtFecha(fecha)} · ${glosa}`; }
+function numeroPrevisto(id, d) {
+  const lista = numerar(S.lista.filter((a) => a.id !== id).concat({ ...d, id }));
+  return lista.find((a) => a.id === id)?.numero;
+}
+async function registrarCambio(accion, comprobante, periodos, motivo) {
+  await S.almacen.set(`empresas/${S.eid}/cambios/${nuevoId()}`, {
+    fecha_hora: new Date().toISOString(), accion, comprobante,
+    periodos: periodos.map(nombrePeriodo).join(", "), motivo: (motivo || "").trim(),
+  });
+}
+
+async function cambiarMes(periodo, cerrar) {
+  const actual = { ...cerrados() };
+  if (cerrar) actual[periodo] = actual[periodo] || new Date().toISOString(); else delete actual[periodo];
+  await ocupado(async () => {
+    await BD.setEmpresa(S.eid, { ...empresa(), cerrados: actual });
+    S.confirmar = null;
+    aviso(`${nombrePeriodo(periodo).replace(/^./, (c) => c.toUpperCase())} ${cerrar ? "cerrado" : "reabierto"}.`);
+    render();
+  }, "No se pudo cambiar el estado del mes");
+}
+async function cerrarHasta() {
+  const anio = S.periodosAnio, hasta = +$("#per-hasta").value;
+  const actual = { ...cerrados() };
+  for (let m = 1; m <= hasta; m++) { const p = `${anio}-${String(m).padStart(2, "0")}`; actual[p] = actual[p] || new Date().toISOString(); }
+  await ocupado(async () => {
+    await BD.setEmpresa(S.eid, { ...empresa(), cerrados: actual });
+    aviso(`Meses de enero a ${MESES_MIN[hasta - 1]} ${anio} cerrados.`); render();
+  }, "No se pudieron cerrar los meses");
+}
+
+function aniosDisponibles(...extra) {
+  return [...new Set([String(empresa().ejercicio), ...extra, ...S.lista.map((a) => a.fecha.slice(0, 4))])].sort().reverse();
+}
+
+function vistaPeriodos() {
+  const e = empresa();
+  const anio = S.periodosAnio || (S.periodosAnio = String(e.ejercicio));
+  const cer = cerrados();
+  const filas = MESES.map((nombre, i) => {
+    const p = `${anio}-${String(i + 1).padStart(2, "0")}`;
+    const del = S.lista.filter((a) => a.fecha.startsWith(p));
+    const total = del.reduce((s, a) => s + a.total, 0);
+    const accion = !S.puedeEscribir ? "" : cer[p]
+      ? (S.confirmar === "reabrir:" + p
+        ? `<span class="acciones"><button class="btn peligro" data-accion="reabrir-mes" data-periodo="${p}">Sí, reabrir</button><button class="btn sec" data-accion="cancelar-confirmacion">No</button></span>`
+        : `<button class="btn enlace" data-accion="pedir-reabrir" data-periodo="${p}">Reabrir</button>`)
+      : `<button class="btn enlace" data-accion="cerrar-mes" data-periodo="${p}">Cerrar</button>`;
+    return `<tr><td>${nombre} ${anio}</td><td class="num">${del.length || ""}</td><td class="num">${total ? clp(total) : ""}</td>
+      <td>${cer[p] ? `<span class="etiqueta cerrado">Cerrado</span> <small class="ayuda">el ${fmtFecha(cer[p].slice(0, 10))}</small>` : "Abierto"}</td><td>${accion}</td></tr>`;
+  }).join("");
+  return `${cabecera("Cierre de meses", "")}
+  <p class="ayuda">Cierra los meses ya declarados o con libros impresos. Para crear, modificar o eliminar un asiento de un mes cerrado, el programa pide confirmación y deja constancia del cambio.</p>
+  <div class="barra">
+    <label>Año<select id="per-anio">${aniosDisponibles(anio).map((y) => `<option ${y === anio ? "selected" : ""}>${y}</option>`).join("")}</select></label>
+    ${puedeEditar(`<label>Cerrar todos los meses de ${anio} hasta<select id="per-hasta">${MESES.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("")}</select></label>
+    <button class="btn sec" type="button" data-accion="cerrar-hasta">Cerrar meses</button>`)}
+  </div>
+  <div class="tabla"><table><thead><tr><th>Mes</th><th class="num">Asientos</th><th class="num">Total debe</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
+  <h2>Cambios en meses cerrados</h2>
+  ${S.cambios.length ? `<div class="tabla"><table><thead><tr><th>Fecha y hora</th><th>Acción</th><th>Asiento</th><th>Mes cerrado</th><th>Motivo</th></tr></thead>
+    <tbody>${S.cambios.map((c) => { const d = new Date(c.fecha_hora); return `<tr><td>${d.toLocaleDateString("es-CL")} ${isNaN(d) ? "" : d.toTimeString().slice(0, 5)}</td>
+      <td>${esc(c.accion)}</td><td>${esc(c.comprobante)}</td><td>${esc((c.periodos || "").replace(/^./, (x) => x.toUpperCase()))}</td><td>${esc(c.motivo || "—")}</td></tr>`; }).join("")}</tbody></table></div>`
+    : `<div class="caja vacio"><p>No se han hecho cambios en meses cerrados.</p></div>`}`;
+}
+
+/* ------------------------------------------------------------------ cierre del ejercicio */
+function cuentasPatrimonio() { return S.cuentas.filter((c) => c.tipo === "PATRIMONIO" && c.imputable); }
+function cuentaResultadoSugerida() {
+  const cs = cuentasPatrimonio();
+  const exacta = cs.find((c) => c.codigo === "3.1.04");
+  if (exacta) return exacta.id;
+  for (const patron of [/resultado del ejercicio/i, /utilidad.*del ejercicio/i, /p[ée]rdida y ganancia/i, /utilidades? acumuladas?/i]) {
+    const c = cs.find((x) => patron.test(x.nombre));
+    if (c) return c.id;
+  }
+  return cs[0]?.id || "";
+}
+function cuentaPorNombre(patrones) {
+  const cs = cuentasPatrimonio();
+  for (const patron of patrones) { const c = cs.find((x) => patron.test(x.nombre)); if (c) return c.id; }
+  return cuentaResultadoSugerida();
+}
+function asientoCierre(anio) { return S.lista.find((a) => a.cierre && a.fecha.startsWith(String(anio))); }
+
+function lineasCierre(anio, destinoId) {
+  const fin = `${anio}-12-31`;
+  const inicio = [`${anio}-01-01`, corte(fin)].sort().at(-1);
+  const netos = new Map();
+  for (const a of S.lista) {
+    if (a.cierre || a.fecha < inicio || a.fecha > fin) continue;
+    for (const l of a.lineas) {
+      const c = S.porId.get(l.cuenta);
+      if (c && RESULTADO.has(c.tipo)) netos.set(c.id, (netos.get(c.id) || 0) + (l.debe || 0) - (l.haber || 0));
+    }
+  }
+  const lineas = [];
+  for (const [cuenta, neto] of netos) {
+    if (neto > 0) lineas.push({ cuenta, glosa: "Cierre", debe: 0, haber: neto });
+    else if (neto < 0) lineas.push({ cuenta, glosa: "Cierre", debe: -neto, haber: 0 });
+  }
+  const resultado = lineas.reduce((s, l) => s + l.debe - l.haber, 0);
+  if (resultado > 0) lineas.push({ cuenta: destinoId, glosa: "Utilidad del ejercicio", debe: 0, haber: resultado });
+  else if (resultado < 0) lineas.push({ cuenta: destinoId, glosa: "Pérdida del ejercicio", debe: -resultado, haber: 0 });
+  return { lineas, resultado };
+}
+
+function vistaCierre() {
+  const e = empresa();
+  const anio = S.cierreAnio || (S.cierreAnio = String(e.ejercicio));
+  const er = estadoResultados(`${anio}-01-01`, `${anio}-12-31`);
+  const existente = asientoCierre(anio);
+  const cuentas = cuentasPatrimonio();
+  const diciembreCerrado = !!cerrados()[`${anio}-12`];
+  let accion;
+  if (existente) accion = `<div class="aviso">El ejercicio ${anio} ya está cerrado: <button class="btn enlace" data-asiento="${esc(existente.id)}">ver asiento N° ${existente.numero}</button>. Si registras movimientos posteriores en ${anio}, elimina ese asiento y vuelve a cerrar.</div>`;
+  else if (!cuentas.length) accion = `<div class="aviso">No hay cuentas imputables de patrimonio para recibir el resultado. Crea una en el plan de cuentas.</div>`;
+  else accion = puedeEditar(`<div class="barra">
+      <label>Traspasar el resultado a<select id="ci-destino">${cuentas.map((c) => `<option value="${esc(c.id)}" ${c.id === cuentaResultadoSugerida() ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}</select></label>
+      ${S.confirmar === "cierre" ? "" : `<button class="btn" type="button" data-accion="pedir-cierre">Cerrar ejercicio ${anio}</button>`}
+    </div>
+    ${S.confirmar === "cierre" ? `<div class="confirmar"><span>¿Cerrar el ejercicio ${anio}? Se registra un asiento al 31/12/${anio} que deja en cero ingresos y gastos.
+      ${diciembreCerrado ? `<strong>${esc(textoCerrados([`${anio}-12`]))}</strong>` : ""}</span>
+      ${diciembreCerrado ? `<label>Motivo (opcional, queda registrado)<input id="ci-motivo" placeholder="Ej.: cierre anual"></label>` : ""}
+      <button class="btn peligro" type="button" data-accion="cerrar-ejercicio">Sí, cerrar ${anio}</button>
+      <button class="btn sec" type="button" data-accion="cancelar-confirmacion">Cancelar</button></div>` : ""}`);
+  return `${cabecera("Cierre del ejercicio", "")}
+  <div class="barra"><label>Año<select id="ci-anio">${aniosDisponibles(anio).map((y) => `<option ${y === anio ? "selected" : ""}>${y}</option>`).join("")}</select></label></div>
+  <p class="ayuda">El cierre genera un asiento al 31-12-${anio} que deja en cero las cuentas de ingresos y gastos del año y traspasa el resultado a la cuenta de patrimonio que elijas. Los informes del año siguen mostrando el resultado normalmente.</p>
+  <div class="caja"><dl class="ficha">
+    <dt>Ingresos ${anio}</dt><dd>$${clp(er.ingresos.total)}</dd>
+    <dt>Gastos ${anio}</dt><dd>$${clp(er.gastos.total)}</dd>
+    <dt>${er.resultado >= 0 ? "Utilidad" : "Pérdida"}</dt><dd><strong>$${clp(Math.abs(er.resultado))}</strong></dd>
+  </dl></div>
+  ${accion}
+  <p class="ayuda">Después del cierre, registra la apertura del año siguiente en «Apertura de ejercicio» y cambia el ejercicio vigente en «Datos de la empresa».</p>`;
+}
+
+async function cerrarEjercicio() {
+  const anio = S.cierreAnio;
+  if (asientoCierre(anio)) return aviso(`El ejercicio ${anio} ya tiene un asiento de cierre.`);
+  const destino = $("#ci-destino")?.value;
+  if (!destino || S.porId.get(destino)?.tipo !== "PATRIMONIO") return aviso("Selecciona una cuenta imputable de patrimonio para traspasar el resultado.");
+  const { lineas, resultado } = lineasCierre(anio, destino);
+  if (!lineas.length) return aviso(`No hay movimientos en cuentas de resultado en ${anio}.`);
+  const motivo = $("#ci-motivo")?.value || "";
+  const id = nuevoId();
+  const d = { fecha: `${anio}-12-31`, glosa: `Cierre del ejercicio ${anio}`, apertura: false, cierre: true, lineas, creado: Date.now() };
+  await ocupado(async () => {
+    await BD.setAsiento(S.eid, id, d);
+    if (cerrados()[`${anio}-12`]) await registrarCambio("Creación", describirAsiento(numeroPrevisto(id, d), d.fecha, d.glosa), [`${anio}-12`], motivo);
+    S.confirmar = null; render();
+    aviso(`Ejercicio ${anio} cerrado. ${resultado >= 0 ? "Utilidad" : "Pérdida"} de $${clp(Math.abs(resultado))} traspasada a patrimonio.`);
+  }, "No se pudo cerrar el ejercicio");
+}
+
+/* ------------------------------------------------------------------ apertura del ejercicio */
+function parametrosApertura() {
+  if (!S.apertura || S.apertura.eid !== S.eid) {
+    const anio = String(empresa().ejercicio);
+    S.apertura = { eid: S.eid, anio, fecha: `${anio}-01-01`,
+      utilidad: cuentaPorNombre([/utilidades? acumuladas?/i, /utilidades? retenidas?/i]), perdida: cuentaPorNombre([/p[ée]rdidas? acumuladas?/i]) };
+  }
+  return S.apertura;
+}
+function leerParametrosApertura(cambioAnio) {
+  const p = parametrosApertura();
+  p.anio = $("#ap-anio").value; p.utilidad = $("#ap-utilidad")?.value || p.utilidad; p.perdida = $("#ap-perdida")?.value || p.perdida;
+  p.fecha = cambioAnio ? `${p.anio}-01-01` : $("#ap-fecha").value;
+}
+
+function propuestaApertura(anio, utilidad, perdida) {
+  const anterior = +anio - 1;
+  const bg = balanceGeneral(`${anterior}-12-31`);
+  const saldos = saldosPeriodo(`${anterior}-01-01`, `${anterior}-12-31`);
+  const netos = new Map();
+  for (const x of saldos.cuentas) if (!RESULTADO.has(x.cuenta.tipo) && x.debe !== x.haber) netos.set(x.cuenta.id, x.debe - x.haber);
+  if (!netos.size) throw new Error(`No hay saldos de cuentas de balance al 31/12/${anterior} para abrir ${anio}.`);
+  const resultado = bg.resultado + bg.anterior;
+  let destino = null;
+  if (resultado) {
+    destino = S.porId.get(resultado > 0 ? utilidad : perdida);
+    if (!destino || destino.tipo !== "PATRIMONIO" || !destino.imputable) throw new Error("Selecciona una cuenta imputable de patrimonio para el resultado del año anterior.");
+    netos.set(destino.id, (netos.get(destino.id) || 0) - resultado);
+  }
+  const orden = (ids) => ids.sort((a, b) => porCodigo(S.porId.get(a), S.porId.get(b)));
+  const deudoras = orden([...netos.keys()].filter((id) => netos.get(id) > 0));
+  const acreedoras = orden([...netos.keys()].filter((id) => netos.get(id) < 0));
+  const lineas = [...deudoras.map((id) => ({ cuenta: id, debe: netos.get(id), haber: 0 })), ...acreedoras.map((id) => ({ cuenta: id, debe: 0, haber: -netos.get(id) }))];
+  return { anio: +anio, anterior, lineas, total: lineas.reduce((s, l) => s + l.debe, 0), resultado, destino,
+    totalActivo: bg.activo.total, totalPasivo: bg.pasivo.total, totalPatrimonio: bg.totalPatrimonio,
+    existentes: S.lista.filter((a) => a.apertura && a.fecha.startsWith(String(anio))), glosa: `APERTURA CUENTAS DE BALANCE AÑO COMERCIAL ${anio}` };
+}
+
+function vistaApertura() {
+  const p = parametrosApertura();
+  const cuentas = cuentasPatrimonio();
+  let propuesta = null, error = "";
+  try { propuesta = propuestaApertura(p.anio, p.utilidad, p.perdida); } catch (e) { error = e.message; }
+  const opciones = (sel) => cuentas.map((c) => `<option value="${esc(c.id)}" ${c.id === sel ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("");
+  return `${cabecera("Apertura de ejercicio", "")}
+  <p class="ayuda">Genera una propuesta del asiento de apertura con los saldos de las cuentas de balance al 31 de diciembre del año anterior. Antes de registrarla la verás en el formulario de asiento, donde puedes modificar cuentas y montos.</p>
+  <div class="caja"><div class="form">
+    <label>Año a abrir<input type="number" id="ap-anio" min="1901" max="2100" value="${esc(p.anio)}"></label>
+    <label>Fecha del asiento de apertura<input type="date" id="ap-fecha" value="${esc(p.fecha)}"></label>
+    <label>Si hubo utilidad, traspasarla a<select id="ap-utilidad">${opciones(p.utilidad)}</select></label>
+    <label>Si hubo pérdida, traspasarla a<select id="ap-perdida">${opciones(p.perdida)}</select></label>
+  </div></div>
+  ${error ? `<div class="aviso">${esc(error)}</div>` : `<div class="caja"><h2>Saldos al 31/12/${propuesta.anterior}</h2><dl class="ficha">
+      <dt>Total activo</dt><dd>$${clp(propuesta.totalActivo)}</dd>
+      <dt>Total pasivo</dt><dd>$${clp(propuesta.totalPasivo)}</dd>
+      <dt>Total patrimonio</dt><dd>$${clp(propuesta.totalPatrimonio)}</dd>
+      <dt>${propuesta.resultado >= 0 ? "Utilidad" : "Pérdida"} a traspasar</dt><dd>$${clp(Math.abs(propuesta.resultado))}</dd>
+      <dt>Líneas del asiento</dt><dd>${propuesta.lineas.length}</dd></dl>
+    ${propuesta.existentes.length ? `<div class="aviso">Ya existe un asiento de apertura en ${propuesta.anio}: ${propuesta.existentes.map((a) => `<button class="btn enlace" data-asiento="${esc(a.id)}">N° ${a.numero} del ${fmtFecha(a.fecha)}</button>`).join(", ")}.</div>` : ""}
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-accion="ver-propuesta-apertura">Ver propuesta</button></div>`)}
+  </div>`}`;
+}
+
+function abrirPropuesta(fecha, glosa, lineas, texto, extra = {}) {
+  S.edit = { id: null, fecha, glosa, apertura: false, cierre: false, propuesta: texto, ...extra,
+    lineas: lineas.map((l) => ({ cuenta: l.cuenta, texto: etiquetaCuenta(S.porId.get(l.cuenta)), glosa: l.glosa || "", debe: l.debe ? clp(l.debe) : "", haber: l.haber ? clp(l.haber) : "" })) };
+  while (S.edit.lineas.length < 2) S.edit.lineas.push(lineaVacia());
+  S.vista = "editor"; S.confirmar = null; render(); window.scrollTo(0, 0);
+}
+
+function verPropuestaApertura() {
+  const p = parametrosApertura();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(p.fecha)) return aviso("Ingresa la fecha del asiento de apertura.");
+  try {
+    const pr = propuestaApertura(p.anio, p.utilidad, p.perdida);
+    abrirPropuesta(p.fecha, pr.glosa, pr.lineas, `Propuesta de apertura ${pr.anio} con los saldos al 31/12/${pr.anterior}.`, { apertura: true });
+  } catch (e) { aviso(e.message); }
+}
+
+/* ------------------------------------------------------------------ contador y firma */
+function vistaContador() {
+  const c = S.contador;
+  return `${cabecera("Contador y firma", "")}
+  <p class="ayuda">Estos datos aparecen en la firma de «CONTADOR GENERAL» de los libros e informes en PDF, para todas las empresas.</p>
+  <form class="caja" data-form="contador"><div class="form">
+    <label>Nombre del contador<input id="co-nombre" value="${esc(c.nombre)}" placeholder="Nombre y apellidos" ${S.puedeEscribir ? "" : "readonly"}></label>
+    <label>RUT del contador<input id="co-rut" value="${esc(c.rut)}" placeholder="12.345.678-5" ${S.puedeEscribir ? "" : "readonly"}></label>
+    ${puedeEditar(`<label>Imagen de la firma (PNG o JPG)<input type="file" id="co-firma" accept="image/png,image/jpeg"><small>Idealmente una firma escaneada con fondo blanco o transparente. Reemplaza la imagen actual.</small></label>`)}
+  </div>${puedeEditar(`<div class="acciones"><button class="btn" type="submit">Guardar</button></div>`)}</form>
+  ${c.firma ? `<section class="caja"><h2>Firma actual</h2><img class="firma-vista" src="${esc(c.firma)}" alt="Firma del contador">
+    ${puedeEditar(S.confirmar === "firma"
+      ? `<div class="confirmar"><span>¿Eliminar la imagen de firma?</span><button class="btn peligro" type="button" data-accion="quitar-firma">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">Cancelar</button></div>`
+      : `<div class="acciones"><button class="btn sec" type="button" data-accion="pedir-quitar-firma">Eliminar imagen de firma</button></div>`)}</section>` : ""}`;
+}
+
+async function guardarContador(firma) {
+  const nombre = ($("#co-nombre")?.value ?? S.contador.nombre).trim(), rut = ($("#co-rut")?.value ?? S.contador.rut).trim();
+  if (rut && !rutValido(rut)) return aviso("El RUT del contador no es válido (revisa el dígito verificador).");
+  const d = { nombre, rut: rut ? formatoRut(rut) : "", firma: firma ?? S.contador.firma };
+  await ocupado(async () => {
+    await S.almacen.set("config/contador", d);
+    S.contador = d; S.confirmar = null; render();
+    aviso(firma === "" ? "Imagen de firma eliminada." : "Datos del contador guardados.");
+  }, "No se pudieron guardar los datos del contador");
+}
+
+function cargarFirma(archivo) {
+  if (archivo.size > 5 * 1024 * 1024) return aviso("La imagen es demasiado grande (máximo 5 MB).");
+  const url = URL.createObjectURL(archivo);
+  const img = new Image();
+  img.onload = () => {
+    let ancho = Math.min(img.width, 800), dato = "";
+    for (let i = 0; i < 4; i++) {
+      const lienzo = document.createElement("canvas");
+      lienzo.width = ancho; lienzo.height = Math.round(img.height * ancho / img.width);
+      lienzo.getContext("2d").drawImage(img, 0, 0, lienzo.width, lienzo.height);
+      dato = lienzo.toDataURL("image/png");
+      if (dato.length < 180000) break;
+      ancho = Math.round(ancho * 0.7);
+    }
+    URL.revokeObjectURL(url);
+    guardarContador(dato);
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); aviso("El archivo no es una imagen válida (usa PNG o JPG)."); };
+  img.src = url;
 }
 
 /* ------------------------------------------------------------------ eventos */
@@ -1019,10 +1365,17 @@ function cambiarEmpresa(id) {
   if (S.eid === id && S.desuscribirAsientos) return;
   S.eid = id; recordar("empresa", id);
   S.desuscribirAsientos?.(); S.desuscribirAsientos = null;
+  S.desuscribirCambios?.(); S.desuscribirCambios = null; S.cambios = [];
+  S.periodosAnio = null; S.cierreAnio = null; S.apertura = null;
   S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
   prepararCuentas();
   if (!id) return;
-  S.desuscribirAsientos = S.almacen.onAsientos(id, (lista) => {
+  S.desuscribirCambios = S.almacen.onCol(`empresas/${id}/cambios`, (lista) => {
+    if (id !== S.eid) return;
+    S.cambios = lista.sort((a, b) => (a.fecha_hora < b.fecha_hora ? 1 : -1));
+    if (S.vista === "periodos") render();
+  }, () => {});
+  S.desuscribirAsientos = BD.onAsientos(id, (lista) => {
     if (id !== S.eid) return;
     S.lista = numerar(lista); S.cargandoAsientos = false;
     if (S.vista === "editor" && S.edit?.id) { const a = S.lista.find((x) => x.id === S.edit.id); if (a) S.edit.numero = a.numero; return; }
@@ -1049,7 +1402,22 @@ document.addEventListener("click", (ev) => {
     case "pedir-eliminar-asiento": S.confirmar = "asiento"; render(); break;
     case "pedir-eliminar-empresa": S.confirmar = "empresa"; render(); break;
     case "cancelar-confirmacion": S.confirmar = null; render(); break;
-    case "eliminar-asiento": ocupado(async () => { const n = ed.numero; await S.almacen.deleteAsiento(S.eid, ed.id); S.edit = null; ir("asientos"); aviso(`Asiento N° ${n} eliminado.`); }, "No se pudo eliminar el asiento"); break;
+    case "eliminar-asiento": ocupado(async () => {
+      const n = ed.numero;
+      await BD.deleteAsiento(S.eid, ed.id);
+      if (mesCerrado(ed.fechaOriginal)) await registrarCambio("Eliminación", describirAsiento(n, ed.fechaOriginal, ed.glosaOriginal), [ed.fechaOriginal.slice(0, 7)], ed.motivo);
+      S.edit = null; ir("asientos"); aviso(`Asiento N° ${n} eliminado.`);
+    }, "No se pudo eliminar el asiento"); break;
+    case "confirmar-guardar": guardarAsiento(true); break;
+    case "cerrar-mes": cambiarMes(t.dataset.periodo, true); break;
+    case "pedir-reabrir": S.confirmar = "reabrir:" + t.dataset.periodo; render(); break;
+    case "reabrir-mes": cambiarMes(t.dataset.periodo, false); break;
+    case "cerrar-hasta": cerrarHasta(); break;
+    case "pedir-cierre": S.confirmar = "cierre"; render(); break;
+    case "cerrar-ejercicio": cerrarEjercicio(); break;
+    case "ver-propuesta-apertura": verPropuestaApertura(); break;
+    case "pedir-quitar-firma": S.confirmar = "firma"; render(); break;
+    case "quitar-firma": guardarContador(""); break;
     case "eliminar-empresa": eliminarEmpresa(); break;
     case "nueva-cuenta": S.cuentaEdit = { id: null, codigo: "", nombre: "", imputable: true, activa: true }; render(); $("#c-codigo")?.focus(); break;
     case "cancelar-cuenta": S.cuentaEdit = null; render(); break;
@@ -1078,6 +1446,7 @@ document.addEventListener("submit", (ev) => {
     case "cuenta": guardarCuenta(); break;
     case "empresa": guardarEmpresa(); break;
     case "nueva-empresa": crearEmpresa(); break;
+    case "contador": guardarContador(); break;
   }
 });
 
@@ -1087,6 +1456,7 @@ document.addEventListener("input", (ev) => {
     if (el.id === "a-fecha") S.edit.fecha = el.value;
     else if (el.id === "a-glosa") S.edit.glosa = el.value;
     else if (el.id === "a-apertura") S.edit.apertura = el.checked;
+    else if (el.id === "a-motivo") { S.edit.motivo = el.value; return; }
     else if (el.dataset.linea != null && el.dataset.campo) {
       const l = S.edit.lineas[+el.dataset.linea];
       if (el.value.trim() === "=" && (el.dataset.campo === "debe" || el.dataset.campo === "haber")) {
@@ -1106,6 +1476,10 @@ document.addEventListener("change", (ev) => {
   if (ev.target.id === "sel-empresa") { cambiarEmpresa(ev.target.value); ir(S.vista === "editor" ? "asientos" : S.vista); }
   if (ev.target.id === "archivo-json" && ev.target.files[0]) leerArchivo(ev.target.files[0]);
   if (ev.target.id === "p-cuenta") { S.mayorCuenta = ev.target.value; render(); }
+  if (ev.target.id === "per-anio") { S.periodosAnio = ev.target.value; S.confirmar = null; render(); }
+  if (ev.target.id === "ci-anio") { S.cierreAnio = ev.target.value; S.confirmar = null; render(); }
+  if (["ap-anio", "ap-fecha", "ap-utilidad", "ap-perdida"].includes(ev.target.id)) { leerParametrosApertura(ev.target.id === "ap-anio"); render(); }
+  if (ev.target.id === "co-firma" && ev.target.files[0]) cargarFirma(ev.target.files[0]);
 });
 document.addEventListener("focusout", (ev) => {
   const el = ev.target;
@@ -1124,8 +1498,12 @@ async function iniciar() {
   S.almacen = db ? new AlmacenClaude(db) : new AlmacenMemoria();
   S.descargas = descargas;
   if (usuario) { try { const p = await usuario.can("data.write"); if (p === false) S.puedeEscribir = false; } catch (_) {} }
+  S.almacen.onDoc("config/contador", (d) => {
+    S.contador = { nombre: d?.nombre || "", rut: d?.rut || "", firma: d?.firma || "" };
+    if (S.vista === "contador") render();
+  }, () => {});
   let primera = true;
-  S.almacen.onEmpresas((empresas) => {
+  BD.onEmpresas((empresas) => {
     S.empresas = empresas;
     if (!S.empresas.some((e) => e.id === S.eid)) {
       const siguiente = S.empresas[0]?.id || null;
