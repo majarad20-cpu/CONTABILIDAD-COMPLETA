@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.8.0";
+const VERSION = "1.8.1";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5684,9 +5684,9 @@ function vistaCaja() {
   if (tab === "importar") return cab + vistaImportarCaja(anio);
   if (tab === "ingresos") {
     const f = filasIngresosEgresos(anio), tot = (k) => f.reduce((x, y) => x + y[k], 0);
-    S.informe = () => informeIngresosEgresos(anio); S.csv = null;
+    S.informe = () => informeIngresosEgresos(anio); S.csv = csvDeInforme(informeIngresosEgresos(anio));
     const pend = documentosPendientesCaja(anio);
-    return `${cab}<div class="barra"><label>Año<select id="caja-anio">${opcionesAnio(anios, anio)}</select></label>${botonesExportar(false)}</div>
+    return `${cab}<div class="barra"><label>Año<select id="caja-anio">${opcionesAnio(anios, anio)}</select></label>${botonesExportar()}</div>
     <p class="ayuda">Une lo cobrado y pagado (Libro de caja) con los documentos del RCV que aún están por cobrar o por pagar. El libro oficial lo exige el SII a los contribuyentes en contabilidad simplificada; verifica su formato vigente en sii.cl.</p>
     ${f.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Documento</th><th>RUT</th><th>Descripción</th><th class="num">Ingreso percibido</th><th class="num">Ingreso devengado</th><th class="num">Egreso pagado</th><th class="num">Egreso adeudado</th></tr></thead><tbody>${f.map((x) => `<tr><td>${fmtFecha(x.fecha)}</td><td>${esc([x.tipo_doc, x.num].filter(Boolean).join(" "))}</td><td>${esc(x.rut || "")}</td><td>${esc(x.desc)}</td><td class="num">${clp(x.ip) === "0" ? "" : clp(x.ip)}</td><td class="num">${x.id ? clp(x.id) : ""}</td><td class="num">${x.ep ? clp(x.ep) : ""}</td><td class="num">${x.ea ? clp(x.ea) : ""}</td></tr>`).join("")}</tbody>
       <tfoot><tr class="total"><td colspan="4">Totales</td><td class="num">${clp(tot("ip"))}</td><td class="num">${clp(tot("id"))}</td><td class="num">${clp(tot("ep"))}</td><td class="num">${clp(tot("ea"))}</td></tr></tfoot></table></div>` : `<div class="caja vacio"><p>No hay movimientos ni documentos en ${anio}.</p></div>`}
@@ -5694,7 +5694,7 @@ function vistaCaja() {
       <div class="barra"><label>Fecha de cobro o pago<input type="date" id="ie-fecha" value="${hoy()}"></label></div>
       <div class="tabla"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Documento</th><th>Cliente / proveedor</th><th class="num">Total</th><th></th></tr></thead><tbody>${pend.slice(0, 80).map((d) => `<tr><td>${fmtFecha(d.fecha)}</td><td>${d.registro === "VENTA" ? "Por cobrar" : "Por pagar"}</td><td>${esc(`${TIPOS_DOCUMENTO[+d.tipo_doc] || d.tipo_doc} ${d.folio}`)}</td><td>${esc(d.razon_social || "")}</td><td class="num">${clp(d.total)}</td><td><button class="btn enlace" type="button" data-n="caja-pagar" data-id="${esc(d.id)}">${d.registro === "VENTA" ? "Registrar cobro" : "Registrar pago"}</button></td></tr>`).join("")}</tbody></table></div>${pend.length > 80 ? `<p class="ayuda">Se muestran los primeros 80.</p>` : ""}</section>` : ""}`;
   }
-  const L = libroCaja(anio, mes); S.informe = () => informeLibroCaja(anio, mes, S.cajaDiario); S.csv = null;
+  const L = libroCaja(anio, mes); S.informe = () => informeLibroCaja(anio, mes, S.cajaDiario); S.csv = csvDeInforme(informeLibroCaja(anio, mes, S.cajaDiario));
   const pend = documentosPendientesCaja(anio).length;
   let saldo = L.inicial;
   const lineas = S.cajaDiario ? [...L.filas.reduce((mp, m) => { const x = mp.get(m.fecha) || { n: 0, i: 0, e: 0, bi: 0, be: 0 }; x.n++; if (m.tipo === 1) { x.i += m.monto; x.bi += m.base; } else { x.e += m.monto; x.be += m.base; } return mp.set(m.fecha, x); }, new Map())]
@@ -5703,7 +5703,7 @@ function vistaCaja() {
   const e = empresa();
   return `${cab}<div class="barra"><label>Año<select id="caja-anio">${opcionesAnio(anios, anio)}</select></label>
       <label>Mes<select id="caja-mes"><option value="">Todo el año</option>${MESES.map((m, i) => `<option value="${String(i + 1).padStart(2, "0")}" ${mes === String(i + 1).padStart(2, "0") ? "selected" : ""}>${m}</option>`).join("")}</select></label>
-      <label class="check"><input type="checkbox" id="caja-diario" ${S.cajaDiario ? "checked" : ""}> Resumen diario</label>${botonesExportar(false)}</div>
+      <label class="check"><input type="checkbox" id="caja-diario" ${S.cajaDiario ? "checked" : ""}> Resumen diario</label>${botonesExportar()}</div>
     ${pend ? `<div class="aviso">Hay ${pend} documento(s) del RCV de ${anio} sin cobrar ni pagar en el Libro de caja. Regístralos en «Ingresos y egresos» o impórtalos en la pestaña «Importar».</div>` : ""}
     <div class="tarjetas"><div class="tarjeta"><span>Saldo inicial</span><strong>$${clp(L.inicial)}</strong></div><div class="tarjeta"><span>Ingresos</span><strong>$${clp(L.ing)}</strong></div>
       <div class="tarjeta"><span>Egresos</span><strong>$${clp(L.eg)}</strong></div><div class="tarjeta ${L.saldo < 0 ? "neg" : ""}"><span>Saldo de caja</span><strong>$${clp(L.saldo)}</strong></div>
@@ -5840,6 +5840,22 @@ const lecturaIndicadores = (d) => [
   d.liquidez != null ? ["Liquidez", comaDecimal(d.liquidez.toFixed(2)), `Por cada $1 que debe en el corto plazo, cuenta con $${comaDecimal(d.liquidez.toFixed(2))}.`] : null,
   d.endeudamiento != null && d.pasivo > 0 ? ["Endeudamiento", comaDecimal(d.endeudamiento.toFixed(2)), `Por cada $1 propio, la empresa debe $${comaDecimal(d.endeudamiento.toFixed(2))}.`] : null].filter(Boolean);
 
+function informeResumenTabular(d) {
+  const e = empresa(), inf = new Informe("RESUMEN EJECUTIVO", `${e.razon_social} · ${nombrePeriodo(d.periodo)} · al ${fmtFecha(d.hasta)}`, [col("Concepto", 40), col("Monto", 18, "monto"), col("Detalle", 42)], `resumen_ejecutivo_${d.periodo}`);
+  const sec = (t) => inf.agregar([t], { estilo: "seccion", abarca: 0 });
+  inf.agregar([d.titular], { estilo: "glosa", abarca: 0 });
+  sec("Resultado del mes");
+  inf.agregar(["Ingresos", d.mes.ingresos, d.vIngresos != null ? textoVar(d.vIngresos, nombrePeriodo(d.previo)) : ""]); inf.agregar(["Gastos", d.mes.gastos, d.vGastos != null ? textoVar(d.vGastos, nombrePeriodo(d.previo)) : ""]);
+  inf.agregar([d.mes.resultado < 0 ? "Pérdida del mes" : "Utilidad del mes", d.mes.resultado, ""], { estilo: "total" });
+  inf.agregar(["Resultado acumulado del año", d.acum.resultado, ""]);
+  sec("Situación"); inf.agregar(["Dinero disponible", d.caja, "Caja y bancos"]); if (d.clientes) inf.agregar(["Por cobrar a clientes", d.clientes, ""]); if (d.proveedores) inf.agregar(["Por pagar a proveedores", d.proveedores, ""]);
+  if (d.patrimonio != null) inf.agregar(["Patrimonio", d.patrimonio, ""]);
+  sec("Mayores gastos del año"); for (const g of d.top) inf.agregar([g.nombre, g.monto, ""]);
+  sec("Pagos del mes siguiente"); if (d.f29) { inf.agregar(["IVA a pagar", d.f29.iva, ""]); inf.agregar(["PPM", d.f29.ppm, ""]); inf.agregar(["Retenciones", d.f29.retenciones, ""]); inf.agregar(["Impuesto único", d.f29.unico, ""]); inf.agregar(["Total F29", d.f29.total, ""], { estilo: "subtotal" }); }
+  sec("Últimos 12 meses"); for (const x of d.serie) inf.agregar([nombrePeriodo(x.periodo), x.resultado, `Ingresos ${clp(x.ingresos)} · Gastos ${clp(x.gastos)}`]);
+  sec("Puntos de atención"); for (const [, x] of d.puntos) inf.agregar([x, null, ""], { abarca: 0 });
+  return inf;
+}
 function svgSerie(serie) {
   const W = 600, H = 190, base = 160, top = 12, max = Math.max(1, ...serie.flatMap((x) => [x.ingresos, x.gastos])), paso = (W - 20) / serie.length, ancho = paso * 0.34;
   const alto = (v) => Math.max(0, (v / max) * (base - top));
@@ -5852,12 +5868,13 @@ function svgSerie(serie) {
 }
 function vistaResumen() {
   const p = resumenPeriodo(), d = datosResumen(p), e = empresa(), notas = recuerdo(claveNotas(p), ""), nm = nombrePeriodo(p);
+  S.informe = () => informeResumenTabular(d); S.csv = csvDeInforme(informeResumenTabular(d));
   const tile = (titulo, valor, sub, tono) => `<div class="rs-tile ${tono}"><span>${titulo}</span><strong>$${clp(valor)}</strong><small>${esc(sub)}</small></div>`;
   const fila = (t, sub, v) => `<div class="rs-fila"><div>${t}${sub ? `<small>${sub}</small>` : ""}</div><b>${v}</b></div>`;
   const maxG = Math.max(1, ...d.top.map((x) => x.monto)), totG = d.top.reduce((x, f) => x + f.monto, 0) || 1;
   return `${cabecera("Resumen ejecutivo", e.razon_social)}
   <div class="barra rs-barra-controles"><label>Mes a presentar<input type="month" id="rs-periodo" value="${p}"></label>
-    ${S.descargas ? `<button class="btn" type="button" data-n="rs-pdf">Descargar PDF</button>` : ""}<button class="btn sec" type="button" data-n="rs-presentar">Modo presentación</button></div>
+    ${S.descargas ? `<button class="btn" type="button" data-n="rs-pdf">Descargar PDF</button><button class="btn sec" type="button" data-accion="excel">Excel</button><button class="btn sec" type="button" data-accion="csv">CSV</button>` : ""}<button class="btn sec" type="button" data-n="rs-presentar">Modo presentación</button></div>
   <button class="btn sec rs-salir" type="button" data-n="rs-salir">Salir de la presentación</button>
   <section class="rs-hero"><small>${esc(e.razon_social)} · Resumen de ${nm} · Información al ${fmtFecha(d.hasta)}</small><p>${esc(d.titular)}</p></section>
   <div class="tarjetas">

@@ -343,7 +343,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
       const r = {}; const t = S.trabajadores[0];
-      for (const [n, f] of [["activos", () => informeActivos(2026)], ["renta", () => informeRenta(rentaActual())], ["liquidación", () => informeLiquidacion(S.liquidaciones[0])], ["libro", () => informeLibroRem("2026-09", S.liquidaciones)], ["dj", () => informeDj1887(2026, perceptores1887(2026))]]) {
+      for (const [n, f] of [["activos", () => informeActivos(2026)], ["renta", () => informeRenta(rentaActual())], ["liquidación", () => informeLiquidacion(S.liquidaciones[0])], ["resumen", () => informeResumenTabular(datosResumen("2026-09"))], ["libro de caja", () => informeLibroCaja(2026, "", false)], ["ingresos y egresos", () => informeIngresosEgresos(2026)], ["libro", () => informeLibroRem("2026-09", S.liquidaciones)], ["dj", () => informeDj1887(2026, perceptores1887(2026))]]) {
         try { const i = f(); r[n] = [(await aPdf(i)).blob.size > 1000, (await aExcel(i)).size > 1000]; } catch (e) { r[n] = "ERR " + e.message; }
       }
       try { r.contrato = (await pdfContrato(t)).size > 1000; } catch (e) { r.contrato = "ERR " + e.message; }
