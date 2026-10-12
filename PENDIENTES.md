@@ -32,7 +32,7 @@ Hallazgos y trampas que debe resolver el importador:
 2. **Notas de crédito con montos negativos** en el Excel; nuestro RCV las guarda en positivo y las resta por tipo de documento. Al importar hay que pasarlas a valor absoluto para no restarlas dos veces.
 3. **RUT sin puntos** (`77292237-K`): normalizar al formato del sistema.
 4. **Hojas con distinta forma:** septiembre tiene menos columnas (sin «Código otro impuesto») y dice «NO HAY VENTAS» en lugar del bloque de ventas. Las filas de totales y de centralización no llevan número y deben ignorarse (pero usarse para **cuadrar** contra lo que calcule el sistema).
-5. **Impuesto específico a los combustibles (código 28):** en 10 documentos (todos de estaciones de servicio) «neto + IVA + otro impuesto» no coincide con el total, y el «valor otro impuesto» viene como 1. La contadora cuadra el asiento tomando el **total como verdad** y dejando la diferencia en el gasto. El importador debe hacer lo mismo, pero avisar cada caso en el informe de migración, no absorberlo en silencio.
+5. **Impuesto específico a los combustibles (códigos 28 y 35):** en 10 documentos de 2023 (todos de estaciones de servicio) «neto + IVA + otro impuesto» no coincide con el «Monto total» del RCV, y el «valor otro impuesto» viene como 1. **Corrección (al revisar los archivos de 2022 y los totales de cada hoja):** la contadora **no** toma el total del RCV como verdad: el asiento de cada mes, «PROVEEDORES», es siempre la suma de **neto + IVA + otros impuestos**, no la suma del «Monto total». En 2022 incluso corrigió a mano la columna «Monto total» en las hojas «CORRECTO». Pendiente de confirmar con ella cuál es el monto real de esas facturas (conviene cotejar una factura de papel). El importador debe permitir elegir, con aviso en cada caso.
 6. **Fórmulas de Excel** (tablas con referencias estructuradas): leer el valor calculado, no la fórmula.
 
 Qué conviene adoptar en el sistema a partir de este archivo:
@@ -57,7 +57,7 @@ La forma del libro cambió con el tiempo, y el importador debe tolerarlo:
 5. **Documentos con dos impuestos específicos:** una factura ocupa dos filas; la segunda no trae número ni montos, solo código y valor del segundo impuesto (código 35 junto al 28). Debe tratarse como continuación, no como documento nuevo (si no, aparece como folio repetido).
 6. **Activo fijo:** cuando «Tipo compra» es «Activo Fijo», las columnas «Monto neto activo fijo» e «IVA activo fijo» **repiten** el neto y el IVA ya incluidos en «Monto neto» e «IVA recuperable»; sumarlas duplica el documento. Son 5 compras (un vehículo de 21,3 M neto en agosto de 2025 y maquinaria en 2026). En agosto de 2026 hay dos facturas de activo fijo (10 M y 20 M) y una **nota de crédito de 20 M** que revierte una: el sistema debería ligarlas.
 7. **Notas de crédito** siempre con montos negativos (14 casos). Pasarlas a valor absoluto al importar.
-8. **Discrepancias en el total:** 38 compras (de 696) donde neto + IVA + otros impuestos no es igual al total. 33 son combustibles (código 28 con «valor» = 1, o código 35), y 5 son activo fijo contadas dos veces por las columnas repetidas (ver punto 6; no es un error real). La contadora lo anota en la hoja de julio de 2026: «en algunas facturas el monto total está mal totalizado». Se concilia siempre con el **total** como verdad.
+8. **Discrepancias en el total:** 38 compras (de 696) donde neto + IVA + otros impuestos no es igual al total. 33 son combustibles (código 28 con «valor» = 1, o código 35), y 5 son activo fijo contadas dos veces por las columnas repetidas (ver punto 6; no es un error real). La contadora lo anota en la hoja de julio de 2026: «en algunas facturas el monto total está mal totalizado». En las hojas de la contadora, el asiento mensual usa **neto + IVA + otros impuestos** y no el total del RCV (ver corrección en el punto 5 del primer archivo).
 9. **Rezagados:** 16 compras con fecha anterior al mes de su hoja; ninguna venta.
 10. **RUT sin puntos** en todos los casos (899 filas). **80 razones sociales** con la codificación dañada.
 11. **Centralización por categoría a partir de abril de 2026:** además de «Insumos y servicios» (luego «Insumos y existencias») aparecen **«Servicios contables»**, **«Maquinarias y equipos»** y **«Vehículos»**, más una fila TOTALES que cuadra debe y haber. Es decir, la contadora ya clasifica cada compra por proveedor o tipo de gasto.
@@ -68,9 +68,29 @@ Qué conviene adoptar en el sistema a partir de estos archivos (se suma a lo del
 - **Lector de cabecera por nombre y por búsqueda de «Nro»**, tolerante a variantes de columnas, filas vacías y hojas sin datos.
 - **Manejo de documentos con varias filas de impuestos específicos** (tanto en el importador del CSV del SII como en el de Excel).
 - **Cuadre automático por mes** contra las filas de centralización y TOTALES del Excel (neto, IVA, no recuperable, total), con la lista de documentos que no cuadran y su causa.
-- En el revisor de datos: aviso de **neto + IVA + otros ≠ total** explicando que en combustibles suele ser un error del RCV, y aviso de **nota de crédito sin documento de origen**.
+- En el revisor de datos: aviso de **neto + IVA + otros ≠ total** explicando que ocurre sobre todo en combustibles y que hay que cotejar con la factura, y aviso de **nota de crédito sin documento de origen**.
 
-Falta: el RCV de 2022 (repartido en varios Excel), una contabilidad completa (diario, mayor o balance) y una simplificada.
+
+**Archivos 3: RCV de 2022 (marzo a mayo), en archivos sueltos**
+
+Recibidos: `RCV_03-2022`, `RCV_04-2022`, `RCV_04-2022_VENTA`, `RCV_05-2022_COMPRA`, `RCV_05-2022_VENTA`. Faltan el resto de los meses de 2022.
+
+Lo nuevo frente a 2023-2026:
+1. **Un archivo por mes y por tipo**, con nombres distintos (`RCV_03-2022`, `RCV_04-2022_VENTA`, `RCV_05-2022_COMPRA`…) y hojas con nombres también distintos: `RCV 03-2022 CORRECTO`, `RCV 05-2022 COMPRA` y, en las ventas, `RCV_VENTA_77447556-7_202204`, que es el nombre original de la descarga del SII y **contiene el RUT de la empresa** (77447556-7) y el período (AAAAMM). El importador debe sacar período y tipo del nombre de la hoja o del archivo, y el RUT de la empresa para verificar que corresponde a la empresa elegida.
+2. **Hojas duplicadas «MALO/CORRECTO» y «ERRÓNEO/CORRECTO»:** la contadora dejó la versión descargada y la corregida en el mismo libro. Hay que **detectar el par, preferir la corregida y avisar** (nunca cargar las dos).
+3. **Corrección manual del total:** en las hojas «CORRECTO» ella reemplazó el «Monto total» del RCV por neto + IVA + otro impuesto (por ejemplo 36.004 → 42.912) y agregó columnas auxiliares de control. Es la evidencia más clara de su criterio (ver corrección en el punto 5 del primer archivo).
+4. **Cabeceras más cortas:** en compras 2022 no hay columna «Monto exento» (12 a 15 columnas); en ventas, 11 columnas sin exento ni fechas de acuse. Las columnas que no existen valen 0.
+5. **Centralización con otros nombres:** «OTROS IMPTOS. NO RECUPERABLES», «IVA CRÉDITO FISCAL» (con tilde), «IVA DF» en vez de «IVA DÉBITO FISCAL», y a veces los montos en la columna F y a veces en la G. Hay que comparar por **significado**, no por texto exacto ni por columna.
+6. **Inicio de la empresa:** la primera compra es del 01-03-2022 y la primera venta es la factura folio 1 del 08-04-2022. Es decir, la empresa empieza en marzo de 2022; el sistema debe permitir un ejercicio parcial y fijar el asiento de apertura en esa fecha.
+7. **Ventas mínimas al comienzo** (una factura por mes en abril y mayo de 2022).
+
+Qué conviene adoptar:
+- **Detector de versiones duplicadas de un mismo período** (hojas o archivos) con vista previa de las diferencias.
+- **Elección explícita de la fuente del total:** «total del RCV» o «recalcular con neto + IVA + otros», por documento o para todo el mes, con registro de lo elegido.
+- **Verificación de RUT de la empresa** al importar (viene en el nombre de la hoja de ventas del SII).
+- **Normalización de etiquetas de centralización** (equivalencias de nombres) para el cuadre automático.
+
+Falta: el resto del RCV de 2022 (de junio a diciembre; el usuario lo enviará en tandas de 5 archivos), una contabilidad completa (diario, mayor o balance) y una simplificada.
 
 
 ## Prioridad media (pospuesto por el dueño)
