@@ -5965,7 +5965,7 @@ function repararTexto(t) {
   if (!/[ÃÂ]/.test(t)) return t;
   const bytes = [];
   for (const ch of t) { const c = ch.codePointAt(0); if (c < 256) bytes.push(c); else if (CP1252[c] != null) bytes.push(CP1252[c]); else return t; }
-  try { return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes)).replace(/Ã�/g, "Í"); } catch (_) { return t; }
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes)).replace(/Ã\uFFFD/g, "Í"); } catch (_) { return t; }
 }
 const valorCelda = (c) => { if (c == null) return null; if (typeof c === "object" && !(c instanceof Date)) { if ("result" in c) return valorCelda(c.result); if ("richText" in c) return c.richText.map((x) => x.text).join(""); if ("text" in c) return c.text; return null; } return c; };
 function numeroRcv(v) {
