@@ -82,6 +82,7 @@ Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tr
 
 El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
 
+- **1.8.2**: el campo «Ejercicio vigente» pasa a llamarse «Año contable con el que trabajarás» y explica para qué sirve.
 - **1.8.1**: el Libro de caja, el de ingresos y egresos y el resumen ejecutivo se exportan también a Excel y CSV.
 - **1.8.0**: contabilidad simplificada. Cada empresa tiene un «Tipo de contabilidad» (completa o simplificada) en Datos de la empresa. Las simplificadas no usan asientos ni balances: llevan un **Libro de caja** (tipo de operación 0/1/2, monto total y monto que afecta la base imponible, con resumen diario opcional) y un **Libro de ingresos y egresos** (percibido y devengado, pagado y adeudado), con importación desde el RCV, las remuneraciones y las boletas de honorarios. El F29, la renta anual (base de caja) y el resumen ejecutivo se calculan desde esos libros. Basado en la Resolución Ex. SII N° 14 de 2021 y su complemento N° 31; confirma el formato vigente en sii.cl antes de usarlo como libro oficial.
 - **1.7.0**: «Resumen ejecutivo» (menú Informes) para entregar al dueño de la empresa: titular en lenguaje simple, cuatro indicadores con semáforo y comparación con el mes anterior, gráfico de 12 meses, situación de la empresa, mayores gastos, pagos del mes siguiente (F29, cotizaciones, remuneraciones), puntos de atención, recomendaciones y comentarios del contador; en pantalla (con modo presentación) y en PDF.
