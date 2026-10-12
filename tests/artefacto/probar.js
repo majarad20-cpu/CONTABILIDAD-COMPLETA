@@ -309,6 +309,56 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("los recordatorios propios aparecen en el calendario", await page.evaluate(() => /Llamar al cliente/.test(document.querySelector("main").textContent)));
   await page.evaluate(() => { recordar("recordatorios", []); ir("inicio"); });
 
+  console.log("Importador de RCV desde Excel");
+  const im = await page.evaluate(async () => {
+    await cargarScript("exceljs");
+    const wb = new window.ExcelJS.Workbook();
+    const cab = ["Nro", "Tipo Doc", "Tipo Compra", "RUT Proveedor", "Razon Social", "Folio", "Fecha Docto", "Fecha Recepcion", "Fecha Acuse", "Monto Exento", "Monto Neto", "Monto IVA Recuperable", "Monto Iva No Recuperable", "Codigo IVA No Rec.", "Monto Total", "Codigo Otro Impuesto", "Valor Otro Impuesto", "Tasa Otro Impuesto"];
+    const f = (d) => new Date(Date.UTC(2031, 2, d));
+    const hoja = wb.addWorksheet("RCV 03-2031");
+    hoja.addRow([null, null, null, null, "COMPRAS"]); hoja.addRow(cab);
+    hoja.addRow([1, 33, "Del Giro", "76111111-1", "COMPAÃ‘Ã\x8dA AGROPECUARIA COPEVAL S.A.", 501, f(3), f(3), null, 0, 100000, 19000, null, null, 119000, null, null, null]);
+    hoja.addRow([2, 33, "Del Giro", "76222222-2", "ESTACION DE SERVICIO", 502, f(5), f(5), null, 0, 46314, 8800, null, null, 54043, 28, 1, 0]);
+    hoja.addRow([3, 33, "Activo Fijo", "96642720-5", "LOS ALFALFALES", 503, f(6), f(6), null, 0, 8403361, 1596639, null, null, 10000000, null, null, null]);
+    hoja.addRow([4, 61, "Del Giro", "96642720-5", "LOS ALFALFALES", 504, f(7), f(7), null, 0, -8403361, -1596639, null, null, -10000000, null, null, null]);
+    hoja.addRow([null, null, null, null, null, null, null, null, null, null, 0, 0, 0, 0, 0]);
+    hoja.addRow([]); hoja.addRow([null, null, null, null, "PROVEEDORES", null, 174115]);
+    hoja.addRow([null, null, null, null, "EN MARZO SE REGULA EL IMPUESTO ESPECIFICO DE COMBUSTIBLES"]);
+    hoja.addRow([null, null, null, null, "VENTAS"]);
+    hoja.addRow(["Nro", "Tipo Doc", "Tipo Venta", "Rut cliente", "Razon Social", "Folio", "Fecha Docto", "Fecha Recepcion", "Fecha Acuse Recibo", "Fecha Reclamo", "Monto Exento", "Monto Neto", "Monto IVA", "Monto total"]);
+    hoja.addRow([1, 33, "Del Giro", "79534860-3", "AGRICOLA UAC", 14, f(8), f(8), null, null, 0, 1000000, 190000, 1190000]);
+    hoja.addRow([null, null, null, null, "CLIENTES", 1190000]);
+    wb.addWorksheet("RCV 03-2031 MALO").addRow(["Nro", "Tipo Doc", "Tipo Compra"]);
+    const buf = await wb.xlsx.writeBuffer();
+    const csv = "Nro;Tipo Doc;Tipo Venta;Rut cliente;Razon Social;Folio;Fecha Docto;Fecha Recepcion;Monto Neto;Monto IVA;Monto total\r\n1;33;Del Giro;76794130-7;AGRICOLA COIGUE;12;07-04-2031;07-04-2031 8:40; $1.260.000 ; $239.400 ; $1.499.400 \r\n;;;;;;;; $1.260.000 ; $239.400 ; $1.499.400 \r\n;;;;CLIENTES;; $1.499.400 ;;;;\r\n";
+    const enc = new TextEncoder().encode(csv);
+    const hojas = await analizarArchivosRcv([{ nombre: "RCV_2031.xlsx", buffer: buf }, { nombre: "RCV_04-2031_VENTA.xlsx", buffer: enc.buffer }]);
+    S.migra = { hojas, criterio: "recalcular" };
+    const R = resumenMigracion(), d = Object.fromEntries(R.docs.map((x) => [x.folio, x]));
+    const cu = R.cuadre(hojas[0]), cuCsv = R.cuadre(hojas[2]);
+    S.migra.criterio = "rcv"; const R2 = resumenMigracion(), c2 = R2.cuadre(hojas[0]);
+    S.migra.criterio = "recalcular";
+    const antes = S.rcv.length; await importarMigracionRcv(); await new Promise((r) => setTimeout(r, 200));
+    const importados = S.rcv.filter((x) => x.origen === "importación Excel");
+    await prepararMigracionRcv([new File([buf], "RCV_2031.xlsx")]); const R3 = resumenMigracion();
+    ir("rcv"); await new Promise((r) => setTimeout(r, 50)); const html = document.querySelector("main").textContent;
+    S.migra = null;
+    for (const x of importados) await S.almacen.del(`empresas/e1/rcv/${x.id}`);
+    await new Promise((r) => setTimeout(r, 150));
+    return { hojas: hojas.map((h) => [h.hoja, h.incluir, h.periodo, h.docs.length]), nombre: d[501].razon_social, nc: [d[504].neto, d[504].total, d[504].nc_de, d[504].activo_fijo], comb: [d[502].total, d[502].revisar_total, d[502].total_rcv, d[502].dif_total],
+      cuRecalc: cu, cuRcv: c2, csv: [d[12]?.neto, d[12]?.total, d[12]?.fecha, cuCsv], notas: hojas[0].notas, nuevos: R.nuevos.length, importados: importados.length, tras: S.rcv.length - antes, segundaVez: R3.nuevos.length, vista: /Importar desde Excel o planillas/.test(html), rutFmt: d[501].rut, repararDoble: repararTexto("TRANSPORTES Y LOGÃƒï¿½STICA GUIDO") };
+  });
+  igual("el libro tiene la hoja buena, la mala descartada y el texto", im.hojas, [["RCV 03-2031", true, "2031-03", 5], ["RCV 03-2031 MALO", false, null, 0], ["(texto)", true, "2031-04", 1]]);
+  ok("repara los textos con la codificación dañada", im.nombre === "COMPAÑÍA AGROPECUARIA COPEVAL S.A." && im.repararDoble === "TRANSPORTES Y LOGÍSTICA GUIDO", im.nombre + " | " + im.repararDoble);
+  igual("las notas de crédito pasan a positivo, se enlazan y heredan el activo fijo", im.nc, [8403361, 10000000, "33-503", true]);
+  igual("el combustible con impuesto específico no informado se marca y conserva el total del RCV", im.comb, [55115, true, 54043, -1072]);
+  igual("el cuadre con la fila PROVEEDORES de la planilla (neto + IVA + otros)", im.cuRecalc, { PROVEEDORES: { esperado: 174115, calc: 174115 }, CLIENTES: { esperado: 1190000, calc: 1190000 } });
+  igual("con el criterio «total del RCV» el cuadre cambia y se avisa", im.cuRcv.PROVEEDORES.calc, 174115 - 1072);
+  igual("el archivo de texto con «$» y fechas dd-mm-aaaa se lee y cuadra", im.csv, [1260000, 1499400, "2031-04-07", { CLIENTES: { esperado: 1499400, calc: 1499400 } }]);
+  ok("captura las notas escritas en la planilla", im.notas.some((t) => /SE REGULA/.test(t)), JSON.stringify(im.notas));
+  igual("importa los documentos nuevos y una segunda importación no repite", [im.nuevos, im.importados, im.segundaVez], [6, 6, 0]);
+  ok("la pantalla del RCV ofrece la importación desde Excel", im.vista);
+
   console.log("Apariencia");
   await page.evaluate(() => ir("apariencia")); await espera();
   ok("la pantalla de apariencia se dibuja con estilos, temas y colores", await page.evaluate(() => document.querySelectorAll("[data-estilo]").length >= 8 && document.querySelectorAll('[data-ap="tema"]').length >= 8 && document.querySelectorAll('[data-ap="acento"]').length >= 9));
