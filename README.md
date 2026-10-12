@@ -78,6 +78,7 @@ Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tr
 
 El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
 
+- **1.2.0**: respaldo y restauración de la empresa (Datos de la empresa y Empresas e importación), protección de activos con depreciación contabilizada, aviso en pantalla ante errores inesperados, corrección del botón «Editar» de activo fijo y pruebas automáticas.
 - **1.1.0**: activo fijo, personal y remuneraciones, renta anual y declaraciones juradas; número de versión visible.
 - **1.0.0**: libros, informes, RCV, F29, sueldo empresarial y honorarios, con historiales y exportación a PDF y Excel.
 
@@ -299,6 +300,19 @@ En el menú **Respaldos**:
   uno al lado del otro, y confirmas.
 - **Copias automáticas**: antes de restaurar, importar o eliminar una empresa, los datos actuales se guardan en
   `datos/respaldos/`. Desde la misma página puedes descargarlas o restaurarlas para deshacer.
+
+## Pruebas del artefacto
+
+En `tests/artefacto` hay pruebas automáticas que abren `artefacto/contabilidad.html` en un navegador sin interfaz y revisan cálculos, flujos de contabilización, respaldo y restauración, todas las pantallas (escritorio y móvil) y la exportación a PDF y Excel:
+
+```
+cd tests/artefacto
+npm install
+npm test        # pruebas
+npm run lint    # busca funciones o variables que no existen
+```
+
+Córrelas antes de publicar cada versión del artefacto.
 
 ## Para desarrolladores
 
