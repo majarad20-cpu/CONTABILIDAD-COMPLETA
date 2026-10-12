@@ -1031,4 +1031,15 @@ def exportar_en_linea(conn, empresa_id):
         "cambios": [{"fecha_hora": r["fecha_hora"].replace(" ", "T"), "accion": r["accion"], "comprobante": r["comprobante"],
                      "periodos": r["periodos"], "motivo": r["motivo"] or ""}
                     for r in conn.execute("SELECT * FROM cambios_periodo_cerrado WHERE empresa_id = ? ORDER BY id", (empresa_id,))],
+        "tasa_ppm": empresa["tasa_ppm"],
+        "tributarias": {r["concepto"]: str(r["cuenta_id"]) for r in conn.execute(
+            "SELECT concepto, cuenta_id FROM cuentas_tributarias WHERE empresa_id = ?", (empresa_id,))},
+        "cuentas_rut": {f"{r['registro']}|{r['rut']}": str(r["cuenta_id"]) for r in conn.execute(
+            "SELECT registro, rut, cuenta_id FROM rcv_cuentas_rut WHERE empresa_id = ?", (empresa_id,))},
+        "rcv": [{"id": str(d["id"]), "registro": d["registro"], "periodo": d["periodo"], "tipo_doc": d["tipo_doc"],
+                 "folio": d["folio"], "fecha": d["fecha"], "rut": d["rut"], "razon_social": d["razon_social"],
+                 "exento": d["exento"], "neto": d["neto"], "iva": d["iva"], "iva_no_recuperable": d["iva_no_recuperable"],
+                 "otros_impuestos": d["otros_impuestos"], "total": d["total"], "activo_fijo": bool(d["activo_fijo"]),
+                 "cantidad": d["cantidad"], "cuenta": str(d["cuenta_id"] or ""), "asiento": str(d["asiento_id"] or "")}
+                for d in conn.execute("SELECT * FROM rcv_documentos WHERE empresa_id = ? ORDER BY id", (empresa_id,))],
     }

@@ -164,18 +164,30 @@ def _leer_resumen(filas, encabezado):
     return resumenes
 
 
+def _decodificar(contenido):
+    """Texto del archivo. Si no es UTF-8 completo, cada línea se lee en UTF-8 o, si
+    no calza, en Windows-1252: el SII a veces entrega archivos con ambas
+    codificaciones mezcladas (p. ej. una razón social en UTF-8)."""
+    try:
+        return contenido.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        pass
+    lineas = []
+    for linea in contenido.split(b"\n"):
+        try:
+            lineas.append(linea.decode("utf-8"))
+        except UnicodeDecodeError:
+            lineas.append(linea.decode("cp1252", errors="replace"))
+    return "\n".join(lineas)
+
+
 def leer_csv_rcv(contenido):
     """Lee un CSV del RCV del SII. Devuelve (registro, documentos): registro es
     'COMPRA' o 'VENTA' para los CSV de detalle, o 'RESUMEN' para el resumen de
     ventas (una línea por tipo de documento)."""
     if not contenido:
         raise ErrorValidacion("El archivo está vacío.")
-    for codificacion in ("utf-8-sig", "cp1252"):
-        try:
-            texto = contenido.decode(codificacion)
-            break
-        except UnicodeDecodeError:
-            continue
+    texto = _decodificar(contenido)
     primera = texto.splitlines()[0] if texto.splitlines() else ""
     separador = ";" if primera.count(";") >= primera.count(",") else ","
     filas = list(csv.reader(io.StringIO(texto), delimiter=separador))

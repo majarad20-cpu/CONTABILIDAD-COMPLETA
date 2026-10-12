@@ -84,6 +84,7 @@ tr.grupo td { font-weight: 600; }
 tr.total td { font-weight: 700; background: var(--surface-2); border-top: 2px solid var(--fg); }
 tr.sub td { font-weight: 600; background: var(--surface-2); }
 tr.titulo td { font-weight: 700; padding-top: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; font-size: 12px; }
+tr.nc td { color: var(--neg); }
 tr.reinicio td { color: var(--muted); font-style: italic; }
 tr.cab-asiento td { background: var(--surface-2); font-weight: 600; }
 .neg { color: var(--neg); }
@@ -243,6 +244,7 @@ const S = {
   ocupado: false, desuscribirAsientos: null,
   contador: { nombre: "", rut: "", firma: "" }, cambios: [], desuscribirCambios: null,
   periodosAnio: null, cierreAnio: null, apertura: null,
+  rcv: [], desuscribirRcv: null, rcvPeriodo: null, rcvPeriodoEid: null, rcvSel: new Set(), rcvMensajes: null, docEdit: null,
 };
 
 function empresa() { return S.empresas.find((e) => e.id === S.eid) || null; }
@@ -404,6 +406,7 @@ function movimientosPorCuenta() {
 const SECCIONES = [
   [null, [["inicio", "Inicio"]]],
   ["Registro", [["nuevo", "+ Nuevo asiento"], ["asientos", "Asientos"], ["cuentas", "Plan de cuentas"]]],
+  ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["tributarias", "Cuentas tributarias"]]],
   ["Libros", [["diario", "Libro Diario"], ["mayor", "Libro Mayor"]]],
   ["Informes", [["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
   ["Administración", [["periodos", "Cierre de meses"], ["cierre", "Cierre de ejercicio"], ["apertura", "Apertura de ejercicio"],
@@ -412,7 +415,7 @@ const SECCIONES = [
 
 function ir(vista) {
   if (vista === "nuevo") { abrirEditor(null); return; }
-  S.vista = vista; S.confirmar = null; S.cuentaEdit = null;
+  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.docEdit = null; S.rcvMensajes = null;
   if (vista !== "editor") recordar("vista", vista);
   render();
   window.scrollTo(0, 0);
@@ -444,7 +447,8 @@ function render() {
   else if (S.cargandoAsientos && !["empresas", "empresa", "cuentas", "contador"].includes(S.vista)) html = `<div class="vacio"><p>Cargando asientos de ${esc(e.razon_social)}…</p></div>`;
   else html = ({ inicio: vistaInicio, asientos: vistaAsientos, editor: vistaEditor, cuentas: vistaCuentas, diario: vistaDiario, mayor: vistaMayor,
     ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas,
-    periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador }[S.vista] || vistaInicio)();
+    periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador,
+    rcv: vistaRcv, tributarias: vistaTributarias }[S.vista] || vistaInicio)();
   const banner = !S.almacen.enLinea
     ? `<div class="aviso">Esta copia no está conectada con Claude: puedes probarla, pero los cambios se pierden al cerrar. Ábrela como artefacto en claude.ai para guardar.</div>`
     : !S.puedeEscribir ? `<div class="aviso">Tienes acceso de solo lectura: puedes ver los libros e informes, pero no modificar datos.</div>` : "";
@@ -664,10 +668,11 @@ async function guardarAsiento(confirmado = false) {
       if (ed.id && (ed.fechaOriginal !== datos.fecha || ed.numero !== nuevo)) descripcion = `${describirAsiento(ed.numero, ed.fechaOriginal, ed.glosaOriginal)} → ${descripcion}`;
       await registrarCambio(ed.id ? "Modificación" : "Creación", descripcion, afectados, ed.motivo);
     }
+    if (ed.rcvIds) await marcarCentralizados(ed.rcvIds, id);
     S.confirmar = null;
     S.filtros.anio = ed.fecha.slice(0, 4);
     S.edit = null;
-    ir("asientos");
+    ir(ed.rcvIds ? "rcv" : "asientos");
     aviso(`Asiento N° ${nuevo} guardado.`);
   }, "No se pudo guardar el asiento");
 }
@@ -1021,7 +1026,9 @@ async function importar() {
   const mapa = new Map(cuentas.map((c) => [String(c.id), "c" + c.id]));
   const datosEmpresa = { razon_social: e.razon_social || "", rut: e.rut || "", giro: e.giro || "", direccion: e.direccion || "", comuna: e.comuna || "",
     representante: e.representante || "", rut_representante: e.rut_representante || "", regimen: e.regimen || "", ejercicio: +e.ejercicio || new Date().getFullYear(),
-    creado: Date.now(), cerrados: imp.datos.cerrados || {},
+    creado: Date.now(), cerrados: imp.datos.cerrados || {}, tasa_ppm: +imp.datos.tasa_ppm || 0,
+    tributarias: Object.fromEntries(Object.entries(imp.datos.tributarias || {}).map(([k, v]) => [k, "c" + v])),
+    cuentas_rut: Object.fromEntries(Object.entries(imp.datos.cuentas_rut || {}).map(([k, v]) => [k, "c" + v])),
     cuentas: cuentas.map((c) => ({ id: mapa.get(String(c.id)), codigo: c.codigo, nombre: c.nombre, tipo: c.tipo, imputable: !!c.imputable, activa: c.activa !== false, resultados_en_ocho: !!c.resultados_en_ocho })) };
   imp.progreso = 0; render();
   try {
@@ -1033,6 +1040,8 @@ async function importar() {
       if (i % 10 === 9 && S.vista === "empresas") render();
     }
     for (const c of imp.datos.cambios || []) await S.almacen.set(`empresas/${eid}/cambios/${nuevoId()}`, c);
+    for (const d of imp.datos.rcv || []) await S.almacen.set(`empresas/${eid}/rcv/d${d.id}`, { ...d, id: undefined,
+      cuenta: d.cuenta ? "c" + d.cuenta : "", asiento: d.asiento ? "a" + d.asiento : "" });
     S.importacion = null;
     cambiarEmpresa(eid); ir("inicio");
     aviso(`${e.razon_social} importada: ${asientos.length} asientos.`);
@@ -1340,6 +1349,578 @@ function cargarFirma(archivo) {
   img.src = url;
 }
 
+/* ------------------------------------------------------------------ tributario: tablas */
+const TIPOS_DOCUMENTO = {
+  29: "Factura de inicio", 30: "Factura", 32: "Factura exenta", 33: "Factura electrónica",
+  34: "Factura exenta electrónica", 35: "Boleta", 38: "Boleta exenta", 39: "Boleta electrónica",
+  41: "Boleta exenta electrónica", 43: "Liquidación factura", 45: "Factura de compra",
+  46: "Factura de compra electrónica", 48: "Comprobante de pago electrónico", 55: "Nota de débito",
+  56: "Nota de débito electrónica", 60: "Nota de crédito", 61: "Nota de crédito electrónica",
+  110: "Factura de exportación", 111: "Nota de débito de exportación", 112: "Nota de crédito de exportación",
+  914: "Declaración de ingreso (importación)",
+};
+const NOTAS_CREDITO = new Set([60, 61, 112]);
+const BOLETAS_EXENTAS = new Set([38, 41]);
+const TIPOS_RESUMEN = { 39: "Boleta electrónica", 41: "Boleta exenta electrónica", 48: "Comprobante de pago electrónico", 35: "Boleta (papel)", 38: "Boleta exenta (papel)" };
+const RUT_CONSUMIDOR_FINAL = "66.666.666-6";
+const TASA_IVA = 0.19;
+const signoDoc = (t) => (NOTAS_CREDITO.has(+t) ? -1 : 1);
+const nombreTipo = (t) => TIPOS_DOCUMENTO[t] || `Documento ${t}`;
+const esResumen = (d) => String(d.folio).startsWith("RESUMEN");
+
+/* round() de Python: los empates van al par (2,5 → 2; 3,5 → 4). */
+function redondearPar(x) {
+  const f = Math.floor(x), resto = x - f;
+  if (Math.abs(resto - 0.5) < 1e-9) return f % 2 === 0 ? f : f + 1;
+  return Math.round(x);
+}
+function ultimoDia(periodo) { const [a, m] = periodo.split("-").map(Number); return `${periodo}-${String(new Date(a, m, 0).getDate()).padStart(2, "0")}`; }
+function periodoAnterior(p) { const [a, m] = p.split("-").map(Number); return m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, "0")}`; }
+function periodoSiguiente(p) { const [a, m] = p.split("-").map(Number); return m === 12 ? `${a + 1}-01` : `${a}-${String(m + 1).padStart(2, "0")}`; }
+
+/* Cuentas que usa la centralización, el F29 y las remuneraciones: concepto → [descripción, tipos aceptados, patrones del nombre]. */
+const CONCEPTOS = {
+  compras_neto: ["Compras: neto y exento (cuenta por defecto)", ["ACTIVO", "GASTO"], [/insumos/i, /^compras/i, /mercader/i, /costo de ventas?/i, /gastos generales/i]],
+  compras_activo_fijo: ["Compras de activo fijo", ["ACTIVO"], [/maquinarias?/i, /activo fijo/i, /equipos/i]],
+  iva_credito: ["IVA crédito fiscal", ["ACTIVO"], [/^iva cr[ée]dito/i, /cr[ée]dito fiscal/i]],
+  compras_otros_impuestos: ["Compras: otros impuestos (específico, sin derecho a crédito)", ["ACTIVO", "GASTO"], [/impuestos? no recuperables?/i, /impuesto espec[ií]fico/i, /otros impuestos/i]],
+  proveedores: ["Proveedores", ["PASIVO"], [/^proveedores/i]],
+  ventas_neto: ["Ventas: neto (cuenta por defecto)", ["INGRESO"], [/^ventas$/i, /^ventas/i, /ingresos por servicios/i]],
+  ventas_exento: ["Ventas exentas", ["INGRESO"], [/ventas? exentas?/i, /^ventas$/i, /^ventas/i]],
+  iva_debito: ["IVA débito fiscal", ["PASIVO"], [/^iva d[ée]bito/i, /d[ée]bito fiscal/i]],
+  ventas_otros_impuestos: ["Ventas: otros impuestos", ["PASIVO"], [/impuestos? (adicional|por pagar)/i, /^iva d[ée]bito/i]],
+  clientes: ["Clientes", ["ACTIVO"], [/^clientes/i, /deudores por ventas?/i]],
+  ventas_boletas: ["Ventas con boleta y comprobantes de pago: cuenta del total (caja, banco o clientes)", ["ACTIVO"], [/^clientes/i, /deudores por ventas?/i, /^caja/i]],
+  remanente_iva: ["Remanente de crédito fiscal (F29)", ["ACTIVO"], [/remanente/i]],
+  sueldo_empresarial: ["Sueldo empresarial (gasto)", ["GASTO"], [/sueldo empresarial/i, /remuneraciones/i]],
+  pago_sueldos: ["Sueldo empresarial: cuenta del líquido (banco o remuneraciones por pagar)", ["ACTIVO", "PASIVO"], [/^banco/i, /remuneraciones por pagar/i]],
+  afp_por_pagar: ["Sueldo empresarial: AFP por pagar", ["PASIVO"], [/afp/i, /cotizaciones previsionales/i]],
+  salud_por_pagar: ["Sueldo empresarial: salud por pagar (Fonasa o isapre)", ["PASIVO"], [/fonasa/i, /isapre/i, /salud/i, /cotizaciones previsionales/i]],
+  honorarios_gasto: ["Honorarios (gasto)", ["GASTO"], [/^honorarios/i]],
+  honorarios_pago: ["Honorarios: cuenta del líquido (banco u honorarios por pagar)", ["ACTIVO", "PASIVO"], [/^honorarios por pagar/i, /^banco/i]],
+  retencion_honorarios: ["Retención de honorarios por pagar (F29)", ["PASIVO"], [/retenci[oó]n.*(honorario|2da|segunda)/i]],
+  impuesto_unico: ["Impuesto único por pagar (F29)", ["PASIVO"], [/imp(uesto|to\.?) [uú]nico/i]],
+};
+const GRUPOS_CONCEPTOS = [
+  ["Centralización de compras", ["compras_neto", "compras_activo_fijo", "iva_credito", "compras_otros_impuestos", "proveedores"]],
+  ["Centralización de ventas", ["ventas_neto", "ventas_exento", "iva_debito", "ventas_otros_impuestos", "clientes", "ventas_boletas"]],
+  ["Borrador del F29", ["remanente_iva", "retencion_honorarios", "impuesto_unico"]],
+  ["Sueldo empresarial y honorarios", ["sueldo_empresarial", "pago_sueldos", "afp_por_pagar", "salud_por_pagar", "honorarios_gasto", "honorarios_pago"]],
+];
+
+function sugerirCuenta(concepto) {
+  const [, tipos, patrones] = CONCEPTOS[concepto];
+  const imputables = S.cuentas.filter((c) => c.imputable);
+  for (const patron of patrones) { const c = imputables.find((x) => tipos.includes(x.tipo) && patron.test(x.nombre)); if (c) return c.id; }
+  return "";
+}
+/* concepto → cuenta (la configurada si existe; si no, la sugerida por nombre). */
+function cuentasTributarias() {
+  const conf = empresa()?.tributarias || {};
+  return Object.fromEntries(Object.keys(CONCEPTOS).map((k) => [k, (conf[k] && S.porId.has(conf[k]) ? conf[k] : "") || sugerirCuenta(k)]));
+}
+
+/* ------------------------------------------------------------------ lectura del CSV del SII */
+class ErrorRcv extends Error {}
+function normalizar(t) { return String(t || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+function enteroCsv(valor) {
+  let t = String(valor ?? "").trim().replace(/\$/g, "").replace(/ /g, "");
+  if (t === "" || t === "-") return 0;
+  if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+  const n = Number(t.replace(",", "."));
+  if (!Number.isFinite(n) || t === "") throw new ErrorRcv(`Monto inválido en el archivo: «${valor}».`);
+  return redondearPar(n);
+}
+function fechaCsv(valor) {
+  const t = String(valor || "").trim();
+  let a, m, d, x = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (x) { [d, m, a] = [+x[1], +x[2], +x[3]]; }
+  else { x = t.slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!x) throw new ErrorRcv(`Fecha inválida en el archivo: «${valor}».`); [a, m, d] = [+x[1], +x[2], +x[3]]; }
+  const f = new Date(Date.UTC(a, m - 1, d));
+  if (f.getUTCFullYear() !== a || f.getUTCMonth() !== m - 1 || f.getUTCDate() !== d) throw new ErrorRcv(`Fecha inválida en el archivo: «${valor}».`);
+  return f.toISOString().slice(0, 10);
+}
+function filasCsv(texto, sep) {
+  const filas = []; let fila = [], campo = "", comillas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (comillas) { if (c === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else comillas = false; } else campo += c; }
+    else if (c === '"') comillas = true;
+    else if (c === sep) { fila.push(campo); campo = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && texto[i + 1] === "\n") i++; fila.push(campo); filas.push(fila); fila = []; campo = ""; }
+    else campo += c;
+  }
+  if (campo !== "" || fila.length) { fila.push(campo); filas.push(fila); }
+  return filas;
+}
+/* Si el archivo no es UTF-8 completo, cada línea se lee en UTF-8 o, si no calza, en Windows-1252:
+   el SII a veces entrega archivos con ambas codificaciones mezcladas. */
+function textoArchivo(buffer) {
+  const utf8 = new TextDecoder("utf-8", { fatal: true }), ansi = new TextDecoder("windows-1252");
+  try { return utf8.decode(buffer).replace(/^﻿/, ""); } catch (_) { /* se lee por líneas */ }
+  const bytes = new Uint8Array(buffer), lineas = [];
+  let inicio = 0;
+  for (let i = 0; i <= bytes.length; i++) {
+    if (i === bytes.length || bytes[i] === 10) {
+      const linea = bytes.subarray(inicio, i);
+      try { lineas.push(utf8.decode(linea)); } catch (_) { lineas.push(ansi.decode(linea)); }
+      inicio = i + 1;
+    }
+  }
+  return lineas.join("\n");
+}
+const COLUMNAS_RCV = {
+  tipo_doc: ["tipo doc", "tipo documento", "tipo dte"], rut_proveedor: ["rut proveedor"], rut_cliente: ["rut cliente", "rut receptor"],
+  razon_social: ["razon social"], folio: ["folio"], fecha: ["fecha docto", "fecha documento", "fecha emision"], exento: ["monto exento"],
+  neto: ["monto neto"], iva_recuperable: ["monto iva recuperable"], iva: ["monto iva"], iva_no_recuperable: ["monto iva no recuperable"],
+  total: ["monto total"], neto_activo_fijo: ["monto neto activo fijo"], otro_impuesto: ["valor otro impuesto", "valor otro imp"], sin_credito: ["impto sin derecho a credito"],
+};
+function leerResumen(filas, enc) {
+  if (["iva recuperable", "monto iva recuperable", "iva no recuperable", "monto iva no recuperable"].some((x) => enc.includes(x)))
+    throw new ErrorRcv("Es un resumen de compras: para las compras importa el CSV de detalle, que trae cada documento.");
+  const idx = {};
+  for (const n of ["tipo documento", "total documentos", "monto exento", "monto neto", "monto iva", "monto total"]) {
+    if (!enc.includes(n)) throw new ErrorRcv(`El resumen no tiene la columna «${n}».`);
+    idx[n] = enc.indexOf(n);
+  }
+  const res = [];
+  filas.slice(1).forEach((fila, i) => {
+    if (!fila.some((c) => c.trim())) return;
+    const codigo = (fila[idx["tipo documento"]] || "").match(/\((\d+)\)/);
+    if (!codigo) return;
+    try {
+      const d = { tipo_doc: +codigo[1], cantidad: enteroCsv(fila[idx["total documentos"]]), exento: enteroCsv(fila[idx["monto exento"]]),
+        neto: enteroCsv(fila[idx["monto neto"]]), iva: enteroCsv(fila[idx["monto iva"]]), total: enteroCsv(fila[idx["monto total"]]) };
+      if (d.cantidad > 0 && d.total) res.push(d);
+    } catch (e) { throw new ErrorRcv(`Fila ${i + 2}: ${e.message}`); }
+  });
+  return res;
+}
+function leerCsvRcv(texto) {
+  if (!texto.trim()) throw new ErrorRcv("El archivo está vacío.");
+  const primera = texto.split(/\r?\n/)[0] || "";
+  const sep = (primera.match(/;/g) || []).length >= (primera.match(/,/g) || []).length ? ";" : ",";
+  const filas = filasCsv(texto, sep);
+  if (filas.length < 2) throw new ErrorRcv("El archivo no tiene documentos.");
+  const enc = filas[0].map(normalizar);
+  if (enc.includes("total documentos") && !enc.includes("rut proveedor") && !enc.includes("rut cliente")) return { registro: "RESUMEN", documentos: leerResumen(filas, enc) };
+  const col = (clave, obligatoria = true) => {
+    for (const c of COLUMNAS_RCV[clave]) if (enc.includes(c)) return enc.indexOf(c);
+    if (obligatoria) throw new ErrorRcv(`No se encontró la columna «${COLUMNAS_RCV[clave][0]}». ¿Es el CSV de detalle del Registro de Compras y Ventas del SII?`);
+    return null;
+  };
+  let registro, rutCol, ivaCol;
+  if (col("rut_proveedor", false) != null) { registro = "COMPRA"; rutCol = col("rut_proveedor"); ivaCol = col("iva_recuperable"); }
+  else if (col("rut_cliente", false) != null) { registro = "VENTA"; rutCol = col("rut_cliente"); ivaCol = col("iva"); }
+  else throw new ErrorRcv("No se reconoce el archivo: debe tener la columna «RUT Proveedor» (compras) o «Rut cliente» (ventas), como el CSV del Registro de Compras y Ventas del SII.");
+  const idx = Object.fromEntries(["tipo_doc", "razon_social", "folio", "fecha", "exento", "neto", "total"].map((k) => [k, col(k)]));
+  const opc = Object.fromEntries(["iva_no_recuperable", "neto_activo_fijo", "otro_impuesto", "sin_credito"].map((k) => [k, col(k, false)]));
+  const v = (fila, i) => (i != null && i < fila.length ? fila[i] : "");
+  const documentos = [];
+  filas.slice(1).forEach((fila, i) => {
+    if (!fila.some((c) => c.trim())) return;
+    let d;
+    try {
+      d = { tipo_doc: enteroCsv(v(fila, idx.tipo_doc)), rut: formatoRut(v(fila, rutCol).trim()), razon_social: v(fila, idx.razon_social).trim(),
+        folio: v(fila, idx.folio).trim(), fecha: fechaCsv(v(fila, idx.fecha)), exento: enteroCsv(v(fila, idx.exento)), neto: enteroCsv(v(fila, idx.neto)),
+        iva: enteroCsv(v(fila, ivaCol)), iva_no_recuperable: enteroCsv(v(fila, opc.iva_no_recuperable)),
+        otros_impuestos: enteroCsv(v(fila, opc.otro_impuesto)) + enteroCsv(v(fila, opc.sin_credito)),
+        total: enteroCsv(v(fila, idx.total)), activo_fijo: enteroCsv(v(fila, opc.neto_activo_fijo)) > 0 };
+    } catch (e) { throw new ErrorRcv(`Fila ${i + 2}: ${e.message}`); }
+    if (!d.folio) throw new ErrorRcv(`Fila ${i + 2}: falta el folio.`);
+    d.otros_impuestos += d.total - (d.exento + d.neto + d.iva + d.iva_no_recuperable + d.otros_impuestos);
+    documentos.push(d);
+  });
+  if (!documentos.length) throw new ErrorRcv("El archivo no tiene documentos.");
+  return { registro, documentos };
+}
+
+/* ------------------------------------------------------------------ documentos del RCV */
+function docsPeriodo(periodo, registro) {
+  return S.rcv.filter((d) => d.periodo === periodo && (!registro || d.registro === registro))
+    .sort((a, b) => (a.registro < b.registro ? -1 : a.registro > b.registro ? 1 : 0) || (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0)
+      || a.tipo_doc - b.tipo_doc || String(a.folio).localeCompare(String(b.folio)));
+}
+function pendiente(d) { return !d.asiento || !S.lista.some((a) => a.id === d.asiento); }
+function totalesRcv(docs) {
+  const t = { exento: 0, neto: 0, iva: 0, iva_no_recuperable: 0, otros_impuestos: 0, total: 0, cantidad: 0, pendientes: 0 };
+  for (const d of docs) {
+    const s = signoDoc(d.tipo_doc);
+    for (const k of ["exento", "neto", "iva", "iva_no_recuperable", "otros_impuestos", "total"]) t[k] += s * (d[k] || 0);
+    t.cantidad += d.cantidad || 1; t.pendientes += pendiente(d) ? 1 : 0;
+  }
+  return t;
+}
+function rutEmisor() { return empresa().rut || RUT_CONSUMIDOR_FINAL; }
+function buscarDoc(registro, tipo, rut, folio, excepto) {
+  return S.rcv.find((d) => d.registro === registro && +d.tipo_doc === +tipo && d.rut === rut && String(d.folio) === String(folio) && d.id !== excepto);
+}
+const guardarDoc = (id, d) => S.almacen.set(`empresas/${S.eid}/rcv/${id}`, d);
+
+async function registrarResumen(periodo, tipo, cantidad, total, exento = 0, neto = null, iva = null) {
+  if (!TIPOS_RESUMEN[tipo]) throw new ErrorRcv("Tipo de documento inválido para un resumen de ventas.");
+  if (!(cantidad >= 1)) throw new ErrorRcv("Indica la cantidad de documentos emitidos en el mes.");
+  if (!(total > 0)) throw new ErrorRcv("Indica el monto total del mes.");
+  exento = exento || 0;
+  if (BOLETAS_EXENTAS.has(tipo)) { exento = total; neto = 0; iva = 0; }
+  else if (neto == null && iva == null) {
+    if (!(exento >= 0 && exento <= total)) throw new ErrorRcv("El monto exento no puede ser mayor que el total.");
+    neto = redondearPar((total - exento) / (1 + TASA_IVA)); iva = total - exento - neto;
+  } else if (neto == null || iva == null) throw new ErrorRcv("Si ingresas el neto o el IVA, ingresa ambos.");
+  if (exento + neto + iva !== total) throw new ErrorRcv(`Exento + neto + IVA ($${clp(exento + neto + iva)}) no coincide con el total ($${clp(total)}).`);
+  const folio = `RESUMEN ${periodo}`;
+  const existente = S.rcv.find((d) => d.registro === "VENTA" && +d.tipo_doc === tipo && d.folio === folio);
+  if (existente && !pendiente(existente)) throw new ErrorRcv(`El resumen de ${TIPOS_RESUMEN[tipo].toLowerCase()} de ${nombrePeriodo(periodo)} ya está centralizado; elimina primero el asiento de centralización para cambiarlo.`);
+  const base = existente || { registro: "VENTA", periodo, tipo_doc: tipo, folio, fecha: ultimoDia(periodo), razon_social: `Resumen ${TIPOS_RESUMEN[tipo].toLowerCase()}`,
+    iva_no_recuperable: 0, otros_impuestos: 0, activo_fijo: false, cuenta: "", asiento: "" };
+  await guardarDoc(existente?.id || "d" + nuevoId(), { ...base, cantidad, exento, neto, iva, total, rut: rutEmisor() });
+}
+
+async function importarArchivoRcv(archivo, base) {
+  let periodo = base;
+  const nombre = archivo.name.match(/_(\d{7,8})_(\d{4})(\d{2})\.csv$/i);
+  let aviso_periodo = "";
+  if (nombre) {
+    const rutEmpresa = limpiarRut(empresa().rut).slice(0, -1);
+    if (rutEmpresa && nombre[1] !== rutEmpresa)
+      throw new ErrorRcv(`${archivo.name}: es del RUT ${clp(+nombre[1])} y la empresa activa es ${empresa().razon_social} (${empresa().rut}). No se importó: cambia a la empresa correcta en el selector del menú.`);
+    const p = `${nombre[2]}-${nombre[3]}`;
+    if (p !== periodo) { aviso_periodo = ` El archivo corresponde a ${nombrePeriodo(p)}; se importó en ese período.`; periodo = p; }
+  }
+  const { registro, documentos } = leerCsvRcv(textoArchivo(await archivo.arrayBuffer()));
+  if (registro === "RESUMEN") {
+    const resumenes = documentos.filter((d) => TIPOS_RESUMEN[d.tipo_doc]);
+    for (const d of resumenes) {
+      const ex = S.rcv.find((x) => x.registro === "VENTA" && +x.tipo_doc === d.tipo_doc && x.folio === `RESUMEN ${periodo}`);
+      if (ex && !pendiente(ex)) throw new ErrorRcv(`El resumen de ${TIPOS_RESUMEN[d.tipo_doc].toLowerCase()} de ${nombrePeriodo(periodo)} ya está centralizado; elimina primero el asiento de centralización.`);
+    }
+    for (const d of resumenes) await registrarResumen(periodo, d.tipo_doc, d.cantidad, d.total, d.exento, d.neto, d.iva);
+    let texto = resumenes.length ? `Resumen de ventas de ${nombrePeriodo(periodo)}: ${resumenes.length} tipo(s) de boletas o comprobantes de pago registrados.`
+      : `El resumen de ventas de ${nombrePeriodo(periodo)} no trae boletas ni comprobantes de pago.`;
+    if (documentos.length - resumenes.length) texto += ` Se omitieron ${documentos.length - resumenes.length} línea(s) de facturas o notas, que se importan con el CSV de detalle.`;
+    return { periodo, texto: texto + aviso_periodo };
+  }
+  const habituales = empresa().cuentas_rut || {};
+  let nuevos = 0;
+  for (const d of documentos) {
+    if (buscarDoc(registro, d.tipo_doc, d.rut, d.folio)) continue;
+    const cuenta = habituales[`${registro}|${d.rut}`] || "";
+    await guardarDoc("d" + nuevoId(), { ...d, registro, periodo, cantidad: 1, cuenta: S.porId.has(cuenta) ? cuenta : "", asiento: "" });
+    nuevos++;
+  }
+  let texto = `${registro === "COMPRA" ? "Compras" : "Ventas"} de ${nombrePeriodo(periodo)}: ${nuevos} documento(s) importado(s).`;
+  if (documentos.length - nuevos) texto += ` ${documentos.length - nuevos} ya estaban registrados y se omitieron.`;
+  return { periodo, texto: texto + aviso_periodo };
+}
+
+async function importarArchivosRcv(archivos) {
+  if (S.ocupado) return;
+  S.ocupado = true;
+  const mensajes = [], base = S.rcvPeriodo;
+  let ultimo = base;
+  try {
+    for (const a of archivos) {
+      try { const r = await importarArchivoRcv(a, base); mensajes.push(r.texto); ultimo = r.periodo; }
+      catch (e) { mensajes.push(e instanceof ErrorRcv ? e.message : `${a.name}: no se pudo importar (${e?.code || e?.message || "error"}).`); }
+    }
+  } finally { S.ocupado = false; }
+  S.rcvPeriodo = ultimo; S.rcvMensajes = mensajes; render();
+}
+
+function defectoDoc(d) {
+  const t = cuentasTributarias();
+  return d.registro === "COMPRA" ? (d.activo_fijo ? t.compras_activo_fijo : t.compras_neto) : (d.neto ? t.ventas_neto : t.ventas_exento);
+}
+
+/* Propuesta del asiento que centraliza los documentos pendientes del mes (no guarda nada). */
+function propuestaCentralizacion(periodo, registro) {
+  const docs = docsPeriodo(periodo, registro).filter(pendiente);
+  const nombreRegistro = registro === "COMPRA" ? "compras" : "ventas";
+  if (!docs.length) throw new ErrorRcv(`No hay documentos de ${nombreRegistro} pendientes de centralizar en ${nombrePeriodo(periodo)}.`);
+  const ct = cuentasTributarias();
+  const cuenta = (k) => { if (!ct[k]) throw new ErrorRcv(`Falta configurar la cuenta «${CONCEPTOS[k][0]}» en Tributario → Cuentas tributarias.`); return ct[k]; };
+  const netos = new Map();
+  const sumar = (c, v) => netos.set(c, (netos.get(c) || 0) + v);
+  const propia = (d) => (d.cuenta && S.porId.has(d.cuenta) ? d.cuenta : "");
+  for (const d of docs) {
+    const s = signoDoc(d.tipo_doc);
+    if (registro === "COMPRA") {
+      sumar(propia(d) || cuenta(d.activo_fijo ? "compras_activo_fijo" : "compras_neto"), s * (d.neto + d.exento + (d.iva_no_recuperable || 0)));
+      if (d.iva) sumar(cuenta("iva_credito"), s * d.iva);
+      if (d.otros_impuestos) sumar(cuenta("compras_otros_impuestos"), s * d.otros_impuestos);
+      sumar(cuenta("proveedores"), -s * d.total);
+    } else {
+      sumar(cuenta(TIPOS_RESUMEN[d.tipo_doc] ? "ventas_boletas" : "clientes"), s * d.total);
+      if (d.neto) sumar(propia(d) || cuenta("ventas_neto"), -s * d.neto);
+      if (d.exento) sumar(propia(d) || cuenta("ventas_exento"), -s * d.exento);
+      if (d.iva) sumar(cuenta("iva_debito"), -s * d.iva);
+      if (d.otros_impuestos) sumar(cuenta("ventas_otros_impuestos"), -s * d.otros_impuestos);
+    }
+  }
+  const orden = (ids) => ids.sort((a, b) => porCodigo(S.porId.get(a), S.porId.get(b)));
+  const deudoras = orden([...netos.keys()].filter((c) => netos.get(c) > 0)), acreedoras = orden([...netos.keys()].filter((c) => netos.get(c) < 0));
+  const lineas = [...deudoras.map((c) => ({ cuenta: c, debe: netos.get(c), haber: 0 })), ...acreedoras.map((c) => ({ cuenta: c, debe: 0, haber: -netos.get(c) }))];
+  return { registro, periodo, documentos: docs.map((d) => d.id), cantidad: docs.length, totales: totalesRcv(docs), lineas, fecha: ultimoDia(periodo),
+    glosa: `CENTRALIZACIÓN ${registro === "COMPRA" ? "COMPRAS" : "VENTAS"} ${MESES[+periodo.slice(5) - 1].toUpperCase()} ${periodo.slice(0, 4)}` };
+}
+
+function centralizar(registro) {
+  try {
+    const p = propuestaCentralizacion(S.rcvPeriodo, registro);
+    abrirPropuesta(p.fecha, p.glosa, p.lineas, `Centralización de ${p.cantidad} documento(s) de ${registro === "COMPRA" ? "compras" : "ventas"} de ${nombrePeriodo(p.periodo)}.`, { rcvIds: p.documentos });
+  } catch (e) { aviso(e.message); }
+}
+
+/* Al registrar la centralización, los documentos quedan ligados al asiento; al eliminarlo, vuelven a quedar pendientes. */
+async function marcarCentralizados(ids, asientoId) {
+  for (const id of ids) { const d = S.rcv.find((x) => x.id === id); if (d && pendiente(d)) await guardarDoc(id, { ...d, asiento: asientoId }); }
+}
+async function liberarDocumentos(asientoId) {
+  for (const d of S.rcv.filter((x) => x.asiento === asientoId)) await guardarDoc(d.id, { ...d, asiento: "" });
+}
+
+/* ------------------------------------------------------------------ vista del RCV */
+function periodoRcvInicial() {
+  const ej = String(empresa().ejercicio);
+  const conDocs = S.rcv.map((d) => d.periodo).filter((p) => p.startsWith(ej)).sort();
+  if (conDocs.length) return conDocs.at(-1);
+  const hoyP = hoy().slice(0, 7);
+  return hoyP.startsWith(ej) ? periodoAnterior(hoyP) : `${ej}-12`;
+}
+
+function filaDoc(d) {
+  const nc = signoDoc(d.tipo_doc) < 0, pend = pendiente(d);
+  const asiento = pend ? null : S.lista.find((a) => a.id === d.asiento);
+  const defecto = S.porId.get(defectoDoc(d));
+  const cuentaSel = pend && S.puedeEscribir
+    ? `<select data-cuenta-doc="${esc(d.id)}" aria-label="Cuenta del documento ${esc(d.folio)}"><option value="">Por defecto: ${esc(defecto ? etiquetaCuenta(defecto) : "sin configurar")}</option>
+        ${S.cuentas.filter((c) => c.imputable && (c.activa !== false || c.id === d.cuenta)).map((c) => `<option value="${esc(c.id)}" ${c.id === d.cuenta ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}</select>`
+    : esc(etiquetaCuenta(S.porId.get(d.cuenta) || defecto) || "por defecto");
+  return `<tr class="${nc ? "nc" : ""}">
+    <td>${pend && S.puedeEscribir ? `<input type="checkbox" data-sel-doc="${esc(d.id)}" ${S.rcvSel.has(d.id) ? "checked" : ""} aria-label="Seleccionar documento ${esc(d.folio)}">` : ""}</td>
+    <td><button type="button" class="btn enlace" data-editar-doc="${esc(d.id)}">${pend && S.puedeEscribir ? "Editar" : "Ver"}</button></td>
+    <td title="${esc(nombreTipo(d.tipo_doc))}">${d.tipo_doc}${nc ? ' <span class="etiqueta">NC</span>' : ""}${d.activo_fijo ? ' <span class="etiqueta">AF</span>' : ""}</td>
+    <td>${esResumen(d) || (d.cantidad || 1) > 1 ? `Resumen <small class="ayuda">(${d.cantidad} doc.)</small>` : esc(d.folio)}</td>
+    <td>${fmtFecha(d.fecha)}</td><td class="cod">${esc(d.rut)}</td><td>${esc(d.razon_social)}</td>
+    <td class="num">${d.exento ? clp(d.exento) : ""}</td><td class="num">${d.neto ? clp(d.neto) : ""}</td><td class="num">${d.iva ? clp(d.iva) : ""}</td><td class="num">${clp(d.total)}</td>
+    <td>${cuentaSel}</td>
+    <td>${asiento ? `<button class="btn enlace" data-asiento="${esc(asiento.id)}">N° ${asiento.numero}</button>` : '<span class="etiqueta cerrado">pendiente</span>'}</td></tr>`;
+}
+
+function tablaRcv(registro) {
+  const docs = docsPeriodo(S.rcvPeriodo, registro), t = totalesRcv(docs);
+  const nombre = registro === "COMPRA" ? "compras" : "ventas";
+  return `<div class="cabecera"><h2>${registro === "COMPRA" ? "Compras" : "Ventas"} — ${nombrePeriodo(S.rcvPeriodo).replace(/^./, (c) => c.toUpperCase())}</h2>
+    ${puedeEditar(`<button class="btn sec" type="button" data-nuevo-doc="${registro}">+ Agregar ${registro === "COMPRA" ? "compra" : "venta"}</button>`)}</div>
+  ${docs.length ? `<div class="tabla"><table>
+    <thead><tr><th></th><th></th><th>Tipo</th><th>Folio</th><th>Fecha</th><th>RUT</th><th>Razón social</th><th class="num">Exento</th><th class="num">Neto</th><th class="num">IVA</th><th class="num">Total</th><th>Cuenta del neto</th><th>Estado</th></tr></thead>
+    <tbody>${docs.map(filaDoc).join("")}</tbody>
+    <tfoot><tr class="total"><td colspan="7">${t.cantidad} documentos (${t.pendientes} pendientes) · las notas de crédito restan</td>
+      <td class="num">${clp(t.exento)}</td><td class="num">${clp(t.neto)}</td><td class="num">${clp(t.iva)}</td><td class="num">${clp(t.total)}</td><td colspan="2"></td></tr></tfoot>
+  </table></div>
+  ${t.pendientes ? puedeEditar(`<div class="acciones"><button class="btn" type="button" data-centralizar="${registro}">Centralizar ${nombre} pendientes</button></div>`) : ""}`
+  : `<div class="caja vacio"><p>No hay ${nombre} registradas para este período.</p></div>`}`;
+}
+
+function formularioDoc() {
+  const de = S.docEdit;
+  if (!de) return "";
+  const d = de.datos, esCompra = de.registro === "COMPRA", editable = de.editable;
+  const ro = editable ? "" : "disabled";
+  const total = ["exento", "neto", "iva", "iva_no_recuperable", "otros_impuestos"].filter((k) => esCompra || k !== "iva_no_recuperable").reduce((s, k) => s + (parseMonto(d[k]) || 0), 0);
+  const asiento = de.asiento ? S.lista.find((a) => a.id === de.asiento) : null;
+  return `<form class="caja" data-form="documento" id="form-documento">
+    <h2>${de.id ? (editable ? "Editar" : "Ver") : "Agregar"} ${esCompra ? "compra" : "venta"}</h2>
+    ${asiento ? `<div class="aviso">Este documento ya está centralizado en el asiento <button class="btn enlace" type="button" data-asiento="${esc(asiento.id)}">N° ${asiento.numero}</button>. Para modificarlo, elimina primero ese asiento de centralización.</div>` : ""}
+    <div class="form">
+      <label>Tipo de documento<select id="doc-tipo_doc" ${ro}>${Object.entries(TIPOS_DOCUMENTO).map(([k, n]) => `<option value="${k}" ${+k === +d.tipo_doc ? "selected" : ""}>${k} · ${n}</option>`).join("")}</select></label>
+      <label>Folio<input id="doc-folio" value="${esc(d.folio)}" ${ro}></label>
+      <label>Fecha<input type="date" id="doc-fecha" value="${esc(d.fecha)}" ${ro}></label>
+      <label>RUT<input id="doc-rut" value="${esc(d.rut)}" placeholder="76.123.456-7" ${ro}></label>
+      <label>Razón social<input id="doc-razon_social" value="${esc(d.razon_social)}" ${ro}></label>
+      ${TIPOS_RESUMEN[d.tipo_doc] ? `<label>Cantidad de documentos<input type="number" min="1" id="doc-cantidad" value="${esc(d.cantidad || 1)}" ${ro}></label>` : ""}
+      <label>Exento<input id="doc-exento" class="monto-doc" inputmode="numeric" value="${esc(d.exento)}" ${ro}></label>
+      <label>Neto<input id="doc-neto" class="monto-doc" inputmode="numeric" value="${esc(d.neto)}" ${ro}></label>
+      <label>IVA<input id="doc-iva" class="monto-doc" inputmode="numeric" value="${esc(d.iva)}" ${ro}></label>
+      ${esCompra ? `<label>IVA no recuperable<input id="doc-iva_no_recuperable" class="monto-doc" inputmode="numeric" value="${esc(d.iva_no_recuperable)}" ${ro}></label>` : ""}
+      <label>Otros impuestos<input id="doc-otros_impuestos" class="monto-doc" inputmode="numeric" value="${esc(d.otros_impuestos)}" ${ro}></label>
+      <label>Total<output id="doc-total" class="cuadre">${clp(total)}</output></label>
+      ${esCompra ? `<label class="check"><input type="checkbox" id="doc-activo_fijo" ${d.activo_fijo ? "checked" : ""} ${ro}> Compra de activo fijo</label>` : ""}
+      <label>Cuenta del neto<select id="doc-cuenta" ${ro}><option value="">Por defecto (según Cuentas tributarias)</option>
+        ${S.cuentas.filter((c) => c.imputable).map((c) => `<option value="${esc(c.id)}" ${c.id === d.cuenta ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}</select></label>
+    </div>
+    <p class="ayuda">Las notas de crédito se ingresan con montos positivos; el programa las resta. El total es la suma de los montos.</p>
+    <div class="acciones">
+      ${editable ? `<button class="btn" type="submit">Guardar</button>` : ""}
+      <button class="btn sec" type="button" data-accion="cerrar-doc">${editable ? "Cancelar" : "Cerrar"}</button>
+      ${editable && de.id ? (S.confirmar === "doc" ? `<span class="confirmar"><span>¿Eliminar el documento folio ${esc(d.folio)}?</span><button class="btn peligro" type="button" data-accion="eliminar-doc">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
+        : `<button class="btn enlace" type="button" data-accion="pedir-eliminar-doc">Eliminar documento</button>`) : ""}
+    </div>
+  </form>`;
+}
+
+function abrirDoc(id, registro) {
+  if (id) {
+    const d = S.rcv.find((x) => x.id === id);
+    const montos = Object.fromEntries(["exento", "neto", "iva", "iva_no_recuperable", "otros_impuestos"].map((k) => [k, d[k] ? clp(d[k]) : ""]));
+    S.docEdit = { id, registro: d.registro, editable: pendiente(d) && S.puedeEscribir, asiento: pendiente(d) ? "" : d.asiento, datos: { ...d, ...montos } };
+  } else {
+    S.docEdit = { id: null, registro, editable: true, datos: { tipo_doc: registro === "COMPRA" ? 33 : 33, folio: "", fecha: `${S.rcvPeriodo}-01`, rut: "", razon_social: "", cantidad: 1,
+      exento: "", neto: "", iva: "", iva_no_recuperable: "", otros_impuestos: "", activo_fijo: false, cuenta: "" } };
+  }
+  S.confirmar = null; render(); $("#form-documento")?.scrollIntoView({ block: "start" });
+}
+
+function leerFormularioDoc() {
+  const de = S.docEdit, d = de.datos;
+  for (const k of ["tipo_doc", "folio", "fecha", "rut", "razon_social", "cantidad", "exento", "neto", "iva", "iva_no_recuperable", "otros_impuestos", "cuenta"]) { const el = $("#doc-" + k); if (el) d[k] = el.value; }
+  const af = $("#doc-activo_fijo"); if (af) d.activo_fijo = af.checked;
+}
+
+async function guardarDocumento() {
+  leerFormularioDoc();
+  const de = S.docEdit, d = de.datos, registro = de.registro;
+  const actual = de.id ? S.rcv.find((x) => x.id === de.id) : null;
+  if (actual && !pendiente(actual)) return aviso("El documento ya está centralizado; elimina primero el asiento de centralización para poder modificarlo.");
+  const tipo = parseInt(d.tipo_doc, 10);
+  if (!(tipo >= 1 && tipo <= 999)) return aviso("Selecciona el tipo de documento.");
+  const folio = String(d.folio || "").trim();
+  if (!folio) return aviso("El folio es obligatorio.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.fecha || "")) return aviso("Ingresa una fecha válida.");
+  if (!rutValido(d.rut)) return aviso("El RUT no es válido (revisa el dígito verificador).");
+  const rut = formatoRut(d.rut);
+  const razon = String(d.razon_social || "").trim();
+  if (!razon) return aviso("La razón social es obligatoria.");
+  const montos = {};
+  for (const k of ["exento", "neto", "iva", "iva_no_recuperable", "otros_impuestos"]) {
+    const v = parseMonto(d[k]);
+    if (Number.isNaN(v) || v < 0) return aviso("Los montos deben ser pesos enteros, sin decimales ni signo negativo.");
+    montos[k] = v;
+  }
+  if (registro === "VENTA") montos.iva_no_recuperable = 0;
+  const total = Object.values(montos).reduce((s, v) => s + v, 0);
+  if (total <= 0) return aviso("El documento debe tener algún monto.");
+  const cantidad = Math.max(parseInt(d.cantidad, 10) || 1, 1);
+  if (buscarDoc(registro, tipo, rut, folio, de.id)) return aviso(`Ya existe ${nombreTipo(tipo).toLowerCase()} folio ${folio} del RUT ${rut}.`);
+  const datos = { registro, periodo: actual?.periodo || S.rcvPeriodo, tipo_doc: tipo, folio, fecha: d.fecha, rut, razon_social: razon, ...montos, total,
+    activo_fijo: registro === "COMPRA" && !!d.activo_fijo, cantidad, cuenta: d.cuenta || "", asiento: "" };
+  await ocupado(async () => {
+    await guardarDoc(de.id || "d" + nuevoId(), datos);
+    S.docEdit = null; render(); aviso(de.id ? "Documento guardado." : "Documento agregado.");
+  }, "No se pudo guardar el documento");
+}
+
+async function eliminarDocs(ids) {
+  const borrables = ids.map((id) => S.rcv.find((d) => d.id === id)).filter((d) => d && pendiente(d));
+  await ocupado(async () => {
+    for (const d of borrables) await S.almacen.del(`empresas/${S.eid}/rcv/${d.id}`);
+    S.rcvSel.clear(); S.docEdit = null; S.confirmar = null; render();
+    aviso(`${borrables.length} documento(s) eliminado(s).`);
+  }, "No se pudieron eliminar los documentos");
+}
+
+async function cambiarCuentaDoc(id, cuenta) {
+  const d = S.rcv.find((x) => x.id === id);
+  if (!d || !pendiente(d)) return;
+  await ocupado(async () => {
+    await guardarDoc(id, { ...d, cuenta });
+    if (cuenta) await BD.setEmpresa(S.eid, { ...empresa(), cuentas_rut: { ...(empresa().cuentas_rut || {}), [`${d.registro}|${d.rut}`]: cuenta } });
+    aviso(cuenta ? "Cuenta guardada. Se recordará para este proveedor o cliente." : "El documento usará la cuenta por defecto.");
+  }, "No se pudo guardar la cuenta");
+}
+
+async function agregarResumenManual() {
+  const tipo = +$("#rs-tipo").value, cantidad = parseInt($("#rs-cantidad").value, 10);
+  const m = (id) => { const t = $(id).value.trim(); return t ? parseMonto(t) : null; };
+  const total = m("#rs-total"), exento = m("#rs-exento") || 0, neto = m("#rs-neto"), iva = m("#rs-iva");
+  if ([total, neto, iva].some((v) => Number.isNaN(v)) || Number.isNaN(exento)) return aviso("Revisa los montos: deben ser pesos enteros.");
+  await ocupado(async () => {
+    try { await registrarResumen(S.rcvPeriodo, tipo, cantidad, total, exento, neto, iva); }
+    catch (e) { if (e instanceof ErrorRcv) { aviso(e.message); return; } throw e; }
+    render(); aviso(`Resumen de ${TIPOS_RESUMEN[tipo].toLowerCase()} de ${nombrePeriodo(S.rcvPeriodo)} registrado.`);
+  }, "No se pudo registrar el resumen");
+}
+
+function csvRcv() {
+  const p = S.rcvPeriodo, filas = [["Registro", "Tipo", "Documento", "Folio", "Cantidad", "Fecha", "RUT", "Razón social", "Exento", "Neto", "IVA", "IVA no recuperable", "Otros impuestos", "Total", "Asiento"]];
+  const asientos = [];
+  for (const [registro, nombre] of [["COMPRA", "Compra"], ["VENTA", "Venta"]]) {
+    for (const d of docsPeriodo(p, registro)) {
+      const s = signoDoc(d.tipo_doc), a = pendiente(d) ? null : S.lista.find((x) => x.id === d.asiento);
+      if (a && !asientos.includes(a)) asientos.push(a);
+      filas.push([nombre, d.tipo_doc, nombreTipo(d.tipo_doc), d.folio, d.cantidad || 1, d.fecha, d.rut, d.razon_social,
+        s * d.exento, s * d.neto, s * d.iva, s * (d.iva_no_recuperable || 0), s * (d.otros_impuestos || 0), s * d.total, a ? a.numero : "pendiente"]);
+    }
+  }
+  filas.push([], ["ASIENTOS CONTABLES"], ["Asiento", "Fecha", "Glosa", "Estado", "Código", "Cuenta", "Debe", "Haber"]);
+  const lineasCsv = (enc, fecha, glosa, lineas, estado) => { for (const l of lineas) { const c = S.porId.get(l.cuenta) || {}; filas.push([enc, fecha, glosa, estado, c.codigo, c.nombre, l.debe || 0, l.haber || 0]); } };
+  for (const a of asientos) lineasCsv(a.numero, a.fecha, a.glosa, a.lineas, "registrado");
+  for (const registro of ["COMPRA", "VENTA"]) {
+    if (!docsPeriodo(p, registro).some(pendiente)) continue;
+    try { const pr = propuestaCentralizacion(p, registro); lineasCsv("Propuesta", pr.fecha, pr.glosa, pr.lineas, "NO REGISTRADA"); } catch (_) {}
+  }
+  return { archivo: `rcv_${slug()}_${p}.csv`, filas };
+}
+
+function vistaRcv() {
+  if (!S.rcvPeriodo || S.rcvPeriodoEid !== S.eid) { S.rcvPeriodo = periodoRcvInicial(); S.rcvPeriodoEid = S.eid; }
+  S.csv = csvRcv();
+  const hay = docsPeriodo(S.rcvPeriodo).length;
+  return `<div class="cabecera"><h1>Registro de Compras y Ventas</h1>
+    <div class="acciones"><button class="btn sec" type="button" data-ir="tributarias">Cuentas tributarias</button></div></div>
+  <div class="barra">
+    <label>Período tributario<input type="month" id="rcv-periodo" value="${S.rcvPeriodo}"></label>
+    ${S.descargas ? `<button class="btn sec" type="button" data-accion="csv">Descargar CSV</button>` : ""}
+  </div>
+  ${(S.rcvMensajes || []).map((m) => `<div class="aviso ok">${esc(m)}</div>`).join("")}
+  ${puedeEditar(`<section class="caja"><h2>Importar desde el SII</h2>
+    <p class="ayuda">En el SII entra a <em>Registro de Compras y Ventas</em>, elige el período y descarga en CSV el <strong>detalle</strong> de compras, el <strong>detalle</strong> de ventas y el <strong>resumen</strong> de ventas (este último trae las boletas y los comprobantes de pago electrónico). Puedes elegir los tres archivos a la vez. El programa reconoce cada archivo, toma el período del nombre del archivo y no importa archivos de otro RUT. Si cargas un archivo dos veces no se duplica.</p>
+    <div class="acciones"><input type="file" id="rcv-archivos" accept=".csv,text/csv" multiple aria-label="Archivos CSV del SII"></div></section>`)}
+  ${formularioDoc()}
+  ${tablaRcv("COMPRA")}
+  ${tablaRcv("VENTA")}
+  ${hay && S.puedeEscribir ? `<div class="acciones">${S.confirmar === "docs"
+    ? `<span class="confirmar"><span>¿Eliminar ${S.rcvSel.size} documento(s) marcado(s)? Solo se eliminan los pendientes.</span><button class="btn peligro" type="button" data-accion="eliminar-marcados">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
+    : `<button class="btn sec" type="button" data-accion="pedir-eliminar-marcados" ${S.rcvSel.size ? "" : "disabled"}>Eliminar marcados (${S.rcvSel.size})</button>`}
+    <span class="ayuda">La cuenta que elijas para un documento se recuerda para ese proveedor o cliente en los meses siguientes.</span></div>` : ""}
+  ${puedeEditar(`<form class="caja" data-form="resumen"><h2>Ventas con boleta y comprobantes de pago electrónico</h2>
+    <p class="ayuda">Lo más simple es importar arriba el CSV de <strong>resumen</strong> de ventas del SII: registra las boletas y los comprobantes de pago con los montos exactos del SII. Si no lo tienes, ingrésalos aquí a mano, tal como aparecen en el resumen del Registro de Ventas. Si no ingresas neto e IVA, se calculan desde el total (IVA 19 %); el SII puede diferir en $1 por redondeo. Si vuelves a ingresar el mismo tipo en este mes, se reemplaza.</p>
+    <div class="form">
+      <label>Tipo de documento<select id="rs-tipo">${Object.entries(TIPOS_RESUMEN).map(([k, n]) => `<option value="${k}">${k} · ${n}</option>`).join("")}</select></label>
+      <label>Cantidad<input id="rs-cantidad" type="number" min="1" required></label>
+      <label>Monto total<input id="rs-total" inputmode="numeric" required></label>
+      <label>Exento (opcional)<input id="rs-exento" inputmode="numeric"></label>
+      <label>Neto (opcional)<input id="rs-neto" inputmode="numeric"></label>
+      <label>IVA (opcional)<input id="rs-iva" inputmode="numeric"></label>
+    </div><div class="acciones"><button class="btn" type="submit">Agregar resumen</button></div></form>`)}`;
+}
+
+/* ------------------------------------------------------------------ cuentas tributarias */
+function vistaTributarias() {
+  const actuales = cuentasTributarias();
+  const imputables = S.cuentas.filter((c) => c.imputable);
+  const e = empresa();
+  return `${cabecera("Cuentas tributarias", "")}
+  <p class="ayuda">Cuentas que usa la centralización del Registro de Compras y Ventas, el borrador del F29 y las remuneraciones de <strong>${esc(e.razon_social)}</strong>. Si una cuenta no está configurada, el programa sugiere una según su nombre; revísalas y pulsa Guardar. En cada documento del RCV puedes elegir otra cuenta para el neto.</p>
+  <form class="caja" data-form="tributarias">
+    ${GRUPOS_CONCEPTOS.map(([titulo, claves]) => `<h2>${titulo}</h2><div class="form">${claves.map((k) => `<label>${esc(CONCEPTOS[k][0])}
+      <select id="tr-${k}" ${S.puedeEscribir ? "" : "disabled"}><option value="">— Sin cuenta —</option>${imputables.map((c) => `<option value="${esc(c.id)}" ${c.id === actuales[k] ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}</select></label>`).join("")}</div>`).join("")}
+    <h2>Pagos provisionales mensuales</h2>
+    <div class="form"><label>Tasa de PPM (%)<input id="tr-ppm" inputmode="decimal" placeholder="0,25" value="${esc(String(e.tasa_ppm || 0).replace(".", ","))}" ${S.puedeEscribir ? "" : "readonly"}>
+      <small>Porcentaje que se aplica a los ingresos del giro del mes (código 115 del F29).</small></label></div>
+    <div class="acciones">${puedeEditar(`<button class="btn" type="submit">Guardar</button>`)}<button class="btn sec" type="button" data-ir="rcv">Volver al RCV</button></div>
+  </form>`;
+}
+
+async function guardarTributarias() {
+  const tributarias = {};
+  for (const k of Object.keys(CONCEPTOS)) { const v = $("#tr-" + k).value; if (v) tributarias[k] = v; }
+  const tasa = Number(String($("#tr-ppm").value || "0").replace(",", "."));
+  if (!Number.isFinite(tasa)) return aviso("La tasa de PPM debe ser un número, por ejemplo 0,25.");
+  if (tasa < 0 || tasa > 100) return aviso("La tasa de PPM debe estar entre 0 y 100 %.");
+  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), tributarias, tasa_ppm: tasa }); render(); aviso("Cuentas tributarias guardadas."); }, "No se pudieron guardar las cuentas");
+}
+
 /* ------------------------------------------------------------------ eventos */
 function slug() { return (empresa()?.razon_social || "empresa").normalize("NFD").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").toLowerCase(); }
 
@@ -1366,6 +1947,7 @@ function cambiarEmpresa(id) {
   S.eid = id; recordar("empresa", id);
   S.desuscribirAsientos?.(); S.desuscribirAsientos = null;
   S.desuscribirCambios?.(); S.desuscribirCambios = null; S.cambios = [];
+  S.desuscribirRcv?.(); S.desuscribirRcv = null; S.rcv = []; S.rcvSel.clear(); S.docEdit = null;
   S.periodosAnio = null; S.cierreAnio = null; S.apertura = null;
   S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
   prepararCuentas();
@@ -1374,6 +1956,11 @@ function cambiarEmpresa(id) {
     if (id !== S.eid) return;
     S.cambios = lista.sort((a, b) => (a.fecha_hora < b.fecha_hora ? 1 : -1));
     if (S.vista === "periodos") render();
+  }, () => {});
+  S.desuscribirRcv = S.almacen.onCol(`empresas/${id}/rcv`, (lista) => {
+    if (id !== S.eid) return;
+    S.rcv = lista.map((d) => ({ ...d, tipo_doc: +d.tipo_doc }));
+    if (S.vista === "rcv" && !S.ocupado && !S.docEdit) render();
   }, () => {});
   S.desuscribirAsientos = BD.onAsientos(id, (lista) => {
     if (id !== S.eid) return;
@@ -1385,7 +1972,7 @@ function cambiarEmpresa(id) {
 }
 
 document.addEventListener("click", (ev) => {
-  const t = ev.target.closest("[data-ir],[data-accion],[data-asiento],[data-cuenta],[data-empresa]");
+  const t = ev.target.closest("[data-ir],[data-accion],[data-asiento],[data-cuenta],[data-empresa],[data-editar-doc],[data-nuevo-doc],[data-centralizar]");
   if (!t || t.disabled) return;
   if (t.dataset.ir) { ev.preventDefault(); ir(t.dataset.ir); return; }
   if (t.dataset.asiento) { abrirEditor(t.dataset.asiento); return; }
@@ -1394,6 +1981,9 @@ document.addEventListener("click", (ev) => {
     const c = S.porId.get(t.dataset.cuenta); S.cuentaEdit = { ...c }; render(); window.scrollTo(0, 0); return;
   }
   if (t.dataset.empresa) { cambiarEmpresa(t.dataset.empresa); ir("inicio"); return; }
+  if (t.dataset.editarDoc) { abrirDoc(t.dataset.editarDoc); return; }
+  if (t.dataset.nuevoDoc) { abrirDoc(null, t.dataset.nuevoDoc); return; }
+  if (t.dataset.centralizar) { centralizar(t.dataset.centralizar); return; }
   const accion = t.dataset.accion;
   const ed = S.edit;
   switch (accion) {
@@ -1405,6 +1995,7 @@ document.addEventListener("click", (ev) => {
     case "eliminar-asiento": ocupado(async () => {
       const n = ed.numero;
       await BD.deleteAsiento(S.eid, ed.id);
+      await liberarDocumentos(ed.id);
       if (mesCerrado(ed.fechaOriginal)) await registrarCambio("Eliminación", describirAsiento(n, ed.fechaOriginal, ed.glosaOriginal), [ed.fechaOriginal.slice(0, 7)], ed.motivo);
       S.edit = null; ir("asientos"); aviso(`Asiento N° ${n} eliminado.`);
     }, "No se pudo eliminar el asiento"); break;
@@ -1418,6 +2009,11 @@ document.addEventListener("click", (ev) => {
     case "ver-propuesta-apertura": verPropuestaApertura(); break;
     case "pedir-quitar-firma": S.confirmar = "firma"; render(); break;
     case "quitar-firma": guardarContador(""); break;
+    case "cerrar-doc": S.docEdit = null; S.confirmar = null; render(); break;
+    case "pedir-eliminar-doc": leerFormularioDoc(); S.confirmar = "doc"; render(); break;
+    case "eliminar-doc": eliminarDocs([S.docEdit.id]); break;
+    case "pedir-eliminar-marcados": S.confirmar = "docs"; render(); break;
+    case "eliminar-marcados": eliminarDocs([...S.rcvSel]); break;
     case "eliminar-empresa": eliminarEmpresa(); break;
     case "nueva-cuenta": S.cuentaEdit = { id: null, codigo: "", nombre: "", imputable: true, activa: true }; render(); $("#c-codigo")?.focus(); break;
     case "cancelar-cuenta": S.cuentaEdit = null; render(); break;
@@ -1447,6 +2043,9 @@ document.addEventListener("submit", (ev) => {
     case "empresa": guardarEmpresa(); break;
     case "nueva-empresa": crearEmpresa(); break;
     case "contador": guardarContador(); break;
+    case "documento": guardarDocumento(); break;
+    case "resumen": agregarResumenManual(); break;
+    case "tributarias": guardarTributarias(); break;
   }
 });
 
@@ -1480,9 +2079,20 @@ document.addEventListener("change", (ev) => {
   if (ev.target.id === "ci-anio") { S.cierreAnio = ev.target.value; S.confirmar = null; render(); }
   if (["ap-anio", "ap-fecha", "ap-utilidad", "ap-perdida"].includes(ev.target.id)) { leerParametrosApertura(ev.target.id === "ap-anio"); render(); }
   if (ev.target.id === "co-firma" && ev.target.files[0]) cargarFirma(ev.target.files[0]);
+  if (ev.target.id === "rcv-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.rcvPeriodo = ev.target.value; S.rcvSel.clear(); S.docEdit = null; S.rcvMensajes = null; render(); }
+  if (ev.target.id === "rcv-archivos" && ev.target.files.length) importarArchivosRcv([...ev.target.files]);
+  if (ev.target.dataset.cuentaDoc) cambiarCuentaDoc(ev.target.dataset.cuentaDoc, ev.target.value);
+  if (ev.target.dataset.selDoc) { if (ev.target.checked) S.rcvSel.add(ev.target.dataset.selDoc); else S.rcvSel.delete(ev.target.dataset.selDoc); S.confirmar = null; render(); }
+  if (ev.target.id === "doc-tipo_doc") { leerFormularioDoc(); render(); }
+});
+document.addEventListener("input", (ev) => {
+  if (!S.docEdit || !ev.target.classList.contains("monto-doc")) return;
+  const total = [...document.querySelectorAll("#form-documento .monto-doc")].reduce((s, el) => s + (parseMonto(el.value) || 0), 0);
+  $("#doc-total").textContent = clp(total);
 });
 document.addEventListener("focusout", (ev) => {
   const el = ev.target;
+  if (el.classList?.contains("monto-doc") && el.value.trim() && !Number.isNaN(parseMonto(el.value))) el.value = clp(parseMonto(el.value)) || "";
   if (S.vista === "editor" && S.edit && (el.dataset.campo === "debe" || el.dataset.campo === "haber")) {
     const v = parseMonto(el.value);
     if (el.value && !Number.isNaN(v)) { el.value = v ? clp(v) : ""; S.edit.lineas[+el.dataset.linea][el.dataset.campo] = el.value; }

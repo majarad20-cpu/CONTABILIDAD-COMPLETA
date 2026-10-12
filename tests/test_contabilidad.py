@@ -717,6 +717,15 @@ class PruebasWeb(BaseConDatos):
             self.assertEqual(sum(l["debe"] for l in a["lineas"]), sum(l["haber"] for l in a["lineas"]))
             self.assertTrue(all(l["cuenta"] in ids for l in a["lineas"]))
 
+    def test_csv_con_codificaciones_mezcladas(self):
+        from contabilidad import tributario
+        encabezado = "Nro;Tipo Doc;Tipo Compra;RUT Proveedor;Razon Social;Folio;Fecha Docto;Monto Exento;Monto Neto;Monto IVA Recuperable;Monto Total\r\n"
+        contenido = (encabezado.encode() + "1;33;Del Giro;76.086.428-5;CAMIÓN SpA;10;01/09/2026;0;100;19;119\r\n".encode("cp1252")
+                     + "2;33;Del Giro;76.086.428-5;ALIMENTOS SÁNCHEZ;11;02/09/2026;0;200;38;238\r\n".encode("utf-8"))
+        registro, docs = tributario.leer_csv_rcv(contenido)
+        self.assertEqual(registro, "COMPRA")
+        self.assertEqual([d["razon_social"] for d in docs], ["CAMIÓN SpA", "ALIMENTOS SÁNCHEZ"])
+
     def test_rut_representante_legal(self):
         cliente = self.app.test_client()
         base = {"razon_social": "Mi Pyme SpA", "ejercicio": "2026", "representante": "Ana Pérez"}
