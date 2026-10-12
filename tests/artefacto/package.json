@@ -1,0 +1,16 @@
+{
+  "name": "pruebas-artefacto",
+  "private": true,
+  "description": "Pruebas automáticas del artefacto contabilidad.html (navegador sin interfaz).",
+  "scripts": {
+    "test": "node probar.js",
+    "lint": "node lint.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "exceljs": "4.4.0",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.8.2",
+    "playwright": "^1.56.1"
+  }
+}

@@ -30,3 +30,4 @@ dist/
 
 tests/artefacto/node_modules/
 tests/artefacto/package-lock.json
+!tests/artefacto/package.json
