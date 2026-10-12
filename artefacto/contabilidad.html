@@ -195,6 +195,25 @@ td input.monto { width: 9em; }
 .ap-rejilla > div { display: grid; gap: 6px; align-content: start; } .ap-rejilla h3 { margin: 0; }
 input[type="color"].ap-color-input { width: 40px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: none; cursor: pointer; }
 @media print { .menu { display: none; } }
+/* ---- resumen ejecutivo */
+.rs-hero { background: var(--accent-soft); border: 1px solid var(--line); border-left: 5px solid var(--accent); border-radius: calc(var(--radius) + 2px); padding: 18px 22px; display: grid; gap: 6px; }
+.rs-hero p { font-size: clamp(17px, 2.4vw, 22px); line-height: 1.35; font-weight: 500; text-wrap: balance; }
+.rs-hero small { color: var(--muted); }
+.rs-tile { background: var(--surface); border: 1px solid var(--line); border-radius: calc(var(--radius) + 2px); padding: 12px 14px; display: grid; gap: 3px; border-top: 4px solid var(--line); }
+.rs-tile.ok { border-top-color: #2e9e6b; } .rs-tile.aviso { border-top-color: #d99a00; } .rs-tile.mal { border-top-color: var(--neg); }
+.rs-tile span { font-size: 12px; color: var(--muted); } .rs-tile strong { font: 600 22px var(--font-num); font-variant-numeric: tabular-nums; } .rs-tile small { color: var(--muted); font-size: 12px; }
+.rs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+.rs-fila { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.rs-fila:last-child { border-bottom: none; } .rs-fila small { display: block; color: var(--muted); font-size: 12px; } .rs-fila b { font: 600 14px var(--font-num); white-space: nowrap; }
+.rs-barra { display: grid; gap: 3px; padding: 5px 0; } .rs-barra div { height: 9px; background: var(--surface-2); border-radius: 99px; overflow: hidden; } .rs-barra i { display: block; height: 100%; background: var(--accent); }
+.rs-barra span { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.rs-punto { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0; } .rs-punto i { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: #2e9e6b; }
+.rs-punto.aviso i { background: #d99a00; } .rs-punto.mal i { background: var(--neg); }
+.rs-leyenda { display: flex; gap: 16px; font-size: 12px; color: var(--muted); } .rs-leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.rs-salir { display: none; } body.presentando .menu { display: none; } body.presentando .app { grid-template-columns: minmax(0, 1fr); }
+body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra-controles { display: none; } body.presentando .banner-sistema { display: none; }
+.rs-notas { width: 100%; min-height: 90px; font: 14px var(--font-ui); }
+@media print { .rs-barra-controles, .rs-salir { display: none; } }
 </style>
 
 <div class="app">
@@ -219,7 +238,7 @@ input[type="color"].ap-color-input { width: 40px; height: 30px; padding: 0; bord
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.6.0";
+const VERSION = "1.7.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -492,7 +511,7 @@ const SECCIONES = [
   ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["sueldos", "Sueldo empresarial"], ["honorarios", "Honorarios"], ["f29", "Borrador F29"], ["renta", "Renta anual (F22)"], ["dj", "Declaraciones juradas"], ["tributarias", "Cuentas tributarias"]]],
   ["Gestión", [["rrhh", "Personal y remuneraciones"], ["activos", "Activo fijo"]]],
   ["Libros", [["diario", "Libro Diario"], ["mayor", "Libro Mayor"]]],
-  ["Informes", [["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
+  ["Informes", [["resumen", "Resumen ejecutivo"], ["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
   ["Administración", [["periodos", "Cierre de meses"], ["cierre", "Cierre de ejercicio"], ["apertura", "Apertura de ejercicio"],
     ["empresa", "Datos de la empresa"], ["contador", "Contador y firma"], ["apariencia", "Apariencia"], ["empresas", "Empresas e importación"]]],
 ];
@@ -534,7 +553,7 @@ function render() {
   else if (S.cargandoAsientos && ![...SIN_EMPRESA, "empresa", "cuentas"].includes(S.vista)) html = `<div class="vacio"><p>Cargando asientos de ${esc(e.razon_social)}…</p></div>`;
   else html = ({ inicio: vistaInicio, asientos: vistaAsientos, editor: vistaEditor, cuentas: vistaCuentas, diario: vistaDiario, mayor: vistaMayor,
     ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas,
-    periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador, apariencia: vistaApariencia,
+    periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador, apariencia: vistaApariencia, resumen: vistaResumen,
     rcv: vistaRcv, tributarias: vistaTributarias, f29: vistaF29, sueldos: vistaSueldos, honorarios: vistaHonorarios,
     rrhh: vistaRrhh, activos: vistaActivos, renta: vistaRenta, dj: vistaDj }[S.vista] || vistaInicio)();
   const banner = !S.almacen.enLinea
@@ -3395,7 +3414,7 @@ function informeHistorialHonorarios(lista) {
 
 /* ================================================================== activo fijo, personal y remuneraciones, renta anual */
 Object.assign(S, {
-  activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], finiquitos: [], finiqEdit: null, vacFecha: null, vacTrab: null, renta: [], desuscribirNx: [],
+  activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], finiquitos: [], finiqEdit: null, vacFecha: null, vacTrab: null, resPeriodo: null, resEid: null, presentando: false, renta: [], desuscribirNx: [],
   prev: { uf: {}, parametros: [] },
   activoEdit: null, afPeriodo: null, afPeriodoEid: null, afAnio: null,
   trabEdit: null, contratoVer: null, liqVer: null, liqPeriodo: null, liqPeriodoEid: null, prevEdit: null,
@@ -5090,6 +5109,9 @@ document.addEventListener("click", (ev) => {
     case "ver-contrato": S.contratoVer = id; render(); window.scrollTo(0, 0); break;
     case "volver-trabajadores": S.contratoVer = null; render(); break;
     case "pdf-contrato": { const tr = trabajadorPorId(id); ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`contrato_${nombreSeguro(tr.nombre)}.pdf`, await pdfContrato(tr), "Contrato descargado."); }, "No se pudo generar el contrato"); break; }
+    case "rs-presentar": presentar(true); break;
+    case "rs-salir": presentar(false); break;
+    case "rs-pdf": { const p = resumenPeriodo(); ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`${nombreSeguro(empresa().razon_social)}_resumen_ejecutivo_${p}.pdf`, await pdfResumen(datosResumen(p), recuerdo(claveNotas(p), "")), "Resumen descargado."); }, "No se pudo generar el resumen"); break; }
     case "agregar-haber-fijo": actualizarFormTrabajador((x) => x.haberes_fijos = [...(x.haberes_fijos || []), { concepto: "", monto: 0, imponible: true, proporcional: true }]); break;
     case "quitar-haber-fijo": actualizarFormTrabajador((x) => x.haberes_fijos = (x.haberes_fijos || []).filter((_, i) => i !== +id)); break;
     case "agregar-descuento-fijo": actualizarFormTrabajador((x) => x.descuentos_fijos = [...(x.descuentos_fijos || []), { concepto: "", tipo: "monto", valor: 0 }]); break;
@@ -5323,7 +5345,7 @@ function cambiarEmpresa(id) {
   S.desuscribirF29?.(); S.desuscribirF29 = null; S.f29Borradores = []; S.f29 = null;
   S.desuscribirRem.forEach((f) => f?.()); S.desuscribirRem = []; S.socios = []; S.sueldos = []; S.honorarios = []; S.remPeriodo = null;
   S.desuscribirNx.forEach((f) => f?.()); S.desuscribirNx = [];
-  S.activos = []; S.depreciaciones = []; S.trabajadores = []; S.liquidaciones = []; S.finiquitos = []; S.finiqEdit = null; S.vacFecha = null; S.vacTrab = null; S.renta = [];
+  S.activos = []; S.depreciaciones = []; S.trabajadores = []; S.liquidaciones = []; S.finiquitos = []; S.finiqEdit = null; S.vacFecha = null; S.vacTrab = null; S.resPeriodo = null; S.renta = [];
   S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null; S.rentaEdit = null; S.afPeriodo = null; S.liqPeriodo = null;
   S.periodosAnio = null; S.cierreAnio = null; S.apertura = null;
   S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
@@ -5540,6 +5562,196 @@ document.addEventListener("focusout", (ev) => {
 });
 
 /* ------------------------------------------------------------------ inicio */
+/* ------------------------------------------------------------------ resumen ejecutivo para el dueño de la empresa */
+const mesesAtras = (p, n) => { let [a, m] = p.split("-").map(Number); m -= n; while (m < 1) { m += 12; a--; } return `${a}-${String(m).padStart(2, "0")}`; };
+function resultadoMes(p) { const er = estadoResultados(`${p}-01`, ultimoDia(p)); return { ingresos: er.ingresos.total, gastos: er.gastos.total, resultado: er.resultado, hay: !!(er.ingresos.total || er.gastos.total), er }; }
+const variacion = (actual, ref) => (ref ? ((actual - ref) / Math.abs(ref)) * 100 : null);
+function textoVar(v, ref) { if (v == null || !Number.isFinite(v)) return ""; return Math.abs(v) < 1 ? `igual que ${ref}` : `${Math.round(Math.abs(v))} % ${v > 0 ? "más" : "menos"} que ${ref}`; }
+function resumenPeriodo() {
+  if (S.resEid !== S.eid || !S.resPeriodo) {
+    const e = empresa(), ej = String(e.ejercicio), usados = S.lista.filter((a) => !a.apertura && a.fecha.startsWith(ej)).map((a) => a.fecha.slice(0, 7)).sort();
+    S.resPeriodo = usados.at(-1) || `${ej}-01`; S.resEid = S.eid;
+  }
+  return S.resPeriodo;
+}
+const claveNotas = (p) => `resumen-${S.eid}-${p}`;
+function datosResumen(p) {
+  const anio = p.slice(0, 4), mm = p.slice(5), hasta = ultimoDia(p), ct = cuentasTributarias(), pasado = `${+anio - 1}-${mm}`, previo = periodoAnterior(p);
+  const mes = resultadoMes(p), ant = resultadoMes(previo), pa = resultadoMes(pasado);
+  const acum = estadoResultados(`${anio}-01-01`, hasta), acumPa = estadoResultados(`${+anio - 1}-01-01`, ultimoDia(pasado));
+  const serie = Array.from({ length: 12 }, (_, i) => { const q = mesesAtras(p, 11 - i), r = resultadoMes(q); return { periodo: q, ingresos: r.ingresos, gastos: r.gastos, resultado: r.resultado }; });
+  const gastos = hojasArbol(acum.gastos).map((f) => ({ nombre: f.nombre, monto: f.monto })).sort((a, b) => b.monto - a.monto);
+  const top = gastos.slice(0, 5), otros = gastos.slice(5).reduce((x, f) => x + f.monto, 0);
+  if (otros > 0) top.push({ nombre: "Otros gastos", monto: otros });
+  const bg = balanceGeneral(hasta), caja = disponible(hasta);
+  const hoja = (arbol, id) => { const c = id && S.porId.get(id); return c ? arbol.filas.find((f) => !f.grupo && f.codigo === c.codigo)?.monto || 0 : 0; };
+  const suma = (arbol, pref) => arbol.filas.filter((f) => !f.grupo && f.codigo.startsWith(pref)).reduce((x, f) => x + f.monto, 0);
+  const clientes = hoja(bg.activo, ct.clientes), proveedores = hoja(bg.pasivo, ct.proveedores), cotizaciones = hoja(bg.pasivo, ct.rem_cotizaciones);
+  const activoCirc = suma(bg.activo, "1.1."), pasivoCirc = suma(bg.pasivo, "2.1.");
+  let f29 = null;
+  try { const ini = valoresInicialesF29(p), r = calcularF29(p, ini.remanente_anterior || 0, ini.utm_anterior, ini.utm_actual); f29 = { iva: r.codigos["89"], remanente: r.codigos["77"], ppm: r.codigos["62"], retenciones: r.codigos["151"], unico: r.codigos["48"], total: r.codigos["91"], documentos: r.documentos, pendientes: r.pendientes }; } catch (_) {}
+  const liq = S.liquidaciones.filter((l) => l.periodo === p);
+  const rem = liq.length ? { cantidad: liq.length, liquido: liq.reduce((x, l) => x + l.liquido, 0), costo: liq.reduce((x, l) => x + (l.costo_empresa || 0), 0) } : null;
+  const aPagar = (f29?.total || 0) + Math.max(cotizaciones, 0);
+  const d = { periodo: p, anio, hasta, mes, ant, pa, previo, acum, acumPa, serie, top, caja, clientes, proveedores, cotizaciones, patrimonio: bg.totalPatrimonio, pasivo: bg.pasivo.total, activo: bg.activo.total,
+    margen: mes.ingresos ? (mes.resultado / mes.ingresos) * 100 : null, liquidez: pasivoCirc > 0 ? activoCirc / pasivoCirc : null, endeudamiento: bg.totalPatrimonio > 0 ? bg.pasivo.total / bg.totalPatrimonio : null,
+    f29, rem, aPagar, cuadra: bg.activo.total === bg.totalPasivoPatrimonio };
+  d.vIngresos = variacion(mes.ingresos, ant.ingresos); d.vGastos = variacion(mes.gastos, ant.gastos); d.vAnio = variacion(mes.ingresos, pa.ingresos);
+  d.tonos = { ingresos: d.vIngresos != null && d.vIngresos < -10 ? "aviso" : "ok", gastos: d.vGastos != null && d.vGastos > 20 ? "aviso" : "ok", resultado: mes.resultado < 0 ? "mal" : "ok",
+    caja: caja < 0 ? "mal" : caja < aPagar ? "aviso" : "ok" };
+  /* Puntos de atención */
+  const pt = [], nm = nombrePeriodo(p);
+  if (!mes.hay) pt.push(["aviso", `No hay movimientos contables registrados en ${nm}.`]);
+  if (caja < 0) pt.push(["mal", "El saldo de caja y bancos es negativo: revise los registros o los giros en descubierto."]);
+  else if (aPagar && caja < aPagar) pt.push(["aviso", `El dinero disponible ($${clp(caja)}) no alcanza para las obligaciones del mes siguiente ($${clp(aPagar)}).`]);
+  if (mes.hay && mes.resultado < 0) pt.push(["aviso", `${nm[0].toUpperCase() + nm.slice(1)} cerró con pérdida de $${clp(-mes.resultado)}.`]);
+  if (acum.resultado < 0) pt.push(["mal", `En lo que va del año los gastos superan a los ingresos en $${clp(-acum.resultado)}.`]);
+  if (d.liquidez != null && d.liquidez < 1) pt.push(["aviso", "Sus deudas de corto plazo son mayores que lo que tiene disponible o por cobrar en el corto plazo."]);
+  if (bg.totalPatrimonio < 0) pt.push(["mal", "El patrimonio es negativo: las deudas superan a los bienes de la empresa."]);
+  const sinCerrar = [...new Set(S.lista.filter((a) => !a.apertura && !a.cierre && a.fecha.startsWith(anio) && a.fecha.slice(0, 7) < p).map((a) => a.fecha.slice(0, 7)))].filter((q) => !cerrados()[q]);
+  if (sinCerrar.length) pt.push(["aviso", `Hay ${sinCerrar.length} mes(es) anterior(es) del año sin cerrar contablemente.`]);
+  if (f29?.pendientes) pt.push(["aviso", `Hay ${f29.pendientes} documento(s) de compras o ventas de ${nm} sin registrar en la contabilidad: las cifras pueden cambiar.`]);
+  else if (f29 && !f29.documentos) pt.push(["aviso", `No se han cargado las compras y ventas de ${nm}: el IVA a pagar puede estar incompleto.`]);
+  if (!d.cuadra) pt.push(["mal", "El balance no cuadra: se debe revisar la contabilidad antes de entregar este resumen."]);
+  if (f29?.remanente) pt.push(["ok", `Tiene un remanente de IVA a su favor de $${clp(f29.remanente)}, que se descuenta del IVA de los próximos meses.`]);
+  if (!pt.length) pt.push(["ok", "Sin observaciones relevantes: la contabilidad está al día y los indicadores son sanos."]);
+  d.puntos = pt;
+  /* Sugerencias */
+  const sg = [];
+  if (f29?.total > 0) sg.push(`Reserve $${clp(f29.total)} para el F29 de ${nm}: se declara y paga en la primera quincena del mes siguiente (hasta el día 20 si lo hace por internet).`);
+  if (aPagar && caja < aPagar) sg.push("Conviene adelantar cobros o postergar gastos que no sean urgentes, para cubrir los pagos de impuestos y cotizaciones.");
+  if (mes.ingresos && clientes > mes.ingresos * 1.5) sg.push(`Sus clientes le deben $${clp(clientes)}, más que un mes y medio de ventas: vale la pena reforzar la cobranza.`);
+  if (acum.resultado > 0) sg.push("Antes de retirar utilidades o hacer inversiones grandes, conversemos el efecto en sus impuestos.");
+  if (acum.resultado < 0) sg.push("Revisemos juntos sus gastos principales para recuperar el resultado.");
+  d.sugerencias = sg;
+  d.titular = !mes.hay ? `No hay movimientos contables registrados en ${nm}.`
+    : `En ${nm} su empresa ${mes.resultado >= 0 ? "ganó" : "perdió"} $${clp(Math.abs(mes.resultado))}, con ingresos por $${clp(mes.ingresos)}${d.vIngresos != null ? ` (${textoVar(d.vIngresos, nombrePeriodo(previo))})` : ""}. Al cierre del mes dispone de $${clp(caja)} en caja y bancos.`;
+  return d;
+}
+const lecturaIndicadores = (d) => [
+  d.margen != null ? ["Margen del mes", `${comaDecimal(d.margen.toFixed(1))} %`, `De cada $100 que vendió, ${d.margen >= 0 ? `le quedaron $${comaDecimal(d.margen.toFixed(1))}` : `perdió $${comaDecimal((-d.margen).toFixed(1))}`}.`] : null,
+  d.liquidez != null ? ["Liquidez", comaDecimal(d.liquidez.toFixed(2)), `Por cada $1 que debe en el corto plazo, cuenta con $${comaDecimal(d.liquidez.toFixed(2))}.`] : null,
+  d.endeudamiento != null && d.pasivo > 0 ? ["Endeudamiento", comaDecimal(d.endeudamiento.toFixed(2)), `Por cada $1 propio, la empresa debe $${comaDecimal(d.endeudamiento.toFixed(2))}.`] : null].filter(Boolean);
+
+function svgSerie(serie) {
+  const W = 600, H = 190, base = 160, top = 12, max = Math.max(1, ...serie.flatMap((x) => [x.ingresos, x.gastos])), paso = (W - 20) / serie.length, ancho = paso * 0.34;
+  const alto = (v) => Math.max(0, (v / max) * (base - top));
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ingresos y gastos de los últimos 12 meses" style="width:100%;height:auto"><line x1="10" x2="${W - 10}" y1="${base}" y2="${base}" stroke="var(--line)"/>
+    ${serie.map((x, i) => { const cx = 10 + paso * i + paso / 2;
+      return `<g><title>${esc(nombrePeriodo(x.periodo))}: ingresos $${clp(x.ingresos)}, gastos $${clp(x.gastos)}</title>
+        <rect x="${cx - ancho - 1}" y="${base - alto(x.ingresos)}" width="${ancho}" height="${alto(x.ingresos)}" fill="var(--accent)" rx="2"/>
+        <rect x="${cx + 1}" y="${base - alto(x.gastos)}" width="${ancho}" height="${alto(x.gastos)}" fill="var(--muted)" opacity=".55" rx="2"/>
+        <text x="${cx}" y="${base + 16}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(MESES[+x.periodo.slice(5) - 1].slice(0, 3))}</text></g>`; }).join("")}</svg>`;
+}
+function vistaResumen() {
+  const p = resumenPeriodo(), d = datosResumen(p), e = empresa(), notas = recuerdo(claveNotas(p), ""), nm = nombrePeriodo(p);
+  const tile = (titulo, valor, sub, tono) => `<div class="rs-tile ${tono}"><span>${titulo}</span><strong>$${clp(valor)}</strong><small>${esc(sub)}</small></div>`;
+  const fila = (t, sub, v) => `<div class="rs-fila"><div>${t}${sub ? `<small>${sub}</small>` : ""}</div><b>${v}</b></div>`;
+  const maxG = Math.max(1, ...d.top.map((x) => x.monto)), totG = d.top.reduce((x, f) => x + f.monto, 0) || 1;
+  return `${cabecera("Resumen ejecutivo", e.razon_social)}
+  <div class="barra rs-barra-controles"><label>Mes a presentar<input type="month" id="rs-periodo" value="${p}"></label>
+    ${S.descargas ? `<button class="btn" type="button" data-n="rs-pdf">Descargar PDF</button>` : ""}<button class="btn sec" type="button" data-n="rs-presentar">Modo presentación</button></div>
+  <button class="btn sec rs-salir" type="button" data-n="rs-salir">Salir de la presentación</button>
+  <section class="rs-hero"><small>${esc(e.razon_social)} · Resumen de ${nm} · Información al ${fmtFecha(d.hasta)}</small><p>${esc(d.titular)}</p></section>
+  <div class="tarjetas">
+    ${tile("Lo que entró (ingresos)", d.mes.ingresos, d.vIngresos != null ? textoVar(d.vIngresos, nombrePeriodo(d.previo)) : "Sin mes anterior para comparar", d.tonos.ingresos)}
+    ${tile("Lo que salió (gastos)", d.mes.gastos, d.vGastos != null ? textoVar(d.vGastos, nombrePeriodo(d.previo)) : "Sin mes anterior para comparar", d.tonos.gastos)}
+    ${tile(d.mes.resultado < 0 ? "Lo que perdió" : "Lo que le quedó (utilidad)", Math.abs(d.mes.resultado), `Acumulado del año: ${d.acum.resultado < 0 ? "-" : ""}$${clp(Math.abs(d.acum.resultado))}`, d.tonos.resultado)}
+    ${tile("Dinero disponible", d.caja, d.aPagar ? `Obligaciones del mes siguiente: $${clp(d.aPagar)}` : "Caja y bancos al cierre", d.tonos.caja)}
+  </div>
+  <section class="caja"><h2>Ingresos y gastos de los últimos 12 meses</h2>${svgSerie(d.serie)}
+    <div class="rs-leyenda"><span><i style="background:var(--accent)"></i>Ingresos</span><span><i style="background:var(--muted);opacity:.55"></i>Gastos</span>${d.pa.hay ? `<span>${esc(nm)} del año anterior: ingresos $${clp(d.pa.ingresos)}</span>` : ""}</div></section>
+  <div class="rs-grid">
+    <section class="caja"><h2>¿Cómo está su empresa hoy?</h2>
+      ${fila("Dinero disponible", "Caja y bancos", `$${clp(d.caja)}`)}
+      ${d.clientes ? fila("Lo que le deben sus clientes", "Ventas aún no cobradas", `$${clp(d.clientes)}`) : ""}
+      ${d.proveedores ? fila("Lo que debe a proveedores", "Compras aún no pagadas", `$${clp(d.proveedores)}`) : ""}
+      ${fila("Lo que vale la empresa (patrimonio)", "Bienes menos deudas", `$${clp(d.patrimonio)}`)}
+      ${lecturaIndicadores(d).map(([t, v, sub]) => fila(t, sub, v)).join("")}</section>
+    <section class="caja"><h2>¿En qué se va el dinero?</h2><p class="ayuda">Mayores gastos en lo que va de ${d.anio}.</p>
+      ${d.top.length ? d.top.map((x) => `<div class="rs-barra"><span><span>${esc(x.nombre)}</span><b>$${clp(x.monto)} · ${Math.round((x.monto / totG) * 100)} %</b></span><div><i style="width:${Math.max(2, (x.monto / maxG) * 100)}%"></i></div></div>`).join("") : `<p class="ayuda">Aún no hay gastos registrados en el año.</p>`}</section>
+  </div>
+  <section class="caja"><h2>Lo que viene: pagos del mes siguiente</h2>
+    ${d.f29 ? `${fila("IVA a pagar", "Ventas menos compras del mes", `$${clp(d.f29.iva)}`)}${fila("Pago provisional mensual (PPM)", "Adelanto de su impuesto a la renta", `$${clp(d.f29.ppm)}`)}
+      ${d.f29.retenciones ? fila("Retención de honorarios", "", `$${clp(d.f29.retenciones)}`) : ""}${d.f29.unico ? fila("Impuesto único del sueldo", "", `$${clp(d.f29.unico)}`) : ""}
+      ${fila("<strong>Total del F29</strong>", "Se declara y paga hasta el día 12 del mes siguiente (20 por internet)", `<strong>$${clp(d.f29.total)}</strong>`)}` : `<p class="ayuda">No se pudo calcular el F29: configure las cuentas en Tributario → Cuentas tributarias.</p>`}
+    ${d.cotizaciones > 0 ? fila("Cotizaciones previsionales por pagar", "AFP, salud y seguro de cesantía", `$${clp(d.cotizaciones)}`) : ""}
+    ${d.rem ? fila(`Remuneraciones de ${nm}`, `${d.rem.cantidad} trabajador(es); costo total para la empresa $${clp(d.rem.costo)}`, `$${clp(d.rem.liquido)}`) : ""}</section>
+  <section class="caja"><h2>Puntos de atención</h2>${d.puntos.map(([t, x]) => `<div class="rs-punto ${t}"><i></i><span>${esc(x)}</span></div>`).join("")}</section>
+  <section class="caja"><h2>Recomendaciones</h2>${d.sugerencias.map((x) => `<div class="rs-punto"><i style="background:var(--accent)"></i><span>${esc(x)}</span></div>`).join("")}
+    <label class="rs-barra-controles" style="display:grid;gap:4px;color:var(--muted);font-size:13px">Comentarios del contador (aparecen en el PDF)<textarea class="rs-notas" id="rs-notas" placeholder="Escriba aquí sus comentarios personalizados para el cliente">${esc(notas)}</textarea></label>
+    ${notas ? `<p class="ayuda" style="color:var(--fg);white-space:pre-wrap;max-width:none">${esc(notas)}</p>` : ""}</section>
+  <p class="ayuda">Información preliminar basada en los registros contables al ${fmtFecha(d.hasta)}. No reemplaza las declaraciones tributarias ni los estados financieros formales.</p>`;
+}
+
+async function pdfResumen(d, notas) {
+  await cargarScript("jspdf");
+  const { jsPDF } = window.jspdf, e = empresa(), a = apariencia();
+  const hex = a.acento === "personal" ? a.acentoPersonal : ACENTOS[a.acento][1], AC = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const doc = new jsPDF({ unit: "pt", format: "letter", compress: true }), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 40, ancho = W - 2 * m;
+  const GRIS = [110, 110, 110], TXT = [30, 30, 30], VERDE = [46, 158, 107], AMAR = [217, 154, 0], ROJOP = [180, 35, 24], CLARO = [243, 244, 244];
+  const tono = (t) => (t === "mal" ? ROJOP : t === "aviso" ? AMAR : VERDE), nm = nombrePeriodo(d.periodo), Nm = nm[0].toUpperCase() + nm.slice(1);
+  const t = (x) => textoPdf(x), $$ = (n) => `$${clp(n)}`;
+  doc.setProperties({ title: `Resumen ejecutivo ${Nm} – ${e.razon_social}`, author: S.contador.nombre || e.razon_social });
+  let y = 0;
+  const salto = (alto) => { if (y + alto > H - 50) { doc.addPage(); y = m; } };
+  const titulo = (x, min = 40) => { salto(min); y += 8; doc.setFont("helvetica", "bold"); doc.setFontSize(11.5); doc.setTextColor(...AC); doc.text(t(x), m, y); doc.setDrawColor(...AC); doc.setLineWidth(0.8); doc.line(m, y + 4, W - m, y + 4); y += 20; };
+  const parrafo = (x, tam = 9.5, color = TXT, sangria = 0, negrita = false) => { doc.setFont("helvetica", negrita ? "bold" : "normal"); doc.setFontSize(tam); doc.setTextColor(...color); for (const l of doc.splitTextToSize(t(x), ancho - sangria)) { salto(tam + 4); doc.text(l, m + sangria, y); y += tam + 3.5; } };
+  const fila = (rot, sub, valor, negrita = false) => { salto(30); doc.setFont("helvetica", negrita ? "bold" : "normal"); doc.setFontSize(10); doc.setTextColor(...TXT); doc.text(t(rot), m, y); doc.text(t(valor), W - m, y, { align: "right" });
+    if (sub) { y += 10.5; doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GRIS); doc.text(t(sub), m, y); } y += 6; doc.setDrawColor(225, 225, 225); doc.setLineWidth(0.4); doc.line(m, y, W - m, y); y += 12; };
+  const punto = (color, x) => { const ls = doc.splitTextToSize(t(x), ancho - 16); salto(ls.length * 12 + 4); doc.setFillColor(...color); doc.circle(m + 3, y - 3, 3, "F"); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...TXT); for (const l of ls) { doc.text(l, m + 14, y); y += 12.5; } y += 2; };
+
+  doc.setFillColor(...AC); doc.rect(0, 0, W, 78, "F"); doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(17); doc.text(t((e.razon_social || "").toUpperCase()), m, 34, { maxWidth: ancho - 120 });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.text(t(`Resumen ejecutivo · ${Nm}`), m, 54); doc.text(t(e.rut ? `RUT ${e.rut}` : ""), W - m, 34, { align: "right" }); doc.text(t(`Información al ${fmtFecha(d.hasta)}`), W - m, 54, { align: "right" });
+  y = 108;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(...TXT); for (const l of doc.splitTextToSize(t(d.titular), ancho)) { doc.text(l, m, y); y += 19; }
+  y += 8;
+  const tw = (ancho - 30) / 4, tiles = [["Lo que entró", d.mes.ingresos, d.vIngresos != null ? textoVar(d.vIngresos, nombrePeriodo(d.previo)) : "", d.tonos.ingresos], ["Lo que salió", d.mes.gastos, d.vGastos != null ? textoVar(d.vGastos, nombrePeriodo(d.previo)) : "", d.tonos.gastos],
+    [d.mes.resultado < 0 ? "Lo que perdió" : "Lo que le quedó", Math.abs(d.mes.resultado), `Acumulado año: ${d.acum.resultado < 0 ? "-" : ""}${$$(Math.abs(d.acum.resultado))}`, d.tonos.resultado], ["Dinero disponible", d.caja, d.aPagar ? `A pagar mes siguiente: ${$$(d.aPagar)}` : "Caja y bancos", d.tonos.caja]];
+  tiles.forEach(([r, v, sub, tn], i) => { const x = m + i * (tw + 10); doc.setFillColor(...CLARO); doc.rect(x, y, tw, 66, "F"); doc.setFillColor(...tono(tn)); doc.rect(x, y, tw, 4, "F");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GRIS); doc.text(t(r), x + 8, y + 19); doc.setFont("helvetica", "bold"); doc.setFontSize(14.5); doc.setTextColor(...TXT); doc.text(t($$(v)), x + 8, y + 40);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GRIS); doc.text(doc.splitTextToSize(t(sub), tw - 14).slice(0, 2), x + 8, y + 54); });
+  y += 84;
+  titulo("Ingresos y gastos de los últimos 12 meses");
+  const base = y + 100, paso = ancho / 12, bw = paso * 0.34, mx = Math.max(1, ...d.serie.flatMap((x) => [x.ingresos, x.gastos])), alt = (v) => (v / mx) * 92;
+  doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.5); doc.line(m, base, W - m, base);
+  d.serie.forEach((x, i) => { const cx = m + paso * i + paso / 2; doc.setFillColor(...AC); doc.rect(cx - bw - 0.5, base - alt(x.ingresos), bw, alt(x.ingresos), "F"); doc.setFillColor(175, 175, 175); doc.rect(cx + 0.5, base - alt(x.gastos), bw, alt(x.gastos), "F");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GRIS); doc.text(t(MESES[+x.periodo.slice(5) - 1].slice(0, 3)), cx, base + 10, { align: "center" }); });
+  y = base + 26; doc.setFillColor(...AC); doc.rect(m, y - 6, 8, 8, "F"); doc.setFontSize(8); doc.text("Ingresos", m + 12, y); doc.setFillColor(175, 175, 175); doc.rect(m + 60, y - 6, 8, 8, "F"); doc.text("Gastos", m + 72, y); y += 16;
+  titulo("¿Cómo está su empresa hoy?");
+  fila("Dinero disponible", "Caja y bancos", $$(d.caja));
+  if (d.clientes) fila("Lo que le deben sus clientes", "Ventas aún no cobradas", $$(d.clientes));
+  if (d.proveedores) fila("Lo que debe a proveedores", "Compras aún no pagadas", $$(d.proveedores));
+  fila("Lo que vale la empresa (patrimonio)", "Bienes menos deudas", $$(d.patrimonio));
+  for (const [r, v, sub] of lecturaIndicadores(d)) fila(r, sub, v);
+  titulo("¿En qué se va el dinero?"); parrafo(`Mayores gastos en lo que va de ${d.anio}.`, 8.5, GRIS);
+  const tg = d.top.reduce((x, f) => x + f.monto, 0) || 1, mg = Math.max(1, ...d.top.map((x) => x.monto));
+  if (!d.top.length) parrafo("Aún no hay gastos registrados en el año.");
+  for (const g of d.top) { salto(30); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...TXT); doc.text(t(g.nombre), m, y); doc.text(t(`${$$(g.monto)} · ${Math.round((g.monto / tg) * 100)} %`), W - m, y, { align: "right" });
+    y += 5; doc.setFillColor(232, 232, 232); doc.rect(m, y, ancho, 6, "F"); doc.setFillColor(...AC); doc.rect(m, y, Math.max(3, (g.monto / mg) * ancho), 6, "F"); y += 19; }
+  titulo("Lo que viene: pagos del mes siguiente", 190);
+  if (d.f29) { fila("IVA a pagar", "Ventas menos compras del mes", $$(d.f29.iva)); fila("Pago provisional mensual (PPM)", "Adelanto de su impuesto a la renta", $$(d.f29.ppm));
+    if (d.f29.retenciones) fila("Retención de honorarios", "", $$(d.f29.retenciones)); if (d.f29.unico) fila("Impuesto único del sueldo", "", $$(d.f29.unico));
+    fila("Total del F29", "Se declara y paga hasta el día 12 del mes siguiente (20 por internet)", $$(d.f29.total), true); }
+  else parrafo("No se pudo calcular el F29 con la información disponible.", 9, GRIS);
+  if (d.cotizaciones > 0) fila("Cotizaciones previsionales por pagar", "AFP, salud y seguro de cesantía", $$(d.cotizaciones));
+  if (d.rem) fila(`Remuneraciones de ${nm}`, `${d.rem.cantidad} trabajador(es); costo total para la empresa ${$$(d.rem.costo)}`, $$(d.rem.liquido));
+  titulo("Puntos de atención", 90); for (const [tn, x] of d.puntos) punto(tono(tn), x);
+  if (d.sugerencias.length || notas) { titulo("Recomendaciones"); for (const x of d.sugerencias) punto(AC, x); if (notas) { y += 4; parrafo("Comentarios del contador", 9, GRIS, 0, true); parrafo(notas, 9.5); } }
+  y += 10; parrafo("Información preliminar basada en los registros contables a la fecha indicada. No reemplaza las declaraciones tributarias ni los estados financieros formales.", 7.5, GRIS);
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GRIS);
+    doc.text(t(S.contador.nombre ? `Preparado por ${S.contador.nombre}${S.contador.rut ? ` · RUT ${S.contador.rut}` : ""}` : e.razon_social), m, H - 28); doc.text(`Página ${i} de ${n}`, W - m, H - 28, { align: "right" }); }
+  return doc.output("blob");
+}
+function presentar(si) { S.presentando = si; document.body.classList.toggle("presentando", si); if (si) window.scrollTo(0, 0); }
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && S.presentando) presentar(false); });
+document.addEventListener("change", (ev) => {
+  if (ev.target.id === "rs-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.resPeriodo = ev.target.value; S.resEid = S.eid; render(); }
+  else if (ev.target.id === "rs-notas") { recordar(claveNotas(resumenPeriodo()), ev.target.value); render(); }
+});
+
 /* ------------------------------------------------------------------ apariencia */
 /* [nombre, fondo, superficie, texto, ¿oscuro?] */
 const TEMAS = { light: ["Claro", "#f3f6f5", "#ffffff", "#16201c", false], dark: ["Oscuro", "#0e1412", "#151d1a", "#e3ebe8", true], papel: ["Papel", "#f1e9d6", "#fbf6e9", "#3b3226", false],

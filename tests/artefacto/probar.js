@@ -212,6 +212,28 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   await page.evaluate(() => { cambiarEmpresa("e1"); });
   await espera(150);
 
+  console.log("Resumen ejecutivo");
+  const rs = await page.evaluate(async () => {
+    const d = datosResumen("2026-09"), d0 = datosResumen("2020-03");
+    ir("resumen"); await new Promise((r) => setTimeout(r, 60));
+    const html = document.querySelector("main").textContent;
+    const blob = await pdfResumen(d, "Comentario de prueba");
+    return { ok: d.serie.length === 12 && d.tonos && Array.isArray(d.puntos) && d.puntos.length > 0, titular: d.titular, hay: d.mes.hay, res: d.mes.resultado, ing: d.mes.ingresos, gas: d.mes.gastos, cuadra: d.cuadra, vacio: d0.titular, pdf: blob.size, tiles: document.querySelectorAll(".rs-tile").length, svg: !!document.querySelector("main svg"), html: /Puntos de atención/.test(html) && /Recomendaciones/.test(html) };
+  });
+  ok("el resumen reúne indicadores, serie de 12 meses y puntos de atención", rs.ok, JSON.stringify(rs));
+  ok("el resultado del mes es ingresos menos gastos", rs.res === rs.ing - rs.gas);
+  ok("un mes sin movimientos lo dice con claridad", /No hay movimientos/.test(rs.vacio));
+  ok("el titular está en lenguaje simple", /su empresa (ganó|perdió)|No hay movimientos/.test(rs.titular), rs.titular);
+  ok("la pantalla muestra cuatro indicadores, el gráfico y las secciones", rs.tiles === 4 && rs.svg && rs.html);
+  ok("el PDF del resumen se genera", rs.pdf > 3000, String(rs.pdf));
+  await page.evaluate(() => { presentar(true); });
+  ok("el modo presentación oculta el menú", await page.evaluate(() => getComputedStyle(document.querySelector(".menu")).display === "none"));
+  await page.keyboard.press("Escape");
+  ok("Escape sale de la presentación", await page.evaluate(() => getComputedStyle(document.querySelector(".menu")).display !== "none"));
+  await page.evaluate(() => { document.querySelector("#rs-notas").value = "Nota de prueba"; document.querySelector("#rs-notas").dispatchEvent(new Event("change", { bubbles: true })); });
+  ok("los comentarios del contador se recuerdan", await page.evaluate(() => /Nota de prueba/.test(document.querySelector("main").textContent)));
+  await page.evaluate(() => { recordar(claveNotas("2026-09"), ""); ir("inicio"); });
+
   console.log("Apariencia");
   await page.evaluate(() => ir("apariencia")); await espera();
   ok("la pantalla de apariencia se dibuja con estilos, temas y colores", await page.evaluate(() => document.querySelectorAll("[data-estilo]").length >= 8 && document.querySelectorAll('[data-ap="tema"]').length >= 8 && document.querySelectorAll('[data-ap="acento"]').length >= 9));
@@ -265,7 +287,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("reemplazar recupera lo borrado sin duplicar la empresa", [reemplazo.eid, reemplazo.activos, reemplazo.empresas], ["e1", 2, 3]);
 
   console.log("Pantallas");
-  const vistas = [["inicio"], ["activos", "fichas"], ["activos", "dep"], ["activos", "libro"], ["rrhh", "trabajadores"], ["rrhh", "liquidaciones"], ["rrhh", "libro"], ["rrhh", "vacaciones"], ["rrhh", "finiquitos"], ["rrhh", "parametros"], ["apariencia"], ["renta"], ["dj", "1887"], ["dj", "1879"], ["tributarias"], ["empresa"], ["empresas"]];
+  const vistas = [["inicio"], ["activos", "fichas"], ["activos", "dep"], ["activos", "libro"], ["rrhh", "trabajadores"], ["rrhh", "liquidaciones"], ["rrhh", "libro"], ["rrhh", "vacaciones"], ["rrhh", "finiquitos"], ["rrhh", "parametros"], ["apariencia"], ["resumen"], ["renta"], ["dj", "1887"], ["dj", "1879"], ["tributarias"], ["empresa"], ["empresas"]];
   for (const [ancho, nombre] of [[1200, "escritorio"], [400, "móvil"]]) {
     await page.setViewportSize({ width: ancho, height: 800 });
     const malas = [];
