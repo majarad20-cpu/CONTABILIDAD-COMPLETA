@@ -64,11 +64,11 @@ cada bien.
   regístralos aquí cuando cambien.
 
 **Renta anual y declaraciones juradas** (menú Tributario):
-- *Renta anual (F22)*: parte del resultado del ejercicio, aplica agregados, deducciones y pérdida tributaria de
-  años anteriores para llegar a la renta líquida imponible, calcula el impuesto de primera categoría (Pro Pyme general
-  12,5 % en los años comerciales 2025 a 2027, transparente y régimen general 14 A) y descuenta los PPM de los F29
-  guardados y otros créditos. Guarda el borrador por año y atribuye la renta a los propietarios en el régimen
-  transparente. No calcula el capital propio tributario ni los registros RAI, SAC y REX.
+- *Renta anual (F22)*, en tres pestañas:
+  - **Renta líquida imponible**: parte del resultado contable y aplica ajustes automáticos (impuesto de primera categoría y multas contabilizados, depreciación contable y tributaria según las fichas de activo fijo, corrección monetaria del capital propio en el 14 A) y, en Pro Pyme, la **conversión a base de caja** con la variación de las cuentas por cobrar, por pagar, anticipos y existencias. Admite ajustes manuales, **pérdida tributaria de años anteriores reajustada con la VIPC**, créditos (PPM y otros), tasa por régimen (Pro Pyme general 12,5 % en 2025 a 2027, transparente y 14 A) y atribución a propietarios.
+  - **Capital propio tributario**: activos que son inversión efectiva a valor tributario menos el pasivo exigible (art. 41 N° 1 LIR), con el tratamiento y el ajuste de cada cuenta, el ajuste del activo fijo según las fichas, el CPT inicial reajustado y su variación.
+  - **Registros de rentas empresariales**: RAI, REX y SAC (y DDAN en el 14 A), capital aportado, retiros con su orden de imputación (RAI, DDAN y REX) y arrastre de los saldos finales al año siguiente.
+  Cada pestaña se exporta a PDF, Excel y CSV. Todo es un borrador referencial: compáralo con la propuesta del SII y con los recuadros del F22 antes de declarar.
 - *Declaraciones juradas*: planillas de apoyo para la **DJ 1887** (sueldos de trabajadores y sueldo empresarial) y la
   **DJ 1879** (retenciones de honorarios), con certificados por persona. No reemplazan el formulario del SII.
 
@@ -78,6 +78,7 @@ Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tr
 
 El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
 
+- **1.3.0**: renta con capital propio tributario, registros de rentas empresariales (RAI, DDAN, REX y SAC), renta líquida imponible con ajustes automáticos, base de caja Pro Pyme y pérdida reajustada; depreciación tributaria por bien en las fichas de activo fijo.
 - **1.2.0**: respaldo y restauración de la empresa (Datos de la empresa y Empresas e importación), protección de activos con depreciación contabilizada, aviso en pantalla ante errores inesperados, corrección del botón «Editar» de activo fijo y pruebas automáticas.
 - **1.1.0**: activo fijo, personal y remuneraciones, renta anual y declaraciones juradas; número de versión visible.
 - **1.0.0**: libros, informes, RCV, F29, sueldo empresarial y honorarios, con historiales y exportación a PDF y Excel.

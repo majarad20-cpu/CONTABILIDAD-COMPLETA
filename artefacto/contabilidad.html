@@ -133,6 +133,9 @@ dl.ficha dd { margin: 0; font-family: var(--font-num); font-variant-numeric: tab
 .contrato .firmas small { color: var(--muted); font-family: var(--font-ui); }
 form.caja h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 6px 0 0; }
 td input { width: 100%; }
+.caja > *, .form > * { min-width: 0; }
+.form input, .form select, .form textarea { width: 100%; max-width: 100%; }
+.form input[type="checkbox"] { width: 16px; }
 .ficha dt, .ficha dd { overflow-wrap: anywhere; }
 .pestanas { overflow-x: auto; }
 .pestanas button { white-space: nowrap; flex: none; }
@@ -171,7 +174,7 @@ td input.monto { width: 9em; }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.2.0";
+const VERSION = "1.3.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -3379,14 +3382,14 @@ const activoPorId = (id) => S.activos.find((x) => x.id === id);
 const nombreVida = (m) => (m % 12 === 0 ? `${m / 12} año${m === 12 ? "" : "s"}` : `${m} meses`);
 
 /* Depreciación lineal por meses, desde el mes de adquisición. La acumulada se calcula directamente, así el último mes absorbe el redondeo. */
-function depAcum(a, periodo) {
+function depAcum(a, periodo, vida = a.vida_meses) {
   let fin = periodo;
   if (a.estado === "baja" && a.fecha_baja && a.fecha_baja.slice(0, 7) < fin) fin = a.fecha_baja.slice(0, 7);
   const n = mesesEntre(a.fecha_adq.slice(0, 7), fin) + 1;
   if (n <= 0) return 0;
   const base = Math.max(a.costo - (a.residual || 0), 0);
-  if (n >= a.vida_meses) return base;
-  return Math.floor((2 * n * base + a.vida_meses) / (2 * a.vida_meses));
+  if (n >= vida) return base;
+  return Math.floor((2 * n * base + vida) / (2 * vida));
 }
 const depMes = (a, p) => depAcum(a, p) - depAcum(a, periodoAnterior(p));
 
@@ -3427,7 +3430,7 @@ function vistaActivos() {
 }
 
 function activoVacio() {
-  return { id: null, nombre: "", cat: 5, fecha_adq: hoy(), costo: 0, residual: 0, vida_anios: "6", acelerada: false, cuenta: "", documento: "", estado: "activo", fecha_baja: "" };
+  return { id: null, nombre: "", cat: 5, fecha_adq: hoy(), costo: 0, residual: 0, vida_anios: "6", acelerada: false, cuenta: "", documento: "", estado: "activo", fecha_baja: "", dep_trib: "igual" };
 }
 function formularioActivo(ae) {
   const imputables = S.cuentas.filter((c) => c.imputable && c.tipo === "ACTIVO");
@@ -3440,6 +3443,8 @@ function formularioActivo(ae) {
       <label>Valor residual<input id="af-residual" inputmode="numeric" value="${clp(ae.residual || 0) || "0"}"></label>
       <label>Vida útil normal (años) *<input id="af-vida" inputmode="decimal" value="${esc(comaDecimal(ae.vida_anios))}"></label>
       <label class="check"><input type="checkbox" id="af-acelerada" ${ae.acelerada ? "checked" : ""}> Depreciación acelerada (un tercio de la vida útil normal)</label>
+      <label>Depreciación tributaria<select id="af-trib">${Object.entries(MODOS_DEP_TRIB).map(([k, n]) => `<option value="${k}" ${(ae.dep_trib || "igual") === k ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
+        <small>Se usa en la renta líquida imponible, el capital propio tributario y el DDAN. No cambia la contabilidad.</small></label>
       <label>Cuenta del activo<select id="af-cuenta"><option value="">— Sin cuenta —</option>${imputables.map((c) => `<option value="${esc(c.id)}" ${c.id === ae.cuenta ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}</select></label>
       <label>Proveedor y documento<input id="af-doc" value="${esc(ae.documento)}" placeholder="Ej. Factura 1234 de PC Factory"></label>
       ${ae.id ? `<label>Estado<select id="af-estado"><option value="activo" ${ae.estado !== "baja" ? "selected" : ""}>En uso</option><option value="baja" ${ae.estado === "baja" ? "selected" : ""}>Dado de baja</option></select></label>
@@ -3457,7 +3462,7 @@ function vistaFichasActivos() {
     const vigente = a.fecha_adq.slice(0, 7) <= p, dep = depAcum(a, p);
     const confirmando = S.confirmar === "activo:" + a.id;
     return `<tr class="${a.estado === "baja" ? "inactiva" : ""}"><td class="cod">${esc(a.codigo)}</td>
-      <td>${esc(a.nombre)}<br><small class="ayuda">${esc(CATEGORIAS_ACTIVO[a.cat]?.[0] || "")}${a.documento ? ` · ${esc(a.documento)}` : ""}</small></td>
+      <td>${esc(a.nombre)}<br><small class="ayuda">${esc(CATEGORIAS_ACTIVO[a.cat]?.[0] || "")}${a.documento ? ` · ${esc(a.documento)}` : ""}${a.dep_trib && a.dep_trib !== "igual" ? ` · tributaria: ${esc(MODOS_DEP_TRIB[a.dep_trib])}` : ""}</small></td>
       <td>${fmtFecha(a.fecha_adq)}</td><td class="num">${clp(a.costo)}</td><td class="num">${nombreVida(a.vida_meses)}${a.acelerada ? " (acel.)" : ""}</td>
       <td class="num">${vigente ? clp(dep) : ""}</td><td class="num"><strong>${vigente ? clp(a.costo - dep) : ""}</strong></td>
       <td>${a.estado === "baja" ? `<span class="etiqueta cerrado">baja ${fmtFecha(a.fecha_baja)}</span>` : vigente ? "En uso" : '<span class="ayuda">aún no adquirido</span>'}</td>
@@ -3503,7 +3508,7 @@ async function guardarActivo() {
   const codigo = ae.id ? ae.codigo : `AF-${String((numeros.length ? Math.max(...numeros) : 0) + 1).padStart(3, "0")}`;
   await ocupado(async () => {
     await S.almacen.set(`empresas/${S.eid}/activos/${ae.id || "f" + nuevoId()}`, { codigo, nombre, cat, fecha_adq: fecha, costo, residual, vida_normal_meses: normal, vida_meses: vida, acelerada,
-      cuenta: ae.cuenta, documento: ae.documento, estado, fecha_baja: estado === "baja" ? fechaBaja : "" });
+      cuenta: ae.cuenta, documento: ae.documento, estado, fecha_baja: estado === "baja" ? fechaBaja : "", dep_trib: $("#af-trib").value || "igual" });
     S.activoEdit = null; render(); aviso(`Activo ${codigo} guardado.`);
   }, "No se pudo guardar el activo");
 }
@@ -4052,30 +4057,99 @@ async function guardarMutual() {
   await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), rem_config: { mutual: tasa, mutual_nombre: $("#mu-nombre").value.trim() } }); render(); aviso("Mutual guardada."); }, "No se pudo guardar la mutual");
 }
 
-/* ------------------------------------------------------------------ renta anual (F22) */
+/* ------------------------------------------------------------------ renta anual (F22), capital propio tributario y registros */
 /* Tasas del impuesto de primera categoría. Pro Pyme general: 12,5 % en los años comerciales 2025 a 2027, 15 % en 2028 y 25 % desde 2029 (Circular SII 53 de 2025). Verifica cada año. */
 const REGIMENES_RENTA = {
   d3: ["Pro Pyme general (14 D N° 3)", (anio) => (anio >= 2025 && anio <= 2027 ? 12.5 : anio === 2028 ? 15 : 25)],
   d8: ["Pro Pyme transparente (14 D N° 8)", () => 0],
   a: ["Régimen general semi integrado (14 A)", () => 27],
 };
+const baseCaja = (regimen) => regimen === "d3" || regimen === "d8";
 const AJUSTES_SUGERIDOS = {
-  agregado: ["Gastos rechazados (art. 21 LIR)", "Multas e intereses no aceptados", "Provisiones no aceptadas", "Gastos sin respaldo o no necesarios para producir la renta", "Retiros o gastos personales del propietario", "Depreciación contable mayor que la tributaria"],
-  deduccion: ["Corrección monetaria del capital propio", "Ingresos devengados y no percibidos (base de caja)", "Ingresos no constitutivos de renta", "Depreciación tributaria mayor que la contable"],
+  agregado: ["Gastos rechazados (art. 21 y art. 33 N° 1)", "Gastos sin documentación o no necesarios para producir la renta", "Provisiones no aceptadas tributariamente", "Retiros o gastos personales del propietario", "Intereses y reajustes de préstamos a relacionados", "Ingresos percibidos no contabilizados"],
+  deduccion: ["Ingresos no constitutivos de renta", "Rentas exentas", "Gastos por inversión en investigación y desarrollo certificados por Corfo", "Dividendos o rentas de otras sociedades ya tributadas", "Castigo de deudas incobrables aceptado tributariamente"],
 };
+/* Cuentas de balance que se convierten a base de caja (Pro Pyme): activos operativos que al subir bajan la renta y pasivos operativos que al subir la suben. */
+const PATRONES_CAJA = [
+  { re: /^(clientes|documentos por cobrar|deudores (varios|por ventas))/i, tipo: "activo", iva: true },
+  { re: /^(anticipo a proveedores|mercader|existencias)/i, tipo: "activo", iva: false },
+  { re: /^(proveedores|documentos por pagar|acreedores varios)/i, tipo: "pasivo", iva: true },
+  { re: /^(remuneraciones por pagar|cotizaciones previsionales por pagar|retenci[oó]n de honorarios|impuesto [uú]nico|anticipo de clientes)/i, tipo: "pasivo", iva: false },
+];
+/* Partidas que no son inversión efectiva (intangibles, nominales, transitorias): por defecto se excluyen del capital propio. */
+const EXCLUIR_CPT = /intangible|menor valor|mayor valor|plusval[ií]a|impuesto diferido|gastos? de organizaci[oó]n|provisi[oó]n (de )?(deudores|cuentas?) incobrables|provisi[oó]n deudores/i;
+
+/* ---------- depreciación tributaria (alimenta la renta líquida imponible y el capital propio) ---------- */
+const MODOS_DEP_TRIB = { igual: "Igual a la contable", normal: "Normal (vida útil del SII)", acelerada: "Acelerada (un tercio de la vida útil normal)", instantanea: "Instantánea (Pro Pyme: 100 % en el año de adquisición)" };
+const vidaAceleradaMeses = (a) => (a.vida_normal_meses >= 36 ? Math.max(Math.round(a.vida_normal_meses / 3), 1) : a.vida_normal_meses);
+function depTribAcum(a, periodo) {
+  switch (a.dep_trib || "igual") {
+    case "normal": return depAcum(a, periodo, a.vida_normal_meses);
+    case "acelerada": return depAcum(a, periodo, vidaAceleradaMeses(a));
+    case "instantanea": return a.fecha_adq.slice(0, 7) <= periodo ? a.costo : 0;
+    default: return depAcum(a, periodo);
+  }
+}
+const depTribAnio = (a, anio) => depTribAcum(a, `${anio}-12`) - depTribAcum(a, `${anio - 1}-12`);
+const activosDelAnio = (anio) => S.activos.filter((a) => a.fecha_adq.slice(0, 4) <= String(anio) && !(a.estado === "baja" && a.fecha_baja && a.fecha_baja.slice(0, 4) < String(anio)));
+/* Diferencia entre el valor tributario y el contable de los bienes vigentes al 31/12 (negativa si la depreciación tributaria es mayor). */
+const ajusteActivoFijo = (anio) => activosDelAnio(anio).filter((a) => !(a.estado === "baja" && a.fecha_baja && a.fecha_baja.slice(0, 4) <= String(anio))).reduce((s, a) => s + depAcum(a, `${anio}-12`) - depTribAcum(a, `${anio}-12`), 0);
+/* DDAN: diferencia acumulada entre la depreciación acelerada y la normal (solo régimen 14 A). */
+const ddanFichas = (anio) => activosDelAnio(anio).filter((a) => a.dep_trib === "acelerada").reduce((s, a) => s + Math.max(depTribAcum(a, `${anio}-12`) - depAcum(a, `${anio}-12`, a.vida_normal_meses), 0), 0);
+
+/* ---------- datos de base ---------- */
+const movimientoAnio = (cuentaId, anio) => { const x = saldosPeriodo(`${anio}-01-01`, `${anio}-12-31`).cuentas.find((c) => c.cuenta.id === cuentaId); return x ? x.debe - x.haber : 0; };
+const cuentasGastoPor = (re) => S.cuentas.filter((c) => c.imputable && c.tipo === "GASTO" && re.test(c.nombre));
+/* Saldo natural de una cuenta de balance al inicio del año: el asiento de apertura del año, o lo acumulado hasta el 31/12 anterior. */
+function saldoInicialAnio(c, anio) {
+  const ini = `${anio}-01-01`, fin = `${anio}-12-31`;
+  const apertura = S.lista.filter((a) => a.apertura && a.fecha >= ini && a.fecha <= fin).map((a) => a.fecha).sort()[0];
+  const desde = apertura ? apertura : corte(ini, false);
+  let d = 0, h = 0;
+  for (const a of S.lista) {
+    if (apertura ? !(a.apertura && a.fecha === apertura) : (a.fecha < desde || a.fecha >= ini)) continue;
+    for (const l of a.lineas) if (l.cuenta === c.id) { d += l.debe || 0; h += l.haber || 0; }
+  }
+  return saldoNatural(c.tipo, d, h);
+}
+function balanceCuentas(anio) {
+  const fin = new Map(saldosPeriodo(`${anio}-01-01`, `${anio}-12-31`).cuentas.map((x) => [x.cuenta.id, saldoNatural(x.cuenta.tipo, x.debe, x.haber)]));
+  const filas = [];
+  for (const c of S.cuentas) if (c.imputable && (c.tipo === "ACTIVO" || c.tipo === "PASIVO")) {
+    const final = fin.get(c.id) || 0, inicial = saldoInicialAnio(c, anio);
+    if (final || inicial) filas.push({ cuenta: c, inicial, final });
+  }
+  return filas;
+}
+const rentaPrevia = (anio) => S.renta.find((x) => x.id === String(anio - 1))?.calculo || null;
+const pctPorMes = (vipc, fecha) => (/^\d{4}-\d{2}/.test(fecha || "") ? (((vipc || 0) * (12 - +fecha.slice(5, 7))) / 12) : 0);
+const reajustado = (monto, pct) => Math.round(monto * (1 + pct / 100));
+
+function nuevaRenta(anio) {
+  const regimen = regimenSugerido();
+  return completarRenta({ anio, regimen, tasa: REGIMENES_RENTA[regimen][1](anio), observacion: "", perdida_anterior: rentaPrevia(anio)?.perdida_siguiente || 0 });
+}
+function completarRenta(r) {
+  if (!REGIMENES_RENTA[r.regimen]) r.regimen = regimenSugerido();
+  if (!Number.isFinite(r.tasa)) r.tasa = REGIMENES_RENTA[r.regimen][1](r.anio);
+  r.ajustes ||= []; r.auto_off ||= []; r.creditos ||= []; r.propietarios ||= []; r.retiros ||= [];
+  r.vipc ??= null; r.perdida_anterior ||= 0; r.ppm_manual ??= null; r.observacion ||= "";
+  r.caja ||= { cuentas: {}, extra: [] }; r.caja.cuentas ||= {}; r.caja.extra ||= [];
+  r.cpt ||= {}; r.cpt.trat ||= {}; r.cpt.inicial ??= null; r.cpt.af_auto ??= true;
+  r.capital ||= {}; r.capital.inicial ??= null; r.capital.movimientos ||= [];
+  r.registros ||= {}; for (const k of ["rai_inicial", "rex_inicial", "sac_inicial", "ddan_manual"]) r.registros[k] ??= null;
+  r.registros.rex_ingresos ||= []; r.registros.reajusta_rex ??= false; r.registros.otros_rai ||= 0;
+  return r;
+}
 function regimenSugerido() {
   const t = String(empresa()?.regimen || "").toLowerCase();
   return /transparente|d\s?8|n°\s?8/.test(t) ? "d8" : /14\s?a|general|semi/.test(t) && !/pro ?pyme|d\s?3/.test(t) ? "a" : "d3";
-}
-function nuevaRenta(anio) {
-  const regimen = regimenSugerido(), previa = S.renta.find((x) => x.id === String(anio - 1));
-  return { anio, regimen, tasa: REGIMENES_RENTA[regimen][1](anio), perdida_anterior: previa?.calculo?.perdida_siguiente || 0, ajustes: [], creditos: [], propietarios: [], ppm_manual: null, observacion: "" };
 }
 function rentaActual() {
   const anio = Number(S.rentaAnio || empresa().ejercicio);
   if (!S.rentaEdit || S.rentaEdit.anio !== anio || S.rentaEditEid !== S.eid) {
     const g = S.renta.find((x) => x.id === String(anio));
-    S.rentaEdit = g ? JSON.parse(JSON.stringify({ ...g, anio })) : nuevaRenta(anio); S.rentaEditEid = S.eid;
+    S.rentaEdit = g ? completarRenta(JSON.parse(JSON.stringify({ ...g, anio }))) : nuevaRenta(anio); S.rentaEditEid = S.eid;
   }
   return S.rentaEdit;
 }
@@ -4084,148 +4158,424 @@ function ppmDelAnio(anio) {
   const faltan = Array.from({ length: 12 }, (_, i) => `${anio}-${String(i + 1).padStart(2, "0")}`).filter((m) => !guardados.some((b) => b.id === m));
   return { total: guardados.reduce((s, b) => s + (b.codigos?.["62"] || 0), 0), faltan };
 }
+
+/* ---------- capital propio tributario ---------- */
+function calcularCpt(r) {
+  const filas = balanceCuentas(r.anio).map((x) => {
+    const sel = r.cpt.trat[x.cuenta.id] || {};
+    const trat = sel.t || (EXCLUIR_CPT.test(x.cuenta.nombre) ? "excluir" : "incluir"), ajuste = sel.aj || 0;
+    return { ...x, trat, ajuste, valor: trat === "incluir" ? x.final + ajuste : 0 };
+  });
+  const suma = (tipo, f) => filas.filter((x) => x.cuenta.tipo === tipo).reduce((s, x) => s + f(x), 0);
+  const activosLibro = suma("ACTIVO", (x) => x.final), pasivosLibro = suma("PASIVO", (x) => x.final);
+  const activos = suma("ACTIVO", (x) => x.valor), pasivos = suma("PASIVO", (x) => x.valor);
+  const afAjuste = r.cpt.af_auto ? ajusteActivoFijo(r.anio) : 0;
+  const cpt = activos + afAjuste - pasivos;
+  const previa = rentaPrevia(r.anio), inicial = r.cpt.inicial ?? previa?.cpt_final ?? 0;
+  const V = (r.vipc || 0) / 100;
+  return { filas, activosLibro, pasivosLibro, patrimonioContable: activosLibro - pasivosLibro, activos, pasivos, afAjuste, cpt, inicial, inicialReaj: Math.round(inicial * (1 + V)),
+    inicialPrevio: previa?.cpt_final ?? null };
+}
+
+/* ---------- ajustes automáticos de la renta líquida imponible ---------- */
+function cuentasCaja(r) {
+  const filas = [], extra = new Set(r.caja.extra);
+  for (const x of balanceCuentas(r.anio)) {
+    const tipo = x.cuenta.tipo === "ACTIVO" ? "activo" : "pasivo";
+    const p = PATRONES_CAJA.find((q) => q.tipo === tipo && q.re.test(x.cuenta.nombre));
+    if (!p && !extra.has(x.cuenta.id)) continue;
+    const sel = r.caja.cuentas[x.cuenta.id] || {}, incluir = sel.incluir ?? true, iva = sel.iva ?? !!p?.iva;
+    const delta = x.final - x.inicial, neto = iva ? Math.round(delta / (1 + TASA_IVA)) : delta;
+    filas.push({ ...x, tipo, incluir, iva, delta, neto, efecto: incluir ? (tipo === "activo" ? -neto : neto) : 0 });
+  }
+  return filas;
+}
+function ajustesAuto(r, cpt) {
+  const lineas = [], anio = r.anio, V = (r.vipc || 0) / 100;
+  const add = (key, concepto, ref, monto) => { if (monto) lineas.push({ key, tipo: monto > 0 ? "agregado" : "deduccion", concepto, ref, monto: Math.abs(monto), activo: !r.auto_off.includes(key) }); };
+  add("idpc", "Impuesto a la renta contabilizado como gasto", "No es gasto necesario para producir la renta (art. 31 LIR).", cuentasGastoPor(/impuesto a la renta|impuesto de primera categor/i).reduce((s, c) => s + movimientoAnio(c.id, anio), 0));
+  add("multas", "Multas e intereses fiscales contabilizados", "Gasto rechazado (art. 21 y art. 33 N° 1 LIR).", cuentasGastoPor(/multas/i).reduce((s, c) => s + movimientoAnio(c.id, anio), 0));
+  const ct = cuentasTributarias(), fichas = activosDelAnio(anio);
+  add("dep_contable", "Depreciación contable del ejercicio", "Se agrega y se reemplaza por la depreciación tributaria de las fichas.", ct.depreciacion_gasto ? movimientoAnio(ct.depreciacion_gasto, anio) : 0);
+  if (fichas.length) add("dep_trib", "Depreciación tributaria del ejercicio (según fichas de activo fijo)", "Art. 31 N° 5 y N° 5 bis LIR; en Pro Pyme, depreciación instantánea.", -fichas.reduce((s, a) => s + depTribAnio(a, anio), 0));
+  if (r.regimen === "a") {
+    const cm = Math.round(cpt.inicial * V) + r.capital.movimientos.reduce((s, m) => s + reajustado(m.monto || 0, m.pct ?? pctPorMes(r.vipc, m.fecha)) - (m.monto || 0), 0);
+    add("cm", "Reajuste del capital propio inicial y de sus aumentos y disminuciones", "Corrección monetaria del capital propio (art. 41 LIR) con la VIPC anual.", -cm);
+  }
+  if (baseCaja(r.regimen)) {
+    const cj = cuentasCaja(r);
+    add("caja_activos", "Ajuste a base de caja: cuentas por cobrar, anticipos a proveedores y existencias", "Pro Pyme: ingresos percibidos y egresos pagados (art. 14 D LIR). Variación neta del año.", cj.filter((x) => x.tipo === "activo").reduce((s, x) => s + x.efecto, 0));
+    add("caja_pasivos", "Ajuste a base de caja: cuentas por pagar, remuneraciones y anticipos de clientes", "Pro Pyme: ingresos percibidos y egresos pagados (art. 14 D LIR). Variación neta del año.", cj.filter((x) => x.tipo === "pasivo").reduce((s, x) => s + x.efecto, 0));
+  }
+  return lineas;
+}
+
+/* ---------- registros de rentas empresariales ---------- */
+function calcularRegistros(r, cpt, idpc) {
+  const V = (r.vipc || 0) / 100, previa = rentaPrevia(r.anio), g = r.registros, d = (m, clave) => m ?? previa?.[clave] ?? 0;
+  const capitalIni = d(r.capital.inicial, "capital_final"), capitalIniReaj = Math.round(capitalIni * (1 + V));
+  const movs = r.capital.movimientos.map((m) => { const pct = m.pct ?? pctPorMes(r.vipc, m.fecha); return { ...m, pct, reaj: reajustado(m.monto || 0, pct) }; });
+  const capitalFinal = capitalIniReaj + movs.reduce((s, m) => s + m.reaj, 0);
+  const retiros = r.retiros.map((x, i) => { const pct = x.pct ?? pctPorMes(r.vipc, x.fecha); return { ...x, i, pct, reaj: reajustado(x.monto || 0, pct) }; });
+  const rexIni = d(g.rex_inicial, "rex_final"), rexIniReaj = g.reajusta_rex ? Math.round(rexIni * (1 + V)) : rexIni;
+  const rexAntes = rexIniReaj + g.rex_ingresos.reduce((s, x) => s + (x.monto || 0), 0);
+  const ddan = r.regimen === "a" ? (g.ddan_manual ?? ddanFichas(r.anio)) : 0;
+  const total = retiros.reduce((s, x) => s + x.reaj, 0);
+  const rai0 = cpt.cpt - capitalFinal - rexAntes - (g.otros_rai || 0) + total;
+  const saiIni = d(g.sac_inicial, "sac_final"), sacIniReaj = Math.round(saiIni * (1 + V)), sacAntes = sacIniReaj + (r.regimen === "d8" ? 0 : idpc);
+  const raiIni = d(g.rai_inicial, "rai_final");
+  let poolRai = Math.max(rai0, 0), poolDdan = ddan, poolRex = rexAntes;
+  const imputacion = retiros.slice().sort((a, b) => ((a.fecha || "") < (b.fecha || "") ? -1 : (a.fecha || "") > (b.fecha || "") ? 1 : a.i - b.i)).map((x) => {
+    let resto = x.reaj;
+    const aRai = Math.min(resto, poolRai); poolRai -= aRai; resto -= aRai;
+    const aDdan = Math.min(resto, poolDdan); poolDdan -= aDdan; resto -= aDdan;
+    const aRex = Math.min(resto, poolRex); poolRex -= aRex; resto -= aRex;
+    const sugerido = rai0 > 0 ? Math.min(Math.round((aRai * sacAntes) / rai0), sacAntes) : 0;
+    return { ...x, aRai, aDdan, aRex, exceso: resto, sugerido };
+  });
+  const sum = (k) => imputacion.reduce((s, x) => s + x[k], 0);
+  const creditos = r.retiros.reduce((s, x) => s + (x.credito || 0), 0);
+  return { V, capitalIni, capitalIniReaj, movs, capitalFinal, retiros: imputacion, total, rexIni, rexIniReaj, rexAntes, rexFinal: rexAntes - sum("aRex"), ddan, ddanFinal: ddan - sum("aDdan"),
+    raiIni, raiIniReaj: Math.round(raiIni * (1 + V)), rai0, raiFinal: rai0 - sum("aRai"), sacIni: saiIni, sacIniReaj, sacAntes, creditos, sacFinal: sacAntes - creditos, exceso: sum("exceso"),
+    aRai: sum("aRai"), aDdan: sum("aDdan"), aRex: sum("aRex") };
+}
+
+/* ---------- renta líquida imponible, impuesto y créditos ---------- */
 function calcularRenta(r) {
-  const anio = r.anio, er = estadoResultados(`${anio}-01-01`, `${anio}-12-31`);
-  const agregados = r.ajustes.filter((a) => a.tipo === "agregado").reduce((s, a) => s + (a.monto || 0), 0);
-  const deducciones = r.ajustes.filter((a) => a.tipo === "deduccion").reduce((s, a) => s + (a.monto || 0), 0);
+  completarRenta(r);
+  const anio = r.anio, er = estadoResultados(`${anio}-01-01`, `${anio}-12-31`), V = (r.vipc || 0) / 100;
+  const cpt = calcularCpt(r), auto = ajustesAuto(r, cpt);
+  const suma = (lista, tipo) => lista.filter((a) => a.tipo === tipo).reduce((s, a) => s + (a.monto || 0), 0);
+  const autoOn = auto.filter((a) => a.activo);
+  const agregadosAuto = suma(autoOn, "agregado"), deduccionesAuto = suma(autoOn, "deduccion");
+  const agregados = agregadosAuto + suma(r.ajustes, "agregado"), deducciones = deduccionesAuto + suma(r.ajustes, "deduccion");
   const antes = er.resultado + agregados - deducciones;
-  const perdidaUsada = antes > 0 ? Math.min(r.perdida_anterior || 0, antes) : 0;
+  const perdidaReaj = Math.round((r.perdida_anterior || 0) * (1 + V));
+  const perdidaUsada = antes > 0 ? Math.min(perdidaReaj, antes) : 0;
   const rli = Math.max(antes - perdidaUsada, 0);
-  const perdidaSiguiente = (r.perdida_anterior || 0) - perdidaUsada + (antes < 0 ? -antes : 0);
+  const perdidaSiguiente = perdidaReaj - perdidaUsada + (antes < 0 ? -antes : 0);
   const idpc = r.regimen === "d8" ? 0 : Math.round((rli * Math.round(r.tasa * 100)) / 10000);
   const ppm = ppmDelAnio(anio), ppmMonto = r.ppm_manual ?? ppm.total;
-  const otros = r.creditos.reduce((s, c) => s + (c.monto || 0), 0);
-  const creditos = ppmMonto + otros;
+  const otros = r.creditos.reduce((s, c) => s + (c.monto || 0), 0), creditos = ppmMonto + otros;
   const atribuida = r.propietarios.map((p) => ({ ...p, monto: Math.round((rli * Math.round((p.porcentaje || 0) * 100)) / 10000) }));
-  return { er, agregados, deducciones, antes, perdidaUsada, rli, perdidaSiguiente, idpc, ppm, ppmMonto, otros, creditos, resultado: idpc - creditos, atribuida };
+  const reg = calcularRegistros(r, cpt, idpc);
+  const c = { er, cpt, auto, autoOn, agregadosAuto, deduccionesAuto, agregados, deducciones, antes, perdidaReaj, perdidaUsada, rli, perdidaSiguiente, idpc, ppm, ppmMonto, otros, creditos,
+    resultado: idpc - creditos, atribuida, reg, caja: baseCaja(r.regimen) ? cuentasCaja(r) : [] };
+  c.alertas = alertasRenta(r, c);
+  return c;
+}
+function alertasRenta(r, c) {
+  const a = [], necesitaVipc = c.cpt.inicial || r.perdida_anterior || c.reg.capitalIni || c.reg.rexIni || c.reg.raiIni || c.reg.sacIni || r.capital.movimientos.length || r.retiros.length;
+  if (necesitaVipc && r.vipc == null) a.push("Falta la VIPC anual del año comercial (variación del IPC entre noviembre del año anterior y noviembre del año). Sin ella no se reajustan el capital propio inicial, la pérdida de arrastre ni los saldos de los registros: se asume 0 %.");
+  if (c.ppm.faltan.length && r.ppm_manual == null) a.push(`No hay borrador de F29 guardado para ${c.ppm.faltan.map((m) => mesCap(m)).join(", ")}: el crédito por PPM puede estar incompleto. Guarda esos F29 o ingresa el PPM pagado a mano.`);
+  if (r.regimen === "d8" && !r.propietarios.length) a.push("En el régimen transparente la renta se atribuye a los propietarios: agrégalos con su porcentaje.");
+  if (r.regimen === "d8" && r.propietarios.length && Math.abs(r.propietarios.reduce((s, p) => s + (p.porcentaje || 0), 0) - 100) > 0.001) a.push("Los porcentajes de los propietarios no suman 100 %.");
+  if (c.antes < 0) a.push(`El ejercicio termina con pérdida tributaria de $${clp(-c.antes)}; se arrastra a los años siguientes.`);
+  if (S.activos.length && !cuentasTributarias().depreciacion_gasto) a.push("Hay fichas de activo fijo pero falta configurar la cuenta «Depreciación del ejercicio» en Cuentas tributarias: no se puede agregar la depreciación contable.");
+  if (S.activos.length) {
+    const dep = cuentasTributarias().depreciacion_acumulada, conc = dep ? datosLibroActivos(r.anio).conciliacion.find((x) => x.cuenta?.id === dep) : null;
+    if (conc && conc.auxiliar !== conc.contable) a.push(`La depreciación acumulada contabilizada ($${clp(-conc.contable)}) difiere de la de las fichas ($${clp(-conc.auxiliar)}): el ajuste de activo fijo a valor tributario supone que la contabilidad sigue las fichas. Contabiliza la depreciación pendiente.`);
+  }
+  if (c.er.gastos.total && !c.er.ingresos.total) a.push("El ejercicio tiene gastos pero ningún ingreso registrado.");
+  if (c.cpt.cpt < 0) a.push("El capital propio tributario es negativo: revisa el tratamiento de las cuentas y los ajustes a valor tributario.");
+  if (c.reg.rai0 < 0 && r.regimen !== "d8") a.push("El saldo del RAI sale negativo: el capital propio es menor que el capital aportado más el REX. Revisa los ajustes del capital propio, el capital aportado y los saldos iniciales.");
+  if (c.reg.exceso > 0) a.push(`Hay retiros por $${clp(c.reg.exceso)} que superan los saldos de los registros: se imputan al capital aportado o se tratan como retiros en exceso, según corresponda.`);
+  if (r.regimen === "a" && S.activos.some((x) => x.dep_trib === "instantanea")) a.push("La depreciación instantánea de bienes del activo fijo se permite en el régimen Pro Pyme; en el 14 A revisa que corresponda.");
+  return a;
 }
 
+/* ---------- lectura del formulario ---------- */
 function leerFormularioRenta() {
   const r = S.rentaEdit;
-  if (!r || !$("#rn-regimen")) return;
-  r.regimen = $("#rn-regimen").value;
-  const tasa = decimal($("#rn-tasa").value); if (tasa != null && Number.isFinite(tasa)) r.tasa = tasa;
-  const perdida = parseMonto($("#rn-perdida").value || "0"); r.perdida_anterior = Number.isNaN(perdida) ? 0 : perdida;
-  const monto = (id) => { const v = parseMonto($(id)?.value || "0"); return Number.isNaN(v) ? 0 : v; };
-  r.ajustes = r.ajustes.map((a, i) => ({ tipo: a.tipo, concepto: $(`#rn-aj-con-${i}`)?.value ?? a.concepto, monto: monto(`#rn-aj-monto-${i}`) }));
-  r.creditos = r.creditos.map((c, i) => ({ concepto: $(`#rn-cr-con-${i}`)?.value ?? c.concepto, monto: monto(`#rn-cr-monto-${i}`) }));
-  r.propietarios = r.propietarios.map((p, i) => ({ nombre: $(`#rn-pr-nom-${i}`)?.value ?? p.nombre, rut: $(`#rn-pr-rut-${i}`)?.value ?? p.rut, porcentaje: decimal($(`#rn-pr-pct-${i}`)?.value) ?? 0 }));
-  const ppm = $("#rn-ppm").value.trim(); r.ppm_manual = ppm === "" ? null : (Number.isNaN(parseMonto(ppm)) ? null : parseMonto(ppm));
-  r.observacion = $("#rn-obs").value;
+  if (!r || !$("#form-renta")) return;
+  const m = (id) => { const el = $(id); if (!el) return undefined; const v = parseMonto(el.value || "0"); return Number.isNaN(v) ? 0 : v; };
+  const dc = (id) => { const el = $(id); if (!el) return undefined; const v = decimal(el.value); return v == null || Number.isNaN(v) ? null : v; };
+  const tx = (id, previo) => $(id)?.value ?? previo;
+  const opt = (id, previo) => { const v = m(id); if (v === undefined) return previo; return $(id).value.trim() === "" ? null : v; };
+  if ($("#rn-regimen")) r.regimen = $("#rn-regimen").value;
+  if ($("#rn-tasa")) { const t = dc("#rn-tasa"); if (t != null) r.tasa = t; }
+  if ($("#rn-vipc")) r.vipc = dc("#rn-vipc");
+  if ($("#rn-perdida")) r.perdida_anterior = m("#rn-perdida");
+  for (const a of r._autoClaves || []) { const el = $(`#rn-au-${a}`); if (el) r.auto_off = el.checked ? r.auto_off.filter((k) => k !== a) : [...new Set([...r.auto_off, a])]; }
+  r.ajustes = r.ajustes.map((a, i) => ({ tipo: a.tipo, concepto: tx(`#rn-aj-con-${i}`, a.concepto), monto: m(`#rn-aj-monto-${i}`) ?? a.monto }));
+  r.creditos = r.creditos.map((x, i) => ({ concepto: tx(`#rn-cr-con-${i}`, x.concepto), monto: m(`#rn-cr-monto-${i}`) ?? x.monto }));
+  r.propietarios = r.propietarios.map((p, i) => ({ nombre: tx(`#rn-pr-nom-${i}`, p.nombre), rut: tx(`#rn-pr-rut-${i}`, p.rut), porcentaje: dc(`#rn-pr-pct-${i}`) ?? (p.porcentaje || 0) }));
+  if ($("#rn-ppm")) r.ppm_manual = opt("#rn-ppm", null);
+  if ($("#rn-obs")) r.observacion = $("#rn-obs").value;
+  for (const x of r._cajaIds || []) {
+    const inc = $(`#rn-cj-inc-${x}`), iva = $(`#rn-cj-iva-${x}`);
+    if (inc || iva) r.caja.cuentas[x] = { incluir: inc ? inc.checked : (r.caja.cuentas[x]?.incluir ?? true), iva: iva ? iva.checked : (r.caja.cuentas[x]?.iva ?? false) };
+  }
+  for (const x of r._cptIds || []) {
+    const t = $(`#rn-cpt-t-${x}`), aj = m(`#rn-cpt-aj-${x}`);
+    if (t) { const cuenta = S.porId.get(x), def = EXCLUIR_CPT.test(cuenta?.nombre || "") ? "excluir" : "incluir"; if (t.value === def && !aj) delete r.cpt.trat[x]; else r.cpt.trat[x] = { t: t.value, aj: aj || 0 }; }
+  }
+  if ($("#rn-cpt-ini")) r.cpt.inicial = opt("#rn-cpt-ini", r.cpt.inicial);
+  if ($("#rn-cpt-af")) r.cpt.af_auto = $("#rn-cpt-af").checked;
+  if ($("#rn-cap-ini")) r.capital.inicial = opt("#rn-cap-ini", r.capital.inicial);
+  r.capital.movimientos = r.capital.movimientos.map((x, i) => ({ fecha: tx(`#rn-cm-fecha-${i}`, x.fecha), concepto: tx(`#rn-cm-con-${i}`, x.concepto), monto: m(`#rn-cm-monto-${i}`) ?? x.monto, pct: $(`#rn-cm-pct-${i}`) ? dc(`#rn-cm-pct-${i}`) : x.pct ?? null }));
+  r.retiros = r.retiros.map((x, i) => ({ fecha: tx(`#rn-rt-fecha-${i}`, x.fecha), nombre: tx(`#rn-rt-nom-${i}`, x.nombre), rut: tx(`#rn-rt-rut-${i}`, x.rut), monto: m(`#rn-rt-monto-${i}`) ?? x.monto,
+    pct: $(`#rn-rt-pct-${i}`) ? dc(`#rn-rt-pct-${i}`) : x.pct ?? null, credito: m(`#rn-rt-cred-${i}`) ?? (x.credito || 0) }));
+  r.registros.rex_ingresos = r.registros.rex_ingresos.map((x, i) => ({ concepto: tx(`#rn-rx-con-${i}`, x.concepto), monto: m(`#rn-rx-monto-${i}`) ?? x.monto }));
+  if ($("#rn-rai-ini")) r.registros.rai_inicial = opt("#rn-rai-ini", r.registros.rai_inicial);
+  if ($("#rn-rex-ini")) r.registros.rex_inicial = opt("#rn-rex-ini", r.registros.rex_inicial);
+  if ($("#rn-sac-ini")) r.registros.sac_inicial = opt("#rn-sac-ini", r.registros.sac_inicial);
+  if ($("#rn-ddan")) r.registros.ddan_manual = opt("#rn-ddan", r.registros.ddan_manual);
+  if ($("#rn-otros-rai")) r.registros.otros_rai = m("#rn-otros-rai");
+  if ($("#rn-rex-reaj")) r.registros.reajusta_rex = $("#rn-rex-reaj").checked;
 }
 
-function vistaRenta() {
-  const r = rentaActual(), c = calcularRenta(r), anio = r.anio;
-  const anios = aniosDesde(S.lista.map((a) => a.fecha), empresa().ejercicio, S.renta.map((x) => x.id));
-  if (!anios.includes(String(anio))) anios.unshift(String(anio));
-  const guardado = S.renta.find((x) => x.id === String(anio));
-  S.informe = () => informeRenta(r);
-  S.csv = csvRenta(r, c);
-  const cuentas = (arbol) => arbol.filas.filter((f) => !f.grupo && f.monto).map((f) => `<tr><td class="cod">${esc(f.codigo)}</td><td>${esc(f.nombre)}</td><td class="num">${clp(f.monto)}</td></tr>`).join("");
-  const listaAjuste = (tipo, sug) => `<datalist id="dl-${tipo}">${sug.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>`;
-  const filaAjuste = (a, i) => `<tr><td><input id="rn-aj-con-${i}" list="dl-${a.tipo}" value="${esc(a.concepto)}" style="width:100%" ${S.puedeEscribir ? "" : "readonly"}></td>
-    <td class="num"><input id="rn-aj-monto-${i}" class="monto" inputmode="numeric" value="${a.monto ? clp(a.monto) : ""}" ${S.puedeEscribir ? "" : "readonly"}></td>
-    <td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-ajuste" data-id="${i}">Quitar</button>`)}</td></tr>`;
-  const bloqueAjustes = (tipo, rotulo) => {
-    const filas = r.ajustes.map((a, i) => (a.tipo === tipo ? filaAjuste(a, i) : "")).join("");
-    return `<h3>${rotulo}</h3>${filas ? `<div class="tabla"><table><tbody>${filas}</tbody></table></div>` : `<p class="ayuda">Sin ajustes.</p>`}${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-ajuste" data-id="${tipo}">+ Agregar</button></div>`)}`;
-  };
-  return `${cabecera("Renta anual (F22)", `Año comercial ${anio} · Año tributario ${anio + 1}`)}
-  <p class="ayuda">Borrador del impuesto de primera categoría a partir de la contabilidad. Parte del resultado del ejercicio, aplica tus ajustes a la renta líquida imponible y descuenta los créditos. No reemplaza la declaración del SII: úsalo para anticipar el resultado y revisar la propuesta.</p>
-  <div class="barra"><label>Año comercial<select id="rn-anio">${opcionesAnio(anios, anio)}</select></label>${botonesExportar()}</div>
-  <div id="rn-tarjetas">${htmlTarjetasRenta(r, c)}</div>
-  <form id="form-renta" data-form="n-renta" class="caja">
-    <div class="form"><label>Régimen<select id="rn-regimen" ${S.puedeEscribir ? "" : "disabled"}>${Object.entries(REGIMENES_RENTA).map(([k, [n]]) => `<option value="${k}" ${r.regimen === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
-      <label>Tasa del impuesto de primera categoría (%)<input id="rn-tasa" inputmode="decimal" value="${comaDecimal(r.tasa)}" ${S.puedeEscribir ? "" : "readonly"}></label></div>
-    <h2>1. Resultado del ejercicio</h2>
-    <div class="tabla"><table><tbody><tr class="titulo"><td colspan="3">Ingresos</td></tr>${cuentas(c.er.ingresos)}<tr class="sub"><td colspan="2">Total ingresos</td><td class="num">${clp(c.er.ingresos.total)}</td></tr>
-      <tr class="titulo"><td colspan="3">Gastos</td></tr>${cuentas(c.er.gastos)}<tr class="sub"><td colspan="2">Total gastos</td><td class="num">${clp(c.er.gastos.total)}</td></tr>
-      <tr class="total"><td colspan="2">${c.er.resultado < 0 ? "Pérdida" : "Utilidad"} del ejercicio</td><td class="num">${clp(c.er.resultado)}</td></tr></tbody></table></div>
-    <h2>2. Ajustes a la renta líquida imponible</h2>
-    ${listaAjuste("agregado", AJUSTES_SUGERIDOS.agregado)}${listaAjuste("deduccion", AJUSTES_SUGERIDOS.deduccion)}
-    ${bloqueAjustes("agregado", "Agregados (aumentan la renta)")}${bloqueAjustes("deduccion", "Deducciones (la disminuyen)")}
-    <label class="campo-largo">Pérdida tributaria de años anteriores ($)<input id="rn-perdida" inputmode="numeric" value="${r.perdida_anterior ? clp(r.perdida_anterior) : ""}" ${S.puedeEscribir ? "" : "readonly"}></label>
-    <div id="rn-calculo">${htmlCalculoRenta(r, c)}</div>
-    <h2>3. Créditos</h2>
-    <div class="form"><label>PPM pagados en el año ($)<input id="rn-ppm" inputmode="numeric" placeholder="${clp(c.ppm.total)}" value="${r.ppm_manual == null ? "" : clp(r.ppm_manual)}" ${S.puedeEscribir ? "" : "readonly"}>
-      <small>Si lo dejas vacío se usan los F29 guardados: $${clp(c.ppm.total)} (código 62).</small></label></div>
-    ${r.creditos.length ? `<div class="tabla"><table><tbody>${r.creditos.map((x, i) => `<tr><td><input id="rn-cr-con-${i}" value="${esc(x.concepto)}" placeholder="Ej. Crédito por capacitación SENCE" style="width:100%" ${S.puedeEscribir ? "" : "readonly"}></td>
-      <td class="num"><input id="rn-cr-monto-${i}" class="monto" inputmode="numeric" value="${x.monto ? clp(x.monto) : ""}" ${S.puedeEscribir ? "" : "readonly"}></td><td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-credito" data-id="${i}">Quitar</button>`)}</td></tr>`).join("")}</tbody></table></div>` : ""}
-    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-credito">+ Otro crédito</button></div>`)}
-    <div id="rn-final">${htmlFinalRenta(r, c)}</div>
-    <h2>4. Propietarios${r.regimen === "d8" ? " (atribución de la renta)" : ""}</h2>
-    ${r.propietarios.length ? `<div class="tabla"><table><thead><tr><th>Nombre</th><th>RUT</th><th class="num">Participación (%)</th><th class="num">Renta atribuida</th><th></th></tr></thead><tbody>${r.propietarios.map((p, i) => `<tr>
-      <td><input id="rn-pr-nom-${i}" value="${esc(p.nombre)}" ${S.puedeEscribir ? "" : "readonly"}></td><td><input id="rn-pr-rut-${i}" value="${esc(p.rut)}" ${S.puedeEscribir ? "" : "readonly"}></td>
-      <td class="num"><input id="rn-pr-pct-${i}" class="monto" style="width:6em" inputmode="decimal" value="${comaDecimal(p.porcentaje)}" ${S.puedeEscribir ? "" : "readonly"}></td><td class="num" id="rn-pr-monto-${i}">${clp(c.atribuida[i]?.monto || 0)}</td>
-      <td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-prop" data-id="${i}">Quitar</button>`)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="ayuda">Sin propietarios registrados.</p>`}
-    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-prop">+ Agregar propietario</button></div>`)}
-    <label class="campo-largo">Observaciones<textarea id="rn-obs" rows="2" ${S.puedeEscribir ? "" : "readonly"}>${esc(r.observacion)}</textarea></label>
-    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="rn-guardar">Guardar borrador</button><button class="btn sec" type="submit">Recalcular</button>${guardado ? `<button class="btn sec" type="button" data-n="rn-descartar">Volver a lo guardado</button>` : ""}</div>`)}
-    ${guardado?.guardado_en ? `<p class="ayuda">Último borrador guardado el ${fechaHora(guardado.guardado_en)}.</p>` : ""}
-  </form>
-  <p class="ayuda">Pro Pyme general (14 D N° 3) determina la renta con ingresos percibidos y egresos pagados: registra en «Ajustes» las diferencias con la contabilidad devengada. Este borrador no calcula el capital propio tributario ni los registros de rentas empresariales (RAI, SAC, REX).</p>`;
-}
-
-
+/* ---------- vistas ---------- */
 function htmlTarjetasRenta(r, c) {
-  const alertas = [];
-  if (c.ppm.faltan.length && r.ppm_manual == null) alertas.push(`No hay borrador de F29 guardado para ${c.ppm.faltan.map((m) => mesCap(m)).join(", ")}: el crédito por PPM puede estar incompleto. Guarda esos F29 o ingresa el PPM pagado a mano.`);
-  if (r.regimen === "d8" && !r.propietarios.length) alertas.push("En el régimen transparente la renta se atribuye a los propietarios: agrégalos más abajo con su porcentaje.");
-  if (r.regimen === "d8" && r.propietarios.length && Math.abs(r.propietarios.reduce((s, p) => s + (p.porcentaje || 0), 0) - 100) > 0.001) alertas.push("Los porcentajes de los propietarios no suman 100 %.");
-  if (c.antes < 0) alertas.push(`El ejercicio termina con pérdida tributaria de $${clp(-c.antes)}; se arrastra a los años siguientes.`);
   return `<div class="tarjetas">
     <div class="tarjeta ${c.er.resultado < 0 ? "neg" : ""}"><span>Resultado contable</span><strong>$${clp(c.er.resultado)}</strong></div>
     <div class="tarjeta"><span>Renta líquida imponible</span><strong>$${clp(c.rli)}</strong></div>
     <div class="tarjeta"><span>Impuesto ${comaDecimal(r.tasa)} %</span><strong>$${clp(c.idpc)}</strong></div>
+    <div class="tarjeta ${c.cpt.cpt < 0 ? "neg" : ""}"><span>Capital propio tributario</span><strong>$${clp(c.cpt.cpt)}</strong></div>
     <div class="tarjeta ${c.resultado < 0 ? "" : "neg"}"><span>${c.resultado < 0 ? "Devolución estimada" : "Saldo a pagar"}</span><strong>$${clp(Math.abs(c.resultado))}</strong></div></div>
-  ${alertas.map((a) => `<div class="aviso">${esc(a)}</div>`).join("")}`;
+  ${c.alertas.map((a) => `<div class="aviso">${esc(a)}</div>`).join("")}`;
 }
 function htmlCalculoRenta(r, c) {
-  return `<div class="tabla"><table><tbody><tr><td>Resultado contable</td><td class="num">${clp(c.er.resultado)}</td></tr><tr><td>(+) Agregados</td><td class="num">${clp(c.agregados)}</td></tr><tr><td>(−) Deducciones</td><td class="num">${clp(c.deducciones)}</td></tr>
-      ${c.perdidaUsada ? `<tr><td>(−) Pérdida de años anteriores imputada</td><td class="num">${clp(c.perdidaUsada)}</td></tr>` : ""}<tr class="total"><td>Renta líquida imponible</td><td class="num">${clp(c.rli)}</td></tr>
-      <tr><td>Impuesto de primera categoría (${comaDecimal(r.tasa)} %)${r.regimen === "d8" ? " · no se paga en el régimen transparente" : ""}</td><td class="num">${clp(c.idpc)}</td></tr></tbody></table></div>`;
+  const f = (t, v, cls = "") => `<tr class="${cls}"><td>${t}</td><td class="num">${clp(v)}</td></tr>`;
+  return `<div class="tabla"><table><tbody>${f("Resultado contable del ejercicio", c.er.resultado)}
+    ${f("(+) Agregados automáticos", c.agregadosAuto)}${f("(+) Agregados manuales", c.agregados - c.agregadosAuto)}${f("(−) Deducciones automáticas", c.deduccionesAuto)}${f("(−) Deducciones manuales", c.deducciones - c.deduccionesAuto)}
+    ${f("Renta líquida imponible antes de la pérdida", c.antes, "sub")}${c.perdidaUsada ? f("(−) Pérdida tributaria de años anteriores imputada (reajustada)", c.perdidaUsada) : ""}
+    ${f("Renta líquida imponible", c.rli, "total")}${f(`Impuesto de primera categoría (${comaDecimal(r.tasa)} %)${r.regimen === "d8" ? " · no se paga en el régimen transparente" : ""}`, c.idpc)}</tbody></table></div>`;
 }
 function htmlFinalRenta(r, c) {
   return `<div class="tabla"><table><tbody><tr><td>Impuesto de primera categoría</td><td class="num">${clp(c.idpc)}</td></tr><tr><td>(−) Créditos</td><td class="num">${clp(c.creditos)}</td></tr>
-      <tr class="pagar"><td>${c.resultado < 0 ? "Devolución estimada" : "Saldo a pagar"}</td><td class="num">${clp(Math.abs(c.resultado))}</td></tr></tbody></table></div>`;
+    <tr class="pagar"><td>${c.resultado < 0 ? "Devolución estimada" : "Saldo a pagar"}</td><td class="num">${clp(Math.abs(c.resultado))}</td></tr></tbody></table></div>
+    ${c.perdidaSiguiente ? `<p class="ayuda">Pérdida tributaria que se arrastra al año siguiente: $${clp(c.perdidaSiguiente)} (se reajusta con la VIPC del próximo año).</p>` : ""}`;
 }
-const csvRenta = (r, c) => ({ archivo: `renta_${slug()}_${r.anio}.csv`, filas: filasRenta(r, c).map(([n, v]) => [n, v ?? ""]) });
-/* Recalcula sin volver a dibujar el formulario, para no perder el foco al pasar de un campo a otro. */
+function htmlResumenCpt(r, c) {
+  const k = c.cpt, f = (t, v, cls = "") => `<tr class="${cls}"><td>${t}</td><td class="num">${clp(v)}</td></tr>`;
+  const variacion = k.cpt - k.inicialReaj, V = (r.vipc || 0) / 100;
+  return `<div class="tabla"><table><tbody>${f("Activos a valor contable (cuentas de balance)", k.activosLibro)}${f("(−) Pasivos a valor contable", k.pasivosLibro)}${f("Patrimonio contable", k.patrimonioContable, "sub")}
+    ${f("Activos que representan inversión efectiva, con ajustes", k.activos)}${k.afAjuste ? f("(±) Ajuste de activo fijo a valor tributario (según fichas)", k.afAjuste) : ""}${f("(−) Pasivo exigible, con ajustes", k.pasivos)}
+    ${f(`Capital propio tributario al 31/12/${r.anio} ${k.cpt < 0 ? "(negativo)" : "(positivo)"}`, k.cpt, "total")}
+    ${f("Diferencia con el patrimonio contable", k.cpt - k.patrimonioContable)}${f("Capital propio tributario inicial", k.inicial)}${f(`Reajuste con la VIPC (${comaDecimal((V * 100).toFixed(2))} %)`, k.inicialReaj - k.inicial)}
+    ${f("Capital propio inicial reajustado", k.inicialReaj, "sub")}${f("Variación del capital propio en el año", variacion)}</tbody></table></div>`;
+}
+function filaRegistro(nombre, ini, mas, menos, fin, nota) {
+  return `<tr><td>${nombre}${nota ? `<br><small class="ayuda">${nota}</small>` : ""}</td><td class="num">${clp(ini)}</td><td class="num">${clp(mas)}</td><td class="num">${clp(menos)}</td><td class="num"><strong>${clp(fin)}</strong></td></tr>`;
+}
+function htmlRegistros(r, c) {
+  const g = c.reg;
+  if (r.regimen === "d8") return `<p class="ayuda">El régimen transparente no lleva estos registros: la renta se atribuye cada año a los propietarios (pestaña «Renta líquida imponible», sección Propietarios).</p>`;
+  return `<div class="tabla"><table><thead><tr><th>Registro</th><th class="num">Saldo inicial reajustado</th><th class="num">Aumentos</th><th class="num">Imputaciones</th><th class="num">Saldo al cierre</th></tr></thead><tbody>
+    ${filaRegistro("RAI · rentas afectas a impuestos finales", g.raiIniReaj, "", g.aRai, g.raiFinal, `Determinado: capital propio − capital aportado − REX − otros + retiros. Saldo antes de retiros: $${clp(g.rai0)}`)}
+    ${r.regimen === "a" ? filaRegistro("DDAN · diferencia entre depreciación acelerada y normal", "", g.ddan, g.aDdan, g.ddanFinal, "Según las fichas de activo fijo con depreciación acelerada") : ""}
+    ${filaRegistro("REX · rentas exentas e ingresos no renta", g.rexIniReaj, g.rexAntes - g.rexIniReaj, g.aRex, g.rexFinal)}
+    ${filaRegistro("SAC · saldo acumulado de créditos", g.sacIniReaj, g.sacAntes - g.sacIniReaj, g.creditos, g.sacFinal, "Aumento: impuesto de primera categoría del ejercicio")}
+    <tr class="sub"><td>Capital aportado</td><td class="num">${clp(g.capitalIniReaj)}</td><td class="num">${clp(g.capitalFinal - g.capitalIniReaj)}</td><td class="num"></td><td class="num">${clp(g.capitalFinal)}</td></tr></tbody></table></div>
+    ${g.retiros.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Beneficiario</th><th class="num">Retiro reajustado</th><th class="num">A RAI</th>${r.regimen === "a" ? '<th class="num">A DDAN</th>' : ""}<th class="num">A REX</th><th class="num">Exceso</th><th class="num">Crédito sugerido</th></tr></thead><tbody>
+      ${g.retiros.map((x) => `<tr><td>${fmtFecha(x.fecha)}</td><td>${esc(x.nombre)}</td><td class="num">${clp(x.reaj)}</td><td class="num">${clp(x.aRai)}</td>${r.regimen === "a" ? `<td class="num">${clp(x.aDdan)}</td>` : ""}<td class="num">${clp(x.aRex)}</td><td class="num">${x.exceso ? `<span class="neg">${clp(x.exceso)}</span>` : "0"}</td><td class="num">${clp(x.sugerido)}</td></tr>`).join("")}</tbody></table></div>` : ""}`;
+}
+function encabezadoRenta(r, c, t) {
+  const anios = aniosDesde(S.lista.map((a) => a.fecha), empresa().ejercicio, S.renta.map((x) => x.id));
+  if (!anios.includes(String(r.anio))) anios.unshift(String(r.anio));
+  return `${cabecera("Renta anual (F22)", `Año comercial ${r.anio} · Año tributario ${r.anio + 1}`)}
+  ${pestanasDe("renta", [["rli", "Renta líquida imponible"], ["cpt", "Capital propio tributario"], ["registros", "Registros de rentas empresariales"]])}
+  <div class="barra"><label>Año comercial<select id="rn-anio">${opcionesAnio(anios, r.anio)}</select></label>${botonesExportar()}</div>
+  <div id="rn-tarjetas">${htmlTarjetasRenta(r, c)}</div>
+  <form id="form-renta" data-form="n-renta" class="caja">
+    <div class="form"><label>Régimen<select id="rn-regimen" ${S.puedeEscribir ? "" : "disabled"}>${Object.entries(REGIMENES_RENTA).map(([k, [n]]) => `<option value="${k}" ${r.regimen === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <label>Tasa del impuesto de primera categoría (%)<input id="rn-tasa" inputmode="decimal" value="${comaDecimal(r.tasa)}" ${S.puedeEscribir ? "" : "readonly"}></label>
+      <label>VIPC anual del año comercial (%)<input id="rn-vipc" inputmode="decimal" placeholder="Ej. 3,5" value="${r.vipc == null ? "" : comaDecimal(r.vipc)}" ${S.puedeEscribir ? "" : "readonly"}>
+        <small>Variación del IPC entre noviembre del año anterior y noviembre de ${r.anio}. Reajusta el capital propio, la pérdida y los registros.</small></label></div>`;
+}
+const pieRenta = (r) => `${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="rn-guardar">Guardar borrador</button><button class="btn sec" type="submit">Recalcular</button>${S.renta.some((x) => x.id === String(r.anio)) ? `<button class="btn sec" type="button" data-n="rn-descartar">Volver a lo guardado</button>` : ""}</div>`)}
+  ${S.renta.find((x) => x.id === String(r.anio))?.guardado_en ? `<p class="ayuda">Último borrador guardado el ${fechaHora(S.renta.find((x) => x.id === String(r.anio)).guardado_en)}.</p>` : ""}</form>`;
+
+function vistaRenta() {
+  const r = rentaActual(), c = calcularRenta(r), t = pestanaActual("renta", "rli");
+  r._autoClaves = c.auto.map((a) => a.key); r._cajaIds = c.caja.map((x) => x.cuenta.id); r._cptIds = c.cpt.filas.map((x) => x.cuenta.id);
+  const inf = () => ({ rli: informeRenta, cpt: informeCpt, registros: informeRegistros }[t] || informeRenta)(r);
+  S.informe = inf; S.csv = csvDeInforme(inf());
+  return encabezadoRenta(r, c, t) + (t === "cpt" ? cuerpoCpt(r, c) : t === "registros" ? cuerpoRegistros(r, c) : cuerpoRli(r, c)) + pieRenta(r)
+    + `<p class="ayuda">Borrador referencial: usa las reglas generales de los arts. 14, 29 a 33 y 41 de la LIR y de la Ley 21.210. Compara siempre con la propuesta del SII y con los recuadros del F22 antes de declarar.</p>`;
+}
+const inputRo = () => (S.puedeEscribir ? "" : "readonly");
+
+function cuerpoRli(r, c) {
+  const cuentas = (arbol) => arbol.filas.filter((f) => !f.grupo && f.monto).map((f) => `<tr><td class="cod">${esc(f.codigo)}</td><td>${esc(f.nombre)}</td><td class="num">${clp(f.monto)}</td></tr>`).join("");
+  const filaManual = (a, i) => `<tr><td><input id="rn-aj-con-${i}" list="dl-${a.tipo}" value="${esc(a.concepto)}" style="width:100%" ${inputRo()}></td>
+    <td class="num"><input id="rn-aj-monto-${i}" class="monto" inputmode="numeric" value="${a.monto ? clp(a.monto) : ""}" ${inputRo()}></td>
+    <td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-ajuste" data-id="${i}">Quitar</button>`)}</td></tr>`;
+  const bloqueManual = (tipo, rotulo) => {
+    const filas = r.ajustes.map((a, i) => (a.tipo === tipo ? filaManual(a, i) : "")).join("");
+    return `<h3>${rotulo}</h3>${filas ? `<div class="tabla"><table><tbody>${filas}</tbody></table></div>` : `<p class="ayuda">Sin ajustes.</p>`}${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-ajuste" data-id="${tipo}">+ Agregar</button></div>`)}`;
+  };
+  const auto = c.auto.length ? `<div class="tabla"><table><thead><tr><th></th><th>Ajuste</th><th>Efecto</th><th class="num">Monto</th></tr></thead><tbody>${c.auto.map((a) => `<tr class="${a.activo ? "" : "inactiva"}">
+      <td><input type="checkbox" id="rn-au-${a.key}" ${a.activo ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"} aria-label="Aplicar ${esc(a.concepto)}"></td>
+      <td>${esc(a.concepto)}<br><small class="ayuda">${esc(a.ref)}</small></td><td id="rn-au-tipo-${a.key}">${a.tipo === "agregado" ? "Agrega" : "Deduce"}</td><td class="num" id="rn-au-monto-${a.key}">${clp(a.monto)}</td></tr>`).join("")}</tbody></table></div>`
+    : `<p class="ayuda">No hay ajustes automáticos para este ejercicio.</p>`;
+  const caja = baseCaja(r.regimen) ? `<h2>3. Conversión a base de caja (Pro Pyme)</h2>
+    <p class="ayuda">El régimen Pro Pyme determina la renta con ingresos percibidos y egresos pagados. El programa parte de la contabilidad devengada y corrige por la variación del año de las cuentas que miden lo cobrado y lo pagado. Con «IVA» marcado, el monto se convierte a neto (÷ 1,19). Es una estimación: contrástala con los documentos del año.</p>
+    ${c.caja.length ? `<div class="tabla"><table><thead><tr><th>Cuenta</th><th class="num">Saldo inicial</th><th class="num">Saldo final</th><th class="num">Variación</th><th>Incluir</th><th>Con IVA</th><th class="num">Efecto en la renta</th></tr></thead><tbody>
+      ${c.caja.map((x) => `<tr><td>${esc(etiquetaCuenta(x.cuenta))}<br><small class="ayuda">${x.tipo === "activo" ? "Si sube, baja la renta" : "Si sube, sube la renta"}</small></td><td class="num">${clp(x.inicial)}</td><td class="num">${clp(x.final)}</td><td class="num">${clp(x.delta)}</td>
+        <td><input type="checkbox" id="rn-cj-inc-${x.cuenta.id}" ${x.incluir ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"} aria-label="Incluir"></td>
+        <td><input type="checkbox" id="rn-cj-iva-${x.cuenta.id}" ${x.iva ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"} aria-label="Con IVA"></td><td class="num" id="rn-cj-efecto-${x.cuenta.id}">${clp(x.efecto)}</td></tr>`).join("")}</tbody></table></div>`
+      : `<p class="ayuda">No hay cuentas por cobrar ni por pagar con movimiento.</p>`}
+    ${puedeEditar(`<div class="barra"><label>Agregar otra cuenta de balance<select id="rn-caja-extra"><option value="">— Elegir —</option>${S.cuentas.filter((x) => x.imputable && (x.tipo === "ACTIVO" || x.tipo === "PASIVO") && !c.caja.some((y) => y.cuenta.id === x.id)).map((x) => `<option value="${esc(x.id)}">${esc(etiquetaCuenta(x))}</option>`).join("")}</select></label><button class="btn sec" type="button" data-n="rn-add-caja">Agregar</button></div>`)}` : "";
+  return `<h2>1. Resultado del ejercicio</h2>
+    <div class="tabla"><table><tbody><tr class="titulo"><td colspan="3">Ingresos</td></tr>${cuentas(c.er.ingresos)}<tr class="sub"><td colspan="2">Total ingresos</td><td class="num">${clp(c.er.ingresos.total)}</td></tr>
+      <tr class="titulo"><td colspan="3">Gastos</td></tr>${cuentas(c.er.gastos)}<tr class="sub"><td colspan="2">Total gastos</td><td class="num">${clp(c.er.gastos.total)}</td></tr>
+      <tr class="total"><td colspan="2">${c.er.resultado < 0 ? "Pérdida" : "Utilidad"} del ejercicio</td><td class="num">${clp(c.er.resultado)}</td></tr></tbody></table></div>
+    <h2>2. Ajustes automáticos</h2>
+    <p class="ayuda">Salen de la contabilidad y de las fichas de activo fijo. Desmarca los que no correspondan.</p>${auto}
+    ${caja}
+    <h2>${baseCaja(r.regimen) ? "4" : "3"}. Otros ajustes manuales</h2>
+    <datalist id="dl-agregado">${AJUSTES_SUGERIDOS.agregado.map((x) => `<option value="${esc(x)}">`).join("")}</datalist><datalist id="dl-deduccion">${AJUSTES_SUGERIDOS.deduccion.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>
+    ${bloqueManual("agregado", "Agregados (aumentan la renta)")}${bloqueManual("deduccion", "Deducciones (la disminuyen)")}
+    <h2>${baseCaja(r.regimen) ? "5" : "4"}. Pérdida tributaria de años anteriores</h2>
+    <div class="form"><label>Pérdida al 31/12/${r.anio - 1}, valor histórico ($)<input id="rn-perdida" inputmode="numeric" value="${r.perdida_anterior ? clp(r.perdida_anterior) : ""}" ${inputRo()}>
+      <small>${rentaPrevia(r.anio)?.perdida_siguiente ? `Según el borrador guardado de ${r.anio - 1}: $${clp(rentaPrevia(r.anio).perdida_siguiente)}.` : "Si no hay borrador del año anterior, ingrésala a mano."}</small></label></div>
+    <div id="rn-calculo">${htmlCalculoRenta(r, c)}</div>
+    <h2>${baseCaja(r.regimen) ? "6" : "5"}. Créditos</h2>
+    <div class="form"><label>PPM pagados en el año ($)<input id="rn-ppm" inputmode="numeric" placeholder="${clp(c.ppm.total)}" value="${r.ppm_manual == null ? "" : clp(r.ppm_manual)}" ${inputRo()}>
+      <small>Si lo dejas vacío se usan los F29 guardados: $${clp(c.ppm.total)} (código 62).</small></label></div>
+    ${r.creditos.length ? `<div class="tabla"><table><tbody>${r.creditos.map((x, i) => `<tr><td><input id="rn-cr-con-${i}" value="${esc(x.concepto)}" placeholder="Ej. Crédito por capacitación SENCE" style="width:100%" ${inputRo()}></td>
+      <td class="num"><input id="rn-cr-monto-${i}" class="monto" inputmode="numeric" value="${x.monto ? clp(x.monto) : ""}" ${inputRo()}></td><td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-credito" data-id="${i}">Quitar</button>`)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-credito">+ Otro crédito</button></div>`)}
+    <div id="rn-final">${htmlFinalRenta(r, c)}</div>
+    <h2>${baseCaja(r.regimen) ? "7" : "6"}. Propietarios${r.regimen === "d8" ? " (atribución de la renta)" : ""}</h2>
+    ${r.propietarios.length ? `<div class="tabla"><table><thead><tr><th>Nombre</th><th>RUT</th><th class="num">Participación (%)</th><th class="num">Renta atribuida</th><th></th></tr></thead><tbody>${r.propietarios.map((p, i) => `<tr>
+      <td><input id="rn-pr-nom-${i}" value="${esc(p.nombre)}" ${inputRo()}></td><td><input id="rn-pr-rut-${i}" value="${esc(p.rut)}" ${inputRo()}></td>
+      <td class="num"><input id="rn-pr-pct-${i}" class="monto" style="width:6em" inputmode="decimal" value="${comaDecimal(p.porcentaje)}" ${inputRo()}></td><td class="num" id="rn-pr-monto-${i}">${clp(c.atribuida[i]?.monto || 0)}</td>
+      <td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-prop" data-id="${i}">Quitar</button>`)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="ayuda">Sin propietarios registrados.</p>`}
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-prop">+ Agregar propietario</button></div>`)}
+    <label class="campo-largo">Observaciones<textarea id="rn-obs" rows="2" ${inputRo()}>${esc(r.observacion)}</textarea></label>`;
+}
+
+function cuerpoCpt(r, c) {
+  const k = c.cpt;
+  const filas = k.filas.map((x) => `<tr class="${x.trat === "excluir" ? "inactiva" : ""}"><td class="cod">${esc(x.cuenta.codigo)}</td><td>${esc(x.cuenta.nombre)}</td><td>${x.cuenta.tipo === "ACTIVO" ? "Activo" : "Pasivo"}</td><td class="num">${clp(x.final)}</td>
+    <td><select id="rn-cpt-t-${x.cuenta.id}" ${S.puedeEscribir ? "" : "disabled"} aria-label="Tratamiento de ${esc(x.cuenta.nombre)}"><option value="incluir" ${x.trat === "incluir" ? "selected" : ""}>${x.cuenta.tipo === "ACTIVO" ? "Inversión efectiva" : "Pasivo exigible"}</option><option value="excluir" ${x.trat === "excluir" ? "selected" : ""}>Excluir (intangible, nominal o transitorio)</option></select></td>
+    <td class="num"><input id="rn-cpt-aj-${x.cuenta.id}" class="monto" inputmode="numeric" value="${x.ajuste ? clp(x.ajuste) : ""}" ${inputRo()} aria-label="Ajuste a valor tributario"></td><td class="num" id="rn-cpt-valor-${x.cuenta.id}">${clp(x.valor)}</td></tr>`).join("");
+  return `<h2>Capital propio tributario al 31/12/${r.anio}</h2>
+    <p class="ayuda">Capital propio tributario = activos que representan inversión efectiva, a valor tributario, menos el pasivo exigible (art. 41 N° 1 LIR). Quedan fuera los valores intangibles, nominales, transitorios y de orden. El programa parte del balance, propone el tratamiento de cada cuenta por su nombre y calcula el ajuste de los bienes del activo fijo con las fichas. Si una cuenta tiene otro valor tributario, anota la diferencia en «Ajuste». Si es negativo, se informa como CPT negativo.</p>
+    ${k.filas.length ? `<div class="tabla"><table><thead><tr><th>Código</th><th>Cuenta</th><th>Tipo</th><th class="num">Saldo contable</th><th>Tratamiento</th><th class="num">Ajuste a valor tributario</th><th class="num">Valor tributario</th></tr></thead><tbody>${filas}</tbody></table></div>`
+      : `<div class="caja vacio"><p>No hay saldos de balance en ${r.anio}.</p></div>`}
+    <div class="form"><label class="check"><input type="checkbox" id="rn-cpt-af" ${r.cpt.af_auto ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Ajustar el activo fijo a valor tributario según las fichas (depreciación tributaria)</label>
+      <label>Capital propio tributario inicial ($, valor al 31/12/${r.anio - 1})<input id="rn-cpt-ini" inputmode="numeric" placeholder="${k.inicialPrevio != null ? clp(k.inicialPrevio) : "0"}" value="${r.cpt.inicial == null ? "" : clp(r.cpt.inicial)}" ${inputRo()}>
+        <small>${k.inicialPrevio != null ? `Si lo dejas vacío se usa el del borrador guardado de ${r.anio - 1}.` : `No hay borrador de ${r.anio - 1}: ingrésalo a mano (negativo si el capital propio era negativo).`}</small></label></div>
+    <div id="rn-cpt-res">${htmlResumenCpt(r, c)}</div>
+    <p class="ayuda">El capital propio inicial reajustado se usa en el régimen 14 A para la corrección monetaria de la renta líquida imponible y, en los registros, para determinar el RAI. Guarda el borrador: el CPT al cierre pasa a ser el inicial del año siguiente.</p>`;
+}
+
+function cuerpoRegistros(r, c) {
+  const g = c.reg, ro = inputRo();
+  const previa = rentaPrevia(r.anio);
+  const mov = (x, i) => `<tr><td><input type="date" id="rn-cm-fecha-${i}" value="${esc(x.fecha || "")}" ${ro}></td><td><input id="rn-cm-con-${i}" value="${esc(x.concepto || "")}" placeholder="Aporte, aumento o devolución de capital" style="width:100%" ${ro}></td>
+    <td class="num"><input id="rn-cm-monto-${i}" class="monto" inputmode="numeric" value="${x.monto ? clp(x.monto) : ""}" ${ro}></td><td class="num"><input id="rn-cm-pct-${i}" class="monto" style="width:5.5em" inputmode="decimal" placeholder="${comaDecimal((g.movs[i]?.pct ?? 0).toFixed(2))}" value="${x.pct == null ? "" : comaDecimal(x.pct)}" ${ro}></td>
+    <td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-capital" data-id="${i}">Quitar</button>`)}</td></tr>`;
+  const ret = (x, i) => { const s = g.retiros.find((y) => y.i === i) || {}; return `<tr><td><input type="date" id="rn-rt-fecha-${i}" value="${esc(x.fecha || "")}" ${ro}></td><td><input id="rn-rt-nom-${i}" value="${esc(x.nombre || "")}" placeholder="Socio o accionista" ${ro}></td><td><input id="rn-rt-rut-${i}" value="${esc(x.rut || "")}" style="width:8.5em" ${ro}></td>
+    <td class="num"><input id="rn-rt-monto-${i}" class="monto" inputmode="numeric" value="${x.monto ? clp(x.monto) : ""}" ${ro}></td><td class="num"><input id="rn-rt-pct-${i}" class="monto" style="width:5.5em" inputmode="decimal" placeholder="${comaDecimal((s.pct ?? 0).toFixed(2))}" value="${x.pct == null ? "" : comaDecimal(x.pct)}" ${ro}></td>
+    <td class="num"><input id="rn-rt-cred-${i}" class="monto" inputmode="numeric" placeholder="${clp(s.sugerido || 0)}" value="${x.credito ? clp(x.credito) : ""}" ${ro}></td>
+    <td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-retiro" data-id="${i}">Quitar</button>`)}</td></tr>`; };
+  const rex = (x, i) => `<tr><td><input id="rn-rx-con-${i}" value="${esc(x.concepto || "")}" placeholder="Ingreso no constitutivo de renta o renta exenta del año" style="width:100%" ${ro}></td>
+    <td class="num"><input id="rn-rx-monto-${i}" class="monto" inputmode="numeric" value="${x.monto ? clp(x.monto) : ""}" ${ro}></td><td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-rex" data-id="${i}">Quitar</button>`)}</td></tr>`;
+  if (r.regimen === "d8") return `<h2>Registros de rentas empresariales</h2>${htmlRegistros(r, c)}`;
+  return `<h2>Registros de rentas empresariales ${r.anio}</h2>
+    <p class="ayuda">${r.regimen === "a" ? "Régimen 14 A: RAI, DDAN, REX y SAC." : "Régimen Pro Pyme general: RAI, REX y SAC (sin DDAN)."} El RAI se determina al cierre con el capital propio tributario (art. 14 LIR) y los retiros se imputan en orden cronológico al RAI, luego al DDAN y luego al REX. Los saldos iniciales se toman del borrador guardado del año anterior; en el primer año ingrésalos tú, tal como los propone el SII. Compara el resultado con los recuadros de registros del F22.</p>
+    <div class="form"><label>RAI inicial ($)<input id="rn-rai-ini" inputmode="numeric" placeholder="${clp(previa?.rai_final ?? 0)}" value="${r.registros.rai_inicial == null ? "" : clp(r.registros.rai_inicial)}" ${ro}></label>
+      <label>REX inicial ($)<input id="rn-rex-ini" inputmode="numeric" placeholder="${clp(previa?.rex_final ?? 0)}" value="${r.registros.rex_inicial == null ? "" : clp(r.registros.rex_inicial)}" ${ro}></label>
+      <label>SAC inicial ($)<input id="rn-sac-ini" inputmode="numeric" placeholder="${clp(previa?.sac_final ?? 0)}" value="${r.registros.sac_inicial == null ? "" : clp(r.registros.sac_inicial)}" ${ro}></label>
+      ${r.regimen === "a" ? `<label>DDAN ($)<input id="rn-ddan" inputmode="numeric" placeholder="${clp(ddanFichas(r.anio))}" value="${r.registros.ddan_manual == null ? "" : clp(r.registros.ddan_manual)}" ${ro}><small>Vacío: según las fichas con depreciación acelerada.</small></label>` : ""}
+      <label>Otros saldos a deducir para el RAI ($)<input id="rn-otros-rai" inputmode="numeric" value="${r.registros.otros_rai ? clp(r.registros.otros_rai) : ""}" ${ro}><small>Solo si las instrucciones del F22 piden restar otras partidas.</small></label>
+      <label class="check"><input type="checkbox" id="rn-rex-reaj" ${r.registros.reajusta_rex ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Reajustar el REX inicial con la VIPC</label></div>
+    ${previa ? puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-traer-previos">Usar los saldos finales de ${r.anio - 1}</button></div>`) : ""}
+    <h3>Capital aportado</h3>
+    <div class="form"><label>Capital aportado inicial ($)<input id="rn-cap-ini" inputmode="numeric" placeholder="${clp(previa?.capital_final ?? 0)}" value="${r.capital.inicial == null ? "" : clp(r.capital.inicial)}" ${ro}></label></div>
+    ${r.capital.movimientos.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Concepto</th><th class="num">Monto (aumento +, disminución −)</th><th class="num">Reajuste %</th><th></th></tr></thead><tbody>${r.capital.movimientos.map(mov).join("")}</tbody></table></div>` : ""}
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-capital">+ Aumento o disminución de capital</button></div>`)}
+    <h3>Ingresos del año para el REX</h3>
+    ${r.registros.rex_ingresos.length ? `<div class="tabla"><table><tbody>${r.registros.rex_ingresos.map(rex).join("")}</tbody></table></div>` : `<p class="ayuda">Sin ingresos no constitutivos de renta ni rentas exentas en el año.</p>`}
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-rex">+ Ingreso para el REX</button></div>`)}
+    <h3>Retiros, remesas y distribuciones del año</h3>
+    ${r.retiros.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Beneficiario</th><th>RUT</th><th class="num">Monto</th><th class="num">Reajuste %</th><th class="num">Crédito del SAC ($)</th><th></th></tr></thead><tbody>${r.retiros.map(ret).join("")}</tbody></table></div>` : `<p class="ayuda">Sin retiros en el año.</p>`}
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-retiro">+ Retiro o distribución</button></div>`)}
+    <p class="ayuda">El reajuste de cada retiro y de cada movimiento de capital va con la variación del IPC entre el mes anterior al movimiento y el mes anterior al cierre; si lo dejas vacío se estima proporcional a los meses restantes con la VIPC anual. El crédito del SAC por cada retiro se calcula con las reglas de los arts. 56 y 63 de la LIR; el valor sugerido es proporcional (saldo del SAC ÷ RAI) y debes confirmarlo.</p>
+    <h3>Saldos al cierre</h3><div id="rn-registros">${htmlRegistros(r, c)}</div>`;
+}
+
+/* ---------- actualización en pantalla sin volver a dibujar los campos ---------- */
 function actualizarRenta() {
   leerFormularioRenta();
   const r = S.rentaEdit, c = calcularRenta(r);
-  $("#rn-tarjetas").innerHTML = htmlTarjetasRenta(r, c); $("#rn-calculo").innerHTML = htmlCalculoRenta(r, c); $("#rn-final").innerHTML = htmlFinalRenta(r, c);
+  const poner = (id, html) => { const el = $("#" + id); if (el) el.innerHTML = html; };
+  poner("rn-tarjetas", htmlTarjetasRenta(r, c)); poner("rn-calculo", htmlCalculoRenta(r, c)); poner("rn-final", htmlFinalRenta(r, c)); poner("rn-cpt-res", htmlResumenCpt(r, c)); poner("rn-registros", htmlRegistros(r, c));
+  for (const a of c.auto) { const m = $(`#rn-au-monto-${a.key}`), t = $(`#rn-au-tipo-${a.key}`); if (m) m.textContent = clp(a.monto); if (t) t.textContent = a.tipo === "agregado" ? "Agrega" : "Deduce"; }
+  for (const x of c.caja) { const e = $(`#rn-cj-efecto-${x.cuenta.id}`); if (e) e.textContent = clp(x.efecto); }
+  for (const x of c.cpt.filas) { const e = $(`#rn-cpt-valor-${x.cuenta.id}`); if (e) e.textContent = clp(x.valor); }
   c.atribuida.forEach((p, i) => { const el = $(`#rn-pr-monto-${i}`); if (el) el.textContent = clp(p.monto); });
-  S.csv = csvRenta(r, c);
+  const t = pestanaActual("renta", "rli");
+  const inf = () => ({ rli: informeRenta, cpt: informeCpt, registros: informeRegistros }[t] || informeRenta)(r);
+  S.informe = inf; S.csv = csvDeInforme(inf());
+}
+function csvDeInforme(inf) {
+  return { archivo: `${inf.nombre}_${slug()}.csv`, filas: [inf.columnas.map((c) => c.titulo), ...inf.filas.map((f) => f.valores.map((v) => (Array.isArray(v) ? v[0] : v ?? "")))] };
 }
 
-function filasRenta(r, c) {
-  return [["Resultado contable del ejercicio", c.er.resultado], ["Agregados", c.agregados], ...r.ajustes.filter((a) => a.tipo === "agregado").map((a) => [`   ${a.concepto || "(sin detalle)"}`, a.monto]),
-    ["Deducciones", c.deducciones], ...r.ajustes.filter((a) => a.tipo === "deduccion").map((a) => [`   ${a.concepto || "(sin detalle)"}`, a.monto]),
-    ["Pérdida tributaria de años anteriores imputada", c.perdidaUsada], ["Renta líquida imponible", c.rli], [`Tasa del impuesto (${comaDecimal(r.tasa)} %)`, null], ["Impuesto de primera categoría", c.idpc],
-    ["PPM pagados", c.ppmMonto], ...r.creditos.map((x) => [`   ${x.concepto || "Otro crédito"}`, x.monto]), ["Total créditos", c.creditos], [c.resultado < 0 ? "Devolución estimada" : "Saldo a pagar", Math.abs(c.resultado)]];
-}
+/* ---------- informes ---------- */
 function informeRenta(r) {
   const c = calcularRenta(r);
-  const inf = new Informe("BORRADOR DE RENTA ANUAL (F22)", `AÑO COMERCIAL ${r.anio} · AÑO TRIBUTARIO ${r.anio + 1} · ${REGIMENES_RENTA[r.regimen][0].toUpperCase()}`,
+  const inf = new Informe("RENTA LÍQUIDA IMPONIBLE E IMPUESTO DE PRIMERA CATEGORÍA", `AÑO COMERCIAL ${r.anio} · AÑO TRIBUTARIO ${r.anio + 1} · ${REGIMENES_RENTA[r.regimen][0].toUpperCase()}`,
     [col("Concepto", 62), col("Monto", 18, "monto")], `renta_anual_${r.anio}`, { firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
   const sec = (t) => inf.agregar([t], { estilo: "seccion", abarca: 0 });
   sec("Resultado del ejercicio");
   inf.agregar(["Ingresos", c.er.ingresos.total]); inf.agregar(["Gastos", c.er.gastos.total]); inf.agregar([c.er.resultado < 0 ? "Pérdida del ejercicio" : "Utilidad del ejercicio", c.er.resultado], { estilo: "subtotal" });
   sec("Renta líquida imponible");
   inf.agregar(["Resultado contable", c.er.resultado]);
-  inf.agregar(["(+) Agregados", sinCeros(c.agregados)]); for (const a of r.ajustes.filter((x) => x.tipo === "agregado")) inf.agregar([`      ${a.concepto || "(sin detalle)"}`, a.monto]);
-  inf.agregar(["(−) Deducciones", sinCeros(c.deducciones)]); for (const a of r.ajustes.filter((x) => x.tipo === "deduccion")) inf.agregar([`      ${a.concepto || "(sin detalle)"}`, a.monto]);
-  if (c.perdidaUsada) inf.agregar(["(−) Pérdida tributaria de años anteriores imputada", c.perdidaUsada]);
+  for (const a of c.autoOn) inf.agregar([`${a.tipo === "agregado" ? "(+)" : "(−)"} ${a.concepto}`, a.monto]);
+  for (const a of r.ajustes) inf.agregar([`${a.tipo === "agregado" ? "(+)" : "(−)"} ${a.concepto || "(sin detalle)"}`, a.monto]);
+  inf.agregar(["Renta líquida imponible antes de la pérdida", c.antes], { estilo: "subtotal" });
+  if (c.perdidaUsada) inf.agregar(["(−) Pérdida tributaria de años anteriores imputada (reajustada)", c.perdidaUsada]);
   inf.agregar(["RENTA LÍQUIDA IMPONIBLE", c.rli], { estilo: "total" });
   sec("Impuesto y créditos");
   inf.agregar([`Impuesto de primera categoría (${comaDecimal(r.tasa)} %)`, c.idpc]);
   inf.agregar(["(−) Pagos provisionales mensuales (PPM)", sinCeros(c.ppmMonto)]); for (const x of r.creditos) inf.agregar([`(−) ${x.concepto || "Otro crédito"}`, x.monto]);
   inf.agregar([c.resultado < 0 ? "DEVOLUCIÓN ESTIMADA" : "SALDO A PAGAR", Math.abs(c.resultado)], { estilo: "destacado" });
+  if (c.perdidaSiguiente) inf.agregar(["Pérdida tributaria que se arrastra al año siguiente", c.perdidaSiguiente], { estilo: "nota" });
   if (c.atribuida.length) { sec("Atribución a los propietarios"); for (const p of c.atribuida) inf.agregar([`${p.nombre} · RUT ${p.rut} · ${comaDecimal(p.porcentaje)} %`, p.monto]); }
   inf.recuadro = [[c.resultado < 0 ? "DEVOLUCIÓN ESTIMADA" : "SALDO A PAGAR", Math.abs(c.resultado)]];
   inf.notas.push("Borrador referencial calculado a partir de la contabilidad. Verifica los valores con la propuesta de declaración del SII antes de declarar.");
+  inf.notas.push(...c.alertas);
   if (r.observacion) inf.notas.push(`Observaciones: ${r.observacion}`);
+  return inf;
+}
+function informeCpt(r) {
+  const c = calcularRenta(r), k = c.cpt;
+  const inf = new Informe("CAPITAL PROPIO TRIBUTARIO", `AL 31/12/${r.anio} · ${REGIMENES_RENTA[r.regimen][0].toUpperCase()}`,
+    [col("Código", 9), col("Cuenta", 36), col("Tipo", 9), col("Saldo contable", 14, "monto"), col("Tratamiento", 14), col("Ajuste", 12, "monto"), col("Valor tributario", 14, "monto")], `capital_propio_tributario_${r.anio}`, { horizontal: true, firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  for (const x of k.filas) inf.agregar([x.cuenta.codigo, x.cuenta.nombre, x.cuenta.tipo === "ACTIVO" ? "Activo" : "Pasivo", x.final, x.trat === "excluir" ? "Excluida" : "Incluida", sinCeros(x.ajuste), x.valor]);
+  if (k.afAjuste) inf.agregar([null, "Ajuste de activo fijo a valor tributario (según fichas)", null, null, null, null, k.afAjuste]);
+  inf.agregar([null, "ACTIVOS A VALOR TRIBUTARIO", null, null, null, null, k.activos + k.afAjuste], { estilo: "subtotal", derecha: true });
+  inf.agregar([null, "PASIVO EXIGIBLE", null, null, null, null, k.pasivos], { estilo: "subtotal", derecha: true });
+  inf.agregar([null, `CAPITAL PROPIO TRIBUTARIO ${k.cpt < 0 ? "NEGATIVO" : "POSITIVO"}`, null, null, null, null, k.cpt], { estilo: "total", derecha: true });
+  inf.notas.push(`Patrimonio contable: ${pesosTexto(k.patrimonioContable)}. Capital propio inicial: ${pesosTexto(k.inicial)}, reajustado ${pesosTexto(k.inicialReaj)} con la VIPC. Variación del año: ${pesosTexto(k.cpt - k.inicialReaj)}.`);
+  inf.notas.push("Valores intangibles, nominales, transitorios y de orden excluidos según el art. 41 N° 1 de la LIR. Borrador referencial.");
+  return inf;
+}
+function informeRegistros(r) {
+  const c = calcularRenta(r), g = c.reg;
+  const inf = new Informe("REGISTROS DE RENTAS EMPRESARIALES", `AL 31/12/${r.anio} · ${REGIMENES_RENTA[r.regimen][0].toUpperCase()}`,
+    [col("Registro", 44), col("Saldo inicial reajustado", 15, "monto"), col("Aumentos", 14, "monto"), col("Imputaciones", 14, "monto"), col("Saldo al cierre", 15, "monto")], `registros_rentas_empresariales_${r.anio}`, { horizontal: true, firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  if (r.regimen === "d8") { inf.agregar(["El régimen transparente no lleva registros: la renta se atribuye a los propietarios."], { estilo: "nota", abarca: 0 }); return inf; }
+  inf.agregar(["RAI · rentas afectas a impuestos finales", g.raiIniReaj, null, g.aRai, g.raiFinal]);
+  if (r.regimen === "a") inf.agregar(["DDAN · diferencia entre depreciación acelerada y normal", null, g.ddan, g.aDdan, g.ddanFinal]);
+  inf.agregar(["REX · rentas exentas e ingresos no constitutivos de renta", g.rexIniReaj, g.rexAntes - g.rexIniReaj, g.aRex, g.rexFinal]);
+  inf.agregar(["SAC · saldo acumulado de créditos", g.sacIniReaj, g.sacAntes - g.sacIniReaj, g.creditos, g.sacFinal]);
+  inf.agregar(["Capital aportado", g.capitalIniReaj, g.capitalFinal - g.capitalIniReaj, null, g.capitalFinal], { estilo: "subtotal" });
+  if (g.retiros.length) {
+    inf.agregar(["Retiros, remesas y distribuciones del ejercicio (reajustados)"], { estilo: "seccion", abarca: 0 });
+    inf.agregar(["Fecha · beneficiario", "Retiro", "A RAI", "A REX", "Exceso"], { estilo: "subtotal" });
+    for (const x of g.retiros) inf.agregar([`${fmtFecha(x.fecha)} · ${x.nombre || ""}`, x.reaj, x.aRai, x.aRex, sinCeros(x.exceso)]);
+  }
+  inf.notas.push(`RAI antes de retiros: ${pesosTexto(g.rai0)} = capital propio ${pesosTexto(c.cpt.cpt)} − capital aportado ${pesosTexto(g.capitalFinal)} − REX ${pesosTexto(g.rexAntes)} + retiros ${pesosTexto(g.total)}.`);
+  inf.notas.push("Los retiros se imputan en orden cronológico a RAI, DDAN y REX. Los saldos deben coincidir con los recuadros de registros del F22; este es un borrador de control.");
+  inf.notas.push(...c.alertas);
   return inf;
 }
 
@@ -4234,8 +4584,9 @@ async function guardarRenta() {
   const r = S.rentaEdit, c = calcularRenta(r), { anio } = r;
   if (!(r.tasa >= 0 && r.tasa <= 100)) return aviso("La tasa del impuesto debe estar entre 0 y 100 %.");
   await ocupado(async () => {
-    const { id: _i, ...cuerpo } = r;
-    await S.almacen.set(`empresas/${S.eid}/renta/${anio}`, { ...cuerpo, calculo: { resultado_contable: c.er.resultado, rli: c.rli, idpc: c.idpc, creditos: c.creditos, resultado: c.resultado, perdida_siguiente: c.perdidaSiguiente }, guardado_en: new Date().toISOString() });
+    const { id: _i, _autoClaves, _cajaIds, _cptIds, ...cuerpo } = r;
+    await S.almacen.set(`empresas/${S.eid}/renta/${anio}`, { ...cuerpo, calculo: { resultado_contable: c.er.resultado, rli: c.rli, idpc: c.idpc, creditos: c.creditos, resultado: c.resultado, perdida_siguiente: c.perdidaSiguiente,
+      cpt_final: c.cpt.cpt, capital_final: c.reg.capitalFinal, rai_final: c.reg.raiFinal, rex_final: c.reg.rexFinal, sac_final: c.reg.sacFinal, ddan_final: c.reg.ddanFinal }, guardado_en: new Date().toISOString() });
     render(); aviso(`Borrador de renta ${anio} guardado.`);
   }, "No se pudo guardar el borrador de renta");
 }
@@ -4349,6 +4700,7 @@ function informeCertificado1879(anio, rut) {
 /* En fase de captura para reiniciar la edición antes de que el manejador común cambie de pestaña. */
 document.addEventListener("click", (ev) => {
   const t = ev.target.closest("[data-pestana]");
+  if (t && /^renta:/.test(t.dataset.pestana)) leerFormularioRenta();
   if (t && /^(activos|rrhh|dj):/.test(t.dataset.pestana)) { S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null; }
 }, true);
 
@@ -4400,6 +4752,14 @@ document.addEventListener("click", (ev) => {
     case "rn-del-credito": r.creditos.splice(+id, 1); render(); break;
     case "rn-add-prop": r.propietarios.push({ nombre: "", rut: "", porcentaje: 0 }); render(); break;
     case "rn-del-prop": r.propietarios.splice(+id, 1); render(); break;
+    case "rn-add-caja": { const v = $("#rn-caja-extra")?.value; if (v && !r.caja.extra.includes(v)) r.caja.extra.push(v); render(); break; }
+    case "rn-add-capital": r.capital.movimientos.push({ fecha: "", concepto: "", monto: 0, pct: null }); render(); break;
+    case "rn-del-capital": r.capital.movimientos.splice(+id, 1); render(); break;
+    case "rn-add-retiro": r.retiros.push({ fecha: "", nombre: "", rut: "", monto: 0, pct: null, credito: 0 }); render(); break;
+    case "rn-del-retiro": r.retiros.splice(+id, 1); render(); break;
+    case "rn-add-rex": r.registros.rex_ingresos.push({ concepto: "", monto: 0 }); render(); break;
+    case "rn-del-rex": r.registros.rex_ingresos.splice(+id, 1); render(); break;
+    case "rn-traer-previos": { const q = rentaPrevia(r.anio); if (q) { r.cpt.inicial = q.cpt_final ?? null; r.capital.inicial = q.capital_final ?? null; r.registros.rai_inicial = q.rai_final ?? null; r.registros.rex_inicial = q.rex_final ?? null; r.registros.sac_inicial = q.sac_final ?? null; r.perdida_anterior = q.perdida_siguiente || 0; } render(); break; }
     case "rn-guardar": guardarRenta(); break;
     case "rn-descartar": S.rentaEdit = null; render(); break;
     case "cert-1887": S.informe = () => informeCertificado1887(+(S.djAnio || empresa().ejercicio), id); exportar("pdf"); break;
