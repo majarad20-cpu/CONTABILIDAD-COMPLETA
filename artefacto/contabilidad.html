@@ -85,6 +85,8 @@ tr.total td { font-weight: 700; background: var(--surface-2); border-top: 2px so
 tr.sub td { font-weight: 600; background: var(--surface-2); }
 tr.titulo td { font-weight: 700; padding-top: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; font-size: 12px; }
 tr.nc td { color: var(--neg); }
+tr.inactiva td { color: var(--muted); }
+td input.monto { width: 9em; text-align: right; font-family: var(--font-num); }
 tr.pagar td { font-weight: 700; font-size: 15px; background: var(--accent-soft); color: var(--accent); border-top: 2px solid var(--accent); }
 .pagar-caja { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; border: 2px solid var(--accent); background: var(--accent-soft); }
 .pagar-caja span { font-weight: 600; text-transform: uppercase; letter-spacing: .05em; font-size: 13px; color: var(--accent); }
@@ -250,6 +252,7 @@ const S = {
   contador: { nombre: "", rut: "", firma: "" }, cambios: [], desuscribirCambios: null,
   periodosAnio: null, cierreAnio: null, apertura: null,
   f29Borradores: [], desuscribirF29: null, f29: null, utm: {},
+  socios: [], sueldos: [], honorarios: [], desuscribirRem: [], remPeriodo: null, remPeriodoEid: null, socioEdit: null, boletaEdit: null,
   rcv: [], desuscribirRcv: null, rcvPeriodo: null, rcvPeriodoEid: null, rcvSel: new Set(), rcvMensajes: null, docEdit: null,
 };
 
@@ -412,7 +415,7 @@ function movimientosPorCuenta() {
 const SECCIONES = [
   [null, [["inicio", "Inicio"]]],
   ["Registro", [["nuevo", "+ Nuevo asiento"], ["asientos", "Asientos"], ["cuentas", "Plan de cuentas"]]],
-  ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["f29", "Borrador F29"], ["tributarias", "Cuentas tributarias"]]],
+  ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["sueldos", "Sueldo empresarial"], ["honorarios", "Honorarios"], ["f29", "Borrador F29"], ["tributarias", "Cuentas tributarias"]]],
   ["Libros", [["diario", "Libro Diario"], ["mayor", "Libro Mayor"]]],
   ["Informes", [["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
   ["Administración", [["periodos", "Cierre de meses"], ["cierre", "Cierre de ejercicio"], ["apertura", "Apertura de ejercicio"],
@@ -421,7 +424,7 @@ const SECCIONES = [
 
 function ir(vista) {
   if (vista === "nuevo") { abrirEditor(null); return; }
-  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.docEdit = null; S.rcvMensajes = null;
+  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.docEdit = null; S.rcvMensajes = null; S.socioEdit = null; S.boletaEdit = null;
   if (vista !== "editor") recordar("vista", vista);
   render();
   window.scrollTo(0, 0);
@@ -454,7 +457,7 @@ function render() {
   else html = ({ inicio: vistaInicio, asientos: vistaAsientos, editor: vistaEditor, cuentas: vistaCuentas, diario: vistaDiario, mayor: vistaMayor,
     ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas,
     periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador,
-    rcv: vistaRcv, tributarias: vistaTributarias, f29: vistaF29 }[S.vista] || vistaInicio)();
+    rcv: vistaRcv, tributarias: vistaTributarias, f29: vistaF29, sueldos: vistaSueldos, honorarios: vistaHonorarios }[S.vista] || vistaInicio)();
   const banner = !S.almacen.enLinea
     ? `<div class="aviso">Esta copia no está conectada con Claude: puedes probarla, pero los cambios se pierden al cerrar. Ábrela como artefacto en claude.ai para guardar.</div>`
     : !S.puedeEscribir ? `<div class="aviso">Tienes acceso de solo lectura: puedes ver los libros e informes, pero no modificar datos.</div>` : "";
@@ -675,10 +678,12 @@ async function guardarAsiento(confirmado = false) {
       await registrarCambio(ed.id ? "Modificación" : "Creación", descripcion, afectados, ed.motivo);
     }
     if (ed.rcvIds) await marcarCentralizados(ed.rcvIds, id);
+    if (ed.sueldoIds) await marcarContabilizados("sueldos", ed.sueldoIds, id);
+    if (ed.honorarioIds) await marcarContabilizados("honorarios", ed.honorarioIds, id);
     S.confirmar = null;
     S.filtros.anio = ed.fecha.slice(0, 4);
     S.edit = null;
-    ir(ed.rcvIds ? "rcv" : "asientos");
+    ir(ed.rcvIds ? "rcv" : ed.sueldoIds ? "sueldos" : ed.honorarioIds ? "honorarios" : "asientos");
     aviso(`Asiento N° ${nuevo} guardado.`);
   }, "No se pudo guardar el asiento");
 }
@@ -1047,6 +1052,11 @@ async function importar() {
     }
     for (const c of imp.datos.cambios || []) await S.almacen.set(`empresas/${eid}/cambios/${nuevoId()}`, c);
     for (const b of imp.datos.f29 || []) await S.almacen.set(`empresas/${eid}/f29/${b.periodo}`, { codigos: b.codigos, entradas: b.entradas, guardado_en: b.guardado_en });
+    for (const x of imp.datos.socios || []) await S.almacen.set(`empresas/${eid}/socios/s${x.id}`, { nombre: x.nombre, rut: x.rut, sueldo_bruto: x.sueldo_bruto, activo: x.activo });
+    for (const x of imp.datos.sueldos || []) await S.almacen.set(`empresas/${eid}/sueldos/s${x.socio}_${x.periodo}`, { ...x, socio: "s" + x.socio, asiento: x.asiento ? "a" + x.asiento : "" });
+    for (const x of imp.datos.honorarios || []) await S.almacen.set(`empresas/${eid}/honorarios/h${x.id}`, { ...x, id: undefined, asiento: x.asiento ? "a" + x.asiento : "" });
+    const utmNuevas = Object.fromEntries(Object.entries(imp.datos.utm || {}).filter(([k, v]) => UTM_OFICIALES[k] !== v && !S.utm[k]));
+    if (Object.keys(utmNuevas).length) await S.almacen.set("config/utm", { valores: { ...S.utm, ...utmNuevas } });
     for (const d of imp.datos.rcv || []) await S.almacen.set(`empresas/${eid}/rcv/d${d.id}`, { ...d, id: undefined,
       cuenta: d.cuenta ? "c" + d.cuenta : "", asiento: d.asiento ? "a" + d.asiento : "" });
     S.importacion = null;
@@ -2161,6 +2171,280 @@ async function guardarF29() {
   }, "No se pudo guardar el borrador");
 }
 
+/* ------------------------------------------------------------------ remuneraciones: cálculos */
+/* Impuesto Único de Segunda Categoría, tabla mensual en UTM: [hasta (décimas de UTM), factor (milésimas), rebaja (centésimas de UTM)]. */
+const TRAMOS_IMPUESTO_UNICO = [[135, 0, 0], [300, 40, 54], [500, 80, 174], [700, 135, 449], [900, 230, 1114], [1200, 304, 1780], [3100, 350, 2332], [null, 400, 3882]];
+/* Retención de honorarios según el año de emisión de la boleta (%). */
+const TASAS_RETENCION = { 2020: 10.75, 2021: 11.5, 2022: 12.25, 2023: 13.0, 2024: 13.75, 2025: 14.5, 2026: 15.25, 2027: 16.0, 2028: 17.0 };
+const TIPOS_BOLETA = { BHE: "Boleta de honorarios recibida", BTE: "Boleta de prestación de servicios de terceros emitida" };
+
+/* Aproximación desde 5 de a/b con enteros exactos (b > 0; a puede ser negativo). */
+function divisionRedondeada(a, b) {
+  const A = BigInt(a), B = BigInt(b);
+  if (A < 0n) return -divisionHaciaArriba(Number(-A), Number(B));
+  return divisionHaciaArriba(Number(A), Number(B));
+}
+
+function impuestoUnico(base, valorUtm) {
+  if (base <= 0) return 0;
+  for (const [hasta, factor, rebaja] of TRAMOS_IMPUESTO_UNICO) {
+    if (hasta === null || base * 10 <= hasta * valorUtm) {
+      // base × factor − rebaja × UTM, en cien milésimas de peso
+      return Math.max(divisionRedondeada(BigInt(base) * BigInt(factor) * 100n - BigInt(rebaja) * 1000n * BigInt(valorUtm), 100000), 0);
+    }
+  }
+  return 0;
+}
+function calcularLiquidacion(bruto, afp, salud, valorUtm) {
+  const base = bruto - afp - salud;
+  if (base < 0) throw new ErrorRcv("Las cotizaciones no pueden superar el sueldo bruto.");
+  const impuesto = impuestoUnico(base, valorUtm);
+  return { bruto, afp, salud, base, utm: valorUtm, impuesto_unico: impuesto, liquido: base - impuesto };
+}
+function tasaRetencion(anio) {
+  if (TASAS_RETENCION[anio] != null) return TASAS_RETENCION[anio];
+  const anios = Object.keys(TASAS_RETENCION).map(Number);
+  return anio > Math.max(...anios) ? TASAS_RETENCION[Math.max(...anios)] : TASAS_RETENCION[Math.min(...anios)];
+}
+/* [bruto, retención, líquido]. Con `esLiquido`, el monto es lo que se paga y el bruto es líquido / (1 − tasa). */
+function calcularBoleta(monto, esLiquido, tasa) {
+  const t = Math.round(tasa * 100); // centésimas de punto porcentual: 15,25 % → 1525 / 10000
+  let bruto, retencion;
+  if (esLiquido) { bruto = divisionRedondeada(BigInt(monto) * 10000n, 10000 - t); retencion = bruto - monto; }
+  else { bruto = monto; retencion = divisionRedondeada(BigInt(monto) * BigInt(t), 10000); }
+  return [bruto, retencion, bruto - retencion];
+}
+const mesMayus = (p) => `${MESES[+p.slice(5) - 1].toUpperCase()} ${p.slice(0, 4)}`;
+
+function periodoRemuneraciones() {
+  if (!S.remPeriodo || S.remPeriodoEid !== S.eid) {
+    const ej = String(empresa().ejercicio);
+    const usados = [...S.sueldos, ...S.honorarios].map((x) => x.periodo).filter((p) => p.startsWith(ej)).sort();
+    S.remPeriodo = usados.at(-1) || periodoRcvInicial(); S.remPeriodoEid = S.eid;
+  }
+  return S.remPeriodo;
+}
+function contabilizado(x) { return !!x.asiento && S.lista.some((a) => a.id === x.asiento); }
+async function guardarUtm(periodo, valor) {
+  if (!Number.isInteger(valor) || valor < 1000 || valor > 1000000) throw new ErrorRcv("Ingresa el valor de la UTM en pesos, por ejemplo 72.151.");
+  await S.almacen.set("config/utm", { valores: { ...S.utm, [periodo]: valor } });
+  S.utm = { ...S.utm, [periodo]: valor };
+}
+function lineasNetas(netos) {
+  const orden = (ids) => ids.sort((a, b) => porCodigo(S.porId.get(a), S.porId.get(b)));
+  const deudoras = orden([...netos.keys()].filter((c) => netos.get(c) > 0)), acreedoras = orden([...netos.keys()].filter((c) => netos.get(c) < 0));
+  return [...deudoras.map((c) => ({ cuenta: c, debe: netos.get(c), haber: 0 })), ...acreedoras.map((c) => ({ cuenta: c, debe: 0, haber: -netos.get(c) }))];
+}
+function cuentaConcepto(ct, k) { if (!ct[k]) throw new ErrorRcv(`Falta configurar la cuenta «${CONCEPTOS[k][0]}» en Tributario → Cuentas tributarias.`); return ct[k]; }
+
+/* ------------------------------------------------------------------ sueldo empresarial */
+const socioPorId = (id) => S.socios.find((s) => s.id === id);
+function liquidacionesMes(periodo) {
+  return S.sueldos.filter((l) => l.periodo === periodo).sort((a, b) => (socioPorId(a.socio)?.nombre || "").localeCompare(socioPorId(b.socio)?.nombre || ""));
+}
+
+function propuestaSueldos(periodo) {
+  const pendientes = liquidacionesMes(periodo).filter((l) => !contabilizado(l));
+  if (!pendientes.length) throw new ErrorRcv(`No hay liquidaciones de sueldo empresarial pendientes en ${nombrePeriodo(periodo)}.`);
+  const ct = cuentasTributarias(), netos = new Map(), sumar = (c, v) => netos.set(c, (netos.get(c) || 0) + v);
+  for (const l of pendientes) {
+    sumar(cuentaConcepto(ct, "sueldo_empresarial"), l.bruto);
+    if (l.impuesto_unico) sumar(cuentaConcepto(ct, "impuesto_unico"), -l.impuesto_unico);
+    if (l.afp) sumar(cuentaConcepto(ct, "afp_por_pagar"), -l.afp);
+    if (l.salud) sumar(cuentaConcepto(ct, "salud_por_pagar"), -l.salud);
+    sumar(cuentaConcepto(ct, "pago_sueldos"), -l.liquido);
+  }
+  return { ids: pendientes.map((l) => l.id), lineas: lineasNetas(netos), fecha: ultimoDia(periodo), glosa: `SUELDO EMPRESARIAL ${mesMayus(periodo)}`, cantidad: pendientes.length, periodo };
+}
+
+function vistaSueldos() {
+  const periodo = periodoRemuneraciones();
+  const liq = new Map(liquidacionesMes(periodo).map((l) => [l.socio, l]));
+  const socios = [...S.socios].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const se = S.socioEdit;
+  const filaSocio = (s) => se && se.id === s.id
+    ? `<tr><td colspan="5"><form class="barra" data-form="socio">
+        <label>Nombre<input id="so-nombre" value="${esc(se.nombre)}"></label><label>RUT<input id="so-rut" value="${esc(se.rut)}"></label>
+        <label>Sueldo bruto habitual<input id="so-sueldo" inputmode="numeric" value="${esc(clp(se.sueldo_bruto))}"></label>
+        <label class="check"><input type="checkbox" id="so-activo" ${se.activo !== false ? "checked" : ""}> Activo</label>
+        <button class="btn" type="submit">Guardar</button><button class="btn sec" type="button" data-accion="cancelar-socio">Cancelar</button></form></td></tr>`
+    : `<tr class="${s.activo === false ? "inactiva" : ""}"><td>${esc(s.nombre)}</td><td class="cod">${esc(s.rut)}</td><td class="num">${clp(s.sueldo_bruto)}</td><td>${s.activo === false ? "Inactivo" : "Activo"}</td>
+        <td>${puedeEditar(S.confirmar === "socio:" + s.id
+          ? `<span class="acciones"><button class="btn peligro" data-accion="eliminar-socio" data-id="${esc(s.id)}">Sí, eliminar</button><button class="btn sec" data-accion="cancelar-confirmacion">No</button></span>`
+          : `<button class="btn enlace" data-accion="editar-socio" data-id="${esc(s.id)}">Editar</button><button class="btn enlace" data-accion="pedir-eliminar-socio" data-id="${esc(s.id)}">Eliminar</button>`)}</td></tr>`;
+  const visibles = socios.filter((s) => s.activo !== false || liq.has(s.id));
+  const filasLiq = visibles.map((s) => {
+    const l = liq.get(s.id), cerrada = l && contabilizado(l), a = cerrada ? S.lista.find((x) => x.id === l.asiento) : null;
+    const entrada = (campo, valor) => `<input id="li-${campo}-${esc(s.id)}" class="monto" inputmode="numeric" value="${valor ? clp(valor) : ""}" aria-label="${campo} de ${esc(s.nombre)}">`;
+    return `<tr>${cerrada || !S.puedeEscribir
+      ? `<td></td><td>${esc(s.nombre)}</td><td class="num">${l ? clp(l.bruto) : ""}</td><td class="num">${l?.afp ? clp(l.afp) : ""}</td><td class="num">${l?.salud ? clp(l.salud) : ""}</td>`
+      : `<td><input type="checkbox" id="li-incluir-${esc(s.id)}" checked aria-label="Incluir a ${esc(s.nombre)}"></td><td>${esc(s.nombre)}</td>
+         <td class="num">${entrada("bruto", l ? l.bruto : s.sueldo_bruto)}</td><td class="num">${entrada("afp", l?.afp)}</td><td class="num">${entrada("salud", l?.salud)}</td>`}
+      <td class="num">${l ? clp(l.base) : ""}</td><td class="num">${l ? clp(l.impuesto_unico) : ""}</td><td class="num"><strong>${l ? clp(l.liquido) : ""}</strong></td>
+      <td>${a ? `<button class="btn enlace" data-asiento="${esc(a.id)}">N° ${a.numero}</button>` : l ? '<span class="etiqueta cerrado">pendiente</span>' : '<span class="ayuda">sin calcular</span>'}</td>
+      <td>${l && !cerrada && S.puedeEscribir ? `<button class="btn enlace" type="button" data-accion="eliminar-liquidacion" data-id="${esc(l.id)}">Eliminar</button>` : ""}</td></tr>`;
+  }).join("");
+  const hayPendientes = liquidacionesMes(periodo).some((l) => !contabilizado(l));
+  return `${cabecera("Sueldo empresarial", "")}
+  <p class="ayuda">Remuneración que se asignan los socios que trabajan en la empresa. Se les retiene el Impuesto Único de Segunda Categoría según la tabla mensual y la UTM del mes. Si el socio cotiza (AFP y salud), esas cotizaciones se descuentan de la base del impuesto.</p>
+  <div class="barra"><label>Mes<input type="month" id="rem-periodo" value="${periodo}"></label><button class="btn sec" type="button" data-ir="tributarias">Cuentas tributarias</button></div>
+  <section class="caja"><h2>Socios</h2>
+    ${socios.length ? `<div class="tabla"><table><thead><tr><th>Nombre</th><th>RUT</th><th class="num">Sueldo bruto habitual</th><th>Estado</th><th></th></tr></thead><tbody>${socios.map(filaSocio).join("")}</tbody></table></div>` : ""}
+    ${puedeEditar(se && !se.id ? `<form class="barra" data-form="socio">
+        <label>Nombre<input id="so-nombre" value="${esc(se.nombre)}"></label><label>RUT<input id="so-rut" value="${esc(se.rut)}"></label>
+        <label>Sueldo bruto mensual<input id="so-sueldo" inputmode="numeric" value="${esc(se.sueldo_bruto ? clp(se.sueldo_bruto) : "")}"></label>
+        <button class="btn" type="submit">Agregar socio</button><button class="btn sec" type="button" data-accion="cancelar-socio">Cancelar</button></form>`
+      : `<div class="acciones"><button class="btn sec" type="button" data-accion="nuevo-socio">+ Agregar socio</button></div>`)}
+  </section>
+  <h2>Liquidaciones de ${nombrePeriodo(periodo)}</h2>
+  <div class="barra"><label>UTM de ${nombrePeriodo(periodo)}<input id="rem-utm" inputmode="numeric" placeholder="Ej. 72.151" value="${utm(periodo) ? clp(utm(periodo)) : ""}" ${S.puedeEscribir ? "" : "readonly"}></label>
+    <span class="ayuda">Valor oficial del SII. Las de 2026 ya vienen cargadas; si falta un mes, ingrésalo aquí.</span></div>
+  ${visibles.length ? `<div class="tabla"><table><thead><tr><th></th><th>Socio</th><th class="num">Sueldo bruto</th><th class="num">AFP</th><th class="num">Salud</th><th class="num">Base imponible</th><th class="num">Impuesto único</th><th class="num">Líquido</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${filasLiq}</tbody></table></div>
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-accion="liquidar">Calcular y guardar liquidaciones</button>
+      ${hayPendientes ? `<button class="btn" type="button" data-accion="contabilizar-sueldos">Contabilizar sueldos del mes</button>` : ""}</div>`)}
+    <p class="ayuda">Base imponible = sueldo bruto − AFP − salud. Impuesto único según la tabla mensual vigente (exento hasta 13,5 UTM). «Contabilizar» abre la propuesta del asiento para revisarla antes de guardar.</p>`
+    : `<div class="caja vacio"><p>Agrega un socio para calcular su sueldo empresarial.</p></div>`}`;
+}
+
+async function guardarSocio() {
+  const se = S.socioEdit;
+  const nombre = $("#so-nombre").value.trim(), rut = $("#so-rut").value.trim(), sueldo = parseMonto($("#so-sueldo").value || "0");
+  if (!nombre) return aviso("Ingresa el nombre del socio.");
+  if (!rutValido(rut)) return aviso("El RUT del socio no es válido (revisa el dígito verificador).");
+  if (Number.isNaN(sueldo) || sueldo < 0) return aviso("Sueldo bruto: ingresa un monto en pesos enteros, sin decimales.");
+  const r = formatoRut(rut);
+  if (S.socios.some((s) => s.rut === r && s.id !== se.id)) return aviso(`Ya existe un socio con el RUT ${r}.`);
+  const activo = se.id ? $("#so-activo").checked : true;
+  await ocupado(async () => {
+    await S.almacen.set(`empresas/${S.eid}/socios/${se.id || "s" + nuevoId()}`, { nombre, rut: r, sueldo_bruto: sueldo, activo });
+    S.socioEdit = null; render(); aviso("Socio guardado.");
+  }, "No se pudo guardar el socio");
+}
+
+async function eliminarSocio(id) {
+  if (S.sueldos.some((l) => l.socio === id)) { S.confirmar = null; render(); return aviso("El socio tiene liquidaciones registradas; desactívalo en lugar de eliminarlo."); }
+  await ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/socios/${id}`); S.confirmar = null; render(); aviso("Socio eliminado."); }, "No se pudo eliminar el socio");
+}
+
+async function liquidar() {
+  const periodo = periodoRemuneraciones();
+  const textoUtm = $("#rem-utm").value.trim();
+  const elegidos = S.socios.filter((s) => $(`#li-incluir-${s.id}`)?.checked);
+  const leer = (campo, s) => { const t = $(`#li-${campo}-${s.id}`)?.value.trim() || ""; return t ? parseMonto(t) : 0; };
+  await ocupado(async () => {
+    try {
+      if (textoUtm) { const v = parseMonto(textoUtm); if (v !== utm(periodo)) await guardarUtm(periodo, v); }
+      if (!elegidos.length) throw new ErrorRcv("Marca al menos un socio para calcular su liquidación.");
+      const valorUtm = utm(periodo);
+      if (!valorUtm) throw new ErrorRcv(`Falta el valor de la UTM de ${nombrePeriodo(periodo)}.`);
+      const calculadas = [];
+      for (const s of elegidos) {
+        const bruto = leer("bruto", s), afp = leer("afp", s), salud = leer("salud", s);
+        for (const [n, v] of [["Sueldo bruto", bruto], ["AFP", afp], ["Salud", salud]]) if (Number.isNaN(v) || v < 0) throw new ErrorRcv(`${n}: ingresa un monto en pesos enteros, sin decimales.`);
+        if (bruto <= 0) throw new ErrorRcv(`${s.nombre}: el sueldo bruto debe ser mayor que cero.`);
+        const actual = S.sueldos.find((l) => l.socio === s.id && l.periodo === periodo);
+        if (actual && contabilizado(actual)) throw new ErrorRcv(`La liquidación de ${s.nombre} de ${nombrePeriodo(periodo)} ya está contabilizada; elimina primero su asiento para modificarla.`);
+        calculadas.push([`${s.id}_${periodo}`, { socio: s.id, periodo, ...calcularLiquidacion(bruto, afp, salud, valorUtm), asiento: "" }]);
+      }
+      for (const [id, d] of calculadas) await S.almacen.set(`empresas/${S.eid}/sueldos/${id}`, d);
+      render(); aviso(`Liquidaciones de ${nombrePeriodo(periodo)} calculadas.`);
+    } catch (e) { if (e instanceof ErrorRcv) aviso(e.message); else throw e; }
+  }, "No se pudieron guardar las liquidaciones");
+}
+
+/* ------------------------------------------------------------------ honorarios */
+function boletasMes(periodo) {
+  return S.honorarios.filter((b) => b.periodo === periodo).sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : String(a.folio).localeCompare(String(b.folio))));
+}
+function propuestaHonorarios(periodo) {
+  const pendientes = boletasMes(periodo).filter((b) => !contabilizado(b));
+  if (!pendientes.length) throw new ErrorRcv(`No hay boletas de honorarios pendientes en ${nombrePeriodo(periodo)}.`);
+  const ct = cuentasTributarias(), netos = new Map(), sumar = (c, v) => netos.set(c, (netos.get(c) || 0) + v);
+  for (const b of pendientes) {
+    sumar(cuentaConcepto(ct, "honorarios_gasto"), b.bruto);
+    if (b.retencion) sumar(cuentaConcepto(ct, "retencion_honorarios"), -b.retencion);
+    sumar(cuentaConcepto(ct, "honorarios_pago"), -b.liquido);
+  }
+  return { ids: pendientes.map((b) => b.id), lineas: lineasNetas(netos), fecha: ultimoDia(periodo), glosa: `HONORARIOS ${mesMayus(periodo)}`, cantidad: pendientes.length, periodo };
+}
+
+function vistaHonorarios() {
+  const periodo = periodoRemuneraciones();
+  const lista = boletasMes(periodo);
+  const be = S.boletaEdit || { tipo: "BHE", folio: "", fecha: `${periodo}-01`, rut: "", nombre: "", monto: "", base: "bruto", sin_retencion: false, glosa: "" };
+  const tot = (k) => lista.reduce((s, b) => s + b[k], 0);
+  const pct = (t) => String(t).replace(".", ",");
+  return `${cabecera("Honorarios y boletas de terceros", "")}
+  <p class="ayuda">Boletas de honorarios electrónicas <strong>recibidas</strong> (BHE) y boletas de prestación de servicios de terceros <strong>emitidas</strong> por la empresa (BTE). La retención se calcula con la tasa del año: <strong>${pct(tasaRetencion(+periodo.slice(0, 4)))} %</strong> en ${periodo.slice(0, 4)}.</p>
+  <div class="barra"><label>Mes<input type="month" id="rem-periodo" value="${periodo}"></label><button class="btn sec" type="button" data-ir="tributarias">Cuentas tributarias</button></div>
+  ${puedeEditar(`<form class="caja" data-form="boleta"><h2>${be.id ? "Editar boleta" : "Agregar boleta"}</h2><div class="form">
+    <label>Tipo<select id="bo-tipo">${Object.entries(TIPOS_BOLETA).map(([k, n]) => `<option value="${k}" ${be.tipo === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+    <label>Folio<input id="bo-folio" value="${esc(be.folio)}"></label>
+    <label>Fecha<input type="date" id="bo-fecha" value="${esc(be.fecha)}"></label>
+    <label>RUT del prestador<input id="bo-rut" value="${esc(be.rut)}"></label>
+    <label>Nombre del prestador<input id="bo-nombre" value="${esc(be.nombre)}"></label>
+    <label>Monto<input id="bo-monto" inputmode="numeric" value="${esc(be.monto)}"></label>
+    <label>El monto ingresado es<select id="bo-base"><option value="bruto" ${be.base === "bruto" ? "selected" : ""}>Bruto (antes de la retención)</option><option value="liquido" ${be.base === "liquido" ? "selected" : ""}>Líquido (lo que se paga)</option></select></label>
+    <label class="check"><input type="checkbox" id="bo-sin" ${be.sin_retencion ? "checked" : ""}> Sin retención</label>
+    <label>Detalle (opcional)<input id="bo-glosa" value="${esc(be.glosa)}" placeholder="Ej.: Honorarios contabilidad septiembre"></label>
+  </div><div class="acciones"><button class="btn" type="submit">${be.id ? "Guardar cambios" : "Agregar boleta"}</button>${be.id ? `<button class="btn sec" type="button" data-accion="cancelar-boleta">Cancelar</button>` : ""}</div></form>`)}
+  <h2>Boletas de ${nombrePeriodo(periodo)}</h2>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Tipo</th><th>Folio</th><th>Fecha</th><th>RUT</th><th>Prestador</th><th class="num">Bruto</th><th class="num">Retención</th><th class="num">Líquido</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${lista.map((b) => { const c = contabilizado(b), a = c ? S.lista.find((x) => x.id === b.asiento) : null; return `<tr>
+      <td title="${esc(TIPOS_BOLETA[b.tipo])}">${b.tipo}</td><td>${esc(b.folio)}</td><td>${fmtFecha(b.fecha)}</td><td class="cod">${esc(b.rut)}</td>
+      <td>${esc(b.nombre)}${b.glosa ? ` <small class="ayuda">· ${esc(b.glosa)}</small>` : ""}</td><td class="num">${clp(b.bruto)}</td>
+      <td class="num">${clp(b.retencion)} <small class="ayuda">(${b.tasa ? pct(b.tasa) + " %" : "sin retención"})</small></td><td class="num">${clp(b.liquido)}</td>
+      <td>${a ? `<button class="btn enlace" data-asiento="${esc(a.id)}">N° ${a.numero}</button>` : '<span class="etiqueta cerrado">pendiente</span>'}</td>
+      <td>${!c && S.puedeEscribir ? (S.confirmar === "boleta:" + b.id
+        ? `<span class="acciones"><button class="btn peligro" data-accion="eliminar-boleta" data-id="${esc(b.id)}">Sí, eliminar</button><button class="btn sec" data-accion="cancelar-confirmacion">No</button></span>`
+        : `<button class="btn enlace" data-accion="editar-boleta" data-id="${esc(b.id)}">Editar</button><button class="btn enlace" data-accion="pedir-eliminar-boleta" data-id="${esc(b.id)}">Eliminar</button>`) : ""}</td></tr>`; }).join("")}</tbody>
+    <tfoot><tr class="total"><td colspan="5">${lista.length} boletas</td><td class="num">${clp(tot("bruto"))}</td><td class="num">${clp(tot("retencion"))}</td><td class="num">${clp(tot("liquido"))}</td><td colspan="2"></td></tr></tfoot></table></div>
+    ${lista.some((b) => !contabilizado(b)) ? puedeEditar(`<div class="acciones"><button class="btn" type="button" data-accion="contabilizar-honorarios">Contabilizar honorarios del mes</button></div>`) : ""}
+    <p class="ayuda">La retención total del mes se declara en el F29 (código 151). «Contabilizar» abre la propuesta del asiento para revisarla antes de guardar.</p>`
+    : `<div class="caja vacio"><p>No hay boletas registradas en este mes.</p></div>`}`;
+}
+
+async function guardarBoleta() {
+  const periodo = periodoRemuneraciones(), be = S.boletaEdit || {};
+  const d = { tipo: $("#bo-tipo").value, folio: $("#bo-folio").value.trim(), fecha: $("#bo-fecha").value, rut: $("#bo-rut").value.trim(), nombre: $("#bo-nombre").value.trim(),
+    monto: $("#bo-monto").value, base: $("#bo-base").value, sin_retencion: $("#bo-sin").checked, glosa: $("#bo-glosa").value.trim() };
+  S.boletaEdit = { ...be, ...d };
+  if (!TIPOS_BOLETA[d.tipo]) return aviso("Indica si es una boleta de honorarios recibida o una de prestación de servicios de terceros.");
+  if (!d.folio) return aviso("El folio es obligatorio.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.fecha)) return aviso("Ingresa una fecha válida.");
+  if (!rutValido(d.rut)) return aviso("El RUT del prestador no es válido (revisa el dígito verificador).");
+  if (!d.nombre) return aviso("Ingresa el nombre del prestador.");
+  const monto = parseMonto(d.monto || "0");
+  if (Number.isNaN(monto) || monto < 0) return aviso("Monto: ingresa un monto en pesos enteros, sin decimales.");
+  if (monto <= 0) return aviso("Ingresa el monto de la boleta.");
+  const rut = formatoRut(d.rut);
+  if (be.id) { const actual = S.honorarios.find((b) => b.id === be.id); if (actual && contabilizado(actual)) return aviso("La boleta ya está contabilizada; elimina primero su asiento para modificarla."); }
+  if (S.honorarios.some((b) => b.tipo === d.tipo && b.rut === rut && String(b.folio) === d.folio && b.id !== be.id)) return aviso(`Ya existe la boleta folio ${d.folio} del RUT ${rut}.`);
+  const tasa = d.sin_retencion ? 0 : tasaRetencion(+d.fecha.slice(0, 4));
+  const [bruto, retencion, liquido] = calcularBoleta(monto, d.base === "liquido" && tasa > 0, tasa);
+  await ocupado(async () => {
+    await S.almacen.set(`empresas/${S.eid}/honorarios/${be.id || "h" + nuevoId()}`, { periodo, tipo: d.tipo, folio: d.folio, fecha: d.fecha, rut, nombre: d.nombre, bruto, tasa, retencion, liquido, glosa: d.glosa, asiento: "" });
+    S.boletaEdit = null; render(); aviso("Boleta guardada.");
+  }, "No se pudo guardar la boleta");
+}
+
+function contabilizarRemuneraciones(tipo) {
+  const periodo = periodoRemuneraciones();
+  try {
+    if (tipo === "sueldos") { const p = propuestaSueldos(periodo); abrirPropuesta(p.fecha, p.glosa, p.lineas, `Sueldo empresarial de ${nombrePeriodo(periodo)}: ${p.cantidad} liquidación(es).`, { sueldoIds: p.ids }); }
+    else { const p = propuestaHonorarios(periodo); abrirPropuesta(p.fecha, p.glosa, p.lineas, `Honorarios de ${nombrePeriodo(periodo)}: ${p.cantidad} boleta(s).`, { honorarioIds: p.ids }); }
+  } catch (e) { if (e instanceof ErrorRcv) aviso(e.message); else throw e; }
+}
+async function marcarContabilizados(coleccion, ids, asientoId) {
+  const lista = coleccion === "sueldos" ? S.sueldos : S.honorarios;
+  for (const id of ids) { const x = lista.find((y) => y.id === id); if (x && !contabilizado(x)) await S.almacen.set(`empresas/${S.eid}/${coleccion}/${id}`, { ...x, asiento: asientoId }); }
+}
+async function liberarRemuneraciones(asientoId) {
+  for (const [coleccion, lista] of [["sueldos", S.sueldos], ["honorarios", S.honorarios]])
+    for (const x of lista.filter((y) => y.asiento === asientoId)) await S.almacen.set(`empresas/${S.eid}/${coleccion}/${x.id}`, { ...x, asiento: "" });
+}
+
 /* ------------------------------------------------------------------ eventos */
 function slug() { return (empresa()?.razon_social || "empresa").normalize("NFD").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").toLowerCase(); }
 
@@ -2189,6 +2473,7 @@ function cambiarEmpresa(id) {
   S.desuscribirCambios?.(); S.desuscribirCambios = null; S.cambios = [];
   S.desuscribirRcv?.(); S.desuscribirRcv = null; S.rcv = []; S.rcvSel.clear(); S.docEdit = null;
   S.desuscribirF29?.(); S.desuscribirF29 = null; S.f29Borradores = []; S.f29 = null;
+  S.desuscribirRem.forEach((f) => f?.()); S.desuscribirRem = []; S.socios = []; S.sueldos = []; S.honorarios = []; S.remPeriodo = null;
   S.periodosAnio = null; S.cierreAnio = null; S.apertura = null;
   S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
   prepararCuentas();
@@ -2198,6 +2483,11 @@ function cambiarEmpresa(id) {
     S.cambios = lista.sort((a, b) => (a.fecha_hora < b.fecha_hora ? 1 : -1));
     if (S.vista === "periodos") render();
   }, () => {});
+  S.desuscribirRem = ["socios", "sueldos", "honorarios"].map((col) => S.almacen.onCol(`empresas/${id}/${col}`, (lista) => {
+    if (id !== S.eid) return;
+    S[col] = lista;
+    if (["sueldos", "honorarios", "f29"].includes(S.vista) && !S.ocupado) render();
+  }, () => {}));
   S.desuscribirF29 = S.almacen.onCol(`empresas/${id}/f29`, (lista) => {
     if (id !== S.eid) return;
     S.f29Borradores = lista;
@@ -2242,6 +2532,7 @@ document.addEventListener("click", (ev) => {
       const n = ed.numero;
       await BD.deleteAsiento(S.eid, ed.id);
       await liberarDocumentos(ed.id);
+      await liberarRemuneraciones(ed.id);
       if (mesCerrado(ed.fechaOriginal)) await registrarCambio("Eliminación", describirAsiento(n, ed.fechaOriginal, ed.glosaOriginal), [ed.fechaOriginal.slice(0, 7)], ed.motivo);
       S.edit = null; ir("asientos"); aviso(`Asiento N° ${n} eliminado.`);
     }, "No se pudo eliminar el asiento"); break;
@@ -2261,6 +2552,19 @@ document.addEventListener("click", (ev) => {
     case "pedir-eliminar-marcados": S.confirmar = "docs"; render(); break;
     case "eliminar-marcados": eliminarDocs([...S.rcvSel]); break;
     case "guardar-f29": guardarF29(); break;
+    case "nuevo-socio": S.socioEdit = { id: null, nombre: "", rut: "", sueldo_bruto: 0 }; render(); $("#so-nombre")?.focus(); break;
+    case "editar-socio": S.socioEdit = { ...socioPorId(t.dataset.id) }; render(); break;
+    case "cancelar-socio": S.socioEdit = null; render(); break;
+    case "pedir-eliminar-socio": S.confirmar = "socio:" + t.dataset.id; render(); break;
+    case "eliminar-socio": eliminarSocio(t.dataset.id); break;
+    case "liquidar": liquidar(); break;
+    case "eliminar-liquidacion": ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/sueldos/${t.dataset.id}`); render(); aviso("Liquidación eliminada."); }, "No se pudo eliminar la liquidación"); break;
+    case "contabilizar-sueldos": contabilizarRemuneraciones("sueldos"); break;
+    case "contabilizar-honorarios": contabilizarRemuneraciones("honorarios"); break;
+    case "editar-boleta": { const b = S.honorarios.find((x) => x.id === t.dataset.id); S.boletaEdit = { ...b, monto: clp(b.bruto), base: "bruto", sin_retencion: !b.tasa }; render(); window.scrollTo(0, 0); break; }
+    case "cancelar-boleta": S.boletaEdit = null; render(); break;
+    case "pedir-eliminar-boleta": S.confirmar = "boleta:" + t.dataset.id; render(); break;
+    case "eliminar-boleta": ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/honorarios/${t.dataset.id}`); S.confirmar = null; render(); aviso("Boleta eliminada."); }, "No se pudo eliminar la boleta"); break;
     case "f29-del-mes": parametrosF29().periodo = S.rcvPeriodo; S.f29.manual = null; ir("f29"); break;
     case "eliminar-empresa": eliminarEmpresa(); break;
     case "nueva-cuenta": S.cuentaEdit = { id: null, codigo: "", nombre: "", imputable: true, activa: true }; render(); $("#c-codigo")?.focus(); break;
@@ -2295,6 +2599,8 @@ document.addEventListener("submit", (ev) => {
     case "resumen": agregarResumenManual(); break;
     case "tributarias": guardarTributarias(); break;
     case "f29": if (leerEntradasF29()) render(); break;
+    case "socio": guardarSocio(); break;
+    case "boleta": guardarBoleta(); break;
   }
 });
 
@@ -2333,6 +2639,7 @@ document.addEventListener("change", (ev) => {
   if (ev.target.dataset.cuentaDoc) cambiarCuentaDoc(ev.target.dataset.cuentaDoc, ev.target.value);
   if (ev.target.dataset.selDoc) { if (ev.target.checked) S.rcvSel.add(ev.target.dataset.selDoc); else S.rcvSel.delete(ev.target.dataset.selDoc); S.confirmar = null; render(); }
   if (ev.target.id === "doc-tipo_doc") { leerFormularioDoc(); render(); }
+  if (ev.target.id === "rem-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.remPeriodo = ev.target.value; S.boletaEdit = null; S.socioEdit = null; render(); }
   if (ev.target.id === "f29-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { const p = parametrosF29(); p.periodo = ev.target.value; p.manual = null; render(); }
 });
 document.addEventListener("input", (ev) => {

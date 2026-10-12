@@ -1046,4 +1046,17 @@ def exportar_en_linea(conn, empresa_id):
         "f29": [{"periodo": r["periodo"], "codigos": json.loads(r["datos"])["codigos"], "entradas": json.loads(r["datos"])["entradas"],
                  "guardado_en": r["guardado_en"].replace(" ", "T")}
                 for r in conn.execute("SELECT periodo, datos, guardado_en FROM f29_borradores WHERE empresa_id = ?", (empresa_id,))],
+        "socios": [{"id": str(r["id"]), "nombre": r["nombre"], "rut": r["rut"], "sueldo_bruto": r["sueldo_bruto"],
+                    "activo": bool(r["activo"])}
+                   for r in conn.execute("SELECT * FROM socios WHERE empresa_id = ?", (empresa_id,))],
+        "sueldos": [{"socio": str(r["socio_id"]), "periodo": r["periodo"], "bruto": r["bruto"], "afp": r["afp"],
+                     "salud": r["salud"], "base": r["base"], "utm": r["utm"], "impuesto_unico": r["impuesto_unico"],
+                     "liquido": r["liquido"], "asiento": str(r["asiento_id"] or "")}
+                    for r in conn.execute("SELECT * FROM sueldos_empresariales WHERE empresa_id = ?", (empresa_id,))],
+        "honorarios": [{"id": str(r["id"]), "periodo": r["periodo"], "tipo": r["tipo"], "folio": r["folio"],
+                        "fecha": r["fecha"], "rut": r["rut"], "nombre": r["nombre"], "bruto": r["bruto"], "tasa": r["tasa"],
+                        "retencion": r["retencion"], "liquido": r["liquido"], "glosa": r["glosa"],
+                        "asiento": str(r["asiento_id"] or "")}
+                       for r in conn.execute("SELECT * FROM honorarios WHERE empresa_id = ?", (empresa_id,))],
+        "utm": {r["periodo"]: r["valor"] for r in conn.execute("SELECT periodo, valor FROM valores_utm")},
     }
