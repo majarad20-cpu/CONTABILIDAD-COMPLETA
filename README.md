@@ -82,6 +82,7 @@ Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tr
 
 El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
 
+- **1.5.0**: botón «Apariencia» en el menú: tema (sistema, claro, oscuro, papel), color de acento, tamaño de texto, densidad de tablas y tipografía; se recuerda en cada navegador.
 - **1.4.1**: la DJ 1887 incluye los finiquitos (remuneración del mes e indemnizaciones).
 - **1.4.0**: remuneraciones ampliadas: Ley 21.735 (cotización adicional del empleador con calendario), asignación familiar, comisiones y semana corrida, haberes y descuentos fijos, APV, trabajo pesado, costo de la empresa, planilla Previred, vacaciones y finiquitos con PDF y asiento. Valores referenciales (trabajo pesado, composición 2027-2032, asignación familiar): confírmalos con la Superintendencia de Pensiones y Previred.
 - **1.3.0**: renta con capital propio tributario, registros de rentas empresariales (RAI, DDAN, REX y SAC), renta líquida imponible con ajustes automáticos, base de caja Pro Pyme y pérdida reajustada; depreciación tributaria por bien en las fichas de activo fijo.
