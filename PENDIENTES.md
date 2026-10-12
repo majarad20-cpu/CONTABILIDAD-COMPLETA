@@ -99,13 +99,31 @@ Novedades:
 1. **Nombre de hoja truncado:** las hojas llamadas `RCV_COMPRA_REGISTRO_77447556-7_` son el nombre original de la descarga del SII cortado a 31 caracteres (límite de Excel): **pierden el período**. Hay que sacarlo del nombre del archivo (`RCV_07-2022_COMPRA`) o, si no, del mes dominante de las fechas de recepción.
 2. **Otro nombre para la pareja de hojas:** `MALO` / `BUENO` (antes `ERRÓNEO` / `CORRECTO` y `MALO` / `CORRECTO`). Hay que reconocer los sinónimos: malo, erróneo, incorrecto, original frente a correcto, bueno, corregido.
 3. **Dos criterios conviven en un mismo archivo:** en junio, la hoja `MALO` cuadra PROVEEDORES con la suma del «Monto total» del RCV (480.176) y la `BUENO` con neto + IVA + otros (566.232). En julio, agosto y septiembre hay una sola hoja: la columna «Monto total» queda con el valor del RCV, pero una columna auxiliar y el asiento usan neto + IVA + otros. Es la misma práctica de siempre.
-4. **Observación importante sobre el criterio del total:** en las facturas de combustible el «Monto total» del RCV es un **número redondo** (20.000, 117.000, 36.004, 51.003…), como lo que se paga en el surtidor, mientras que neto + IVA da cifras que no son redondas y **mayores**. Esto sugiere que el total del RCV podría ser el monto real de la factura y que recalcular infla la deuda con proveedores y el gasto (por unos 61.000 en julio de 2022 y 44.000 en septiembre de 2022). El IVA que va al F29 es el del RCV en ambos casos. **Hay que confirmarlo con la contadora antes de fijar el criterio por defecto.**
+4. **Observación sobre el criterio del total (actualizada en el grupo de archivos 5):** el «Monto total» del RCV de las facturas de combustible es un número redondo y menor que neto + IVA + otros. Ver la explicación completa más abajo, donde diciembre de 2022 aclara el origen del problema.
 5. **Primera compra de activo fijo:** un **tractor** en agosto de 2022 (neto 9.243.697), que la contadora separa en la centralización como «TRACTOR / MAQUINARIAS». Compras de ese mes con las columnas «Monto neto activo fijo» e «IVA activo fijo» (repetidas, ver archivos 2).
 6. **Etiquetas de centralización con espacios y nombres de activo:** «TRACTOR MAQUINARIAS» es una cuenta que depende de la compra. Reafirma la idea de la **cuenta por proveedor / por documento** y de crear la **ficha de activo fijo** automáticamente.
 
 Resumen de lo recibido de 2022: marzo (compras), abril (compras y ventas), mayo (compras y ventas), junio (compras y ventas), julio, agosto y septiembre (solo compras). Faltan octubre a diciembre y las ventas de julio a septiembre, si las hubo.
 
-Falta: octubre a diciembre de 2022 (y las ventas de julio a septiembre, si existen; el usuario lo enviará en tandas de 5 archivos), una contabilidad completa (diario, mayor o balance) y una simplificada.
+
+**Archivos 5: RCV de 2022 (septiembre a diciembre)**
+
+Recibidos: `RCV_09-2022_VENTA`, `RCV_10-2022_COMPRA`, `RCV_10-2022_VENTA`, `RCV_11-2022_COMPRA`, `RCV_12-2022_COMPRA`. Con esto están todos los meses de compras de 2022 (marzo a diciembre) y las ventas de abril a octubre, salvo julio y agosto (si no hubo ventas, no hay archivo). Falta como máximo un archivo (a confirmar con el usuario).
+
+Hallazgo clave, que aclara el problema de los combustibles:
+- **Diciembre de 2022 trae una nota de la contadora: «EN DICIEMBRE DE 2022 SE REGULA».** En esa hoja el «Valor otro impuesto» viene con **montos reales** (3.336, 3.088, 3.656, 1.796…) y **todos los documentos cuadran**: neto + IVA + otro impuesto = total (por ejemplo 28.746 + 5.462 + 1.796 = 36.004).
+- Antes de diciembre de 2022 (y de nuevo en varios meses de 2023 y 2026), el mismo tipo de factura trae «Valor otro impuesto» = **1** (un valor de relleno), un **total redondo** (36.004 aparece tal cual en julio y en diciembre) y un neto + IVA **mayor** que el total (en julio, 50.967 contra 36.004).
+- Conclusión probable: cuando el impuesto específico no se informa (queda en 1), el **neto y el IVA del RCV vienen sobreestimados** y el **total es el monto real**. Recalcular el asiento con neto + IVA + 1, como hace la planilla, **sobreestima compras, proveedores e IVA crédito**. Sobre los 61 documentos afectados entre 2022 y 2026 (con las hojas «MALO» descartadas), el exceso suma unos **$1,35 millones** (2022: $242 mil; 2023: $201 mil; 2026: $903 mil).
+- **Esto debe confirmarse con la contadora o con las facturas originales antes de fijar un criterio, y conviene revisar con ella el efecto en el IVA crédito de los F29 de esos meses.** No es una conclusión definitiva.
+- Regla propuesta para el importador: detectar «código de impuesto específico (28 o 35) con valor ≤ 1» y marcar el documento como **«impuesto específico no informado»**, mostrando ambas opciones (total del RCV, o recalcular) con el efecto en el gasto y el IVA, sin elegir en silencio.
+
+Otras novedades:
+1. **Notas de crédito en ventas del mismo mes:** en octubre de 2022 la nota de crédito folio 1 (−1.200.000 neto) anula la factura folio 7 emitida el mismo día. El sistema debería **enlazar la nota con su factura** (mismo cliente, mismo monto, misma fecha) y mostrarlas juntas.
+2. **Ventas con 12 y 13 columnas** (con o sin «Fecha reclamo»); las ventas de 2022 no traen siempre exento.
+3. **Una sola venta** en septiembre de 2022 (540.000 neto): la actividad comercial es pequeña al comienzo.
+4. **Las hojas de diciembre** dejan una nota de texto libre debajo de la tabla (columna E, fila 22). El importador debe **capturar las notas de texto** que no son parte de la tabla ni de la centralización y mostrarlas en el informe de migración, porque llevan decisiones del contador.
+
+Falta: como máximo un archivo de 2022 (confirmar cuál), una contabilidad completa (diario, mayor o balance) y una simplificada.
 
 
 ## Prioridad media (pospuesto por el dueño)
