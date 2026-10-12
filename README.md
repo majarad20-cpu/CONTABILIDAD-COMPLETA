@@ -82,6 +82,7 @@ Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tr
 
 El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
 
+- **1.6.0**: pantalla «Apariencia» (Administración) con 9 estilos predeterminados y estilos propios guardables, 7 temas (claro, oscuro, papel, nórdico, medianoche, carbón y alto contraste), 9 colores de acento más uno personalizado, 6 fuentes de texto y 4 de números, escala de texto, esquinas, densidad, ancho del contenido, menú, bordes, sombras, filas alternadas y animaciones reducidas, con vista previa. Botón rápido de tema en el menú.
 - **1.5.0**: botón «Apariencia» en el menú: tema (sistema, claro, oscuro, papel), color de acento, tamaño de texto, densidad de tablas y tipografía; se recuerda en cada navegador.
 - **1.4.1**: la DJ 1887 incluye los finiquitos (remuneración del mes e indemnizaciones).
 - **1.4.0**: remuneraciones ampliadas: Ley 21.735 (cotización adicional del empleador con calendario), asignación familiar, comisiones y semana corrida, haberes y descuentos fijos, APV, trabajo pesado, costo de la empresa, planilla Previred, vacaciones y finiquitos con PDF y asiento. Valores referenciales (trabajo pesado, composición 2027-2032, asignación familiar): confírmalos con la Superintendencia de Pensiones y Previred.

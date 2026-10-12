@@ -213,18 +213,26 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   await espera(150);
 
   console.log("Apariencia");
-  await page.click("#ap-abrir"); await espera();
-  ok("el panel de apariencia se abre", await page.evaluate(() => !$("#ap-panel").hidden));
-  await page.click('[data-ap="tema"] [data-v="dark"]'); await page.click('[data-ap="acento"] [data-v="azul"]'); await page.click('[data-ap="texto"] [data-v="grande"]'); await page.click('[data-ap="densidad"] [data-v="compacta"]');
-  const ap = await page.evaluate(() => { const r = document.documentElement.dataset; return { t: r.theme, a: r.acento, x: r.texto, d: r.densidad, g: recuerdo("apariencia", {}), c: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() }; });
-  igual("se aplican tema, color, texto y densidad", [ap.t, ap.a, ap.x, ap.d], ["dark", "azul", "grande", "compacta"]);
-  igual("el acento azul oscuro", ap.c, "#7db3f0");
+  await page.evaluate(() => ir("apariencia")); await espera();
+  ok("la pantalla de apariencia se dibuja con estilos, temas y colores", await page.evaluate(() => document.querySelectorAll("[data-estilo]").length >= 8 && document.querySelectorAll('[data-ap="tema"]').length >= 8 && document.querySelectorAll('[data-ap="acento"]').length >= 9));
+  await page.click('[data-ap="tema"][data-v="dark"]'); await page.click('[data-ap="acento"][data-v="azul"]'); await page.click('[data-ap="densidad"][data-v="compacta"]'); await page.click('[data-ap="fuente"][data-v="inter"]'); await page.click('[data-ap="radio"][data-v="redondo"]'); await page.click('[data-ap="cebra"][data-v="si"]');
+  const ap = await page.evaluate(() => { const r = document.documentElement, cs = getComputedStyle(r); return { t: r.dataset.theme, d: r.dataset.densidad, z: r.dataset.cebra, f: cs.getPropertyValue("--font-ui").trim(), rad: cs.getPropertyValue("--radius").trim(), ac: cs.getPropertyValue("--accent").trim(), g: recuerdo("apariencia", {}) }; });
+  igual("se aplican tema, densidad y cebra", [ap.t, ap.d, ap.z], ["dark", "compacta", "si"]);
+  ok("se aplican fuente, esquinas y acento (más claro en oscuro)", /Inter/.test(ap.f) && ap.rad === "12px" && /color-mix/.test(ap.ac), JSON.stringify(ap));
   ok("se recuerda la elección", ap.g.tema === "dark" && ap.g.acento === "azul");
-  await page.click('[data-ap="tema"] [data-v="papel"]');
-  ok("el tema papel se aplica aunque el sistema sea oscuro", await page.evaluate(() => getComputedStyle(document.body).backgroundColor === "rgb(241, 233, 214)"));
-  await page.click("#ap-reset");
-  igual("restablecer vuelve al valor inicial", await page.evaluate(() => [document.documentElement.dataset.acento, document.documentElement.dataset.texto, document.documentElement.dataset.densidad]), ["verde", "normal", "normal"]);
-  await page.click("#ap-abrir");
+  await page.fill("#ap-texto", "120"); await page.dispatchEvent("#ap-texto", "input");
+  ok("el control de tamaño de texto ajusta la escala", await page.evaluate(() => document.body.style.zoom === "1.2"));
+  await page.click('[data-estilo="contable"]');
+  igual("un estilo predeterminado cambia el tema, la fuente y la cebra", await page.evaluate(() => [document.documentElement.dataset.theme, apariencia().fuente, document.documentElement.dataset.cebra, getComputedStyle(document.body).backgroundColor]), ["papel", "serif", "si", "rgb(241, 233, 214)"]);
+  await page.fill("#ap-nombre", "Mi estilo"); await page.press("#ap-nombre", "Enter"); await espera();
+  ok("se puede guardar un estilo propio y aplicarlo", await page.evaluate(() => estilosPropios().length === 1));
+  await page.click('[data-estilo="moderno"]'); await page.click("[data-mio]");
+  igual("aplicar el estilo propio recupera el tema papel", await page.evaluate(() => document.documentElement.dataset.theme), "papel");
+  await page.click("#ap-rapido");
+  ok("el botón rápido cambia el tema", await page.evaluate(() => apariencia().tema === "sistema" || apariencia().tema === "light" || apariencia().tema === "dark"));
+  await page.click("[data-ap-reset]");
+  igual("restablecer vuelve al valor inicial", await page.evaluate(() => [apariencia().tema, apariencia().acento, apariencia().texto, document.body.style.zoom, estilosPropios().length]), ["sistema", "verde", 100, "1", 1]);
+  await page.evaluate(() => { recordar("estilos", []); ir("inicio"); });
 
   console.log("Respaldo y restauración");
   const resp = await page.evaluate(async () => {
@@ -257,7 +265,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("reemplazar recupera lo borrado sin duplicar la empresa", [reemplazo.eid, reemplazo.activos, reemplazo.empresas], ["e1", 2, 3]);
 
   console.log("Pantallas");
-  const vistas = [["inicio"], ["activos", "fichas"], ["activos", "dep"], ["activos", "libro"], ["rrhh", "trabajadores"], ["rrhh", "liquidaciones"], ["rrhh", "libro"], ["rrhh", "vacaciones"], ["rrhh", "finiquitos"], ["rrhh", "parametros"], ["renta"], ["dj", "1887"], ["dj", "1879"], ["tributarias"], ["empresa"], ["empresas"]];
+  const vistas = [["inicio"], ["activos", "fichas"], ["activos", "dep"], ["activos", "libro"], ["rrhh", "trabajadores"], ["rrhh", "liquidaciones"], ["rrhh", "libro"], ["rrhh", "vacaciones"], ["rrhh", "finiquitos"], ["rrhh", "parametros"], ["apariencia"], ["renta"], ["dj", "1887"], ["dj", "1879"], ["tributarias"], ["empresa"], ["empresas"]];
   for (const [ancho, nombre] of [[1200, "escritorio"], [400, "móvil"]]) {
     await page.setViewportSize({ width: ancho, height: 800 });
     const malas = [];
