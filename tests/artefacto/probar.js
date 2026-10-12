@@ -290,6 +290,11 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   ok("el revisor detecta folios repetidos y un IVA distinto del 19 %", rv.dup && rv.iva, JSON.stringify(rv.areas));
   ok("la pantalla del revisor y el aviso del inicio aparecen", rv.vista && rv.inicio);
+  ok("el revisor lista las facturas con total del RCV distinto y las observaciones de la migración", await page.evaluate(async () => {
+    await S.almacen.set("empresas/e1/rcv/mg1", { registro: "COMPRA", periodo: "2026-09", tipo_doc: 33, folio: "777", fecha: "2026-09-05", rut: "76.111.111-1", razon_social: "Estación", neto: 28746, exento: 0, iva: 5462, iva_no_recuperable: 0, otros_impuestos: 1, total: 34209, total_rcv: 34004, dif_total: -205, revisar_total: true, observacion: "Revisar", cantidad: 1, cuenta: "", asiento: "" });
+    await new Promise((r) => setTimeout(r, 100)); const h = revisarDatos(); await S.almacen.del("empresas/e1/rcv/mg1"); await new Promise((r) => setTimeout(r, 100));
+    return h.some((x) => /total del RCV/.test(x.texto)) && h.some((x) => /observación de la migración/.test(x.texto));
+  }));
   igual("el calendario ubica el F29 de septiembre el día 12", rv.f29a, ["F29 y PPM de septiembre 2026", "2026-10-12"]);
   igual("pasado el día 12 el plazo efectivo es el 20 (por internet)", rv.f29b, "2026-10-20");
   ok("el calendario incluye vencimientos anuales y avanza meses correctamente", rv.n >= 4 && rv.renta && rv.adelante === "2027-02", String(rv.adelante));
