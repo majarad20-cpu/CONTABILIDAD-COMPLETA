@@ -74,6 +74,13 @@ cada bien.
 
 Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tributarias**.
 
+## Versiones del artefacto
+
+El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
+
+- **1.1.0**: activo fijo, personal y remuneraciones, renta anual y declaraciones juradas; número de versión visible.
+- **1.0.0**: libros, informes, RCV, F29, sueldo empresarial y honorarios, con historiales y exportación a PDF y Excel.
+
 ## Probarlo desde GitHub (Codespaces)
 
 Sin instalar nada en el PC:
