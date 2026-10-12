@@ -59,6 +59,10 @@ cada bien.
 - *Libro de remuneraciones* del mes con el resumen de cotizaciones (AFP por administradora, salud, cesantía, SIS,
   aporte adicional del empleador y mutual) para declarar en Previred. «Contabilizar remuneraciones» propone el
   asiento completo.
+- *Vacaciones*: feriado anual (15 días hábiles más feriado progresivo, art. 68), días devengados, tomados y saldo por trabajador, con valor estimado.
+- *Finiquitos*: cálculo con indemnización por años de servicio (tope 11 años y 90 UF), aviso previo, vacaciones proporcionales y remuneración del mes; PDF del finiquito y de la carta de término, baja del trabajador y asiento contable.
+- *Reforma de pensiones (Ley 21.735)*: cotización adicional del empleador con su calendario (1 % desde agosto de 2025, 3,5 % desde agosto de 2026, hasta 8,5 % en 2033); desde agosto de 2026 incluye el SIS. La liquidación muestra los aportes del empleador (reforma, SIS, cesantía, mutual con SANNA, trabajo pesado) y el costo total para la empresa.
+- *Más haberes y descuentos*: asignación familiar por tramo y cargas, comisiones y semana corrida, haberes y descuentos fijos (pensión de alimentos, cuota sindical, créditos), APV régimen A o B, trabajo pesado, y planilla de apoyo para Previred en CSV.
 - *Parámetros*: ingreso mínimo, topes, SIS y cotización adicional del empleador, y tasa de la mutual. Los valores
   vienen de fuentes públicas y son referenciales: confírmalos con Previred y la Superintendencia de Pensiones, y
   regístralos aquí cuando cambien.
@@ -78,6 +82,7 @@ Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tr
 
 El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
 
+- **1.4.0**: remuneraciones ampliadas: Ley 21.735 (cotización adicional del empleador con calendario), asignación familiar, comisiones y semana corrida, haberes y descuentos fijos, APV, trabajo pesado, costo de la empresa, planilla Previred, vacaciones y finiquitos con PDF y asiento. Valores referenciales (trabajo pesado, composición 2027-2032, asignación familiar): confírmalos con la Superintendencia de Pensiones y Previred.
 - **1.3.0**: renta con capital propio tributario, registros de rentas empresariales (RAI, DDAN, REX y SAC), renta líquida imponible con ajustes automáticos, base de caja Pro Pyme y pérdida reajustada; depreciación tributaria por bien en las fichas de activo fijo.
 - **1.2.0**: respaldo y restauración de la empresa (Datos de la empresa y Empresas e importación), protección de activos con depreciación contabilizada, aviso en pantalla ante errores inesperados, corrección del botón «Editar» de activo fijo y pruebas automáticas.
 - **1.1.0**: activo fijo, personal y remuneraciones, renta anual y declaraciones juradas; número de versión visible.
