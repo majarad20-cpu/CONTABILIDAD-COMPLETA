@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% block titulo %}Honorarios{% endblock %}
 {% block contenido %}
+{% from '_macros.html' import pestanas with context %}
+{{ pestanas(url_for('honorarios', periodo=periodo), url_for('honorarios_historial')) }}
 <h1>Honorarios y boletas de terceros</h1>
 <p class="ayuda">Boletas de honorarios electrónicas <strong>recibidas</strong> (BHE) y boletas de prestación de servicios
   de terceros <strong>emitidas</strong> por la empresa (BTE). La retención se calcula con la tasa del año:

@@ -7,6 +7,25 @@
 </span>
 {% endmacro %}
 
+{# Pestañas «Mes» e «Historial» de RCV, F29, sueldo empresarial y honorarios #}
+{% macro pestanas(url_mes, url_historial, historial=false) %}
+<nav class="pestanas no-imprimir" aria-label="Vista">
+  <a href="{{ url_mes }}" class="{{ '' if historial else 'activa' }}"{{ '' if historial else ' aria-current=page' }}>Mes</a>
+  <a href="{{ url_historial }}" class="{{ 'activa' if historial }}"{{ ' aria-current=page' if historial }}>Historial</a>
+</nav>
+{% endmacro %}
+
+{% macro filtro_anio(anio, anios, csv=true) %}
+<form class="filtro no-imprimir" method="get">
+  <label>Año <select name="anio" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    {% for a in anios %}<option {{ 'selected' if a == anio }}>{{ a }}</option>{% endfor %}
+  </select></label>
+  <span class="espaciador"></span>
+  {{ botones_exportar(csv=csv) }}
+</form>
+{% endmacro %}
+
 {% macro filtro_fechas(desde, hasta, exportar=false, extra=none) %}
 <form class="filtro no-imprimir" method="get">
   {% if extra %}{{ extra() }}{% endif %}

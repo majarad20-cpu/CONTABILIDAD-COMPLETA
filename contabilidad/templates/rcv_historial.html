@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import pestanas, filtro_anio with context %}
+{% block titulo %}Historial RCV{% endblock %}
+{% block contenido %}
+{{ pestanas(url_for('rcv'), url_for('rcv_historial'), historial=true) }}
+<div class="titulo-acciones"><h1>Historial del Registro de Compras y Ventas</h1>
+  <span class="ayuda">{{ periodos|length }} período{{ '' if periodos|length == 1 else 's' }}</span></div>
+{{ filtro_anio(anio, anios) }}
+{% if periodos %}
+<div class="desplazable">
+<table>
+  <thead>
+    <tr><th rowspan="2">Período</th><th colspan="4" class="num">Compras</th><th colspan="4" class="num">Ventas</th>
+      <th rowspan="2">Estado</th><th rowspan="2">Asientos</th><th rowspan="2"></th></tr>
+    <tr><th class="num">Doc.</th><th class="num">Neto + exento</th><th class="num">IVA crédito</th><th class="num">Total</th>
+      <th class="num">Doc.</th><th class="num">Neto + exento</th><th class="num">IVA débito</th><th class="num">Total</th></tr>
+  </thead>
+  <tbody>
+  {% for p in periodos %}{% set c, v = p.compras, p.ventas %}
+    <tr>
+      <td>{{ nombre_periodo(p.periodo)|capitalize }}</td>
+      <td class="num">{{ c.cantidad or '' }}</td><td class="num">{{ (c.neto + c.exento)|clp }}</td><td class="num">{{ c.iva|clp }}</td><td class="num">{{ c.total|clp }}</td>
+      <td class="num">{{ v.cantidad or '' }}</td><td class="num">{{ (v.neto + v.exento)|clp }}</td><td class="num">{{ v.iva|clp }}</td><td class="num">{{ v.total|clp }}</td>
+      <td>{% if p.pendientes %}<span class="etiqueta etiqueta-pendiente">{{ p.pendientes }} pendiente{{ '' if p.pendientes == 1 else 's' }}</span>{% else %}<span class="etiqueta">centralizado</span>{% endif %}</td>
+      <td>{% for a in p.asientos %}<a href="{{ url_for('ver_asiento', asiento_id=a.id) }}">N° {{ a.numero }}</a>{{ ' ' if not loop.last }}{% endfor %}</td>
+      <td class="acciones-fila">
+        <a href="{{ url_for('rcv', periodo=p.periodo) }}">{{ 'Editar' if p.pendientes else 'Ver mes' }}</a>
+        {% if p.pendientes %}
+        <form method="post" action="{{ url_for('eliminar_pendientes_rcv') }}" style="display:inline"
+              onsubmit="return confirm('¿Eliminar los {{ p.pendientes }} documento(s) pendiente(s) de {{ nombre_periodo(p.periodo) }}?')">
+          <input type="hidden" name="periodo" value="{{ p.periodo }}"><input type="hidden" name="volver" value="{{ request.full_path }}">
+          <button type="submit" class="enlace">Eliminar pendientes</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr class="subtotal"><td>Total {{ anio or 'general' }}</td>
+    {% for r in ('compras', 'ventas') %}
+      <td class="num">{{ periodos|map(attribute=r)|map(attribute='cantidad')|sum }}</td>
+      <td class="num">{{ (periodos|map(attribute=r)|map(attribute='neto')|sum + periodos|map(attribute=r)|map(attribute='exento')|sum)|clp }}</td>
+      <td class="num">{{ periodos|map(attribute=r)|map(attribute='iva')|sum|clp }}</td>
+      <td class="num">{{ periodos|map(attribute=r)|map(attribute='total')|sum|clp }}</td>
+    {% endfor %}<td colspan="3"></td></tr></tfoot>
+</table>
+</div>
+<p class="ayuda">Las notas de crédito restan. «Editar» abre el mes para agregar, corregir o centralizar documentos.
+  «Eliminar pendientes» borra solo los documentos aún no centralizados; los centralizados se liberan eliminando su asiento.</p>
+{% else %}
+<p class="vacio">Todavía no hay documentos del RCV. Impórtalos desde el SII en la pestaña «Mes».</p>
+{% endif %}
+{% endblock %}

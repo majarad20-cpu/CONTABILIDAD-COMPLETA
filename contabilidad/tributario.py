@@ -697,7 +697,14 @@ def borrador_guardado(conn, empresa_id, periodo):
     return json.loads(fila[0]) | {"guardado_en": fila[1]}
 
 
+ESTADO_BORRADOR = ("declarado", "fecha_declaracion", "folio_sii", "observacion")
+
+
 def guardar_borrador(conn, empresa_id, periodo, datos):
+    """Guarda el borrador del período en el historial. Si ya existía, conserva
+    su estado (declarado, fecha, folio del SII y observaciones)."""
+    previo = borrador_guardado(conn, empresa_id, periodo) or {}
+    datos = dict(datos) | {k: previo.get(k, "" if k != "declarado" else False) for k in ESTADO_BORRADOR}
     with conn:
         conn.execute("INSERT INTO f29_borradores (empresa_id, periodo, datos) VALUES (?, ?, ?) "
                      "ON CONFLICT (empresa_id, periodo) DO UPDATE SET datos = excluded.datos, "
@@ -888,3 +895,81 @@ def calcular_f29(conn, empresa_id, periodo, remanente_anterior=0, utm_anterior=N
         "entradas": {"remanente_anterior": remanente, "utm_anterior": utm_anterior, "utm_actual": utm_actual,
                      "tasa_ppm": tasa},
     }
+
+
+# ==========================================================================
+# Historiales
+# ==========================================================================
+
+def borradores_guardados(conn, empresa_id, anio=None):
+    """Borradores del F29 guardados, del más reciente al más antiguo."""
+    filtro, params = "", [empresa_id]
+    if anio:
+        filtro, params = " AND periodo LIKE ?", [empresa_id, f"{anio}-%"]
+    filas = conn.execute(f"SELECT periodo, datos, guardado_en FROM f29_borradores WHERE empresa_id = ?{filtro} "
+                         "ORDER BY periodo DESC", params).fetchall()
+    return [json.loads(f["datos"]) | {"periodo": f["periodo"], "guardado_en": f["guardado_en"]} for f in filas]
+
+
+def anios_borradores(conn, empresa_id):
+    return [r[0] for r in conn.execute("SELECT DISTINCT substr(periodo, 1, 4) FROM f29_borradores WHERE empresa_id = ? "
+                                       "ORDER BY 1 DESC", (empresa_id,))]
+
+
+def guardar_estado_borrador(conn, empresa_id, periodo, declarado, fecha_declaracion, folio_sii, observacion):
+    """Marca el borrador como declarado o no, con la fecha y el folio del SII y observaciones."""
+    from .nucleo import parse_fecha
+
+    actual = borrador_guardado(conn, empresa_id, periodo)
+    if actual is None:
+        raise ErrorValidacion("El borrador no existe.")
+    fecha = parse_fecha(fecha_declaracion).isoformat() if (fecha_declaracion or "").strip() else ""
+    datos = {k: v for k, v in actual.items() if k != "guardado_en"} | {
+        "declarado": bool(declarado), "fecha_declaracion": fecha,
+        "folio_sii": (folio_sii or "").strip(), "observacion": (observacion or "").strip()}
+    with conn:  # el estado no cambia la fecha en que se guardó el cálculo
+        conn.execute("UPDATE f29_borradores SET datos = ? WHERE empresa_id = ? AND periodo = ?",
+                     (json.dumps(datos, ensure_ascii=False), empresa_id, periodo))
+
+
+def eliminar_borrador(conn, empresa_id, periodo):
+    with conn:
+        return conn.execute("DELETE FROM f29_borradores WHERE empresa_id = ? AND periodo = ?",
+                            (empresa_id, periodo)).rowcount
+
+
+def historial_rcv(conn, empresa_id, anio=None):
+    """Resumen por período del RCV: totales de compras y ventas (las notas de
+    crédito restan), documentos pendientes y asientos de centralización."""
+    filtro, params = "", [empresa_id]
+    if anio:
+        filtro, params = " AND periodo LIKE ?", [empresa_id, f"{anio}-%"]
+    periodos = [r[0] for r in conn.execute(f"SELECT DISTINCT periodo FROM rcv_documentos WHERE empresa_id = ?{filtro} "
+                                           "ORDER BY periodo DESC", params)]
+    resultado = []
+    for periodo in periodos:
+        docs = documentos_rcv(conn, empresa_id, periodo)
+        compras = totales_rcv([d for d in docs if d["registro"] == "COMPRA"])
+        ventas = totales_rcv([d for d in docs if d["registro"] == "VENTA"])
+        asientos = {}
+        for d in docs:
+            if d["asiento_id"] is not None:
+                asientos[d["asiento_id"]] = d["asiento_numero"]
+        vacio = dict.fromkeys(("exento", "neto", "iva", "iva_no_recuperable", "otros_impuestos", "total", "cantidad",
+                               "pendientes"), 0)
+        resultado.append({"periodo": periodo, "compras": vacio | compras, "ventas": vacio | ventas,
+                          "pendientes": compras.get("pendientes", 0) + ventas.get("pendientes", 0),
+                          "asientos": [{"id": i, "numero": n} for i, n in asientos.items()]})
+    return resultado
+
+
+def anios_rcv(conn, empresa_id):
+    return [r[0] for r in conn.execute("SELECT DISTINCT substr(periodo, 1, 4) FROM rcv_documentos WHERE empresa_id = ? "
+                                       "ORDER BY 1 DESC", (empresa_id,))]
+
+
+def eliminar_pendientes_periodo(conn, empresa_id, periodo):
+    """Elimina los documentos del período que aún no están centralizados. Devuelve cuántos."""
+    with conn:
+        return conn.execute("DELETE FROM rcv_documentos WHERE empresa_id = ? AND periodo = ? AND asiento_id IS NULL",
+                            (empresa_id, periodo)).rowcount

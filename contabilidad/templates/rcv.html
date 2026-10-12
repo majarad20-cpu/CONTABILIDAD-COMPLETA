@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block titulo %}Compras y ventas (RCV){% endblock %}
-{% from '_macros.html' import botones_exportar with context %}
+{% from '_macros.html' import botones_exportar, pestanas with context %}
 {% block contenido %}
 {% macro tabla_documentos(docs, totales, registro) %}
   <div class="acciones no-imprimir acciones-rcv">
@@ -59,6 +59,7 @@
   {% endif %}
 {% endmacro %}
 
+{{ pestanas(url_for('rcv', periodo=periodo), url_for('rcv_historial')) }}
 <div class="titulo-acciones">
   <h1>Registro de Compras y Ventas</h1>
   <a class="boton secundario no-imprimir" href="{{ url_for('cuentas_tributarias') }}">Cuentas tributarias</a>

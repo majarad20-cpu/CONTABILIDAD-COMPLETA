@@ -280,8 +280,9 @@ def informe_comprobante(datos):
     return inf
 
 
-def informe_f29(f):
-    """Borrador del F29 (referencial)."""
+def informe_f29(f, guardado=None):
+    """Borrador del F29 (referencial). Con `guardado`, el borrador tal como se
+    guardó en el historial, con su estado y observaciones al pie."""
     from .nucleo import nombre_periodo
 
     inf = Informe("BORRADOR FORMULARIO 29", f"PERÍODO TRIBUTARIO: {nombre_periodo(f['periodo']).upper()}",
@@ -307,7 +308,19 @@ def informe_f29(f):
         inf.recuadro.append(("Remanente de crédito fiscal para el período siguiente (código 77)", c["77"]))
     inf.notas.append("Borrador referencial calculado a partir del Registro de Compras y Ventas y de la contabilidad. "
                      "Verifica los valores con la propuesta del SII antes de declarar.")
-    inf.notas += f["alertas"]
+    inf.notas += f.get("alertas", [])
+    if guardado:
+        estado = ""
+        if guardado.get("declarado"):
+            estado = " Declarado en el SII"
+            if guardado.get("fecha_declaracion"):
+                estado += f" el {fecha_cl(guardado['fecha_declaracion'])}"
+            if guardado.get("folio_sii"):
+                estado += f", folio {guardado['folio_sii']}"
+            estado += "."
+        inf.notas.append(f"Borrador guardado el {fecha_cl(guardado['guardado_en'][:10])} {guardado['guardado_en'][11:16]}.{estado}")
+        if guardado.get("observacion"):
+            inf.notas.append(f"Observaciones: {guardado['observacion']}")
     return inf
 
 
@@ -954,3 +967,94 @@ def exportar(inf, empresa, contador, formato, folio_inicial=None):
     if formato == "csv":
         return a_csv(inf), FORMATOS[formato], nombre, 0
     raise ValueError(f"Formato no soportado: {formato}")
+
+
+# ==========================================================================
+# Historiales
+# ==========================================================================
+
+def _mes(periodo):
+    return f"{MESES[int(periodo[5:7]) - 1].capitalize()} {periodo[:4]}"
+
+
+def _plural(n, singular, plural):
+    return f"{n} {singular if n == 1 else plural}"
+
+
+def informe_historial_f29(borradores):
+    inf = Informe("HISTORIAL BORRADORES F29", _plural(len(borradores), "PERÍODO GUARDADO", "PERÍODOS GUARDADOS"),
+                  [Columna("Período", 16), Columna("Débitos", 12, "monto"), Columna("Créditos", 12, "monto"),
+                   Columna("IVA det.", 11, "monto"), Columna("Remanente", 12, "monto"), Columna("PPM", 10, "monto"),
+                   Columna("Retenciones", 11, "monto"), Columna("Total a pagar", 13, "monto"), Columna("Estado", 10)],
+                  nombre_archivo="historial_f29", horizontal=True)
+
+    def c(b, k):
+        return b["codigos"].get(k, 0) or 0
+    for b in borradores:
+        inf.agregar(_mes(b["periodo"]), c(b, "538"), c(b, "537"), c(b, "89"), c(b, "77"), c(b, "62"),
+                    c(b, "151") + c(b, "48"), c(b, "91"), "Declarado" if b.get("declarado") else "Borrador")
+    inf.agregar("TOTAL", *[sum(c(b, k) for b in borradores) for k in ("538", "537", "89")], None,
+                sum(c(b, "62") for b in borradores), sum(c(b, "151") + c(b, "48") for b in borradores),
+                sum(c(b, "91") for b in borradores), None, estilo="total")
+    return inf
+
+
+def informe_historial_sueldos(liquidaciones):
+    from .remuneraciones import agrupar_por_mes
+
+    inf = Informe("HISTORIAL SUELDO EMPRESARIAL", _plural(len(liquidaciones), "LIQUIDACIÓN", "LIQUIDACIONES"),
+                  [Columna("Mes", 14), Columna("Socio", 26), Columna("Bruto", 12, "monto"), Columna("AFP", 10, "monto"),
+                   Columna("Salud", 10, "monto"), Columna("Base", 12, "monto"), Columna("Imp. único", 11, "monto"),
+                   Columna("Líquido", 12, "monto")], nombre_archivo="historial_sueldo_empresarial", horizontal=True)
+    campos = ("bruto", "afp", "salud", "base", "impuesto_unico", "liquido")
+    for periodo, filas in agrupar_por_mes(liquidaciones):
+        for l in filas:
+            inf.agregar(_mes(periodo), l["nombre"], l["bruto"], _sin_ceros(l["afp"]), _sin_ceros(l["salud"]), l["base"],
+                        l["impuesto_unico"], l["liquido"])
+        inf.agregar(None, f"TOTAL {_mes(periodo).upper()}", *[sum(l[k] for l in filas) for k in campos],
+                    estilo="subtotal", derecha=True)
+    inf.agregar(None, "TOTAL GENERAL", *[sum(l[k] for l in liquidaciones) for k in campos], estilo="total", derecha=True)
+    return inf
+
+
+def informe_historial_honorarios(boletas):
+    from .remuneraciones import agrupar_por_mes
+
+    inf = Informe("HISTORIAL DE HONORARIOS", _plural(len(boletas), "BOLETA", "BOLETAS"),
+                  [Columna("Mes", 13), Columna("Tipo", 6), Columna("Folio", 9), Columna("Fecha", 10, "fecha"),
+                   Columna("RUT", 12), Columna("Prestador", 28), Columna("Bruto", 12, "monto"),
+                   Columna("Retención", 11, "monto"), Columna("Líquido", 12, "monto")],
+                  nombre_archivo="historial_honorarios", horizontal=True)
+    for periodo, filas in agrupar_por_mes(boletas):
+        for b in filas:
+            inf.agregar(_mes(periodo), b["tipo"], b["folio"], b["fecha"], b["rut"], b["nombre"], b["bruto"],
+                        b["retencion"], b["liquido"])
+        inf.agregar(None, None, None, None, None, f"TOTAL {_mes(periodo).upper()}", *[sum(b[k] for b in filas) for k in
+                    ("bruto", "retencion", "liquido")], estilo="subtotal", derecha=True)
+    inf.agregar(None, None, None, None, None, "TOTAL GENERAL", *[sum(b[k] for b in boletas) for k in
+                ("bruto", "retencion", "liquido")], estilo="total", derecha=True)
+    return inf
+
+
+def informe_historial_rcv(periodos):
+    inf = Informe("HISTORIAL REGISTRO DE COMPRAS Y VENTAS", _plural(len(periodos), "PERÍODO", "PERÍODOS"),
+                  [Columna("Período", 14), Columna("Doc.", 6, "numero"), Columna("Compras neto+exento", 13, "monto"),
+                   Columna("IVA crédito", 11, "monto"), Columna("Compras total", 13, "monto"), Columna("Doc.", 6, "numero"),
+                   Columna("Ventas neto+exento", 13, "monto"), Columna("IVA débito", 11, "monto"),
+                   Columna("Ventas total", 13, "monto"), Columna("Estado", 11)],
+                  nombre_archivo="historial_rcv", horizontal=True,
+                  grupos=[("", 1), ("COMPRAS", 4), ("VENTAS", 4), ("", 1)])
+    for p in periodos:
+        c, v = p["compras"], p["ventas"]
+        inf.agregar(_mes(p["periodo"]), c["cantidad"], c["neto"] + c["exento"], c["iva"], c["total"], v["cantidad"],
+                    v["neto"] + v["exento"], v["iva"], v["total"],
+                    f"{p['pendientes']} pendientes" if p["pendientes"] else "Centralizado")
+
+    def suma(registro, k):
+        return sum(p[registro][k] for p in periodos)
+    inf.agregar("TOTAL", suma("compras", "cantidad"), suma("compras", "neto") + suma("compras", "exento"),
+                suma("compras", "iva"), suma("compras", "total"), suma("ventas", "cantidad"),
+                suma("ventas", "neto") + suma("ventas", "exento"), suma("ventas", "iva"), suma("ventas", "total"), None,
+                estilo="total")
+    inf.notas.append("Las notas de crédito restan.")
+    return inf

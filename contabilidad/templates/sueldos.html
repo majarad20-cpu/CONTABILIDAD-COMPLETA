@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% block titulo %}Sueldo empresarial{% endblock %}
 {% block contenido %}
+{% from '_macros.html' import pestanas with context %}
+{{ pestanas(url_for('sueldos', periodo=periodo), url_for('sueldos_historial')) }}
 <h1>Sueldo empresarial</h1>
 <p class="ayuda">Remuneración que se asignan los socios que trabajan en la empresa. Se les retiene el Impuesto Único de
   Segunda Categoría según la tabla mensual y la UTM del mes. Si el socio cotiza (AFP y salud), esas cotizaciones se

@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import pestanas, filtro_anio with context %}
+{% block titulo %}Historial sueldo empresarial{% endblock %}
+{% block contenido %}
+{{ pestanas(url_for('sueldos'), url_for('sueldos_historial'), historial=true) }}
+<div class="titulo-acciones"><h1>Historial de sueldo empresarial</h1>
+  <span class="ayuda">{{ lista|length }} liquidaci{{ 'ón' if lista|length == 1 else 'ones' }}</span></div>
+{{ filtro_anio(anio, anios) }}
+{% if lista %}
+{% set campos = ('bruto', 'afp', 'salud', 'base', 'impuesto_unico', 'liquido') %}
+<div class="desplazable">
+<table>
+  <thead><tr><th>Mes</th><th>Socio</th><th class="num">Bruto</th><th class="num">AFP</th><th class="num">Salud</th>
+    <th class="num">Base</th><th class="num">Impuesto único</th><th class="num">Líquido</th><th>Asiento</th><th></th></tr></thead>
+  <tbody>
+  {% for periodo, filas in grupos %}
+    {% for l in filas %}
+    <tr>
+      <td>{{ nombre_periodo(periodo)|capitalize }}</td><td>{{ l.nombre }}</td>
+      <td class="num">{{ l.bruto|clp }}</td><td class="num">{{ l.afp|clp if l.afp }}</td><td class="num">{{ l.salud|clp if l.salud }}</td>
+      <td class="num">{{ l.base|clp }}</td><td class="num">{{ l.impuesto_unico|clp }}</td><td class="num"><strong>{{ l.liquido|clp }}</strong></td>
+      <td>{% if l.asiento_id %}<a href="{{ url_for('ver_asiento', asiento_id=l.asiento_id) }}">N° {{ l.asiento_numero }}</a>{% else %}<span class="etiqueta etiqueta-pendiente">pendiente</span>{% endif %}</td>
+      <td class="acciones-fila">
+        <a href="{{ url_for('sueldos', periodo=periodo) }}">{{ 'Ver mes' if l.asiento_id else 'Editar' }}</a>
+        {% if not l.asiento_id %}
+        <form method="post" action="{{ url_for('eliminar_liquidacion', liquidacion_id=l.id) }}" style="display:inline"
+              onsubmit="return confirm('¿Eliminar la liquidación de {{ l.nombre }} de {{ nombre_periodo(periodo) }}?')">
+          <input type="hidden" name="periodo" value="{{ periodo }}"><input type="hidden" name="volver" value="{{ request.full_path }}">
+          <button type="submit" class="enlace">Eliminar</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    <tr class="subtotal"><td colspan="2">Total {{ nombre_periodo(periodo) }}</td>
+      {% for k in campos %}<td class="num">{{ filas|sum(attribute=k)|clp }}</td>{% endfor %}<td colspan="2"></td></tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr class="subtotal"><td colspan="2">Total {{ anio or 'general' }}</td>
+    {% for k in campos %}<td class="num">{{ lista|sum(attribute=k)|clp }}</td>{% endfor %}<td colspan="2"></td></tr></tfoot>
+</table>
+</div>
+<p class="ayuda">«Editar» abre el mes para cambiar sus montos y recalcular. Las liquidaciones contabilizadas solo se pueden
+  modificar eliminando primero su asiento.</p>
+{% else %}
+<p class="vacio">Todavía no hay liquidaciones guardadas.</p>
+{% endif %}
+{% endblock %}

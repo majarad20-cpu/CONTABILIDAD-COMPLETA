@@ -332,3 +332,45 @@ def totales_del_mes(conn, empresa_id, periodo):
     iu = conn.execute("SELECT COALESCE(SUM(impuesto_unico), 0), COUNT(*) FROM sueldos_empresariales "
                       "WHERE empresa_id = ? AND periodo = ?", (empresa_id, periodo)).fetchone()
     return {"retencion_honorarios": ret[0], "boletas": ret[1], "impuesto_unico": iu[0], "liquidaciones": iu[1]}
+
+
+# ==========================================================================
+# Historiales
+# ==========================================================================
+
+def historial_liquidaciones(conn, empresa_id, anio=None):
+    """Liquidaciones de todos los meses (o de un año), del mes más reciente al más antiguo."""
+    filtro, params = "", [empresa_id]
+    if anio:
+        filtro, params = " AND s.periodo LIKE ?", [empresa_id, f"{anio}-%"]
+    return conn.execute(
+        f"""SELECT s.*, so.nombre, so.rut, a.numero AS asiento_numero
+            FROM sueldos_empresariales s JOIN socios so ON so.id = s.socio_id
+            LEFT JOIN asientos a ON a.id = s.asiento_id
+            WHERE s.empresa_id = ?{filtro} ORDER BY s.periodo DESC, so.nombre""", params).fetchall()
+
+
+def historial_boletas(conn, empresa_id, anio=None):
+    """Boletas de honorarios de todos los meses (o de un año), del mes más reciente al más antiguo."""
+    filtro, params = "", [empresa_id]
+    if anio:
+        filtro, params = " AND h.periodo LIKE ?", [empresa_id, f"{anio}-%"]
+    return conn.execute(
+        f"""SELECT h.*, a.numero AS asiento_numero FROM honorarios h LEFT JOIN asientos a ON a.id = h.asiento_id
+            WHERE h.empresa_id = ?{filtro} ORDER BY h.periodo DESC, h.fecha, h.folio""", params).fetchall()
+
+
+def anios_historial(conn, empresa_id, tabla):
+    assert tabla in ("sueldos_empresariales", "honorarios")
+    return [r[0] for r in conn.execute(f"SELECT DISTINCT substr(periodo, 1, 4) FROM {tabla} WHERE empresa_id = ? "
+                                       "ORDER BY 1 DESC", (empresa_id,))]
+
+
+def agrupar_por_mes(filas):
+    """[(periodo, [filas])] conservando el orden."""
+    grupos = []
+    for f in filas:
+        if not grupos or grupos[-1][0] != f["periodo"]:
+            grupos.append((f["periodo"], []))
+        grupos[-1][1].append(f)
+    return grupos

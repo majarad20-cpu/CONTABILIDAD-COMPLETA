@@ -290,3 +290,9 @@ button.enlace { background: none; border: none; color: var(--acento); padding: 0
   .acciones-fila { white-space: normal; }
   .caja td { word-break: break-word; }
 }
+
+/* Pestañas «Mes» e «Historial» */
+.pestanas { display: flex; gap: .3rem; border-bottom: 1px solid var(--borde); margin-bottom: 1rem; }
+.pestanas a { padding: .5rem 1rem; color: var(--suave); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 500; }
+.pestanas a.activa { color: var(--acento); border-bottom-color: var(--acento); font-weight: 600; }
+.pestanas a:hover { color: var(--acento); }

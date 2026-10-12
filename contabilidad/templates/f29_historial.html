@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import pestanas, filtro_anio, botones_exportar with context %}
+{% block titulo %}Historial F29{% endblock %}
+{% block contenido %}
+{{ pestanas(url_for('f29'), url_for('f29_historial'), historial=true) }}
+<div class="titulo-acciones"><h1>Historial de borradores del F29</h1>
+  <span class="ayuda">{{ borradores|length }} guardado{{ '' if borradores|length == 1 else 's' }}</span></div>
+{{ filtro_anio(anio, anios, csv=true) }}
+{% if borradores %}
+<div class="desplazable">
+<table>
+  <thead><tr><th>Período</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">IVA det.</th>
+    <th class="num">Remanente</th><th class="num">PPM</th><th class="num">Retenciones</th><th class="num">Total a pagar</th>
+    <th>Estado</th><th>Guardado</th><th></th></tr></thead>
+  <tbody>
+  {% for b in borradores %}{% set c = b.codigos %}
+    <tr class="clic" onclick="location='{{ url_for('f29_guardado', periodo=b.periodo) }}'">
+      <td>{{ nombre_periodo(b.periodo)|capitalize }}</td>
+      <td class="num">{{ (c.get('538') or 0)|clp }}</td><td class="num">{{ (c.get('537') or 0)|clp }}</td>
+      <td class="num">{{ (c.get('89') or 0)|clp }}</td><td class="num">{{ (c.get('77') or 0)|clp }}</td>
+      <td class="num">{{ (c.get('62') or 0)|clp }}</td><td class="num">{{ ((c.get('151') or 0) + (c.get('48') or 0))|clp }}</td>
+      <td class="num"><strong>{{ (c.get('91') or 0)|clp }}</strong></td>
+      <td>{% if b.declarado %}<span class="etiqueta">declarado</span>{% else %}<span class="etiqueta etiqueta-pendiente">borrador</span>{% endif %}</td>
+      <td>{{ b.guardado_en[:10]|fecha }}</td>
+      <td><a href="{{ url_for('f29_guardado', periodo=b.periodo) }}">Ver</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr class="subtotal"><td>Total</td>
+    {% for k in ('538', '537', '89') %}<td class="num">{{ totales[k]|clp }}</td>{% endfor %}
+    <td></td><td class="num">{{ totales['62']|clp }}</td><td class="num">{{ (totales['151'] + totales['48'])|clp }}</td>
+    <td class="num">{{ totales['91']|clp }}</td><td colspan="3"></td></tr></tfoot>
+</table>
+</div>
+{% else %}
+<p class="vacio">Todavía no hay borradores guardados. En la pestaña «Mes», calcula el F29 y pulsa «Guardar borrador».</p>
+{% endif %}
+{% endblock %}

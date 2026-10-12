@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import pestanas, botones_exportar with context %}
+{% block titulo %}Borrador F29 guardado{% endblock %}
+{% block contenido %}
+{% set c = g.codigos %}{% set e = g.get('entradas', {}) %}
+{{ pestanas(url_for('f29'), url_for('f29_historial'), historial=true) }}
+<div class="titulo-acciones">
+  <h1>Borrador F29 guardado — {{ nombre_periodo(periodo)|capitalize }}</h1>
+  <div class="acciones no-imprimir"><a class="boton secundario" href="{{ url_for('f29_historial') }}">← Volver al historial</a></div>
+</div>
+<p class="ayuda">Guardado el {{ g.guardado_en[:10]|fecha }} {{ g.guardado_en[11:16] }}. Remanente anterior
+  ${{ (e.get('remanente_anterior') or 0)|clp }} ({{ e.get('origen_remanente') or '—' }}){% if e.get('utm_anterior') %},
+  UTM {{ e.utm_anterior|int|clp }} → {{ (e.get('utm_actual') or 0)|int|clp }}{% endif %}, tasa PPM
+  {{ ('%g' % (e.get('tasa_ppm') or 0))|replace('.', ',') }} %.</p>
+{% if cambios %}
+<div class="aviso aviso-info">Con los datos actuales del RCV y la contabilidad, este borrador daría otros valores
+  ({% for k, v in cambios %}cód. {{ k }}: ${{ v|clp }}{{ ', ' if not loop.last }}{% endfor %}). Si corresponde, usa
+  «Editar cálculo» y vuelve a guardarlo.</div>
+{% endif %}
+<div class="acciones no-imprimir">
+  <a class="boton" href="{{ url_for('f29', periodo=periodo, remanente_anterior=(e.get('remanente_anterior') or 0)|clp,
+     utm_anterior=(e.get('utm_anterior') or '')|int if e.get('utm_anterior') else '', utm_actual=(e.get('utm_actual') or '')|int if e.get('utm_actual') else '') }}">Editar cálculo</a>
+  {{ botones_exportar(csv=false) }}
+</div>
+<table class="informe f29">
+  <thead><tr><th>Concepto</th><th class="num">Cód.</th><th class="num">Cantidad</th><th class="num">Cód.</th><th class="num">Monto</th></tr></thead>
+  <tbody>
+  {% for linea in g.lineas %}
+    {% if linea[0] == 'titulo' %}
+      <tr class="seccion-informe"><td colspan="5">{{ linea[1] }}</td></tr>
+    {% elif linea[0] == 'total' %}
+      <tr class="{{ 'total' if linea[1] == '91' else 'subtotal' }}"><td>{{ linea[2] }}</td><td></td><td></td>
+        <td class="num">{{ linea[1] }}</td><td class="num">${{ (c.get(linea[1]) or 0)|clp }}</td></tr>
+    {% else %}
+      <tr><td>{{ linea[2] }}</td><td class="num codigo-f29">{{ linea[0] or '' }}</td>
+        <td class="num">{{ c.get(linea[0], 0) if linea[0] else '' }}</td><td class="num codigo-f29">{{ linea[1] }}</td>
+        <td class="num">{% if linea[1] == '115' %}{{ ('%g' % (c.get('115') or 0))|replace('.', ',') }} %{% else %}${{ (c.get(linea[1]) or 0)|clp }}{% endif %}</td></tr>
+    {% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+{% if g.get('alertas') %}
+<h2>Alertas al guardar</h2>
+{% for a in g.alertas %}<div class="aviso aviso-info">{{ a }}</div>{% endfor %}
+{% endif %}
+<section class="caja no-imprimir">
+  <h2>Estado y observaciones</h2>
+  <form method="post" class="formulario">
+    <label class="check"><input type="checkbox" name="declarado" {{ 'checked' if g.get('declarado') }}> Declarado en el SII</label>
+    <label>Fecha de declaración <input type="date" name="fecha_declaracion" value="{{ g.get('fecha_declaracion') or '' }}"></label>
+    <label>Folio del F29 en el SII <input name="folio_sii" value="{{ g.get('folio_sii') or '' }}"></label>
+    <label>Observaciones <textarea name="observacion" rows="3">{{ g.get('observacion') or '' }}</textarea></label>
+    <div class="acciones"><button type="submit">Guardar estado</button></div>
+  </form>
+  <form method="post" action="{{ url_for('eliminar_f29_guardado', periodo=periodo) }}"
+        onsubmit="return confirm('¿Eliminar el borrador de {{ nombre_periodo(periodo) }}? El mes siguiente ya no tomará su remanente.')">
+    <button type="submit" class="peligro">Eliminar borrador</button>
+  </form>
+</section>
+{% endblock %}

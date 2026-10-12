@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import pestanas, filtro_anio with context %}
+{% block titulo %}Historial honorarios{% endblock %}
+{% block contenido %}
+{{ pestanas(url_for('honorarios'), url_for('honorarios_historial'), historial=true) }}
+<div class="titulo-acciones"><h1>Historial de honorarios</h1>
+  <span class="ayuda">{{ lista|length }} boleta{{ '' if lista|length == 1 else 's' }}</span></div>
+{{ filtro_anio(anio, anios) }}
+{% if lista %}
+<div class="desplazable">
+<table>
+  <thead><tr><th>Mes</th><th>Tipo</th><th>Folio</th><th>Fecha</th><th>Prestador</th><th class="num">Bruto</th>
+    <th class="num">Retención</th><th class="num">Líquido</th><th>Asiento</th><th></th></tr></thead>
+  <tbody>
+  {% for periodo, filas in grupos %}
+    {% for b in filas %}
+    <tr>
+      <td>{{ nombre_periodo(periodo)|capitalize }}</td><td>{{ b.tipo }}</td><td>{{ b.folio }}</td><td>{{ b.fecha|fecha }}</td>
+      <td>{{ b.nombre }}{% if b.glosa %} <small class="ayuda">· {{ b.glosa }}</small>{% endif %}</td>
+      <td class="num">{{ b.bruto|clp }}</td><td class="num">{{ b.retencion|clp }}</td><td class="num">{{ b.liquido|clp }}</td>
+      <td>{% if b.asiento_id %}<a href="{{ url_for('ver_asiento', asiento_id=b.asiento_id) }}">N° {{ b.asiento_numero }}</a>{% else %}<span class="etiqueta etiqueta-pendiente">pendiente</span>{% endif %}</td>
+      <td class="acciones-fila">
+        {% if b.asiento_id %}<a href="{{ url_for('honorarios', periodo=periodo) }}">Ver mes</a>
+        {% else %}<a href="{{ url_for('honorarios', periodo=periodo, editar=b.id) }}">Editar</a>
+        <form method="post" action="{{ url_for('eliminar_boleta', boleta_id=b.id) }}" style="display:inline"
+              onsubmit="return confirm('¿Eliminar la boleta folio {{ b.folio }}?')">
+          <input type="hidden" name="periodo" value="{{ periodo }}"><input type="hidden" name="volver" value="{{ request.full_path }}">
+          <button type="submit" class="enlace">Eliminar</button>
+        </form>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    <tr class="subtotal"><td colspan="5">Total {{ nombre_periodo(periodo) }} ({{ filas|length }} boleta{{ '' if filas|length == 1 else 's' }})</td>
+      {% for k in ('bruto', 'retencion', 'liquido') %}<td class="num">{{ filas|sum(attribute=k)|clp }}</td>{% endfor %}<td colspan="2"></td></tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr class="subtotal"><td colspan="5">Total {{ anio or 'general' }}</td>
+    {% for k in ('bruto', 'retencion', 'liquido') %}<td class="num">{{ lista|sum(attribute=k)|clp }}</td>{% endfor %}<td colspan="2"></td></tr></tfoot>
+</table>
+</div>
+{% else %}
+<p class="vacio">Todavía no hay boletas registradas.</p>
+{% endif %}
+{% endblock %}

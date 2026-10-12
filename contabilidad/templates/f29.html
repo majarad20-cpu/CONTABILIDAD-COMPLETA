@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
-{% from '_macros.html' import botones_exportar with context %}
+{% from '_macros.html' import botones_exportar, pestanas with context %}
 {% block titulo %}Borrador F29{% endblock %}
 {% block contenido %}
 {% set c = f.codigos %}
+{{ pestanas(url_for('f29', periodo=periodo), url_for('f29_historial')) }}
 <div class="titulo-acciones">
   <h1>Borrador del F29 — {{ nombre_periodo(periodo)|capitalize }}</h1>
   <div class="acciones no-imprimir">{{ botones_exportar(csv=false) }}

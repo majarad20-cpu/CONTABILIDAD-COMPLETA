@@ -782,8 +782,8 @@ def registrar_rutas(app):
         resultado["entradas"]["origen_remanente"] = "ingresado manualmente" if cambiado else iniciales["origen_remanente"]
         if request.method == "POST":
             tributario.guardar_borrador(conn, eid(), periodo, resultado)
-            flash(f"Borrador del F29 de {nucleo.nombre_periodo(periodo)} guardado. Su remanente (código 77) "
-                  "se usará como remanente anterior del mes siguiente.", "ok")
+            flash(f"Borrador del F29 de {nucleo.nombre_periodo(periodo)} guardado en el historial. Su remanente "
+                  "(código 77) se usará como remanente anterior del mes siguiente.", "ok")
             return redirect(url_for("f29", periodo=periodo))
         if pide_exportacion():
             return respuesta_exportada(exportacion.informe_f29(resultado))
@@ -867,7 +867,7 @@ def registrar_rutas(app):
             flash("Liquidación eliminada.", "ok")
         else:
             flash("No se pudo eliminar: la liquidación ya está contabilizada.", "error")
-        return redirect(url_for("sueldos", periodo=periodo_pedido()))
+        return redirect(volver_a() or url_for("sueldos", periodo=periodo_pedido()))
 
     @app.route("/sueldos/contabilizar")
     def contabilizar_sueldos():
@@ -917,7 +917,7 @@ def registrar_rutas(app):
             flash("Boleta eliminada.", "ok")
         else:
             flash("No se pudo eliminar: la boleta ya está contabilizada.", "error")
-        return redirect(url_for("honorarios", periodo=periodo_pedido()))
+        return redirect(volver_a() or url_for("honorarios", periodo=periodo_pedido()))
 
     @app.route("/honorarios/contabilizar")
     def contabilizar_honorarios():
@@ -931,6 +931,101 @@ def registrar_rutas(app):
             propuesta, "honorario_ids",
             f"Honorarios de {nucleo.nombre_periodo(periodo)}: {propuesta['cantidad']} boleta(s)",
             url_for("honorarios", periodo=periodo))
+
+    # ------------------------------------------------------------ historiales
+    def volver_a():
+        """Dirección interna a la que volver después de una acción (campo «volver»)."""
+        destino = request.form.get("volver", "")
+        return destino if destino.startswith("/") and not destino.startswith("//") else None
+
+    def anio_pedido():
+        anio = request.args.get("anio", "")
+        return anio if re.fullmatch(r"\d{4}", anio) else ""
+
+    @app.route("/f29/historial")
+    def f29_historial():
+        conn = db.get_db()
+        anio = anio_pedido()
+        borradores = tributario.borradores_guardados(conn, eid(), anio)
+        if pide_exportacion():
+            return respuesta_exportada(exportacion.informe_historial_f29(borradores))
+        totales = {k: sum(b["codigos"].get(k) or 0 for b in borradores) for k in ("538", "537", "89", "62", "151", "48", "91")}
+        return render_template("f29_historial.html", borradores=borradores, anio=anio, totales=totales,
+                               anios=tributario.anios_borradores(conn, eid()))
+
+    @app.route("/f29/guardado/<periodo>", methods=["GET", "POST"])
+    def f29_guardado(periodo):
+        conn = db.get_db()
+        try:
+            tributario.validar_periodo(periodo)
+        except ErrorValidacion:
+            abort(404)
+        guardado = tributario.borrador_guardado(conn, eid(), periodo)
+        if guardado is None:
+            flash(f"No hay un borrador guardado de {nucleo.nombre_periodo(periodo)}.", "error")
+            return redirect(url_for("f29_historial"))
+        if request.method == "POST":
+            f = request.form
+            try:
+                tributario.guardar_estado_borrador(conn, eid(), periodo, "declarado" in f, f.get("fecha_declaracion"),
+                                                   f.get("folio_sii"), f.get("observacion"))
+            except ErrorValidacion as e:
+                flash(str(e), "error")
+            else:
+                flash("Estado del borrador guardado.", "ok")
+            return redirect(url_for("f29_guardado", periodo=periodo))
+        resultado = guardado | {"periodo": periodo}
+        if pide_exportacion():
+            return respuesta_exportada(exportacion.informe_f29(resultado, guardado))
+        e = guardado.get("entradas", {})
+        actual = tributario.calcular_f29(conn, eid(), periodo, e.get("remanente_anterior") or 0, e.get("utm_anterior"),
+                                         e.get("utm_actual"))["codigos"]
+        cambios = [(k, actual.get(k, 0)) for k in ("538", "537", "77", "62", "91")
+                   if actual.get(k, 0) != guardado["codigos"].get(k, 0)]
+        return render_template("f29_guardado.html", periodo=periodo, g=guardado, cambios=cambios,
+                               presentacion=tributario.periodo_siguiente(periodo))
+
+    @app.post("/f29/guardado/<periodo>/eliminar")
+    def eliminar_f29_guardado(periodo):
+        if tributario.eliminar_borrador(db.get_db(), eid(), periodo):
+            flash(f"Borrador de {nucleo.nombre_periodo(periodo)} eliminado.", "ok")
+        return redirect(url_for("f29_historial"))
+
+    @app.route("/rcv/historial")
+    def rcv_historial():
+        conn = db.get_db()
+        anio = anio_pedido()
+        periodos = tributario.historial_rcv(conn, eid(), anio)
+        if pide_exportacion():
+            return respuesta_exportada(exportacion.informe_historial_rcv(periodos))
+        return render_template("rcv_historial.html", periodos=periodos, anio=anio, anios=tributario.anios_rcv(conn, eid()))
+
+    @app.post("/rcv/eliminar-pendientes")
+    def eliminar_pendientes_rcv():
+        periodo = periodo_pedido()
+        n = tributario.eliminar_pendientes_periodo(db.get_db(), eid(), periodo)
+        flash(f"{n} documento(s) pendiente(s) de {nucleo.nombre_periodo(periodo)} eliminado(s).", "ok")
+        return redirect(volver_a() or url_for("rcv_historial"))
+
+    @app.route("/sueldos/historial")
+    def sueldos_historial():
+        conn = db.get_db()
+        anio = anio_pedido()
+        lista = remuneraciones.historial_liquidaciones(conn, eid(), anio)
+        if pide_exportacion():
+            return respuesta_exportada(exportacion.informe_historial_sueldos(lista))
+        return render_template("sueldos_historial.html", grupos=remuneraciones.agrupar_por_mes(lista), lista=lista,
+                               anio=anio, anios=remuneraciones.anios_historial(conn, eid(), "sueldos_empresariales"))
+
+    @app.route("/honorarios/historial")
+    def honorarios_historial():
+        conn = db.get_db()
+        anio = anio_pedido()
+        lista = remuneraciones.historial_boletas(conn, eid(), anio)
+        if pide_exportacion():
+            return respuesta_exportada(exportacion.informe_historial_honorarios(lista))
+        return render_template("honorarios_historial.html", grupos=remuneraciones.agrupar_por_mes(lista), lista=lista,
+                               anio=anio, anios=remuneraciones.anios_historial(conn, eid(), "honorarios"))
 
     # ------------------------------------------------------- cierre de meses
     @app.route("/periodos")

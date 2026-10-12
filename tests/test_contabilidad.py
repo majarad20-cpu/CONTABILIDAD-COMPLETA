@@ -1436,6 +1436,88 @@ class PruebasSueldoEmpresarialYHonorarios(BaseConDatos):
                 self.assertEqual(cliente.get(url).status_code, 200)
 
 
+class PruebasHistoriales(BaseConDatos):
+    def setUp(self):
+        super().setUp()
+        from contabilidad import remuneraciones as r, tributario
+        self.cliente = self.app.test_client()
+        tributario.importar_rcv(self.conn, self.emp, "2026-05", CSV_COMPRAS.encode())
+        tributario.importar_rcv(self.conn, self.emp, "2026-05", CSV_VENTAS.encode())
+        socio = r.guardar_socio(self.conn, self.emp, {"nombre": "Ana Pérez", "rut": "12345678-5", "sueldo_bruto": 1_003_000})
+        for periodo in ("2026-08", "2026-09"):
+            r.guardar_liquidacion(self.conn, self.emp, socio, periodo, 1_003_000)
+            r.guardar_boleta(self.conn, self.emp, periodo, {"tipo": "BHE", "folio": periodo[5:], "fecha": f"{periodo}-10",
+                                                            "rut": "12345678-5", "nombre": "Contador", "monto": 30_000,
+                                                            "es_liquido": True})
+
+    def test_historial_f29_guardar_estado_y_eliminar(self):
+        from contabilidad import tributario
+        self.cliente.post("/f29?periodo=2026-05&remanente_anterior=1000&utm_anterior=70588&utm_actual=71506")
+        self.cliente.post("/f29?periodo=2026-04")
+        texto = self.cliente.get("/f29/historial").get_data(as_text=True)
+        self.assertIn("Mayo 2026", texto)
+        self.assertIn("Abril 2026", texto)
+        total = sum((tributario.borrador_guardado(self.conn, self.emp, p)["codigos"].get("537") or 0) for p in ("2026-04", "2026-05"))
+        self.assertIn(f">{nucleo.formato_clp(total)}</td>", texto.split("<tfoot>")[1])
+        r = self.cliente.post("/f29/guardado/2026-05", data={"declarado": "on", "fecha_declaracion": "2026-06-20",
+                                                              "folio_sii": "123", "observacion": "Pagado por PEC"})
+        self.assertEqual(r.status_code, 302)
+        g = tributario.borrador_guardado(self.conn, self.emp, "2026-05")
+        self.assertEqual((g["declarado"], g["fecha_declaracion"], g["folio_sii"], g["observacion"]),
+                         (True, "2026-06-20", "123", "Pagado por PEC"))
+        # Volver a guardar el cálculo conserva el estado
+        self.cliente.post("/f29?periodo=2026-05&remanente_anterior=1000&utm_anterior=70588&utm_actual=71506")
+        self.assertEqual(tributario.borrador_guardado(self.conn, self.emp, "2026-05")["observacion"], "Pagado por PEC")
+        texto = self.cliente.get("/f29/guardado/2026-05").get_data(as_text=True)
+        self.assertIn("Borrador F29 guardado", texto)
+        self.assertIn("Editar cálculo", texto)
+        for formato in ("pdf", "xlsx"):
+            self.assertEqual(self.cliente.get(f"/f29/guardado/2026-05?formato={formato}").status_code, 200)
+            self.assertEqual(self.cliente.get(f"/f29/historial?formato={formato}").status_code, 200)
+        self.cliente.post("/f29/guardado/2026-04/eliminar")
+        self.assertIsNone(tributario.borrador_guardado(self.conn, self.emp, "2026-04"))
+
+    def test_historial_rcv_y_eliminar_pendientes(self):
+        from contabilidad import tributario
+        h = tributario.historial_rcv(self.conn, self.emp)
+        self.assertEqual([p["periodo"] for p in h], ["2026-05"])
+        docs = tributario.documentos_rcv(self.conn, self.emp, "2026-05")
+        self.assertEqual(h[0]["compras"]["total"], tributario.totales_rcv([d for d in docs if d["registro"] == "COMPRA"])["total"])
+        self.assertEqual(h[0]["pendientes"], len(docs))
+        texto = self.cliente.get("/rcv/historial").get_data(as_text=True)
+        self.assertIn("Mayo 2026", texto)
+        self.assertEqual(self.cliente.get("/rcv/historial?formato=pdf").status_code, 200)
+        r = self.cliente.post("/rcv/eliminar-pendientes", data={"periodo": "2026-05", "volver": "/rcv/historial?anio=2026"})
+        self.assertEqual(r.headers["Location"], "/rcv/historial?anio=2026")
+        self.assertEqual(tributario.historial_rcv(self.conn, self.emp), [])
+
+    def test_historial_sueldos_y_honorarios(self):
+        from contabilidad import remuneraciones as r
+        texto = self.cliente.get("/sueldos/historial").get_data(as_text=True)
+        self.assertIn("Total septiembre 2026", texto)
+        self.assertIn("Ana Pérez", texto)
+        self.assertEqual(len(r.historial_liquidaciones(self.conn, self.emp, "2026")), 2)
+        texto = self.cliente.get("/honorarios/historial?anio=2026").get_data(as_text=True)
+        self.assertIn("Total agosto 2026", texto)
+        for url in ("/sueldos/historial", "/honorarios/historial"):
+            for formato in ("pdf", "xlsx", "csv"):
+                self.assertEqual(self.cliente.get(f"{url}?formato={formato}").status_code, 200)
+        boleta = r.historial_boletas(self.conn, self.emp)[0]
+        resp = self.cliente.post(f"/honorarios/boleta/{boleta['id']}/eliminar", data={"periodo": boleta["periodo"], "volver": "/honorarios/historial"})
+        self.assertEqual(resp.headers["Location"], "/honorarios/historial")
+        self.assertEqual(len(r.historial_boletas(self.conn, self.emp)), 1)
+        # «volver» solo acepta direcciones internas
+        liq = r.historial_liquidaciones(self.conn, self.emp)[0]
+        resp = self.cliente.post(f"/sueldos/liquidacion/{liq['id']}/eliminar", data={"periodo": liq["periodo"], "volver": "//otro.sitio"})
+        self.assertTrue(resp.headers["Location"].startswith("/sueldos"))
+
+    def test_pestanas_en_las_pantallas_del_mes(self):
+        for url in ("/rcv", "/f29", "/sueldos", "/honorarios"):
+            texto = self.cliente.get(url).get_data(as_text=True)
+            self.assertIn('class="pestanas', texto, url)
+            self.assertIn("Historial", texto, url)
+
+
 class PruebasRestaurar(BaseConDatos):
     def subir(self, cliente, contenido, nombre="respaldo.db"):
         return cliente.post("/respaldos/subir", data={"archivo": (io.BytesIO(contenido), nombre)},
