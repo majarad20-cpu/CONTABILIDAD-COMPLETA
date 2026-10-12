@@ -13,6 +13,7 @@ Modelo de saldos:
   y se excluye de los informes de su propio período, para que el Estado de
   Resultados no quede en cero.
 """
+import json
 import re
 from datetime import date
 
@@ -1042,4 +1043,7 @@ def exportar_en_linea(conn, empresa_id):
                  "otros_impuestos": d["otros_impuestos"], "total": d["total"], "activo_fijo": bool(d["activo_fijo"]),
                  "cantidad": d["cantidad"], "cuenta": str(d["cuenta_id"] or ""), "asiento": str(d["asiento_id"] or "")}
                 for d in conn.execute("SELECT * FROM rcv_documentos WHERE empresa_id = ? ORDER BY id", (empresa_id,))],
+        "f29": [{"periodo": r["periodo"], "codigos": json.loads(r["datos"])["codigos"], "entradas": json.loads(r["datos"])["entradas"],
+                 "guardado_en": r["guardado_en"].replace(" ", "T")}
+                for r in conn.execute("SELECT periodo, datos, guardado_en FROM f29_borradores WHERE empresa_id = ?", (empresa_id,))],
     }

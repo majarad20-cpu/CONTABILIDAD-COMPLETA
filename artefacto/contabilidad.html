@@ -85,6 +85,11 @@ tr.total td { font-weight: 700; background: var(--surface-2); border-top: 2px so
 tr.sub td { font-weight: 600; background: var(--surface-2); }
 tr.titulo td { font-weight: 700; padding-top: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; font-size: 12px; }
 tr.nc td { color: var(--neg); }
+tr.pagar td { font-weight: 700; font-size: 15px; background: var(--accent-soft); color: var(--accent); border-top: 2px solid var(--accent); }
+.pagar-caja { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; border: 2px solid var(--accent); background: var(--accent-soft); }
+.pagar-caja span { font-weight: 600; text-transform: uppercase; letter-spacing: .05em; font-size: 13px; color: var(--accent); }
+.pagar-caja strong { font: 600 26px var(--font-num); color: var(--accent); font-variant-numeric: tabular-nums; }
+.pagar-caja small { flex-basis: 100%; color: var(--muted); }
 tr.reinicio td { color: var(--muted); font-style: italic; }
 tr.cab-asiento td { background: var(--surface-2); font-weight: 600; }
 .neg { color: var(--neg); }
@@ -244,6 +249,7 @@ const S = {
   ocupado: false, desuscribirAsientos: null,
   contador: { nombre: "", rut: "", firma: "" }, cambios: [], desuscribirCambios: null,
   periodosAnio: null, cierreAnio: null, apertura: null,
+  f29Borradores: [], desuscribirF29: null, f29: null, utm: {},
   rcv: [], desuscribirRcv: null, rcvPeriodo: null, rcvPeriodoEid: null, rcvSel: new Set(), rcvMensajes: null, docEdit: null,
 };
 
@@ -406,7 +412,7 @@ function movimientosPorCuenta() {
 const SECCIONES = [
   [null, [["inicio", "Inicio"]]],
   ["Registro", [["nuevo", "+ Nuevo asiento"], ["asientos", "Asientos"], ["cuentas", "Plan de cuentas"]]],
-  ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["tributarias", "Cuentas tributarias"]]],
+  ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["f29", "Borrador F29"], ["tributarias", "Cuentas tributarias"]]],
   ["Libros", [["diario", "Libro Diario"], ["mayor", "Libro Mayor"]]],
   ["Informes", [["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
   ["Administración", [["periodos", "Cierre de meses"], ["cierre", "Cierre de ejercicio"], ["apertura", "Apertura de ejercicio"],
@@ -448,7 +454,7 @@ function render() {
   else html = ({ inicio: vistaInicio, asientos: vistaAsientos, editor: vistaEditor, cuentas: vistaCuentas, diario: vistaDiario, mayor: vistaMayor,
     ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas,
     periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador,
-    rcv: vistaRcv, tributarias: vistaTributarias }[S.vista] || vistaInicio)();
+    rcv: vistaRcv, tributarias: vistaTributarias, f29: vistaF29 }[S.vista] || vistaInicio)();
   const banner = !S.almacen.enLinea
     ? `<div class="aviso">Esta copia no está conectada con Claude: puedes probarla, pero los cambios se pierden al cerrar. Ábrela como artefacto en claude.ai para guardar.</div>`
     : !S.puedeEscribir ? `<div class="aviso">Tienes acceso de solo lectura: puedes ver los libros e informes, pero no modificar datos.</div>` : "";
@@ -1040,6 +1046,7 @@ async function importar() {
       if (i % 10 === 9 && S.vista === "empresas") render();
     }
     for (const c of imp.datos.cambios || []) await S.almacen.set(`empresas/${eid}/cambios/${nuevoId()}`, c);
+    for (const b of imp.datos.f29 || []) await S.almacen.set(`empresas/${eid}/f29/${b.periodo}`, { codigos: b.codigos, entradas: b.entradas, guardado_en: b.guardado_en });
     for (const d of imp.datos.rcv || []) await S.almacen.set(`empresas/${eid}/rcv/d${d.id}`, { ...d, id: undefined,
       cuenta: d.cuenta ? "c" + d.cuenta : "", asiento: d.asiento ? "a" + d.asiento : "" });
     S.importacion = null;
@@ -1867,7 +1874,7 @@ function vistaRcv() {
   S.csv = csvRcv();
   const hay = docsPeriodo(S.rcvPeriodo).length;
   return `<div class="cabecera"><h1>Registro de Compras y Ventas</h1>
-    <div class="acciones"><button class="btn sec" type="button" data-ir="tributarias">Cuentas tributarias</button></div></div>
+    <div class="acciones"><button class="btn sec" type="button" data-accion="f29-del-mes">Borrador F29 de este mes</button><button class="btn sec" type="button" data-ir="tributarias">Cuentas tributarias</button></div></div>
   <div class="barra">
     <label>Período tributario<input type="month" id="rcv-periodo" value="${S.rcvPeriodo}"></label>
     ${S.descargas ? `<button class="btn sec" type="button" data-accion="csv">Descargar CSV</button>` : ""}
@@ -1921,6 +1928,239 @@ async function guardarTributarias() {
   await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), tributarias, tasa_ppm: tasa }); render(); aviso("Cuentas tributarias guardadas."); }, "No se pudieron guardar las cuentas");
 }
 
+/* ------------------------------------------------------------------ UTM */
+const UTM_OFICIALES = {
+  "2026-01": 69751, "2026-02": 69611, "2026-03": 69889, "2026-04": 69889, "2026-05": 70588,
+  "2026-06": 71506, "2026-07": 71649, "2026-08": 71649, "2026-09": 71721, "2026-10": 72151,
+};
+/* Valor de la UTM del mes: el ingresado en el programa o, si no hay, el oficial cargado. */
+function utm(periodo) { return S.utm[periodo] || UTM_OFICIALES[periodo] || null; }
+
+/* ------------------------------------------------------------------ borrador del F29 */
+const FACTURAS = new Set([29, 30, 33, 43, 45, 46]);
+const BOLETAS = new Set([35, 39]);
+const COMPROBANTES_PAGO = new Set([48]);
+const NOTAS_DEBITO = new Set([55, 56, 111]);
+const IMPORTACIONES = new Set([914]);
+
+/* Aproximación desde 5 de a/b con enteros exactos (a, b ≥ 0). */
+function divisionHaciaArriba(a, b) {
+  const A = BigInt(a), B = BigInt(b), q = A / B, r = A - q * B;
+  return Number(2n * r >= B ? q + 1n : q);
+}
+/* Remanente expresado en UTM con dos decimales, aproximando desde 5, como el SII (ver programa de escritorio). */
+function reajustarRemanente(remanente, utmAnterior) {
+  return divisionHaciaArriba(Math.round(remanente) * 10000, Math.round(utmAnterior * 100)) / 100;
+}
+/* UTM a pesos enteros, aproximando desde 5. */
+function pesosDesdeUtm(cantidadUtm, valorUtm) {
+  return divisionHaciaArriba(Math.round(cantidadUtm * 100) * Math.round(valorUtm * 100), 10000);
+}
+
+/* (debe, haber) de la cuenta en el mes. Con `excluirSoloIva` se omiten los asientos que solo usan esas cuentas. */
+function movimientoMes(cuentaId, periodo, excluirSoloIva) {
+  if (!cuentaId) return [0, 0];
+  let d = 0, h = 0;
+  const fin = ultimoDia(periodo);
+  for (const a of S.lista) {
+    if (a.fecha < `${periodo}-01` || a.fecha > fin) continue;
+    if (excluirSoloIva && !a.lineas.some((l) => !excluirSoloIva.has(l.cuenta))) continue;
+    for (const l of a.lineas) if (l.cuenta === cuentaId) { d += l.debe || 0; h += l.haber || 0; }
+  }
+  return [d, h];
+}
+
+/* Retenciones e impuesto único del mes según los módulos de remuneraciones (etapa 4). */
+function totalesModulos(periodo) {
+  const boletas = (S.honorarios || []).filter((b) => b.periodo === periodo);
+  const liq = (S.sueldos || []).filter((l) => l.periodo === periodo);
+  return { retencion_honorarios: boletas.reduce((s, b) => s + (b.retencion || 0), 0), boletas: boletas.length,
+    impuesto_unico: liq.reduce((s, l) => s + (l.impuesto_unico || 0), 0), liquidaciones: liq.length };
+}
+
+function borradorF29(periodo) { return S.f29Borradores.find((b) => b.id === periodo) || null; }
+
+function valoresInicialesF29(periodo) {
+  const propio = borradorF29(periodo);
+  if (propio) return { remanente_anterior: propio.entradas.remanente_anterior, utm_anterior: propio.entradas.utm_anterior, utm_actual: propio.entradas.utm_actual,
+    origen_remanente: propio.entradas.origen_remanente || "borrador guardado" };
+  const anterior = periodoAnterior(periodo);
+  const previo = borradorF29(anterior);
+  if (previo) return { remanente_anterior: previo.codigos["77"] || 0, utm_anterior: previo.entradas.utm_actual || utm(periodo), utm_actual: utm(periodoSiguiente(periodo)),
+    origen_remanente: `código 77 del borrador de ${nombrePeriodo(anterior)}` };
+  const cuenta = cuentasTributarias().remanente_iva;
+  let remanente = 0;
+  if (cuenta) { const m = libroMayor(cuenta, `${anterior}-01`, ultimoDia(anterior)); remanente = m ? Math.max(m.saldoFinal, 0) : 0; }
+  const u = ultimoDia(anterior);
+  return { remanente_anterior: remanente, utm_anterior: utm(periodo), utm_actual: utm(periodoSiguiente(periodo)),
+    origen_remanente: `saldo contable de la cuenta de remanente al ${u.slice(8)}/${anterior.slice(5)}/${anterior.slice(0, 4)}` };
+}
+
+const LINEAS_F29 = [
+  ["titulo", "DÉBITOS (VENTAS)"],
+  ["503", "502", "Facturas emitidas"], ["110", "111", "Boletas"], ["758", "759", "Comprobantes de pago electrónico (vouchers)"],
+  ["512", "513", "Notas de débito emitidas"], ["509", "510", "Notas de crédito emitidas (restan)"],
+  ["total", "538", "TOTAL DÉBITOS"], [null, "142", "Ventas exentas o no gravadas del giro (informativo)"],
+  ["titulo", "CRÉDITOS (COMPRAS)"],
+  ["519", "520", "Facturas recibidas del giro"], ["524", "525", "Facturas de activo fijo"], ["531", "532", "Notas de débito recibidas"],
+  ["527", "528", "Notas de crédito recibidas (restan)"], ["534", "535", "Declaraciones de ingreso (importaciones)"],
+  [null, "504", "Remanente de crédito fiscal del mes anterior (reajustado)"], ["total", "537", "TOTAL CRÉDITOS"],
+  ["titulo", "COMPRAS SIN DERECHO A CRÉDITO (INFORMATIVO)"],
+  ["564", "521", "Compras internas afectas sin derecho a crédito (monto neto)"], ["584", "562", "Compras internas exentas o no gravadas"],
+  ["titulo", "IMPUESTO AL VALOR AGREGADO"],
+  [null, "89", "IVA determinado (débitos − créditos)"], [null, "77", "Remanente de crédito fiscal para el período siguiente"],
+  ["titulo", "PAGOS PROVISIONALES MENSUALES"],
+  [null, "563", "Base imponible (ingresos del giro)"], [null, "115", "Tasa PPM (%)"], [null, "62", "PPM neto determinado"],
+  ["titulo", "RETENCIONES"],
+  [null, "151", "Retención de impuesto de 2ª categoría (honorarios)"], [null, "48", "Impuesto único de 2ª categoría (trabajadores)"],
+  ["total", "91", "TOTAL A PAGAR"],
+];
+
+function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActual = null) {
+  const tasa = +(empresa().tasa_ppm || 0);
+  const docs = docsPeriodo(periodo);
+  const ventas = docs.filter((d) => d.registro === "VENTA"), compras = docs.filter((d) => d.registro === "COMPRA");
+  const suma = (lista, tipos, cond = () => true) => {
+    const el = lista.filter((d) => tipos.has(+d.tipo_doc) && cond(d));
+    return [el.reduce((s, d) => s + (d.cantidad || 1), 0), el.reduce((s, d) => s + (d.iva || 0), 0)];
+  };
+  const c = {};
+  [c["503"], c["502"]] = suma(ventas, FACTURAS);
+  [c["110"], c["111"]] = suma(ventas, BOLETAS);
+  [c["758"], c["759"]] = suma(ventas, COMPROBANTES_PAGO);
+  [c["512"], c["513"]] = suma(ventas, NOTAS_DEBITO);
+  [c["509"], c["510"]] = suma(ventas, NOTAS_CREDITO);
+  c["538"] = c["502"] + c["111"] + c["759"] + c["513"] - c["510"];
+  c["142"] = ventas.reduce((s, d) => s + signoDoc(d.tipo_doc) * (d.exento || 0), 0);
+  const sinCredito = (d) => (d.iva_no_recuperable || 0) > 0 && !d.iva;
+  [c["519"], c["520"]] = suma(compras, FACTURAS, (d) => !d.activo_fijo && !sinCredito(d));
+  [c["524"], c["525"]] = suma(compras, FACTURAS, (d) => d.activo_fijo && !sinCredito(d));
+  const afectasSin = compras.filter((d) => (d.iva_no_recuperable || 0) > 0);
+  c["564"] = afectasSin.reduce((s, d) => s + (d.cantidad || 1), 0);
+  c["521"] = afectasSin.reduce((s, d) => s + signoDoc(d.tipo_doc) * d.neto, 0);
+  const exentas = compras.filter((d) => (d.exento || 0) > 0);
+  c["584"] = exentas.reduce((s, d) => s + (d.cantidad || 1), 0);
+  c["562"] = exentas.reduce((s, d) => s + signoDoc(d.tipo_doc) * d.exento, 0);
+  [c["531"], c["532"]] = suma(compras, NOTAS_DEBITO);
+  [c["527"], c["528"]] = suma(compras, NOTAS_CREDITO);
+  [c["534"], c["535"]] = suma(compras, IMPORTACIONES);
+  const remanente = Math.trunc(+remanenteAnterior || 0);
+  let reajuste = 0, remanenteUtm = null;
+  if (remanente && utmAnterior && utmActual) { remanenteUtm = reajustarRemanente(remanente, utmAnterior); reajuste = pesosDesdeUtm(remanenteUtm, utmActual) - remanente; }
+  c["504"] = remanente + reajuste;
+  c["537"] = c["520"] + c["525"] + c["532"] + c["535"] - c["528"] + c["504"];
+  c["89"] = Math.max(c["538"] - c["537"], 0);
+  c["77"] = Math.max(c["537"] - c["538"], 0);
+  c["563"] = ventas.reduce((s, d) => s + signoDoc(d.tipo_doc) * (d.neto + d.exento), 0);
+  c["115"] = tasa;
+  c["62"] = Math.max(redondearPar(c["563"] * tasa / 100), 0);
+  const ct = cuentasTributarias();
+  c["151"] = movimientoMes(ct.retencion_honorarios, periodo)[1];
+  c["48"] = movimientoMes(ct.impuesto_unico, periodo)[1];
+  c["91"] = c["89"] + c["62"] + c["151"] + c["48"];
+
+  const alertas = [];
+  const pendientes = docs.filter(pendiente);
+  if (pendientes.length) alertas.push(`Hay ${pendientes.length} documento(s) del RCV sin centralizar en ${nombrePeriodo(periodo)}.`);
+  if (!docs.length) alertas.push(`No hay documentos del RCV importados para ${nombrePeriodo(periodo)}.`);
+  const cuentasIva = new Set(["iva_debito", "iva_credito", "remanente_iva"].map((k) => ct[k]).filter(Boolean));
+  const comparacion = [];
+  if (ct.iva_debito) { const [d, h] = movimientoMes(ct.iva_debito, periodo, cuentasIva); comparacion.push(["IVA débito fiscal", c["538"], h - d]); }
+  if (ct.iva_credito) { const [d, h] = movimientoMes(ct.iva_credito, periodo, cuentasIva); comparacion.push(["IVA crédito fiscal del mes", c["537"] - c["504"], d - h]); }
+  const modulos = totalesModulos(periodo);
+  if (modulos.boletas) comparacion.push(["Retención de honorarios (cód. 151)", modulos.retencion_honorarios, c["151"]]);
+  if (modulos.liquidaciones) comparacion.push(["Impuesto único sueldo empresarial (cód. 48)", modulos.impuesto_unico, c["48"]]);
+  for (const [concepto, rcv, cont] of comparacion)
+    if (rcv !== cont) alertas.push(`${concepto}: el RCV indica $${clp(rcv)} y la contabilidad $${clp(cont)} (diferencia $${clp(rcv - cont)}).`);
+  for (const k of ["iva_debito", "iva_credito"]) if (!ct[k]) alertas.push(`Falta configurar la cuenta «${CONCEPTOS[k][0]}» para comparar con la contabilidad.`);
+  if (!tasa) alertas.push("La tasa de PPM es 0 %. Configúrala en Tributario → Cuentas tributarias.");
+  if (remanente && !(utmAnterior && utmActual)) alertas.push("Ingresa la UTM del mes en que se presentó el F29 anterior y la del mes en que se presenta este F29, para reajustar el remanente.");
+  return { periodo, codigos: c, alertas, comparacion, reajuste, remanenteUtm, documentos: docs.length, pendientes: pendientes.length,
+    entradas: { remanente_anterior: remanente, utm_anterior: utmAnterior, utm_actual: utmActual, tasa_ppm: tasa } };
+}
+
+function parametrosF29() {
+  if (!S.f29 || S.f29.eid !== S.eid) {
+    const ej = String(empresa().ejercicio);
+    const conDocs = S.rcv.map((d) => d.periodo).filter((p) => p.startsWith(ej)).sort();
+    S.f29 = { eid: S.eid, periodo: S.rcvPeriodo && S.rcvPeriodoEid === S.eid ? S.rcvPeriodo : conDocs.at(-1) || periodoRcvInicial(), manual: null };
+  }
+  return S.f29;
+}
+const numeroF29 = (t, esUtm) => {
+  const s = String(t ?? "").trim();
+  if (!s) return null;
+  const n = Number(s.replace(/\$/g, "").replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? (esUtm ? n : Math.round(n)) : NaN;
+};
+
+function resultadoF29() {
+  const p = parametrosF29();
+  const ini = valoresInicialesF29(p.periodo);
+  const m = p.manual || {};
+  const remanente = m.remanente_anterior ?? (ini.remanente_anterior || 0);
+  const r = calcularF29(p.periodo, remanente, m.utm_anterior ?? ini.utm_anterior, m.utm_actual ?? ini.utm_actual);
+  r.entradas.origen_remanente = remanente !== (ini.remanente_anterior || 0) ? "ingresado manualmente" : ini.origen_remanente;
+  return r;
+}
+
+function vistaF29() {
+  const p = parametrosF29();
+  const f = resultadoF29(), c = f.codigos;
+  const presentacion = periodoSiguiente(p.periodo), guardado = borradorF29(p.periodo);
+  const pesos = (cod) => `$${clp(c[cod])}`;
+  const filas = LINEAS_F29.map((l) => {
+    if (l[0] === "titulo") return `<tr class="titulo"><td colspan="5">${l[1]}</td></tr>`;
+    if (l[0] === "total") return `<tr class="${l[1] === "91" ? "pagar" : "sub"}"><td>${l[2]}</td><td></td><td></td><td class="num">${l[1]}</td><td class="num">${pesos(l[1])}</td></tr>`;
+    return `<tr><td>${l[2]}</td><td class="num cod">${l[0] || ""}</td><td class="num">${l[0] ? c[l[0]] : ""}</td><td class="num cod">${l[1]}</td>
+      <td class="num">${l[1] === "115" ? `${String(c["115"]).replace(".", ",")} %` : pesos(l[1])}</td></tr>`;
+  }).join("");
+  S.csv = { archivo: `borrador_f29_${slug()}_${p.periodo}.csv`, filas: [["Código", "Concepto", "Cód. cantidad", "Cantidad", "Monto"],
+    ...LINEAS_F29.filter((l) => l[0] !== "titulo").map((l) => [l[1], l[2], l[0] && l[0] !== "total" ? l[0] : "", l[0] && l[0] !== "total" ? c[l[0]] : "", c[l[1]]])] };
+  const utmTxt = (v) => (v ? clp(v) : "");
+  return `${cabecera(`Borrador del F29 — ${nombrePeriodo(p.periodo).replace(/^./, (x) => x.toUpperCase())}`, "")}
+  <form class="barra" data-form="f29">
+    <label>Período tributario<input type="month" id="f29-periodo" value="${p.periodo}"></label>
+    <label>Remanente F29 anterior (cód. 77) $<input id="f29-remanente" inputmode="numeric" value="${clp(f.entradas.remanente_anterior)}"></label>
+    <label title="Mes en que se presentó el F29 del período anterior">UTM de ${nombrePeriodo(p.periodo)}<input id="f29-utm-anterior" inputmode="decimal" placeholder="Ej. 71.721" value="${utmTxt(f.entradas.utm_anterior)}"></label>
+    <label title="Mes en que se presenta este F29">UTM de ${nombrePeriodo(presentacion)}<input id="f29-utm-actual" inputmode="decimal" placeholder="Ej. 72.151" value="${utmTxt(f.entradas.utm_actual)}"></label>
+    <button class="btn sec" type="submit">Calcular</button>
+    ${puedeEditar(`<button class="btn" type="button" data-accion="guardar-f29">Guardar borrador</button>`)}
+    ${S.descargas ? `<button class="btn sec" type="button" data-accion="csv">Descargar CSV</button>` : ""}
+  </form>
+  <p class="ayuda">Remanente anterior tomado de: ${esc(f.entradas.origen_remanente)}.
+    ${f.remanenteUtm != null ? `Reajuste como el SII: $${clp(f.entradas.remanente_anterior)} ÷ UTM de ${nombrePeriodo(p.periodo)} = ${f.remanenteUtm.toFixed(2).replace(".", ",")} UTM (dos decimales, aproximando desde 5) × UTM de ${nombrePeriodo(presentacion)} = $${clp(c["504"])} (reajuste ${f.reajuste >= 0 ? "+" : ""}${clp(f.reajuste)}).`
+      : `Para reajustar el remanente ingresa la UTM de ${nombrePeriodo(p.periodo)} (cuando se presentó el F29 anterior) y la de ${nombrePeriodo(presentacion)} (cuando se presenta este F29).`}
+    ${guardado ? `Último guardado: ${new Date(guardado.guardado_en).toLocaleString("es-CL")}.` : ""}</p>
+  ${f.alertas.map((a) => `<div class="aviso">${esc(a)}</div>`).join("")}
+  <div class="tabla f29"><table><thead><tr><th>Concepto</th><th class="num">Cód.</th><th class="num">Cantidad</th><th class="num">Cód.</th><th class="num">Monto</th></tr></thead><tbody>${filas}</tbody></table></div>
+  <div class="caja pagar-caja"><span>Total a pagar (código 91)</span><strong>$${clp(c["91"])}</strong>
+    ${c["77"] ? `<small>Remanente de crédito fiscal para el período siguiente (código 77): $${clp(c["77"])}</small>` : ""}</div>
+  ${f.comparacion.length ? `<h2>Comparación con la contabilidad</h2><div class="tabla"><table>
+    <thead><tr><th>Concepto</th><th class="num">Según RCV</th><th class="num">Según contabilidad</th><th class="num">Diferencia</th></tr></thead>
+    <tbody>${f.comparacion.map(([con, r, k]) => `<tr><td>${esc(con)}</td><td class="num">$${clp(r)}</td><td class="num">$${clp(k)}</td><td class="num ${r !== k ? "neg" : ""}">${r === k ? "✔ cuadra" : "$" + clp(r - k)}</td></tr>`).join("")}</tbody></table></div>
+    <p class="ayuda">La contabilidad considera los movimientos del mes en las cuentas de IVA, sin los asientos que solo traspasan IVA entre cuentas de IVA (ajustes de remanente).</p>` : ""}
+  <p class="ayuda">Borrador referencial: los códigos corresponden a las líneas habituales del Formulario 29. Verifica los valores con la propuesta del SII antes de declarar. Las retenciones (códigos 151 y 48) se toman de los abonos del mes a las cuentas configuradas en Cuentas tributarias.</p>`;
+}
+
+function leerEntradasF29() {
+  const p = parametrosF29();
+  const rem = numeroF29($("#f29-remanente").value), ua = numeroF29($("#f29-utm-anterior").value, true), uc = numeroF29($("#f29-utm-actual").value, true);
+  for (const [v, id] of [[rem, "#f29-remanente"], [ua, "#f29-utm-anterior"], [uc, "#f29-utm-actual"]]) if (Number.isNaN(v)) { aviso(`Valor inválido: «${$(id).value}».`); return false; }
+  p.manual = { remanente_anterior: rem ?? 0, utm_anterior: ua, utm_actual: uc };
+  return true;
+}
+
+async function guardarF29() {
+  if (!leerEntradasF29()) return;
+  const f = resultadoF29(), p = parametrosF29();
+  await ocupado(async () => {
+    await S.almacen.set(`empresas/${S.eid}/f29/${p.periodo}`, { codigos: f.codigos, entradas: f.entradas, guardado_en: new Date().toISOString() });
+    p.manual = null; render();
+    aviso(`Borrador del F29 de ${nombrePeriodo(p.periodo)} guardado. Su remanente (código 77) se usará como remanente anterior del mes siguiente.`);
+  }, "No se pudo guardar el borrador");
+}
+
 /* ------------------------------------------------------------------ eventos */
 function slug() { return (empresa()?.razon_social || "empresa").normalize("NFD").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").toLowerCase(); }
 
@@ -1948,6 +2188,7 @@ function cambiarEmpresa(id) {
   S.desuscribirAsientos?.(); S.desuscribirAsientos = null;
   S.desuscribirCambios?.(); S.desuscribirCambios = null; S.cambios = [];
   S.desuscribirRcv?.(); S.desuscribirRcv = null; S.rcv = []; S.rcvSel.clear(); S.docEdit = null;
+  S.desuscribirF29?.(); S.desuscribirF29 = null; S.f29Borradores = []; S.f29 = null;
   S.periodosAnio = null; S.cierreAnio = null; S.apertura = null;
   S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
   prepararCuentas();
@@ -1956,6 +2197,11 @@ function cambiarEmpresa(id) {
     if (id !== S.eid) return;
     S.cambios = lista.sort((a, b) => (a.fecha_hora < b.fecha_hora ? 1 : -1));
     if (S.vista === "periodos") render();
+  }, () => {});
+  S.desuscribirF29 = S.almacen.onCol(`empresas/${id}/f29`, (lista) => {
+    if (id !== S.eid) return;
+    S.f29Borradores = lista;
+    if (S.vista === "f29" && !S.ocupado) render();
   }, () => {});
   S.desuscribirRcv = S.almacen.onCol(`empresas/${id}/rcv`, (lista) => {
     if (id !== S.eid) return;
@@ -2014,6 +2260,8 @@ document.addEventListener("click", (ev) => {
     case "eliminar-doc": eliminarDocs([S.docEdit.id]); break;
     case "pedir-eliminar-marcados": S.confirmar = "docs"; render(); break;
     case "eliminar-marcados": eliminarDocs([...S.rcvSel]); break;
+    case "guardar-f29": guardarF29(); break;
+    case "f29-del-mes": parametrosF29().periodo = S.rcvPeriodo; S.f29.manual = null; ir("f29"); break;
     case "eliminar-empresa": eliminarEmpresa(); break;
     case "nueva-cuenta": S.cuentaEdit = { id: null, codigo: "", nombre: "", imputable: true, activa: true }; render(); $("#c-codigo")?.focus(); break;
     case "cancelar-cuenta": S.cuentaEdit = null; render(); break;
@@ -2046,6 +2294,7 @@ document.addEventListener("submit", (ev) => {
     case "documento": guardarDocumento(); break;
     case "resumen": agregarResumenManual(); break;
     case "tributarias": guardarTributarias(); break;
+    case "f29": if (leerEntradasF29()) render(); break;
   }
 });
 
@@ -2084,6 +2333,7 @@ document.addEventListener("change", (ev) => {
   if (ev.target.dataset.cuentaDoc) cambiarCuentaDoc(ev.target.dataset.cuentaDoc, ev.target.value);
   if (ev.target.dataset.selDoc) { if (ev.target.checked) S.rcvSel.add(ev.target.dataset.selDoc); else S.rcvSel.delete(ev.target.dataset.selDoc); S.confirmar = null; render(); }
   if (ev.target.id === "doc-tipo_doc") { leerFormularioDoc(); render(); }
+  if (ev.target.id === "f29-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { const p = parametrosF29(); p.periodo = ev.target.value; p.manual = null; render(); }
 });
 document.addEventListener("input", (ev) => {
   if (!S.docEdit || !ev.target.classList.contains("monto-doc")) return;
@@ -2108,6 +2358,10 @@ async function iniciar() {
   S.almacen = db ? new AlmacenClaude(db) : new AlmacenMemoria();
   S.descargas = descargas;
   if (usuario) { try { const p = await usuario.can("data.write"); if (p === false) S.puedeEscribir = false; } catch (_) {} }
+  S.almacen.onDoc("config/utm", (d) => {
+    S.utm = d?.valores || {};
+    if (["f29", "sueldos", "honorarios"].includes(S.vista) && !S.ocupado) render();
+  }, () => {});
   S.almacen.onDoc("config/contador", (d) => {
     S.contador = { nombre: d?.nombre || "", rut: d?.rut || "", firma: d?.firma || "" };
     if (S.vista === "contador") render();
