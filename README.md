@@ -38,6 +38,42 @@ Para llevar una empresa: en este programa, **Respaldos → Descargar para la ver
 en el artefacto, **Empresas e importación** lo importa después de mostrar un resumen. Los datos de ambas versiones
 son independientes: lo que se registra en una no aparece en la otra.
 
+## Activo fijo, personal y renta (por ahora solo en la versión en línea)
+
+Estos módulos están en el artefacto y todavía no en el programa de escritorio.
+
+**Activo fijo** (menú Gestión): ficha de cada bien (costo, valor residual, categoría y vida útil, con depreciación
+acelerada opcional), depreciación lineal por meses desde el mes de adquisición, y asiento mensual propuesto
+(Depreciación del ejercicio / Depreciación acumulada) que se revisa antes de guardar. El **Libro de activo fijo**
+muestra el ejercicio por bien, los bienes dados de baja y la **conciliación** de costo y depreciación acumulada contra
+las cuentas contables. Las vidas útiles de la lista son de referencia (Resolución Exenta SII N° 43 de 2002): verifica
+cada bien.
+
+**Personal y remuneraciones** (menú Gestión):
+- *Trabajadores y contratos*: ficha con los datos del art. 10 del Código del Trabajo y **contrato de trabajo en PDF**
+  (indefinido, plazo fijo u obra o faena), con la jornada de 42 horas vigente desde el 26 de abril de 2026.
+- *Liquidaciones*: sueldo proporcional a los días, horas extra, gratificación legal (25 % con tope de 4,75 ingresos
+  mínimos al año), colación y movilización, AFP, salud (Fonasa o isapre en UF), seguro de cesantía, **impuesto único**
+  con la UTM del mes, anticipos y otros descuentos. Se aplican los topes imponibles si se ingresa la UF. Cada
+  liquidación se exporta a PDF y Excel.
+- *Libro de remuneraciones* del mes con el resumen de cotizaciones (AFP por administradora, salud, cesantía, SIS,
+  aporte adicional del empleador y mutual) para declarar en Previred. «Contabilizar remuneraciones» propone el
+  asiento completo.
+- *Parámetros*: ingreso mínimo, topes, SIS y cotización adicional del empleador, y tasa de la mutual. Los valores
+  vienen de fuentes públicas y son referenciales: confírmalos con Previred y la Superintendencia de Pensiones, y
+  regístralos aquí cuando cambien.
+
+**Renta anual y declaraciones juradas** (menú Tributario):
+- *Renta anual (F22)*: parte del resultado del ejercicio, aplica agregados, deducciones y pérdida tributaria de
+  años anteriores para llegar a la renta líquida imponible, calcula el impuesto de primera categoría (Pro Pyme general
+  12,5 % en los años comerciales 2025 a 2027, transparente y régimen general 14 A) y descuenta los PPM de los F29
+  guardados y otros créditos. Guarda el borrador por año y atribuye la renta a los propietarios en el régimen
+  transparente. No calcula el capital propio tributario ni los registros RAI, SAC y REX.
+- *Declaraciones juradas*: planillas de apoyo para la **DJ 1887** (sueldos de trabajadores y sueldo empresarial) y la
+  **DJ 1879** (retenciones de honorarios), con certificados por persona. No reemplazan el formulario del SII.
+
+Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tributarias**.
+
 ## Probarlo desde GitHub (Codespaces)
 
 Sin instalar nada en el PC:

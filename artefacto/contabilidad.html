@@ -124,6 +124,18 @@ dl.ficha dd { margin: 0; font-family: var(--font-num); font-variant-numeric: tab
 .cuadre.ok { color: var(--ok-fg); }
 .toast { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: var(--radius); max-width: min(420px, calc(100vw - 32px)); z-index: 5; }
 .nivel-1 { padding-left: 22px !important; } .nivel-2 { padding-left: 36px !important; } .nivel-3 { padding-left: 50px !important; } .nivel-4 { padding-left: 64px !important; }
+.contrato { max-width: 78ch; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 28px clamp(16px, 4vw, 40px); display: grid; gap: 12px; line-height: 1.65; font-family: Georgia, "Times New Roman", serif; font-size: 15px; }
+.contrato h2 { text-align: center; font-size: 18px; letter-spacing: .08em; margin-bottom: 4px; }
+.contrato .firmas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 36px; margin-top: 48px; text-align: center; }
+.contrato .firmas div { display: grid; gap: 2px; }
+.contrato .firmas span { border-top: 1px solid var(--fg); margin-bottom: 4px; }
+.contrato .firmas small { color: var(--muted); font-family: var(--font-ui); }
+form.caja h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 6px 0 0; }
+td input { width: 100%; }
+.ficha dt, .ficha dd { overflow-wrap: anywhere; }
+.pestanas { overflow-x: auto; }
+.pestanas button { white-space: nowrap; flex: none; }
+td input.monto { width: 9em; }
 @media (max-width: 760px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .menu { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); padding: 12px 16px; }
@@ -131,6 +143,8 @@ dl.ficha dd { margin: 0; font-family: var(--font-num); font-variant-numeric: tab
   nav .seccion { display: none; }
   nav button { white-space: nowrap; }
   main { padding-inline: 16px; }
+  dl.ficha { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  dl.ficha dd { margin-bottom: 8px; }
 }
 @media (prefers-reduced-motion: no-preference) { tr.clic td, nav button { transition: background .12s; } }
 </style>
@@ -201,7 +215,7 @@ async function reintentar(fn) {
 }
 
 /* Subcolecciones de cada empresa (se borran junto con ella). */
-const SUBCOLECCIONES = ["asientos", "cambios", "rcv", "f29", "socios", "sueldos", "honorarios"];
+const SUBCOLECCIONES = ["asientos", "cambios", "rcv", "f29", "socios", "sueldos", "honorarios", "activos", "depreciaciones", "trabajadores", "liquidaciones", "renta"];
 
 /* Acceso a datos por ruta («empresas/e1/asientos/a1»). Dos implementaciones con la misma interfaz:
    memoria (archivo abierto fuera del artefacto, para probar) y la base del artefacto de Claude. */
@@ -423,7 +437,8 @@ function movimientosPorCuenta() {
 const SECCIONES = [
   [null, [["inicio", "Inicio"]]],
   ["Registro", [["nuevo", "+ Nuevo asiento"], ["asientos", "Asientos"], ["cuentas", "Plan de cuentas"]]],
-  ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["sueldos", "Sueldo empresarial"], ["honorarios", "Honorarios"], ["f29", "Borrador F29"], ["tributarias", "Cuentas tributarias"]]],
+  ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["sueldos", "Sueldo empresarial"], ["honorarios", "Honorarios"], ["f29", "Borrador F29"], ["renta", "Renta anual (F22)"], ["dj", "Declaraciones juradas"], ["tributarias", "Cuentas tributarias"]]],
+  ["Gestión", [["rrhh", "Personal y remuneraciones"], ["activos", "Activo fijo"]]],
   ["Libros", [["diario", "Libro Diario"], ["mayor", "Libro Mayor"]]],
   ["Informes", [["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
   ["Administración", [["periodos", "Cierre de meses"], ["cierre", "Cierre de ejercicio"], ["apertura", "Apertura de ejercicio"],
@@ -433,6 +448,7 @@ const SECCIONES = [
 function ir(vista) {
   if (vista === "nuevo") { abrirEditor(null); return; }
   S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.docEdit = null; S.rcvMensajes = null; S.socioEdit = null; S.boletaEdit = null;
+  S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null;
   if (vista !== "editor") recordar("vista", vista);
   render();
   window.scrollTo(0, 0);
@@ -465,7 +481,8 @@ function render() {
   else html = ({ inicio: vistaInicio, asientos: vistaAsientos, editor: vistaEditor, cuentas: vistaCuentas, diario: vistaDiario, mayor: vistaMayor,
     ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas,
     periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador,
-    rcv: vistaRcv, tributarias: vistaTributarias, f29: vistaF29, sueldos: vistaSueldos, honorarios: vistaHonorarios }[S.vista] || vistaInicio)();
+    rcv: vistaRcv, tributarias: vistaTributarias, f29: vistaF29, sueldos: vistaSueldos, honorarios: vistaHonorarios,
+    rrhh: vistaRrhh, activos: vistaActivos, renta: vistaRenta, dj: vistaDj }[S.vista] || vistaInicio)();
   const banner = !S.almacen.enLinea
     ? `<div class="aviso">Esta copia no está conectada con Claude: puedes probarla, pero los cambios se pierden al cerrar. Ábrela como artefacto en claude.ai para guardar.</div>`
     : !S.puedeEscribir ? `<div class="aviso">Tienes acceso de solo lectura: puedes ver los libros e informes, pero no modificar datos.</div>` : "";
@@ -689,10 +706,12 @@ async function guardarAsiento(confirmado = false) {
     if (ed.rcvIds) await marcarCentralizados(ed.rcvIds, id);
     if (ed.sueldoIds) await marcarContabilizados("sueldos", ed.sueldoIds, id);
     if (ed.honorarioIds) await marcarContabilizados("honorarios", ed.honorarioIds, id);
+    if (ed.liquidacionIds) await marcarContabilizados("liquidaciones", ed.liquidacionIds, id);
+    if (ed.depItems) await marcarDepreciacion(ed.depPeriodo, ed.depItems, id);
     S.confirmar = null;
     S.filtros.anio = ed.fecha.slice(0, 4);
     S.edit = null;
-    ir(ed.rcvIds ? "rcv" : ed.sueldoIds ? "sueldos" : ed.honorarioIds ? "honorarios" : "asientos");
+    ir(ed.rcvIds ? "rcv" : ed.sueldoIds ? "sueldos" : ed.honorarioIds ? "honorarios" : ed.liquidacionIds ? "rrhh" : ed.depItems ? "activos" : "asientos");
     aviso(`Asiento N° ${nuevo} guardado.`);
   }, "No se pudo guardar el asiento");
 }
@@ -1438,12 +1457,23 @@ const CONCEPTOS = {
   honorarios_pago: ["Honorarios: cuenta del líquido (banco u honorarios por pagar)", ["ACTIVO", "PASIVO"], [/^honorarios por pagar/i, /^banco/i]],
   retencion_honorarios: ["Retención de honorarios por pagar (F29)", ["PASIVO"], [/retenci[oó]n.*(honorario|2da|segunda)/i]],
   impuesto_unico: ["Impuesto único por pagar (F29)", ["PASIVO"], [/imp(uesto|to\.?) [uú]nico/i]],
+  depreciacion_gasto: ["Depreciación del ejercicio (gasto)", ["GASTO"], [/depreciaci[oó]n del ejercicio/i, /depreciaci[oó]n/i]],
+  depreciacion_acumulada: ["Depreciación acumulada (activo fijo)", ["ACTIVO"], [/depreciaci[oó]n acumulada/i]],
+  rem_sueldos: ["Remuneraciones: sueldos y bonos (gasto)", ["GASTO"], [/^remuneraciones$/i, /^sueldos?/i, /remuneraciones/i]],
+  rem_gratificacion: ["Remuneraciones: gratificaciones (gasto; si no se configura, va a sueldos)", ["GASTO"], [/gratificaci/i]],
+  rem_no_imponibles: ["Remuneraciones: colación y movilización (gasto; si no se configura, va a sueldos)", ["GASTO"], [/colaci/i, /movilizaci/i]],
+  rem_leyes_sociales: ["Remuneraciones: aportes del empleador (gasto)", ["GASTO"], [/leyes sociales/i, /aportes? (del )?empleador/i, /cotizaciones? (del )?empleador/i]],
+  rem_cotizaciones: ["Cotizaciones previsionales por pagar (AFP, salud, cesantía, mutual)", ["PASIVO"], [/cotizaciones previsionales/i, /afp/i]],
+  rem_anticipos: ["Anticipos y préstamos al personal (activo)", ["ACTIVO"], [/anticipos? (al )?personal/i, /pr[eé]stamos? (al )?personal/i, /deudores varios/i]],
+  rem_liquido: ["Remuneraciones: cuenta del líquido (remuneraciones por pagar o banco)", ["ACTIVO", "PASIVO"], [/remuneraciones por pagar/i, /^banco/i]],
 };
 const GRUPOS_CONCEPTOS = [
   ["Centralización de compras", ["compras_neto", "compras_activo_fijo", "iva_credito", "compras_otros_impuestos", "proveedores"]],
   ["Centralización de ventas", ["ventas_neto", "ventas_exento", "iva_debito", "ventas_otros_impuestos", "clientes", "ventas_boletas"]],
   ["Borrador del F29", ["remanente_iva", "retencion_honorarios", "impuesto_unico"]],
   ["Sueldo empresarial y honorarios", ["sueldo_empresarial", "pago_sueldos", "afp_por_pagar", "salud_por_pagar", "honorarios_gasto", "honorarios_pago"]],
+  ["Remuneraciones del personal", ["rem_sueldos", "rem_gratificacion", "rem_no_imponibles", "rem_leyes_sociales", "rem_cotizaciones", "rem_anticipos", "rem_liquido"]],
+  ["Activo fijo", ["depreciacion_gasto", "depreciacion_acumulada"]],
 ];
 
 function sugerirCuenta(concepto) {
@@ -2475,11 +2505,11 @@ function contabilizarRemuneraciones(tipo) {
   } catch (e) { if (e instanceof ErrorRcv) aviso(e.message); else throw e; }
 }
 async function marcarContabilizados(coleccion, ids, asientoId) {
-  const lista = coleccion === "sueldos" ? S.sueldos : S.honorarios;
+  const lista = S[coleccion];
   for (const id of ids) { const x = lista.find((y) => y.id === id); if (x && !contabilizado(x)) await S.almacen.set(`empresas/${S.eid}/${coleccion}/${id}`, { ...x, asiento: asientoId }); }
 }
 async function liberarRemuneraciones(asientoId) {
-  for (const [coleccion, lista] of [["sueldos", S.sueldos], ["honorarios", S.honorarios]])
+  for (const [coleccion, lista] of [["sueldos", S.sueldos], ["honorarios", S.honorarios], ["liquidaciones", S.liquidaciones]])
     for (const x of lista.filter((y) => y.asiento === asientoId)) await S.almacen.set(`empresas/${S.eid}/${coleccion}/${x.id}`, { ...x, asiento: "" });
 }
 
@@ -3303,6 +3333,1090 @@ function informeHistorialHonorarios(lista) {
   return inf;
 }
 
+/* ================================================================== activo fijo, personal y remuneraciones, renta anual */
+Object.assign(S, {
+  activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], renta: [], desuscribirNx: [],
+  prev: { uf: {}, parametros: [] },
+  activoEdit: null, afPeriodo: null, afPeriodoEid: null, afAnio: null,
+  trabEdit: null, contratoVer: null, liqVer: null, liqPeriodo: null, liqPeriodoEid: null, prevEdit: null,
+  rentaAnio: null, rentaEdit: null, rentaEditEid: null, djAnio: null,
+});
+
+/* Pestañas con claves propias: «modulo:clave» lo atiende el manejador común de pestañas. */
+function pestanasDe(modulo, items) {
+  const actual = S.pestana[modulo] || items[0][0];
+  return `<div class="pestanas" role="tablist">${items.map(([k, t]) =>
+    `<button type="button" role="tab" data-pestana="${modulo}:${k}" aria-selected="${actual === k}">${t}</button>`).join("")}</div>`;
+}
+const pestanaActual = (modulo, defecto) => S.pestana[modulo] || defecto;
+/* Número con decimales escrito a la chilena («1,62», «41.057,20») o con punto («1.62»). */
+function decimal(texto) {
+  const s = String(texto ?? "").trim().replace(/\s/g, "");
+  if (!s) return null;
+  const n = Number(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s);
+  return Number.isFinite(n) ? n : NaN;
+}
+const comaDecimal = (n) => String(n ?? "").replace(".", ",");
+const mesesEntre = (a, b) => (+b.slice(0, 4) - +a.slice(0, 4)) * 12 + (+b.slice(5, 7) - +a.slice(5, 7));
+const sumaDe = (lista, k) => lista.reduce((s, x) => s + (x[k] || 0), 0);
+const aniosDesde = (...fechas) => [...new Set(fechas.flat().filter(Boolean).map((f) => String(f).slice(0, 4)))].sort().reverse();
+function opcionesAnio(anios, actual) { return anios.map((y) => `<option ${y === String(actual) ? "selected" : ""}>${y}</option>`).join(""); }
+
+/* ------------------------------------------------------------------ activo fijo */
+/* Vidas útiles normales de referencia (Resolución Exenta SII N° 43 de 2002). Son orientativas: verifica la tabla oficial para cada bien. */
+const CATEGORIAS_ACTIVO = [
+  ["Edificios y construcciones", 40], ["Instalaciones", 10], ["Maquinaria y equipos", 15],
+  ["Vehículos (automóviles, camionetas, camiones)", 7], ["Muebles y enseres", 7], ["Equipos computacionales", 6], ["Otro (indica la vida útil)", 0],
+];
+const nombreVida = (m) => (m % 12 === 0 ? `${m / 12} año${m === 12 ? "" : "s"}` : `${m} meses`);
+
+/* Depreciación lineal por meses, desde el mes de adquisición. La acumulada se calcula directamente, así el último mes absorbe el redondeo. */
+function depAcum(a, periodo) {
+  let fin = periodo;
+  if (a.estado === "baja" && a.fecha_baja && a.fecha_baja.slice(0, 7) < fin) fin = a.fecha_baja.slice(0, 7);
+  const n = mesesEntre(a.fecha_adq.slice(0, 7), fin) + 1;
+  if (n <= 0) return 0;
+  const base = Math.max(a.costo - (a.residual || 0), 0);
+  if (n >= a.vida_meses) return base;
+  return Math.floor((2 * n * base + a.vida_meses) / (2 * a.vida_meses));
+}
+const depMes = (a, p) => depAcum(a, p) - depAcum(a, periodoAnterior(p));
+
+function periodoActivos() {
+  if (!S.afPeriodo || S.afPeriodoEid !== S.eid) { S.afPeriodo = periodoRcvInicial(); S.afPeriodoEid = S.eid; }
+  return S.afPeriodo;
+}
+function itemRegistrado(a, periodo) {
+  const reg = S.depreciaciones.find((d) => d.id === periodo);
+  return (reg?.items || []).find((i) => i.activo === a.id && contabilizado(i)) || null;
+}
+
+function propuestaDepreciacion(periodo) {
+  const items = S.activos.map((a) => ({ activo: a.id, monto: depMes(a, periodo), a })).filter((x) => x.monto > 0 && !itemRegistrado(x.a, periodo));
+  if (!items.length) throw new ErrorRcv(`No hay depreciación pendiente de contabilizar en ${nombrePeriodo(periodo)}.`);
+  const ct = cuentasTributarias(), total = sumaDe(items, "monto");
+  return { periodo, items: items.map(({ activo, monto }) => ({ activo, monto })), cantidad: items.length, fecha: ultimoDia(periodo), glosa: `DEPRECIACIÓN ACTIVO FIJO ${mesMayus(periodo)}`,
+    lineas: [{ cuenta: cuentaConcepto(ct, "depreciacion_gasto"), debe: total, haber: 0 }, { cuenta: cuentaConcepto(ct, "depreciacion_acumulada"), debe: 0, haber: total }] };
+}
+async function marcarDepreciacion(periodo, items, asientoId) {
+  const reg = S.depreciaciones.find((d) => d.id === periodo);
+  const previos = (reg?.items || []).filter((i) => contabilizado(i) && !items.some((n) => n.activo === i.activo));
+  await S.almacen.set(`empresas/${S.eid}/depreciaciones/${periodo}`, { periodo, items: [...previos, ...items.map((i) => ({ activo: i.activo, monto: i.monto, asiento: asientoId }))] });
+}
+async function liberarDepreciacion(asientoId) {
+  for (const d of S.depreciaciones) {
+    const resto = (d.items || []).filter((i) => i.asiento !== asientoId);
+    if (resto.length === (d.items || []).length) continue;
+    if (resto.length) await S.almacen.set(`empresas/${S.eid}/depreciaciones/${d.id}`, { periodo: d.id, items: resto });
+    else await S.almacen.del(`empresas/${S.eid}/depreciaciones/${d.id}`);
+  }
+}
+
+function vistaActivos() {
+  const t = pestanaActual("activos", "fichas");
+  return pestanasDe("activos", [["fichas", "Fichas"], ["dep", "Depreciación mensual"], ["libro", "Libro de activo fijo"]])
+    + (t === "dep" ? vistaDepreciacion() : t === "libro" ? vistaLibroActivos() : vistaFichasActivos());
+}
+
+function activoVacio() {
+  return { id: null, nombre: "", cat: 5, fecha_adq: hoy(), costo: 0, residual: 0, vida_anios: "6", acelerada: false, cuenta: "", documento: "", estado: "activo", fecha_baja: "" };
+}
+function formularioActivo(ae) {
+  const imputables = S.cuentas.filter((c) => c.imputable && c.tipo === "ACTIVO");
+  return `<form class="caja" data-form="n-activo"><h2>${ae.id ? `Editar ${esc(ae.codigo)}` : "Nuevo activo fijo"}</h2>
+    <div class="form">
+      <label>Descripción *<input id="af-nombre" value="${esc(ae.nombre)}" placeholder="Ej. Notebook Lenovo ThinkPad"></label>
+      <label>Categoría<select id="af-cat">${CATEGORIAS_ACTIVO.map(([n, a], i) => `<option value="${i}" ${i === +ae.cat ? "selected" : ""}>${esc(n)}${a ? ` · ${a} años` : ""}</option>`).join("")}</select></label>
+      <label>Fecha de adquisición *<input type="date" id="af-fecha" value="${esc(ae.fecha_adq)}"></label>
+      <label>Costo de adquisición (sin IVA recuperable) *<input id="af-costo" inputmode="numeric" value="${ae.costo ? clp(ae.costo) : ""}"></label>
+      <label>Valor residual<input id="af-residual" inputmode="numeric" value="${clp(ae.residual || 0) || "0"}"></label>
+      <label>Vida útil normal (años) *<input id="af-vida" inputmode="decimal" value="${esc(comaDecimal(ae.vida_anios))}"></label>
+      <label class="check"><input type="checkbox" id="af-acelerada" ${ae.acelerada ? "checked" : ""}> Depreciación acelerada (un tercio de la vida útil normal)</label>
+      <label>Cuenta del activo<select id="af-cuenta"><option value="">— Sin cuenta —</option>${imputables.map((c) => `<option value="${esc(c.id)}" ${c.id === ae.cuenta ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}</select></label>
+      <label>Proveedor y documento<input id="af-doc" value="${esc(ae.documento)}" placeholder="Ej. Factura 1234 de PC Factory"></label>
+      ${ae.id ? `<label>Estado<select id="af-estado"><option value="activo" ${ae.estado !== "baja" ? "selected" : ""}>En uso</option><option value="baja" ${ae.estado === "baja" ? "selected" : ""}>Dado de baja</option></select></label>
+        <label>Fecha de baja<input type="date" id="af-baja" value="${esc(ae.fecha_baja)}"></label>` : ""}
+    </div>
+    <p class="ayuda">La depreciación es lineal y parte en el mes de adquisición. Con depreciación acelerada la vida útil queda en un tercio; el SII no la permite si la vida útil normal es menor de 3 años. Al dar de baja un bien deja de depreciarse desde el mes siguiente.</p>
+    <div class="acciones"><button class="btn" type="submit">Guardar</button><button class="btn sec" type="button" data-n="cancelar-activo">Cancelar</button></div></form>`;
+}
+
+function vistaFichasActivos() {
+  const p = periodoActivos(), ae = S.activoEdit;
+  const lista = S.activos.slice().sort((a, b) => (a.codigo < b.codigo ? -1 : 1));
+  const vigentes = lista.filter((a) => a.fecha_adq.slice(0, 7) <= p);
+  const filas = lista.map((a) => {
+    const vigente = a.fecha_adq.slice(0, 7) <= p, dep = depAcum(a, p);
+    const confirmando = S.confirmar === "activo:" + a.id;
+    return `<tr class="${a.estado === "baja" ? "inactiva" : ""}"><td class="cod">${esc(a.codigo)}</td>
+      <td>${esc(a.nombre)}<br><small class="ayuda">${esc(CATEGORIAS_ACTIVO[a.cat]?.[0] || "")}${a.documento ? ` · ${esc(a.documento)}` : ""}</small></td>
+      <td>${fmtFecha(a.fecha_adq)}</td><td class="num">${clp(a.costo)}</td><td class="num">${nombreVida(a.vida_meses)}${a.acelerada ? " (acel.)" : ""}</td>
+      <td class="num">${vigente ? clp(dep) : ""}</td><td class="num"><strong>${vigente ? clp(a.costo - dep) : ""}</strong></td>
+      <td>${a.estado === "baja" ? `<span class="etiqueta cerrado">baja ${fmtFecha(a.fecha_baja)}</span>` : vigente ? "En uso" : '<span class="ayuda">aún no adquirido</span>'}</td>
+      <td>${puedeEditar(confirmando
+        ? `<span class="acciones"><button class="btn peligro" type="button" data-n="eliminar-activo" data-id="${esc(a.id)}">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
+        : `<button class="btn enlace" type="button" data-n="editar-activo" data-id="${esc(a.id)}">Editar</button><button class="btn enlace" type="button" data-n="pedir-eliminar-activo" data-id="${esc(a.id)}">Eliminar</button>`)}</td></tr>`;
+  }).join("");
+  return `${cabecera("Activo fijo", `${lista.length} bien${lista.length === 1 ? "" : "es"}`)}
+  <p class="ayuda">Ficha de cada bien del activo inmovilizado con su costo, vida útil y depreciación. La depreciación de cada mes se contabiliza en la pestaña «Depreciación mensual».</p>
+  ${ae ? formularioActivo(ae) : ""}
+  <div class="barra"><label>Valores al mes<input type="month" id="af-periodo" value="${p}"></label>
+    ${puedeEditar(`<button class="btn" type="button" data-n="nuevo-activo">+ Nuevo activo</button>`)}<button class="btn sec" type="button" data-ir="tributarias">Cuentas tributarias</button></div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Código</th><th>Descripción</th><th>Adquisición</th><th class="num">Costo</th><th class="num">Vida útil</th><th class="num">Dep. acumulada</th><th class="num">Valor libro</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${filas}</tbody><tfoot><tr class="total"><td colspan="3">Total al ${nombrePeriodo(p)}</td><td class="num">${clp(sumaDe(vigentes, "costo"))}</td><td></td>
+      <td class="num">${clp(vigentes.reduce((s, a) => s + depAcum(a, p), 0))}</td><td class="num">${clp(vigentes.reduce((s, a) => s + a.costo - depAcum(a, p), 0))}</td><td colspan="2"></td></tr></tfoot></table></div>`
+    : `<div class="caja vacio"><p>Todavía no hay activos fijos. Agrega el primero con «+ Nuevo activo».</p></div>`}`;
+}
+
+async function guardarActivo() {
+  const ae = S.activoEdit;
+  const nombre = $("#af-nombre").value.trim(), fecha = $("#af-fecha").value, costo = parseMonto($("#af-costo").value || "0"), residual = parseMonto($("#af-residual").value || "0");
+  const vidaAnios = decimal($("#af-vida").value), acelerada = $("#af-acelerada").checked, cat = +$("#af-cat").value;
+  const estado = $("#af-estado")?.value || "activo", fechaBaja = $("#af-baja")?.value || "";
+  Object.assign(ae, { nombre, cat, fecha_adq: fecha, acelerada, cuenta: $("#af-cuenta").value, documento: $("#af-doc").value.trim(), vida_anios: $("#af-vida").value, estado, fecha_baja: fechaBaja });
+  if (!nombre) return aviso("Ingresa la descripción del bien.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return aviso("Ingresa la fecha de adquisición.");
+  if (Number.isNaN(costo) || costo <= 0) return aviso("Costo: ingresa un monto en pesos enteros, mayor que cero.");
+  if (Number.isNaN(residual) || residual < 0 || residual >= costo) return aviso("El valor residual debe ser un monto menor que el costo.");
+  if (vidaAnios == null || Number.isNaN(vidaAnios) || vidaAnios <= 0 || vidaAnios > 100) return aviso("Vida útil: ingresa los años, por ejemplo 6 o 2,5.");
+  const normal = Math.round(vidaAnios * 12);
+  if (acelerada && normal < 36) return aviso("La depreciación acelerada no se permite si la vida útil normal es menor de 3 años.");
+  if (estado === "baja" && (!/^\d{4}-\d{2}-\d{2}$/.test(fechaBaja) || fechaBaja < fecha)) return aviso("Ingresa la fecha de baja, posterior a la adquisición.");
+  const vida = acelerada ? Math.max(Math.round(normal / 3), 1) : normal;
+  const numeros = S.activos.map((a) => +String(a.codigo).replace(/\D/g, "")).filter(Number.isFinite);
+  const codigo = ae.id ? ae.codigo : `AF-${String((numeros.length ? Math.max(...numeros) : 0) + 1).padStart(3, "0")}`;
+  await ocupado(async () => {
+    await S.almacen.set(`empresas/${S.eid}/activos/${ae.id || "f" + nuevoId()}`, { codigo, nombre, cat, fecha_adq: fecha, costo, residual, vida_normal_meses: normal, vida_meses: vida, acelerada,
+      cuenta: ae.cuenta, documento: ae.documento, estado, fecha_baja: estado === "baja" ? fechaBaja : "" });
+    S.activoEdit = null; render(); aviso(`Activo ${codigo} guardado.`);
+  }, "No se pudo guardar el activo");
+}
+
+function vistaDepreciacion() {
+  const p = periodoActivos(), anio = p.slice(0, 4);
+  const delMes = S.activos.filter((a) => a.fecha_adq.slice(0, 7) <= p).sort((a, b) => (a.codigo < b.codigo ? -1 : 1));
+  const pendientes = delMes.filter((a) => depMes(a, p) > 0 && !itemRegistrado(a, p));
+  const filas = delMes.map((a) => {
+    const m = depMes(a, p), it = itemRegistrado(a, p), as = it ? S.lista.find((x) => x.id === it.asiento) : null;
+    return `<tr class="${m === 0 ? "inactiva" : ""}"><td class="cod">${esc(a.codigo)}</td><td>${esc(a.nombre)}</td><td class="num">${clp(a.costo)}</td><td class="num">${clp(depAcum(a, periodoAnterior(p)))}</td>
+      <td class="num"><strong>${clp(m)}</strong></td><td class="num">${clp(depAcum(a, p))}</td><td class="num">${clp(a.costo - depAcum(a, p))}</td>
+      <td>${as ? `<button class="btn enlace" data-asiento="${esc(as.id)}">N° ${as.numero}</button>` : m > 0 ? '<span class="etiqueta cerrado">pendiente</span>' : '<span class="ayuda">sin cargo</span>'}</td></tr>`;
+  }).join("");
+  const meses = Array.from({ length: 12 }, (_, i) => `${anio}-${String(i + 1).padStart(2, "0")}`);
+  const resumen = meses.map((m) => {
+    const total = S.activos.reduce((s, a) => s + depMes(a, m), 0);
+    const pend = S.activos.filter((a) => depMes(a, m) > 0 && !itemRegistrado(a, m)).length;
+    return `<tr><td>${mesCap(m)}</td><td class="num">${clp(total)}</td><td>${!total ? '<span class="ayuda">sin cargo</span>' : pend ? `<span class="etiqueta cerrado">${pend} pendiente${pend === 1 ? "" : "s"}</span>` : '<span class="etiqueta">contabilizada</span>'}</td>
+      <td><button class="btn enlace" type="button" data-n="ir-dep" data-id="${m}">Ver mes</button></td></tr>`;
+  }).join("");
+  return `${cabecera("Depreciación mensual", mesCap(p))}
+  <div class="barra"><label>Mes<input type="month" id="af-periodo" value="${p}"></label>
+    ${puedeEditar(pendientes.length ? `<button class="btn" type="button" data-n="contabilizar-dep">Contabilizar depreciación de ${nombrePeriodo(p)}</button>` : "")}</div>
+  ${delMes.length ? `<div class="tabla"><table><thead><tr><th>Código</th><th>Descripción</th><th class="num">Costo</th><th class="num">Dep. acum. inicial</th><th class="num">Dep. del mes</th><th class="num">Dep. acumulada</th><th class="num">Valor libro</th><th>Asiento</th></tr></thead>
+    <tbody>${filas}</tbody><tfoot><tr class="total"><td colspan="2">Total</td><td class="num">${clp(sumaDe(delMes, "costo"))}</td><td class="num">${clp(delMes.reduce((s, a) => s + depAcum(a, periodoAnterior(p)), 0))}</td>
+      <td class="num">${clp(delMes.reduce((s, a) => s + depMes(a, p), 0))}</td><td class="num">${clp(delMes.reduce((s, a) => s + depAcum(a, p), 0))}</td><td class="num">${clp(delMes.reduce((s, a) => s + a.costo - depAcum(a, p), 0))}</td><td></td></tr></tfoot></table></div>
+    <p class="ayuda">«Contabilizar» abre la propuesta del asiento (Depreciación del ejercicio / Depreciación acumulada) para revisarla antes de guardar. Si agregas un bien con fecha anterior a un mes ya contabilizado, ese mes queda con el bien pendiente.</p>`
+    : `<div class="caja vacio"><p>No hay bienes adquiridos hasta ${nombrePeriodo(p)}.</p></div>`}
+  <h2>Estado de ${anio}</h2>
+  <div class="tabla"><table><thead><tr><th>Mes</th><th class="num">Depreciación</th><th>Estado</th><th></th></tr></thead><tbody>${resumen}</tbody></table></div>`;
+}
+
+/* Libro auxiliar de activo fijo de un ejercicio, con conciliación contra la contabilidad. */
+function datosLibroActivos(anio) {
+  const ini = `${anio - 1}-12`, fin = `${anio}-12`;
+  const baja = (a) => a.estado === "baja" && a.fecha_baja && a.fecha_baja.slice(0, 4) <= String(anio);
+  const adquiridos = S.activos.filter((a) => a.fecha_adq.slice(0, 4) <= String(anio)).sort((a, b) => (a.codigo < b.codigo ? -1 : 1));
+  const vigentes = adquiridos.filter((a) => !baja(a));
+  const bajas = adquiridos.filter((a) => baja(a) && a.fecha_baja.slice(0, 4) === String(anio));
+  const fila = (a) => ({ a, costo: a.costo, ini: depAcum(a, ini), ejercicio: depAcum(a, fin) - depAcum(a, ini), fin: depAcum(a, fin), libro: a.costo - depAcum(a, fin) });
+  const filasVigentes = vigentes.map(fila), filasBajas = bajas.map(fila);
+  const saldos = saldosPeriodo(`${anio}-01-01`, `${anio}-12-31`).cuentas;
+  const saldoCuenta = (id) => { const x = saldos.find((s) => s.cuenta.id === id); return x ? x.debe - x.haber : 0; };
+  const ct = cuentasTributarias();
+  const porCuenta = new Map();
+  for (const f of filasVigentes) if (f.a.cuenta) porCuenta.set(f.a.cuenta, (porCuenta.get(f.a.cuenta) || 0) + f.costo);
+  const conciliacion = [...porCuenta].map(([id, aux]) => ({ cuenta: S.porId.get(id), auxiliar: aux, contable: saldoCuenta(id) }));
+  if (ct.depreciacion_acumulada) conciliacion.push({ cuenta: S.porId.get(ct.depreciacion_acumulada), auxiliar: -sumaDe(filasVigentes, "fin"), contable: saldoCuenta(ct.depreciacion_acumulada) });
+  return { anio, vigentes: filasVigentes, bajas: filasBajas, conciliacion: conciliacion.filter((c) => c.cuenta) };
+}
+
+function vistaLibroActivos() {
+  const anios = aniosDesde(S.activos.map((a) => a.fecha_adq), empresa().ejercicio);
+  const anio = +(S.afAnio || empresa().ejercicio);
+  const d = datosLibroActivos(anio);
+  S.informe = () => informeActivos(anio);
+  S.csv = { archivo: `activo_fijo_${slug()}_${anio}.csv`, filas: [["Código", "Descripción", "Adquisición", "Costo", "Vida útil (meses)", `Dep. acumulada 31/12/${anio - 1}`, "Dep. del ejercicio", `Dep. acumulada 31/12/${anio}`, "Valor libro", "Estado"],
+    ...d.vigentes.concat(d.bajas).map((f) => [f.a.codigo, f.a.nombre, f.a.fecha_adq, f.costo, f.a.vida_meses, f.ini, f.ejercicio, f.fin, f.libro, f.a.estado === "baja" ? `Baja ${f.a.fecha_baja}` : "En uso"])] };
+  const fila = (f) => `<tr><td class="cod">${esc(f.a.codigo)}</td><td>${esc(f.a.nombre)}</td><td>${fmtFecha(f.a.fecha_adq)}</td><td class="num">${clp(f.costo)}</td><td class="num">${clp(f.ini)}</td>
+    <td class="num">${clp(f.ejercicio)}</td><td class="num">${clp(f.fin)}</td><td class="num"><strong>${clp(f.libro)}</strong></td></tr>`;
+  const total = (lista, rotulo) => `<tr class="total"><td colspan="3">${rotulo}</td><td class="num">${clp(sumaDe(lista, "costo"))}</td><td class="num">${clp(sumaDe(lista, "ini"))}</td><td class="num">${clp(sumaDe(lista, "ejercicio"))}</td><td class="num">${clp(sumaDe(lista, "fin"))}</td><td class="num">${clp(sumaDe(lista, "libro"))}</td></tr>`;
+  const cabeza = `<thead><tr><th>Código</th><th>Descripción</th><th>Adquisición</th><th class="num">Costo</th><th class="num">Dep. acum. 31/12/${anio - 1}</th><th class="num">Dep. ${anio}</th><th class="num">Dep. acum. 31/12/${anio}</th><th class="num">Valor libro</th></tr></thead>`;
+  return `${cabecera("Libro de activo fijo", `Ejercicio ${anio}`)}
+  <div class="barra"><label>Año<select id="af-anio">${opcionesAnio(anios, anio)}</select></label>${botonesExportar()}</div>
+  ${d.vigentes.length ? `<div class="tabla"><table>${cabeza}<tbody>${d.vigentes.map(fila).join("")}</tbody><tfoot>${total(d.vigentes, "Total activo fijo")}</tfoot></table></div>`
+    : `<div class="caja vacio"><p>No hay bienes vigentes en ${anio}.</p></div>`}
+  ${d.bajas.length ? `<h2>Dados de baja en ${anio}</h2><div class="tabla"><table>${cabeza}<tbody>${d.bajas.map(fila).join("")}</tbody></table></div>` : ""}
+  ${d.conciliacion.length ? `<h2>Conciliación con la contabilidad al 31/12/${anio}</h2>
+    <div class="tabla"><table><thead><tr><th>Cuenta</th><th class="num">Según la ficha</th><th class="num">Según la contabilidad</th><th class="num">Diferencia</th></tr></thead><tbody>
+    ${d.conciliacion.map((c) => `<tr><td>${esc(etiquetaCuenta(c.cuenta))}</td><td class="num">${clp(c.auxiliar)}</td><td class="num">${clp(c.contable)}</td>
+      <td class="num">${c.auxiliar === c.contable ? '<span class="etiqueta">cuadra</span>' : `<span class="neg">${clp(c.contable - c.auxiliar)}</span>`}</td></tr>`).join("")}</tbody></table></div>
+    <p class="ayuda">Compara el costo de las fichas y su depreciación acumulada con el saldo de las cuentas. Una diferencia indica una compra sin ficha, una depreciación sin contabilizar o un asiento mal imputado.</p>` : ""}`;
+}
+
+function informeActivos(anio) {
+  const d = datosLibroActivos(anio);
+  const inf = new Informe("LIBRO DE ACTIVO FIJO", `EJERCICIO ${anio} · DEPRECIACIÓN LINEAL`,
+    [col("Código", 8), col("Descripción", 26), col("Adquisición", 10, "fecha"), col("Costo", 12, "monto"), col("Vida útil", 8), col(`Dep. acum. 31/12/${anio - 1}`, 12, "monto"), col(`Dep. ${anio}`, 11, "monto"), col(`Dep. acum. 31/12/${anio}`, 12, "monto"), col("Valor libro", 12, "monto")],
+    `libro_activo_fijo_${anio}`, { horizontal: true, oficial: false, firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  const agregar = (f) => inf.agregar([f.a.codigo, f.a.nombre, f.a.fecha_adq, f.costo, nombreVida(f.a.vida_meses), f.ini, f.ejercicio, f.fin, f.libro]);
+  const totales = (lista, rotulo, estilo = "total") => inf.agregar([null, rotulo, null, sumaDe(lista, "costo"), null, sumaDe(lista, "ini"), sumaDe(lista, "ejercicio"), sumaDe(lista, "fin"), sumaDe(lista, "libro")], { estilo, derecha: true });
+  d.vigentes.forEach(agregar); totales(d.vigentes, "TOTAL ACTIVO FIJO");
+  if (d.bajas.length) { inf.agregar(["Dados de baja en el ejercicio"], { estilo: "seccion", abarca: 0 }); d.bajas.forEach(agregar); totales(d.bajas, "TOTAL BAJAS", "subtotal"); }
+  for (const c of d.conciliacion) inf.notas.push(`Conciliación ${etiquetaCuenta(c.cuenta)}: según fichas ${pesosTexto(c.auxiliar)}, según contabilidad ${pesosTexto(c.contable)}${c.auxiliar === c.contable ? " (cuadra)" : `, diferencia ${pesosTexto(c.contable - c.auxiliar)}`}.`);
+  inf.notas.push("Depreciación lineal por meses desde el mes de adquisición. Vidas útiles según Resolución Exenta SII N° 43 de 2002 (verificar para cada bien).");
+  return inf;
+}
+
+/* ------------------------------------------------------------------ personal y remuneraciones */
+/* Valores referenciales: confírmalos con Previred y la Superintendencia de Pensiones. Se pueden reemplazar en la pestaña «Parámetros». */
+const AFPS = { Capital: 1.44, Cuprum: 1.44, Habitat: 1.27, Modelo: 0.58, PlanVital: 1.16, Provida: 1.45, Uno: 0.46 };
+const PREVISIONAL_BASE = [
+  { desde: "2026-04", imm: 553553, tope_afp_uf: 90, tope_afc_uf: 135.2, sis: 1.62, reforma: 1.0 },
+  /* Desde agosto de 2026 el aporte del empleador es 3,5 % y ya incluye el financiamiento del SIS. */
+  { desde: "2026-08", imm: 553553, tope_afp_uf: 90, tope_afc_uf: 135.2, sis: 0, reforma: 3.5 },
+];
+const TIPOS_CONTRATO = { indefinido: "Indefinido", plazo_fijo: "Plazo fijo", obra: "Por obra o faena" };
+const TASA_SALUD = 7, TASA_AFP = 10, CES_TRAB_INDEFINIDO = 0.6, CES_EMP_INDEFINIDO = 2.4, CES_EMP_FIJO = 3.0, MUTUAL_BASE = 0.93;
+
+function parametrosPrev(periodo) {
+  const todos = [...PREVISIONAL_BASE, ...(S.prev.parametros || [])].sort((a, b) => (a.desde < b.desde ? -1 : a.desde > b.desde ? 1 : 0));
+  let elegido = null;
+  for (const x of todos) if (x.desde <= periodo) elegido = x;
+  return elegido ? { ...elegido, aproximado: false } : { ...todos[0], aproximado: true };
+}
+const valorUf = (periodo) => S.prev.uf?.[periodo] || null;
+const tasaMutual = () => empresa()?.rem_config?.mutual ?? MUTUAL_BASE;
+
+function distribucionSugerida(horas) {
+  const diario = horas / 5, h = Math.floor(diario), m = Math.round((diario - h) * 60);
+  const fin = 9 * 60 + Math.round(diario * 60) + 60;
+  const hh = (x) => `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
+  return `Lunes a viernes, de 09:00 a ${hh(fin)} horas, con una hora de colación no imputable a la jornada (${h} hora${h === 1 ? "" : "s"}${m ? ` y ${m} minutos` : ""} diarias)`;
+}
+function trabajadorVacio() {
+  const e = empresa();
+  return { id: null, nombre: "", rut: "", nacionalidad: "Chilena", fecha_nac: "", domicilio: "", comuna: "", cargo: "", funciones: "",
+    lugar: [e.direccion, e.comuna].filter(Boolean).join(", "), fecha_ingreso: hoy(), tipo: "indefinido", fecha_termino: "", obra: "",
+    jornada: 42, distribucion: distribucionSugerida(42), sueldo_base: 0, gratificacion: "legal", gratificacion_monto: 0, colacion: 0, movilizacion: 0,
+    forma_pago: "Mensualmente, por período vencido, mediante transferencia electrónica a la cuenta bancaria que el trabajador indique",
+    afp: "Habitat", afp_comision: AFPS.Habitat, salud: "fonasa", isapre: "", plan_uf: 0, sin_cesantia: false, activo: true, fecha_finiquito: "" };
+}
+const trabajadorPorId = (id) => S.trabajadores.find((t) => t.id === id);
+function vigenteEn(t, periodo) {
+  if (t.activo === false && !t.fecha_finiquito) return false;
+  if (t.fecha_ingreso.slice(0, 7) > periodo) return false;
+  return !t.fecha_finiquito || t.fecha_finiquito.slice(0, 7) >= periodo;
+}
+function diasDelMes(t, periodo) {
+  let dias = 30;
+  if (t.fecha_ingreso.slice(0, 7) === periodo) dias = Math.min(30, 31 - +t.fecha_ingreso.slice(8, 10));
+  if (t.fecha_finiquito && t.fecha_finiquito.slice(0, 7) === periodo) dias = Math.min(dias, +t.fecha_finiquito.slice(8, 10), 30);
+  return Math.max(dias, 0);
+}
+
+/* Liquidación mensual de un trabajador. Todo en pesos enteros, aproximando desde 5. */
+function calcularLiquidacionTrabajador(t, periodo, e, valores) {
+  const pr = parametrosPrev(periodo), uf = valorUf(periodo), valorUtm = utm(periodo);
+  if (!valorUtm) throw new ErrorRcv(`Falta el valor de la UTM de ${nombrePeriodo(periodo)}.`);
+  const r = Math.round, prop = (x) => r((x * e.dias) / 30);
+  const sueldo = prop(t.sueldo_base);
+  const valorHora = (t.sueldo_base * 7) / (30 * (t.jornada || 42));
+  const horasExtra = r(valorHora * 1.5 * (e.horas_extra || 0));
+  const bonos = e.bonos || 0;
+  const baseGrat = sueldo + horasExtra + bonos;
+  let gratificacion = 0;
+  if (t.gratificacion === "legal") gratificacion = Math.min(r(baseGrat * 0.25), prop((4.75 * pr.imm) / 12));
+  else if (t.gratificacion === "fija") gratificacion = prop(t.gratificacion_monto || 0);
+  const imponible = sueldo + horasExtra + bonos + gratificacion;
+  const colacion = prop(t.colacion || 0), movilizacion = prop(t.movilizacion || 0), otrosNoImp = e.no_imponibles || 0;
+  const noImponible = colacion + movilizacion + otrosNoImp;
+  const topeAfp = uf ? r(pr.tope_afp_uf * uf) : Infinity, topeAfc = uf ? r(pr.tope_afc_uf * uf) : Infinity;
+  const impAfp = Math.min(imponible, topeAfp), impAfc = Math.min(imponible, topeAfc);
+  const afp = r((impAfp * (TASA_AFP + (t.afp_comision || 0))) / 100);
+  const saludLegal = r((impAfp * TASA_SALUD) / 100);
+  let salud = saludLegal;
+  if (t.salud === "isapre") {
+    if (!uf) throw new ErrorRcv(`Falta el valor de la UF de ${nombrePeriodo(periodo)}: se necesita para el plan de isapre de ${t.nombre}.`);
+    salud = Math.max(saludLegal, r((t.plan_uf || 0) * uf));
+  }
+  const indefinido = t.tipo === "indefinido", cotizaCesantia = !t.sin_cesantia;
+  const cesantia = indefinido && cotizaCesantia ? r((impAfc * CES_TRAB_INDEFINIDO) / 100) : 0;
+  const baseTributable = Math.max(imponible - afp - saludLegal - cesantia, 0);
+  const impuesto = impuestoUnico(baseTributable, valorUtm);
+  const haberes = imponible + noImponible;
+  const descuentosLegales = afp + salud + cesantia + impuesto;
+  const anticipos = e.anticipos || 0, otrosDesc = e.otros_desc || 0;
+  const liquido = haberes - descuentosLegales - anticipos - otrosDesc;
+  if (liquido < 0) throw new ErrorRcv(`${t.nombre}: los descuentos superan los haberes del mes.`);
+  const empSis = r((impAfp * pr.sis) / 100), empReforma = r((impAfp * pr.reforma) / 100), empMutual = r((impAfp * tasaMutual()) / 100);
+  const empCesantia = cotizaCesantia ? r((impAfc * (indefinido ? CES_EMP_INDEFINIDO : CES_EMP_FIJO)) / 100) : 0;
+  return { trabajador: t.id, periodo, dias: e.dias, horas_extra: e.horas_extra || 0, sueldo, horas_extra_monto: horasExtra, bonos, gratificacion, imponible,
+    colacion, movilizacion, no_imponibles: otrosNoImp, no_imponible: noImponible, haberes, tope_aplicado: imponible > impAfp,
+    afp, afp_tasa: TASA_AFP + (t.afp_comision || 0), salud, salud_legal: saludLegal, cesantia, base_tributable: baseTributable, impuesto_unico: impuesto, utm: valorUtm, uf: uf || 0,
+    anticipos, otros_desc: otrosDesc, descuentos_legales: descuentosLegales, total_descuentos: descuentosLegales + anticipos + otrosDesc, liquido,
+    emp_sis: empSis, emp_reforma: empReforma, emp_cesantia: empCesantia, emp_mutual: empMutual, aportes_empleador: empSis + empReforma + empCesantia + empMutual,
+    afp_nombre: t.afp, salud_nombre: t.salud === "isapre" ? (t.isapre || "Isapre") : "Fonasa", asiento: "" };
+}
+
+function periodoLiquidaciones() {
+  if (!S.liqPeriodo || S.liqPeriodoEid !== S.eid) {
+    const ej = String(empresa().ejercicio), usados = S.liquidaciones.map((l) => l.periodo).filter((p) => p.startsWith(ej)).sort();
+    S.liqPeriodo = usados.at(-1) || periodoRcvInicial(); S.liqPeriodoEid = S.eid;
+  }
+  return S.liqPeriodo;
+}
+const liquidacionesMesRrhh = (p) => S.liquidaciones.filter((l) => l.periodo === p).sort((a, b) => (trabajadorPorId(a.trabajador)?.nombre || "").localeCompare(trabajadorPorId(b.trabajador)?.nombre || ""));
+
+function propuestaRemuneraciones(periodo) {
+  const pend = liquidacionesMesRrhh(periodo).filter((l) => !contabilizado(l));
+  if (!pend.length) throw new ErrorRcv(`No hay liquidaciones pendientes de contabilizar en ${nombrePeriodo(periodo)}.`);
+  const ct = cuentasTributarias(), netos = new Map(), sumar = (c, v) => { if (v) netos.set(c, (netos.get(c) || 0) + v); };
+  const sueldos = cuentaConcepto(ct, "rem_sueldos"), grat = ct.rem_gratificacion || sueldos, noImp = ct.rem_no_imponibles || sueldos;
+  for (const l of pend) {
+    sumar(sueldos, l.sueldo + l.horas_extra_monto + l.bonos); sumar(grat, l.gratificacion); sumar(noImp, l.no_imponible);
+    if (l.aportes_empleador) { sumar(cuentaConcepto(ct, "rem_leyes_sociales"), l.aportes_empleador); sumar(cuentaConcepto(ct, "rem_cotizaciones"), -l.aportes_empleador); }
+    sumar(cuentaConcepto(ct, "rem_cotizaciones"), -(l.afp + l.salud + l.cesantia));
+    if (l.impuesto_unico) sumar(cuentaConcepto(ct, "impuesto_unico"), -l.impuesto_unico);
+    if (l.anticipos + l.otros_desc) sumar(cuentaConcepto(ct, "rem_anticipos"), -(l.anticipos + l.otros_desc));
+    sumar(cuentaConcepto(ct, "rem_liquido"), -l.liquido);
+  }
+  return { ids: pend.map((l) => l.id), lineas: lineasNetas(netos), fecha: ultimoDia(periodo), glosa: `REMUNERACIONES ${mesMayus(periodo)}`, cantidad: pend.length, periodo };
+}
+
+function vistaRrhh() {
+  const t = pestanaActual("rrhh", "trabajadores");
+  if (S.contratoVer && trabajadorPorId(S.contratoVer)) return vistaContrato(trabajadorPorId(S.contratoVer));
+  if (S.liqVer && S.liquidaciones.some((l) => l.id === S.liqVer)) return vistaLiquidacion(S.liquidaciones.find((l) => l.id === S.liqVer));
+  return pestanasDe("rrhh", [["trabajadores", "Trabajadores y contratos"], ["liquidaciones", "Liquidaciones"], ["libro", "Libro de remuneraciones"], ["parametros", "Parámetros"]])
+    + (t === "liquidaciones" ? vistaLiquidaciones() : t === "libro" ? vistaLibroRem() : t === "parametros" ? vistaParametros() : vistaTrabajadores());
+}
+
+/* ---------- trabajadores y contratos ---------- */
+function formularioTrabajador(te) {
+  const c = (id, rotulo, valor, extra = "") => `<label>${rotulo}<input id="tb-${id}" value="${esc(valor)}" ${extra}></label>`;
+  const m = (id, rotulo, valor) => `<label>${rotulo}<input id="tb-${id}" inputmode="numeric" value="${valor ? clp(valor) : ""}"></label>`;
+  return `<form class="caja" data-form="n-trabajador"><h2>${te.id ? "Editar trabajador" : "Nuevo trabajador"}</h2>
+    <h3>Datos personales</h3><div class="form">${c("nombre", "Nombre completo *", te.nombre)}${c("rut", "RUT *", te.rut)}${c("nacionalidad", "Nacionalidad", te.nacionalidad)}
+      <label>Fecha de nacimiento<input type="date" id="tb-fecha_nac" value="${esc(te.fecha_nac)}"></label>${c("domicilio", "Domicilio", te.domicilio)}${c("comuna", "Comuna", te.comuna)}</div>
+    <h3>Cargo y contrato</h3><div class="form">${c("cargo", "Cargo *", te.cargo)}
+      <label>Tipo de contrato<select id="tb-tipo">${Object.entries(TIPOS_CONTRATO).map(([k, v]) => `<option value="${k}" ${te.tipo === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <label>Fecha de ingreso *<input type="date" id="tb-fecha_ingreso" value="${esc(te.fecha_ingreso)}"></label>
+      <label>Fecha de término (plazo fijo)<input type="date" id="tb-fecha_termino" value="${esc(te.fecha_termino)}"></label>
+      ${c("obra", "Obra o faena (si es por obra)", te.obra)}${c("lugar", "Lugar de trabajo", te.lugar)}
+      <label>Jornada semanal (horas)<input id="tb-jornada" inputmode="numeric" value="${esc(te.jornada)}"></label>
+      <label class="campo-largo">Distribución de la jornada<input id="tb-distribucion" value="${esc(te.distribucion)}"></label></div>
+    <label class="campo-largo">Funciones<textarea id="tb-funciones" rows="3" placeholder="Describe las labores que realizará">${esc(te.funciones)}</textarea></label>
+    <h3>Remuneración</h3><div class="form">${m("sueldo_base", "Sueldo base mensual *", te.sueldo_base)}
+      <label>Gratificación<select id="tb-gratificacion"><option value="legal" ${te.gratificacion === "legal" ? "selected" : ""}>Legal (art. 50: 25 % con tope)</option><option value="fija" ${te.gratificacion === "fija" ? "selected" : ""}>Monto fijo mensual</option><option value="ninguna" ${te.gratificacion === "ninguna" ? "selected" : ""}>Sin gratificación</option></select></label>
+      ${m("gratificacion_monto", "Gratificación fija mensual", te.gratificacion_monto)}${m("colacion", "Colación mensual", te.colacion)}${m("movilizacion", "Movilización mensual", te.movilizacion)}
+      <label class="campo-largo">Forma de pago<input id="tb-forma_pago" value="${esc(te.forma_pago)}"></label></div>
+    <h3>Previsión y salud</h3><div class="form">
+      <label>AFP<select id="tb-afp">${Object.keys(AFPS).map((a) => `<option ${te.afp === a ? "selected" : ""}>${a}</option>`).join("")}</select></label>
+      <label>Comisión AFP (%)<input id="tb-afp_comision" inputmode="decimal" value="${esc(comaDecimal(te.afp_comision))}"></label>
+      <label>Salud<select id="tb-salud"><option value="fonasa" ${te.salud === "fonasa" ? "selected" : ""}>Fonasa (7 %)</option><option value="isapre" ${te.salud === "isapre" ? "selected" : ""}>Isapre</option></select></label>
+      ${c("isapre", "Nombre de la isapre", te.isapre)}<label>Plan de isapre (UF)<input id="tb-plan_uf" inputmode="decimal" value="${esc(comaDecimal(te.plan_uf || ""))}"></label>
+      <label class="check"><input type="checkbox" id="tb-sin_cesantia" ${te.sin_cesantia ? "checked" : ""}> No cotiza seguro de cesantía (pensionado u otro caso)</label></div>
+    ${te.id ? `<div class="form"><label class="check"><input type="checkbox" id="tb-activo" ${te.activo !== false ? "checked" : ""}> Trabajador activo</label>
+      <label>Fecha de término de la relación laboral<input type="date" id="tb-fecha_finiquito" value="${esc(te.fecha_finiquito)}"></label></div>` : ""}
+    <div class="acciones"><button class="btn" type="submit">Guardar</button><button class="btn sec" type="button" data-n="cancelar-trabajador">Cancelar</button></div></form>`;
+}
+function vistaTrabajadores() {
+  const te = S.trabEdit, lista = S.trabajadores.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const filas = lista.map((t) => {
+    const confirmando = S.confirmar === "trab:" + t.id;
+    return `<tr class="${t.activo === false || t.fecha_finiquito ? "inactiva" : ""}"><td>${esc(t.nombre)}<br><small class="ayuda">${esc(t.cargo)}</small></td><td class="cod">${esc(t.rut)}</td>
+      <td>${TIPOS_CONTRATO[t.tipo] || ""}${t.tipo === "plazo_fijo" && t.fecha_termino ? `<br><small class="ayuda">hasta ${fmtFecha(t.fecha_termino)}</small>` : ""}</td><td>${fmtFecha(t.fecha_ingreso)}</td>
+      <td class="num">${clp(t.sueldo_base)}</td><td>${t.fecha_finiquito ? `Término ${fmtFecha(t.fecha_finiquito)}` : t.activo === false ? "Inactivo" : "Vigente"}</td>
+      <td><button class="btn enlace" type="button" data-n="ver-contrato" data-id="${esc(t.id)}">Contrato</button>${puedeEditar(confirmando
+        ? `<span class="acciones"><button class="btn peligro" type="button" data-n="eliminar-trabajador" data-id="${esc(t.id)}">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
+        : `<button class="btn enlace" type="button" data-n="editar-trabajador" data-id="${esc(t.id)}">Editar</button><button class="btn enlace" type="button" data-n="pedir-eliminar-trabajador" data-id="${esc(t.id)}">Eliminar</button>`)}</td></tr>`;
+  }).join("");
+  return `${cabecera("Trabajadores y contratos", `${lista.filter((t) => t.activo !== false && !t.fecha_finiquito).length} vigente(s)`)}
+  <p class="ayuda">Ficha de cada trabajador con los datos que exige el contrato de trabajo (art. 10 del Código del Trabajo) y los que usa la liquidación. Desde «Contrato» se arma el documento listo para imprimir.</p>
+  ${te ? formularioTrabajador(te) : ""}
+  <div class="acciones">${puedeEditar(`<button class="btn" type="button" data-n="nuevo-trabajador">+ Nuevo trabajador</button>`)}</div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Trabajador</th><th>RUT</th><th>Contrato</th><th>Ingreso</th><th class="num">Sueldo base</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>`
+    : `<div class="caja vacio"><p>Todavía no hay trabajadores. Agrega el primero con «+ Nuevo trabajador».</p></div>`}`;
+}
+
+async function guardarTrabajador() {
+  const te = S.trabEdit, v = (id) => $("#tb-" + id)?.value ?? "";
+  const nombre = v("nombre").trim(), rut = v("rut").trim(), sueldo = parseMonto(v("sueldo_base") || "0"), jornada = Number(v("jornada")), comision = decimal(v("afp_comision")), plan = decimal(v("plan_uf"));
+  const d = { nombre, rut, nacionalidad: v("nacionalidad").trim(), fecha_nac: v("fecha_nac"), domicilio: v("domicilio").trim(), comuna: v("comuna").trim(), cargo: v("cargo").trim(), funciones: v("funciones").trim(),
+    lugar: v("lugar").trim(), fecha_ingreso: v("fecha_ingreso"), tipo: v("tipo"), fecha_termino: v("fecha_termino"), obra: v("obra").trim(), jornada, distribucion: v("distribucion").trim(),
+    sueldo_base: sueldo, gratificacion: v("gratificacion"), gratificacion_monto: parseMonto(v("gratificacion_monto") || "0"), colacion: parseMonto(v("colacion") || "0"), movilizacion: parseMonto(v("movilizacion") || "0"),
+    forma_pago: v("forma_pago").trim(), afp: v("afp"), afp_comision: comision, salud: v("salud"), isapre: v("isapre").trim(), plan_uf: plan || 0, sin_cesantia: $("#tb-sin_cesantia").checked,
+    activo: te.id ? $("#tb-activo").checked : true, fecha_finiquito: te.id ? v("fecha_finiquito") : "" };
+  S.trabEdit = { ...te, ...d, afp_comision: v("afp_comision"), plan_uf: v("plan_uf"), jornada: v("jornada") };
+  if (!nombre) return aviso("Ingresa el nombre del trabajador.");
+  if (!rutValido(rut)) return aviso("El RUT no es válido (revisa el dígito verificador).");
+  if (!d.cargo) return aviso("Ingresa el cargo.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.fecha_ingreso)) return aviso("Ingresa la fecha de ingreso.");
+  for (const [n, x] of [["Sueldo base", sueldo], ["Gratificación fija", d.gratificacion_monto], ["Colación", d.colacion], ["Movilización", d.movilizacion]]) if (Number.isNaN(x) || x < 0) return aviso(`${n}: ingresa un monto en pesos enteros, sin decimales.`);
+  if (sueldo <= 0) return aviso("Ingresa el sueldo base mensual.");
+  if (!Number.isFinite(jornada) || jornada < 1 || jornada > 45) return aviso("La jornada semanal debe estar entre 1 y 45 horas.");
+  if (comision == null || Number.isNaN(comision) || comision < 0 || comision > 5) return aviso("Comisión de la AFP: ingresa un porcentaje, por ejemplo 1,27.");
+  if (Number.isNaN(plan) || (plan ?? 0) < 0) return aviso("Plan de isapre: ingresa las UF, por ejemplo 3,5.");
+  if (d.salud === "isapre" && !d.plan_uf) return aviso("Ingresa el valor del plan de isapre en UF.");
+  if (d.tipo === "plazo_fijo" && (!d.fecha_termino || d.fecha_termino <= d.fecha_ingreso)) return aviso("Un contrato a plazo fijo necesita fecha de término posterior al ingreso.");
+  if (d.tipo === "obra" && !d.obra) return aviso("Describe la obra o faena del contrato.");
+  const r = formatoRut(rut);
+  if (S.trabajadores.some((t) => t.rut === r && t.id !== te.id)) return aviso(`Ya existe un trabajador con el RUT ${r}.`);
+  d.rut = r;
+  await ocupado(async () => {
+    await S.almacen.set(`empresas/${S.eid}/trabajadores/${te.id || "w" + nuevoId()}`, d);
+    S.trabEdit = null; render(); aviso("Trabajador guardado.");
+  }, "No se pudo guardar el trabajador");
+}
+
+/* ---------- contrato de trabajo ---------- */
+const fechaLarga = (f) => (f ? `${+f.slice(8, 10)} de ${MESES[+f.slice(5, 7) - 1].toLowerCase()} de ${f.slice(0, 4)}` : "");
+function textoContrato(t) {
+  const e = empresa(), may = (x) => String(x || "").toUpperCase();
+  const dirEmp = [e.direccion, e.comuna].filter(Boolean).join(", ");
+  const rep = e.representante ? `representada legalmente por ${e.representante}${e.rut_representante ? `, cédula nacional de identidad N° ${e.rut_representante}` : ""}` : "representada por su representante legal";
+  const bloques = [];
+  const p = (texto) => bloques.push({ tipo: "p", texto });
+  const cl = (rotulo, texto) => bloques.push({ tipo: "cl", rotulo, texto });
+  bloques.push({ tipo: "titulo", texto: "CONTRATO DE TRABAJO" });
+  p(`En ${e.comuna || "__________"}, a ${fechaLarga(t.fecha_ingreso)}, entre ${may(e.razon_social)}, RUT ${e.rut || "__________"}, del giro de ${e.giro || "__________"}, ${rep}, ambos domiciliados en ${dirEmp || "__________"}, en adelante "el empleador"; y don/doña ${may(t.nombre)}, de nacionalidad ${t.nacionalidad || "__________"}${t.fecha_nac ? `, nacido(a) el ${fechaLarga(t.fecha_nac)}` : ""}, cédula nacional de identidad N° ${t.rut}, domiciliado(a) en ${[t.domicilio, t.comuna].filter(Boolean).join(", ") || "__________"}, en adelante "el trabajador", se ha convenido el siguiente contrato de trabajo:`);
+  cl("PRIMERO: Naturaleza de los servicios y lugar de trabajo.", `El trabajador se obliga a desempeñar el cargo de ${t.cargo}${t.funciones ? `, cuyas funciones consisten en: ${t.funciones}` : ""}. Los servicios se prestarán en ${t.lugar || dirEmp || "las dependencias del empleador"}, sin perjuicio de la facultad del empleador de alterar la naturaleza de los servicios o el sitio o recinto en que ellos deban prestarse, siempre que se trate de labores similares, que el nuevo sitio quede dentro del mismo lugar o ciudad y que ello no importe menoscabo para el trabajador, conforme al artículo 12 del Código del Trabajo.`);
+  cl("SEGUNDO: Jornada de trabajo.", `La jornada ordinaria de trabajo será de ${t.jornada} horas semanales, distribuidas así: ${t.distribucion || "__________"}. Las horas extraordinarias solo podrán pactarse por escrito, para atender necesidades o situaciones temporales de la empresa, y se pagarán con el recargo legal del 50 % sobre el sueldo convenido para la jornada ordinaria.`);
+  const grat = t.gratificacion === "legal" ? ` El empleador pagará gratificación legal conforme al artículo 50 del Código del Trabajo, a razón del 25 % de lo devengado en el respectivo ejercicio por concepto de remuneraciones mensuales, con el tope de 4,75 ingresos mínimos mensuales, pagadera mensualmente en forma proporcional.`
+    : t.gratificacion === "fija" ? ` Además, el empleador pagará una gratificación mensual garantizada de $${clp(t.gratificacion_monto)}, que se imputará a la gratificación legal.` : " Las partes no pactan gratificación mensual, sin perjuicio de lo dispuesto en los artículos 46 y siguientes del Código del Trabajo.";
+  const asig = [t.colacion ? `colación de $${clp(t.colacion)}` : "", t.movilizacion ? `movilización de $${clp(t.movilizacion)}` : ""].filter(Boolean);
+  cl("TERCERO: Remuneración.", `El empleador pagará al trabajador un sueldo base mensual de $${clp(t.sueldo_base)}.${grat}${asig.length ? ` Además se pagará una asignación de ${asig.join(" y una asignación de ")} mensual, que se pagará por los días efectivamente trabajados y que, conforme al artículo 41 del Código del Trabajo, no constituye remuneración.` : ""} El pago se efectuará ${t.forma_pago ? t.forma_pago.charAt(0).toLowerCase() + t.forma_pago.slice(1) : "mensualmente"}. Del total se descontarán los impuestos, las cotizaciones previsionales y de salud, y las demás deducciones que autorice la ley.`);
+  cl("CUARTO: Previsión y salud.", `El trabajador se encuentra afiliado a la AFP ${t.afp} y a ${t.salud === "isapre" ? `la isapre ${t.isapre || "__________"}` : "Fonasa"}${t.sin_cesantia ? "" : ", y cotizará en el Seguro de Cesantía de la Ley N° 19.728"}. El empleador descontará y enterará las cotizaciones en las instituciones respectivas.`);
+  cl("QUINTO: Duración del contrato.", t.tipo === "indefinido" ? "El presente contrato tendrá duración indefinida."
+    : t.tipo === "plazo_fijo" ? `El presente contrato es a plazo fijo y terminará el ${fechaLarga(t.fecha_termino)}, sin necesidad de aviso previo, de acuerdo con el artículo 159 N° 4 del Código del Trabajo.`
+    : `El presente contrato se celebra por la duración de la obra o faena: ${t.obra}, y terminará al concluir esta, de acuerdo con el artículo 159 N° 5 del Código del Trabajo.`);
+  cl("SEXTO: Fecha de ingreso.", `Las partes dejan constancia de que el trabajador ingresó a prestar servicios el ${fechaLarga(t.fecha_ingreso)}.`);
+  cl("SÉPTIMO: Obligaciones del trabajador.", "El trabajador se obliga a cumplir fielmente las instrucciones del empleador relacionadas con sus labores, a respetar el Reglamento Interno de Orden, Higiene y Seguridad de la empresa, a mantener reserva sobre la información confidencial a que tenga acceso y a cuidar los bienes que se le confíen.");
+  cl("OCTAVO: Ejemplares.", "El presente contrato se firma en dos ejemplares del mismo tenor y fecha, quedando uno en poder de cada parte. El trabajador declara haber recibido su ejemplar en este acto.");
+  return bloques;
+}
+
+function vistaContrato(t) {
+  const bloques = textoContrato(t);
+  S.informe = null;
+  const aviso5 = t.tipo === "indefinido" ? "El contrato debe firmarse dentro de los 15 días siguientes al ingreso del trabajador."
+    : "El contrato debe firmarse dentro de los 15 días siguientes al ingreso del trabajador, o de 5 días si la duración es inferior a 30 días.";
+  return `${cabecera(`Contrato de ${t.nombre}`, TIPOS_CONTRATO[t.tipo])}
+  <div class="barra"><button class="btn sec" type="button" data-n="volver-trabajadores">← Volver</button>${S.descargas ? `<button class="btn" type="button" data-n="pdf-contrato" data-id="${esc(t.id)}">Descargar PDF</button>` : ""}</div>
+  <div class="aviso">${aviso5} Es un modelo general: revísalo con un abogado laboral antes de firmarlo, sobre todo si el trabajador tiene pactos especiales. ${t.tipo === "plazo_fijo" ? "Un contrato a plazo fijo no puede durar más de un año, y su segunda renovación lo convierte en indefinido." : ""}</div>
+  <article class="contrato">${bloques.map((b) => b.tipo === "titulo" ? `<h2>${esc(b.texto)}</h2>` : b.tipo === "cl" ? `<p><strong>${esc(b.rotulo)}</strong> ${esc(b.texto)}</p>` : `<p>${esc(b.texto)}</p>`).join("")}
+    <div class="firmas"><div><span></span>${esc(empresa().representante || "EMPLEADOR")}<small>p.p. ${esc(empresa().razon_social)}<br>EMPLEADOR</small></div><div><span></span>${esc(t.nombre)}<small>RUT ${esc(t.rut)}<br>TRABAJADOR</small></div></div></article>`;
+}
+
+async function pdfContrato(t) {
+  await cargarScript("jspdf");
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 2.5 * CM, ancho = W - 2 * m, interlinea = 15;
+  doc.setProperties({ title: `Contrato de trabajo – ${t.nombre}`, author: empresa().razon_social });
+  let y = m;
+  const salto = (alto) => { if (y + alto > H - m) { doc.addPage(); y = m; } };
+  for (const b of textoContrato(t)) {
+    if (b.tipo === "titulo") { doc.setFont("times", "bold"); doc.setFontSize(14); doc.text(textoPdf(b.texto), W / 2, y, { align: "center" }); y += 30; continue; }
+    doc.setFontSize(11);
+    if (b.tipo === "cl") {
+      // Rótulo en negrita al inicio del párrafo; el texto sigue en la misma línea y continúa a ancho completo.
+      const rot = textoPdf(b.rotulo), texto = textoPdf(b.texto);
+      doc.setFont("times", "bold"); const ancho1 = doc.getTextWidth(rot + " ") + 3;
+      doc.setFont("times", "normal");
+      const primera = doc.splitTextToSize(texto, ancho - ancho1)[0] || "";
+      salto(interlinea * 2);
+      doc.setFont("times", "bold"); doc.text(rot, m, y);
+      doc.setFont("times", "normal"); doc.text(primera, m + ancho1, y); y += interlinea;
+      for (const l of doc.splitTextToSize(texto.slice(primera.length).trim(), ancho)) { salto(interlinea); doc.text(l, m, y); y += interlinea; }
+      y += 8; continue;
+    }
+    const lineas = doc.setFont("times", "normal").splitTextToSize(textoPdf(b.texto), ancho);
+    for (const l of lineas) { salto(interlinea); doc.text(l, m, y); y += interlinea; }
+    y += 8;
+  }
+  salto(110); y += 50;
+  doc.setFont("times", "normal");
+  const mitad = ancho / 2;
+  [[m, empresa().representante || "EMPLEADOR", `p.p. ${empresa().razon_social}`, "EMPLEADOR"], [m + mitad + 20, t.nombre, `RUT ${t.rut}`, "TRABAJADOR"]].forEach(([x, a, b, c]) => {
+    doc.line(x, y, x + mitad - 40, y); doc.setFontSize(10);
+    doc.text(textoPdf(a), x, y + 14); doc.text(textoPdf(b), x, y + 27); doc.text(c, x, y + 40);
+  });
+  return doc.output("blob");
+}
+
+/* ---------- liquidaciones ---------- */
+function vistaLiquidaciones() {
+  const periodo = periodoLiquidaciones(), pr = parametrosPrev(periodo);
+  const liq = new Map(liquidacionesMesRrhh(periodo).map((l) => [l.trabajador, l]));
+  const vigentes = S.trabajadores.filter((t) => vigenteEn(t, periodo) || liq.has(t.id)).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const hayPend = [...liq.values()].some((l) => !contabilizado(l));
+  const entrada = (campo, id, valor) => `<input id="lq-${campo}-${esc(id)}" class="monto" inputmode="numeric" value="${valor ? clp(valor) : ""}" aria-label="${campo}">`;
+  const filas = vigentes.map((t) => {
+    const l = liq.get(t.id), cerrada = l && contabilizado(l), a = cerrada ? S.lista.find((x) => x.id === l.asiento) : null;
+    const celdas = cerrada || !S.puedeEscribir
+      ? `<td></td><td>${esc(t.nombre)}</td><td class="num">${l ? l.dias : ""}</td><td class="num">${l?.horas_extra || ""}</td><td class="num">${l?.bonos ? clp(l.bonos) : ""}</td><td class="num">${l?.no_imponibles ? clp(l.no_imponibles) : ""}</td><td class="num">${l?.anticipos ? clp(l.anticipos) : ""}</td><td class="num">${l?.otros_desc ? clp(l.otros_desc) : ""}</td>`
+      : `<td><input type="checkbox" id="lq-incluir-${esc(t.id)}" checked aria-label="Incluir a ${esc(t.nombre)}"></td><td>${esc(t.nombre)}</td>
+         <td class="num"><input id="lq-dias-${esc(t.id)}" class="monto" style="width:4em" inputmode="numeric" value="${l ? l.dias : diasDelMes(t, periodo)}"></td>
+         <td class="num"><input id="lq-he-${esc(t.id)}" class="monto" style="width:4.5em" inputmode="decimal" value="${l?.horas_extra ? comaDecimal(l.horas_extra) : ""}"></td>
+         <td class="num">${entrada("bonos", t.id, l?.bonos)}</td><td class="num">${entrada("noimp", t.id, l?.no_imponibles)}</td><td class="num">${entrada("ant", t.id, l?.anticipos)}</td><td class="num">${entrada("otros", t.id, l?.otros_desc)}</td>`;
+    return `<tr>${celdas}<td class="num">${l ? clp(l.imponible) : ""}</td><td class="num">${l ? clp(l.total_descuentos) : ""}</td><td class="num"><strong>${l ? clp(l.liquido) : ""}</strong></td>
+      <td>${a ? `<button class="btn enlace" data-asiento="${esc(a.id)}">N° ${a.numero}</button>` : l ? '<span class="etiqueta cerrado">pendiente</span>' : '<span class="ayuda">sin calcular</span>'}</td>
+      <td>${l ? `<button class="btn enlace" type="button" data-n="ver-liquidacion" data-id="${esc(l.id)}">Ver</button>` : ""}${l && !cerrada && S.puedeEscribir ? `<button class="btn enlace" type="button" data-n="eliminar-liquidacion" data-id="${esc(l.id)}">Eliminar</button>` : ""}</td></tr>`;
+  }).join("");
+  return `${cabecera("Liquidaciones de sueldo", nombrePeriodo(periodo))}
+  <div class="barra"><label>Mes<input type="month" id="lq-periodo" value="${periodo}"></label>
+    <label>UTM<input id="lq-utm" inputmode="numeric" placeholder="72.151" value="${utm(periodo) ? clp(utm(periodo)) : ""}" ${S.puedeEscribir ? "" : "readonly"}></label>
+    <label>UF (último día del mes anterior)<input id="lq-uf" inputmode="decimal" placeholder="41.057,20" value="${valorUf(periodo) ? comaDecimal(valorUf(periodo)).replace(/\B(?=(\d{3})+(?!\d))/g, ".") : ""}" ${S.puedeEscribir ? "" : "readonly"}></label></div>
+  <p class="ayuda">La UF se usa para aplicar el tope imponible (${pr.tope_afp_uf} UF; ${pr.tope_afc_uf} UF para cesantía) y para los planes de isapre. Sin UF no se aplica el tope.${pr.aproximado ? " <strong>Este mes es anterior a los parámetros cargados: revisa la pestaña «Parámetros».</strong>" : ""}</p>
+  ${vigentes.length ? `<div class="tabla"><table><thead><tr><th></th><th>Trabajador</th><th class="num">Días</th><th class="num">H. extra</th><th class="num">Bonos imponibles</th><th class="num">Haberes no imp.</th><th class="num">Anticipos</th><th class="num">Otros desc.</th><th class="num">Imponible</th><th class="num">Descuentos</th><th class="num">Líquido</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="liquidar-mes">Calcular y guardar liquidaciones</button>${hayPend ? `<button class="btn" type="button" data-n="contabilizar-rem">Contabilizar remuneraciones del mes</button>` : ""}</div>`)}
+    <p class="ayuda">Sueldo proporcional a los días trabajados (base 30). Hora extra con 50 % de recargo, valor hora = sueldo × 7 ÷ (30 × jornada semanal). Gratificación legal: 25 % con tope de 4,75 ingresos mínimos al año. Impuesto único sobre la renta imponible menos AFP, salud (7 %) y cesantía del trabajador. Las asignaciones de colación y movilización se pagan por los días trabajados.</p>`
+    : `<div class="caja vacio"><p>No hay trabajadores vigentes en ${nombrePeriodo(periodo)}. Agrégalos en la pestaña «Trabajadores y contratos».</p></div>`}`;
+}
+
+async function liquidarMes() {
+  const periodo = periodoLiquidaciones(), textoUtm = $("#lq-utm").value.trim(), textoUf = $("#lq-uf").value.trim();
+  const elegidos = S.trabajadores.filter((t) => $(`#lq-incluir-${t.id}`)?.checked);
+  await ocupado(async () => {
+    try {
+      if (textoUtm) { const v = parseMonto(textoUtm); if (v !== utm(periodo)) await guardarUtm(periodo, v); }
+      if (textoUf) {
+        const v = decimal(textoUf);
+        if (!Number.isFinite(v) || v < 1000 || v > 1000000) throw new ErrorRcv("Ingresa el valor de la UF en pesos, por ejemplo 41.057,20.");
+        if (v !== valorUf(periodo)) { S.prev = { ...S.prev, uf: { ...S.prev.uf, [periodo]: v } }; await S.almacen.set("config/previsional", S.prev); }
+      }
+      if (!elegidos.length) throw new ErrorRcv("Marca al menos un trabajador para calcular su liquidación.");
+      const leer = (campo, t) => { const x = $(`#lq-${campo}-${t.id}`)?.value.trim() || ""; return x ? parseMonto(x) : 0; };
+      const calculadas = [];
+      for (const t of elegidos) {
+        const dias = Number($(`#lq-dias-${t.id}`).value), he = decimal($(`#lq-he-${t.id}`).value) ?? 0;
+        if (!Number.isInteger(dias) || dias < 0 || dias > 30) throw new ErrorRcv(`${t.nombre}: los días trabajados van de 0 a 30.`);
+        if (Number.isNaN(he) || he < 0) throw new ErrorRcv(`${t.nombre}: las horas extra deben ser un número, por ejemplo 4 o 2,5.`);
+        const e = { dias, horas_extra: he, bonos: leer("bonos", t), no_imponibles: leer("noimp", t), anticipos: leer("ant", t), otros_desc: leer("otros", t) };
+        for (const [n, x] of [["Bonos", e.bonos], ["Haberes no imponibles", e.no_imponibles], ["Anticipos", e.anticipos], ["Otros descuentos", e.otros_desc]]) if (Number.isNaN(x) || x < 0) throw new ErrorRcv(`${t.nombre}: ${n}: ingresa un monto en pesos enteros, sin decimales.`);
+        const actual = S.liquidaciones.find((l) => l.trabajador === t.id && l.periodo === periodo);
+        if (actual && contabilizado(actual)) throw new ErrorRcv(`La liquidación de ${t.nombre} de ${nombrePeriodo(periodo)} ya está contabilizada; elimina primero su asiento para modificarla.`);
+        calculadas.push([`${t.id}_${periodo}`, calcularLiquidacionTrabajador(t, periodo, e)]);
+      }
+      for (const [id, d] of calculadas) await S.almacen.set(`empresas/${S.eid}/liquidaciones/${id}`, d);
+      render(); aviso(`Liquidaciones de ${nombrePeriodo(periodo)} calculadas.`);
+    } catch (err) { if (err instanceof ErrorRcv) aviso(err.message); else throw err; }
+  }, "No se pudieron guardar las liquidaciones");
+}
+
+function informeLiquidacion(l) {
+  const t = trabajadorPorId(l.trabajador) || { nombre: "(trabajador eliminado)", rut: "", cargo: "" };
+  const inf = new Informe("LIQUIDACIÓN DE SUELDO", `${mesMayus(l.periodo)} · ${t.nombre.toUpperCase()} · RUT ${t.rut}`,
+    [col("Concepto", 50), col("Haberes", 16, "monto"), col("Descuentos", 16, "monto")], `liquidacion_${limpiarRut(t.rut)}_${l.periodo}`, { firmas: ["EMPLEADOR", "TRABAJADOR"] });
+  const fila = (n, h, d, siempre = false) => { if (siempre || h || d) inf.agregar([n, sinCeros(h), sinCeros(d)]); };
+  inf.agregar([`Cargo: ${t.cargo || ""} · Días trabajados: ${l.dias} · ${TIPOS_CONTRATO[t.tipo] || ""}`], { estilo: "nota", abarca: 0 });
+  inf.agregar(["Haberes imponibles"], { estilo: "seccion", abarca: 0 });
+  fila("Sueldo base", l.sueldo, null, true); if (l.horas_extra_monto) fila(`Horas extra (${comaDecimal(l.horas_extra)} h)`, l.horas_extra_monto); fila("Bonos y comisiones", l.bonos); fila("Gratificación", l.gratificacion);
+  inf.agregar(["TOTAL IMPONIBLE", l.imponible, null], { estilo: "subtotal" });
+  if (l.no_imponible) { inf.agregar(["Haberes no imponibles"], { estilo: "seccion", abarca: 0 }); fila("Colación", l.colacion); fila("Movilización", l.movilizacion); fila("Otros haberes no imponibles", l.no_imponibles); }
+  inf.agregar(["Descuentos"], { estilo: "seccion", abarca: 0 });
+  fila(`AFP ${l.afp_nombre} (${comaDecimal(l.afp_tasa)} %)`, null, l.afp, true); fila(`Salud ${l.salud_nombre}`, null, l.salud, true); fila("Seguro de cesantía", null, l.cesantia);
+  fila(`Impuesto único de segunda categoría (base $${clp(l.base_tributable)})`, null, l.impuesto_unico, true); fila("Anticipos", null, l.anticipos); fila("Otros descuentos", null, l.otros_desc);
+  inf.agregar(["TOTALES", l.haberes, l.total_descuentos], { estilo: "total" });
+  inf.agregar(["LÍQUIDO A PAGAR", l.liquido, null], { estilo: "destacado" });
+  inf.recuadro = [["LÍQUIDO A PAGAR", l.liquido]];
+  if (l.tope_aplicado) inf.notas.push("Se aplicó el tope imponible a las cotizaciones.");
+  inf.notas.push("Recibí conforme el líquido indicado y declaro no tener cargo ni cobro posterior que hacer por los conceptos de esta liquidación.");
+  return inf;
+}
+function vistaLiquidacion(l) {
+  const t = trabajadorPorId(l.trabajador) || { nombre: "(trabajador eliminado)", rut: "" };
+  S.informe = () => informeLiquidacion(l);
+  const f = (n, v) => (v ? `<tr><td>${n}</td><td class="num">${clp(v)}</td></tr>` : "");
+  return `${cabecera(`Liquidación de ${t.nombre}`, nombrePeriodo(l.periodo))}
+  <div class="barra"><button class="btn sec" type="button" data-n="volver-liquidaciones">← Volver</button>${botonesExportar(false)}</div>
+  <div class="caja"><dl class="ficha"><dt>RUT</dt><dd>${esc(t.rut)}</dd><dt>Días trabajados</dt><dd>${l.dias}</dd><dt>Renta imponible</dt><dd>$${clp(l.imponible)}</dd><dt>Base del impuesto</dt><dd>$${clp(l.base_tributable)}</dd></dl></div>
+  <div class="tabla"><table><thead><tr><th>Haberes</th><th class="num">Monto</th></tr></thead><tbody>${f("Sueldo base", l.sueldo)}${f("Horas extra", l.horas_extra_monto)}${f("Bonos y comisiones", l.bonos)}${f("Gratificación", l.gratificacion)}${f("Colación y movilización", l.colacion + l.movilizacion)}${f("Otros no imponibles", l.no_imponibles)}
+    <tr class="sub"><td>Total haberes</td><td class="num">${clp(l.haberes)}</td></tr></tbody></table></div>
+  <div class="tabla"><table><thead><tr><th>Descuentos</th><th class="num">Monto</th></tr></thead><tbody>${f(`AFP ${esc(l.afp_nombre)}`, l.afp)}${f(`Salud ${esc(l.salud_nombre)}`, l.salud)}${f("Seguro de cesantía", l.cesantia)}${f("Impuesto único", l.impuesto_unico)}${f("Anticipos", l.anticipos)}${f("Otros descuentos", l.otros_desc)}
+    <tr class="sub"><td>Total descuentos</td><td class="num">${clp(l.total_descuentos)}</td></tr><tr class="pagar"><td>Líquido a pagar</td><td class="num">${clp(l.liquido)}</td></tr></tbody></table></div>
+  <div class="tabla"><table><thead><tr><th>Aportes del empleador (no se descuentan al trabajador)</th><th class="num">Monto</th></tr></thead><tbody>${f("Seguro de invalidez y sobrevivencia (SIS)", l.emp_sis)}${f("Cotización adicional de la reforma previsional", l.emp_reforma)}${f("Seguro de cesantía", l.emp_cesantia)}${f("Mutual (Ley 16.744)", l.emp_mutual)}
+    <tr class="sub"><td>Total aportes</td><td class="num">${clp(l.aportes_empleador)}</td></tr></tbody></table></div>`;
+}
+
+/* ---------- libro de remuneraciones ---------- */
+function resumenCotizaciones(lista) {
+  const porAfp = new Map(), porSalud = new Map();
+  for (const l of lista) { porAfp.set(l.afp_nombre, (porAfp.get(l.afp_nombre) || 0) + l.afp); porSalud.set(l.salud_nombre, (porSalud.get(l.salud_nombre) || 0) + l.salud); }
+  return [...[...porAfp].map(([n, v]) => [`AFP ${n}`, v]), ...[...porSalud].map(([n, v]) => [`Salud ${n}`, v]),
+    ["Seguro de cesantía: trabajador", sumaDe(lista, "cesantia")], ["Seguro de cesantía: empleador", sumaDe(lista, "emp_cesantia")], ["SIS (empleador)", sumaDe(lista, "emp_sis")],
+    ["Cotización adicional del empleador (reforma)", sumaDe(lista, "emp_reforma")], ["Mutual (empleador)", sumaDe(lista, "emp_mutual")], ["Impuesto único retenido", sumaDe(lista, "impuesto_unico")]].filter(([, v]) => v);
+}
+function informeLibroRem(periodo, lista) {
+  const inf = new Informe("LIBRO DE REMUNERACIONES", `PERÍODO: ${mesMayus(periodo)}`,
+    [col("Trabajador", 22), col("Días", 5, "numero"), col("Sueldo", 10, "monto"), col("H. extra", 9, "monto"), col("Bonos", 9, "monto"), col("Gratif.", 10, "monto"), col("Imponible", 11, "monto"), col("No imp.", 9, "monto"),
+      col("AFP", 9, "monto"), col("Salud", 9, "monto"), col("Cesantía", 8, "monto"), col("Imp. único", 9, "monto"), col("Anticipos y otros", 9, "monto"), col("Líquido", 11, "monto")],
+    `libro_remuneraciones_${periodo}`, { horizontal: true, firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  for (const l of lista) { const t = trabajadorPorId(l.trabajador) || { nombre: "(eliminado)", rut: "" };
+    inf.agregar([`${t.nombre}\n${t.rut}`, l.dias, l.sueldo, sinCeros(l.horas_extra_monto), sinCeros(l.bonos), sinCeros(l.gratificacion), l.imponible, sinCeros(l.no_imponible), l.afp, l.salud, sinCeros(l.cesantia), sinCeros(l.impuesto_unico), sinCeros(l.anticipos + l.otros_desc), l.liquido]); }
+  inf.agregar(["TOTAL", null, ...["sueldo", "horas_extra_monto", "bonos", "gratificacion", "imponible", "no_imponible", "afp", "salud", "cesantia", "impuesto_unico"].map((k) => sumaDe(lista, k)), lista.reduce((s, l) => s + l.anticipos + l.otros_desc, 0), sumaDe(lista, "liquido")], { estilo: "total" });
+  inf.notas.push("Resumen de cotizaciones y retenciones del mes:");
+  for (const [n, v] of resumenCotizaciones(lista)) inf.notas.push(`${n}: $${clp(v)}`);
+  inf.notas.push(`Aportes del empleador: $${clp(sumaDe(lista, "aportes_empleador"))}. Costo total de remuneraciones del mes: $${clp(sumaDe(lista, "haberes") + sumaDe(lista, "aportes_empleador"))}.`);
+  return inf;
+}
+function vistaLibroRem() {
+  const periodo = periodoLiquidaciones(), lista = liquidacionesMesRrhh(periodo);
+  S.informe = () => informeLibroRem(periodo, lista);
+  S.csv = { archivo: `libro_remuneraciones_${slug()}_${periodo}.csv`, filas: [["Trabajador", "RUT", "Días", "Sueldo", "Horas extra", "Bonos", "Gratificación", "Imponible", "No imponible", "AFP", "Salud", "Cesantía", "Impuesto único", "Anticipos", "Otros descuentos", "Líquido", "Aportes empleador"],
+    ...lista.map((l) => { const t = trabajadorPorId(l.trabajador) || {}; return [t.nombre || "", t.rut || "", l.dias, l.sueldo, l.horas_extra_monto, l.bonos, l.gratificacion, l.imponible, l.no_imponible, l.afp, l.salud, l.cesantia, l.impuesto_unico, l.anticipos, l.otros_desc, l.liquido, l.aportes_empleador]; })] };
+  const resumen = resumenCotizaciones(lista);
+  return `${cabecera("Libro de remuneraciones", nombrePeriodo(periodo))}
+  <div class="barra"><label>Mes<input type="month" id="lq-periodo" value="${periodo}"></label>${lista.length ? botonesExportar() : ""}</div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Trabajador</th><th class="num">Días</th><th class="num">Sueldo</th><th class="num">H. extra</th><th class="num">Bonos</th><th class="num">Gratif.</th><th class="num">Imponible</th><th class="num">No imp.</th><th class="num">AFP</th><th class="num">Salud</th><th class="num">Cesantía</th><th class="num">Imp. único</th><th class="num">Anticipos y otros</th><th class="num">Líquido</th></tr></thead>
+    <tbody>${lista.map((l) => `<tr><td>${esc(trabajadorPorId(l.trabajador)?.nombre || "(eliminado)")}</td><td class="num">${l.dias}</td><td class="num">${clp(l.sueldo)}</td><td class="num">${l.horas_extra_monto ? clp(l.horas_extra_monto) : ""}</td><td class="num">${l.bonos ? clp(l.bonos) : ""}</td><td class="num">${l.gratificacion ? clp(l.gratificacion) : ""}</td>
+      <td class="num">${clp(l.imponible)}</td><td class="num">${l.no_imponible ? clp(l.no_imponible) : ""}</td><td class="num">${clp(l.afp)}</td><td class="num">${clp(l.salud)}</td><td class="num">${l.cesantia ? clp(l.cesantia) : ""}</td><td class="num">${l.impuesto_unico ? clp(l.impuesto_unico) : ""}</td><td class="num">${l.anticipos + l.otros_desc ? clp(l.anticipos + l.otros_desc) : ""}</td><td class="num"><strong>${clp(l.liquido)}</strong></td></tr>`).join("")}</tbody>
+    <tfoot><tr class="total"><td>Total</td><td></td>${["sueldo", "horas_extra_monto", "bonos", "gratificacion", "imponible", "no_imponible", "afp", "salud", "cesantia", "impuesto_unico"].map((k) => `<td class="num">${clp(sumaDe(lista, k))}</td>`).join("")}<td class="num">${clp(lista.reduce((s, l) => s + l.anticipos + l.otros_desc, 0))}</td><td class="num">${clp(sumaDe(lista, "liquido"))}</td></tr></tfoot></table></div>
+    <h2>Cotizaciones y retenciones del mes</h2>
+    <div class="tabla"><table><thead><tr><th>Concepto</th><th class="num">Monto</th></tr></thead><tbody>${resumen.map(([n, v]) => `<tr><td>${esc(n)}</td><td class="num">${clp(v)}</td></tr>`).join("")}
+      <tr class="sub"><td>Aportes del empleador</td><td class="num">${clp(sumaDe(lista, "aportes_empleador"))}</td></tr><tr class="total"><td>Costo total para la empresa</td><td class="num">${clp(sumaDe(lista, "haberes") + sumaDe(lista, "aportes_empleador"))}</td></tr></tbody></table></div>
+    <p class="ayuda">Usa este resumen para declarar y pagar en Previred. El impuesto único retenido se paga en el F29 (código 48).</p>`
+    : `<div class="caja vacio"><p>No hay liquidaciones calculadas en ${nombrePeriodo(periodo)}.</p></div>`}`;
+}
+
+/* ---------- parámetros ---------- */
+function vistaParametros() {
+  const periodo = periodoLiquidaciones(), pr = parametrosPrev(periodo), pe = S.prevEdit;
+  const propios = (S.prev.parametros || []).slice().sort((a, b) => (a.desde < b.desde ? -1 : 1));
+  const rc = empresa().rem_config || {};
+  return `${cabecera("Parámetros previsionales", "")}
+  <div class="aviso">Valores referenciales sacados de fuentes públicas (Superintendencia de Pensiones, Previred y sitios de remuneraciones). Confírmalos antes de pagar cotizaciones; los que cambien, regístralos aquí.</div>
+  <section class="caja"><h2>Vigentes en ${nombrePeriodo(periodo)}</h2>
+    <dl class="ficha"><dt>Ingreso mínimo mensual</dt><dd>$${clp(pr.imm)}</dd><dt>Tope imponible AFP y salud</dt><dd>${comaDecimal(pr.tope_afp_uf)} UF</dd><dt>Tope imponible seguro de cesantía</dt><dd>${comaDecimal(pr.tope_afc_uf)} UF</dd>
+      <dt>SIS (empleador)</dt><dd>${comaDecimal(pr.sis)} %</dd><dt>Cotización adicional del empleador (reforma)</dt><dd>${comaDecimal(pr.reforma)} %</dd><dt>Mutual (esta empresa)</dt><dd>${comaDecimal(tasaMutual())} %</dd>
+      <dt>Vigencia desde</dt><dd>${pr.aproximado ? "mes anterior a los datos cargados" : nombrePeriodo(pr.desde)}</dd></dl>
+    <p class="ayuda">Seguro de cesantía: contrato indefinido, 0,6 % el trabajador y 2,4 % el empleador; plazo fijo u obra, 3 % el empleador. AFP: 10 % más la comisión de cada administradora. Salud: 7 %, o el plan pactado si es mayor.</p></section>
+  ${puedeEditar(`<form class="caja" data-form="n-parametros"><h2>Registrar nuevos valores</h2>
+    <div class="form"><label>Rigen desde (mes)<input type="month" id="pv-desde" value="${esc(pe?.desde || periodo)}"></label><label>Ingreso mínimo ($)<input id="pv-imm" inputmode="numeric" value="${clp(pe?.imm ?? pr.imm)}"></label>
+      <label>Tope AFP y salud (UF)<input id="pv-tope-afp" inputmode="decimal" value="${comaDecimal(pe?.tope_afp_uf ?? pr.tope_afp_uf)}"></label><label>Tope cesantía (UF)<input id="pv-tope-afc" inputmode="decimal" value="${comaDecimal(pe?.tope_afc_uf ?? pr.tope_afc_uf)}"></label>
+      <label>SIS empleador (%)<input id="pv-sis" inputmode="decimal" value="${comaDecimal(pe?.sis ?? pr.sis)}"></label><label>Cotización adicional empleador (%)<input id="pv-reforma" inputmode="decimal" value="${comaDecimal(pe?.reforma ?? pr.reforma)}"></label></div>
+    <div class="acciones"><button class="btn" type="submit">Guardar valores</button></div></form>
+    <form class="caja" data-form="n-mutual"><h2>Mutual de seguridad de esta empresa</h2>
+      <div class="form"><label>Nombre<input id="mu-nombre" value="${esc(rc.mutual_nombre || "")}" placeholder="ACHS, IST, Mutual de Seguridad"></label><label>Tasa total (%)<input id="mu-tasa" inputmode="decimal" value="${comaDecimal(rc.mutual ?? MUTUAL_BASE)}"></label></div>
+      <p class="ayuda">Cotización básica de 0,93 % más la adicional que fija la mutual según el riesgo de la empresa.</p>
+      <div class="acciones"><button class="btn" type="submit">Guardar</button></div></form>`)}
+  ${propios.length ? `<h2>Valores registrados</h2><div class="tabla"><table><thead><tr><th>Desde</th><th class="num">Ingreso mínimo</th><th class="num">Tope AFP (UF)</th><th class="num">Tope cesantía (UF)</th><th class="num">SIS</th><th class="num">Adicional empleador</th><th></th></tr></thead><tbody>
+    ${propios.map((x) => `<tr><td>${mesCap(x.desde)}</td><td class="num">${clp(x.imm)}</td><td class="num">${comaDecimal(x.tope_afp_uf)}</td><td class="num">${comaDecimal(x.tope_afc_uf)}</td><td class="num">${comaDecimal(x.sis)} %</td><td class="num">${comaDecimal(x.reforma)} %</td>
+      <td>${puedeEditar(`<button class="btn enlace" type="button" data-n="editar-parametros" data-id="${x.desde}">Editar</button><button class="btn enlace" type="button" data-n="eliminar-parametros" data-id="${x.desde}">Eliminar</button>`)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+  <h2>Comisiones de las AFP (referencia)</h2>
+  <div class="tabla"><table><thead><tr><th>AFP</th><th class="num">Comisión</th><th class="num">Total a descontar (10 % + comisión)</th></tr></thead><tbody>${Object.entries(AFPS).map(([n, c]) => `<tr><td>${n}</td><td class="num">${comaDecimal(c)} %</td><td class="num">${comaDecimal((10 + c).toFixed(2))} %</td></tr>`).join("")}</tbody></table></div>
+  <p class="ayuda">La comisión de cada trabajador se guarda en su ficha; cámbiala allí si la AFP la modifica.</p>`;
+}
+async function guardarParametros() {
+  const v = (id) => $("#pv-" + id).value, desde = v("desde");
+  const d = { desde, imm: parseMonto(v("imm") || "0"), tope_afp_uf: decimal(v("tope-afp")), tope_afc_uf: decimal(v("tope-afc")), sis: decimal(v("sis")), reforma: decimal(v("reforma")) };
+  if (!/^\d{4}-\d{2}$/.test(desde)) return aviso("Indica desde qué mes rigen los valores.");
+  if (!(d.imm > 0)) return aviso("Ingreso mínimo: ingresa un monto en pesos.");
+  for (const [n, x, max] of [["Tope AFP", d.tope_afp_uf, 500], ["Tope cesantía", d.tope_afc_uf, 500], ["SIS", d.sis, 20], ["Cotización adicional", d.reforma, 20]]) if (x == null || !Number.isFinite(x) || x < 0 || x > max) return aviso(`${n}: ingresa un número válido, por ejemplo 1,62.`);
+  await ocupado(async () => {
+    const parametros = [...(S.prev.parametros || []).filter((x) => x.desde !== desde), d];
+    S.prev = { ...S.prev, parametros }; await S.almacen.set("config/previsional", S.prev);
+    S.prevEdit = null; render(); aviso("Parámetros guardados.");
+  }, "No se pudieron guardar los parámetros");
+}
+async function guardarMutual() {
+  const tasa = decimal($("#mu-tasa").value);
+  if (tasa == null || !Number.isFinite(tasa) || tasa < 0 || tasa > 10) return aviso("Tasa de la mutual: ingresa un porcentaje, por ejemplo 0,93.");
+  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), rem_config: { mutual: tasa, mutual_nombre: $("#mu-nombre").value.trim() } }); render(); aviso("Mutual guardada."); }, "No se pudo guardar la mutual");
+}
+
+/* ------------------------------------------------------------------ renta anual (F22) */
+/* Tasas del impuesto de primera categoría. Pro Pyme general: 12,5 % en los años comerciales 2025 a 2027, 15 % en 2028 y 25 % desde 2029 (Circular SII 53 de 2025). Verifica cada año. */
+const REGIMENES_RENTA = {
+  d3: ["Pro Pyme general (14 D N° 3)", (anio) => (anio >= 2025 && anio <= 2027 ? 12.5 : anio === 2028 ? 15 : 25)],
+  d8: ["Pro Pyme transparente (14 D N° 8)", () => 0],
+  a: ["Régimen general semi integrado (14 A)", () => 27],
+};
+const AJUSTES_SUGERIDOS = {
+  agregado: ["Gastos rechazados (art. 21 LIR)", "Multas e intereses no aceptados", "Provisiones no aceptadas", "Gastos sin respaldo o no necesarios para producir la renta", "Retiros o gastos personales del propietario", "Depreciación contable mayor que la tributaria"],
+  deduccion: ["Corrección monetaria del capital propio", "Ingresos devengados y no percibidos (base de caja)", "Ingresos no constitutivos de renta", "Depreciación tributaria mayor que la contable"],
+};
+function regimenSugerido() {
+  const t = String(empresa()?.regimen || "").toLowerCase();
+  return /transparente|d\s?8|n°\s?8/.test(t) ? "d8" : /14\s?a|general|semi/.test(t) && !/pro ?pyme|d\s?3/.test(t) ? "a" : "d3";
+}
+function nuevaRenta(anio) {
+  const regimen = regimenSugerido(), previa = S.renta.find((x) => x.id === String(anio - 1));
+  return { anio, regimen, tasa: REGIMENES_RENTA[regimen][1](anio), perdida_anterior: previa?.calculo?.perdida_siguiente || 0, ajustes: [], creditos: [], propietarios: [], ppm_manual: null, observacion: "" };
+}
+function rentaActual() {
+  const anio = Number(S.rentaAnio || empresa().ejercicio);
+  if (!S.rentaEdit || S.rentaEdit.anio !== anio || S.rentaEditEid !== S.eid) {
+    const g = S.renta.find((x) => x.id === String(anio));
+    S.rentaEdit = g ? JSON.parse(JSON.stringify({ ...g, anio })) : nuevaRenta(anio); S.rentaEditEid = S.eid;
+  }
+  return S.rentaEdit;
+}
+function ppmDelAnio(anio) {
+  const guardados = S.f29Borradores.filter((b) => b.id.startsWith(String(anio)));
+  const faltan = Array.from({ length: 12 }, (_, i) => `${anio}-${String(i + 1).padStart(2, "0")}`).filter((m) => !guardados.some((b) => b.id === m));
+  return { total: guardados.reduce((s, b) => s + (b.codigos?.["62"] || 0), 0), faltan };
+}
+function calcularRenta(r) {
+  const anio = r.anio, er = estadoResultados(`${anio}-01-01`, `${anio}-12-31`);
+  const agregados = r.ajustes.filter((a) => a.tipo === "agregado").reduce((s, a) => s + (a.monto || 0), 0);
+  const deducciones = r.ajustes.filter((a) => a.tipo === "deduccion").reduce((s, a) => s + (a.monto || 0), 0);
+  const antes = er.resultado + agregados - deducciones;
+  const perdidaUsada = antes > 0 ? Math.min(r.perdida_anterior || 0, antes) : 0;
+  const rli = Math.max(antes - perdidaUsada, 0);
+  const perdidaSiguiente = (r.perdida_anterior || 0) - perdidaUsada + (antes < 0 ? -antes : 0);
+  const idpc = r.regimen === "d8" ? 0 : Math.round((rli * Math.round(r.tasa * 100)) / 10000);
+  const ppm = ppmDelAnio(anio), ppmMonto = r.ppm_manual ?? ppm.total;
+  const otros = r.creditos.reduce((s, c) => s + (c.monto || 0), 0);
+  const creditos = ppmMonto + otros;
+  const atribuida = r.propietarios.map((p) => ({ ...p, monto: Math.round((rli * Math.round((p.porcentaje || 0) * 100)) / 10000) }));
+  return { er, agregados, deducciones, antes, perdidaUsada, rli, perdidaSiguiente, idpc, ppm, ppmMonto, otros, creditos, resultado: idpc - creditos, atribuida };
+}
+
+function leerFormularioRenta() {
+  const r = S.rentaEdit;
+  if (!r || !$("#rn-regimen")) return;
+  r.regimen = $("#rn-regimen").value;
+  const tasa = decimal($("#rn-tasa").value); if (tasa != null && Number.isFinite(tasa)) r.tasa = tasa;
+  const perdida = parseMonto($("#rn-perdida").value || "0"); r.perdida_anterior = Number.isNaN(perdida) ? 0 : perdida;
+  const monto = (id) => { const v = parseMonto($(id)?.value || "0"); return Number.isNaN(v) ? 0 : v; };
+  r.ajustes = r.ajustes.map((a, i) => ({ tipo: a.tipo, concepto: $(`#rn-aj-con-${i}`)?.value ?? a.concepto, monto: monto(`#rn-aj-monto-${i}`) }));
+  r.creditos = r.creditos.map((c, i) => ({ concepto: $(`#rn-cr-con-${i}`)?.value ?? c.concepto, monto: monto(`#rn-cr-monto-${i}`) }));
+  r.propietarios = r.propietarios.map((p, i) => ({ nombre: $(`#rn-pr-nom-${i}`)?.value ?? p.nombre, rut: $(`#rn-pr-rut-${i}`)?.value ?? p.rut, porcentaje: decimal($(`#rn-pr-pct-${i}`)?.value) ?? 0 }));
+  const ppm = $("#rn-ppm").value.trim(); r.ppm_manual = ppm === "" ? null : (Number.isNaN(parseMonto(ppm)) ? null : parseMonto(ppm));
+  r.observacion = $("#rn-obs").value;
+}
+
+function vistaRenta() {
+  const r = rentaActual(), c = calcularRenta(r), anio = r.anio;
+  const anios = aniosDesde(S.lista.map((a) => a.fecha), empresa().ejercicio, S.renta.map((x) => x.id));
+  if (!anios.includes(String(anio))) anios.unshift(String(anio));
+  const guardado = S.renta.find((x) => x.id === String(anio));
+  S.informe = () => informeRenta(r);
+  S.csv = csvRenta(r, c);
+  const cuentas = (arbol) => arbol.filas.filter((f) => !f.grupo && f.monto).map((f) => `<tr><td class="cod">${esc(f.codigo)}</td><td>${esc(f.nombre)}</td><td class="num">${clp(f.monto)}</td></tr>`).join("");
+  const listaAjuste = (tipo, sug) => `<datalist id="dl-${tipo}">${sug.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>`;
+  const filaAjuste = (a, i) => `<tr><td><input id="rn-aj-con-${i}" list="dl-${a.tipo}" value="${esc(a.concepto)}" style="width:100%" ${S.puedeEscribir ? "" : "readonly"}></td>
+    <td class="num"><input id="rn-aj-monto-${i}" class="monto" inputmode="numeric" value="${a.monto ? clp(a.monto) : ""}" ${S.puedeEscribir ? "" : "readonly"}></td>
+    <td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-ajuste" data-id="${i}">Quitar</button>`)}</td></tr>`;
+  const bloqueAjustes = (tipo, rotulo) => {
+    const filas = r.ajustes.map((a, i) => (a.tipo === tipo ? filaAjuste(a, i) : "")).join("");
+    return `<h3>${rotulo}</h3>${filas ? `<div class="tabla"><table><tbody>${filas}</tbody></table></div>` : `<p class="ayuda">Sin ajustes.</p>`}${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-ajuste" data-id="${tipo}">+ Agregar</button></div>`)}`;
+  };
+  return `${cabecera("Renta anual (F22)", `Año comercial ${anio} · Año tributario ${anio + 1}`)}
+  <p class="ayuda">Borrador del impuesto de primera categoría a partir de la contabilidad. Parte del resultado del ejercicio, aplica tus ajustes a la renta líquida imponible y descuenta los créditos. No reemplaza la declaración del SII: úsalo para anticipar el resultado y revisar la propuesta.</p>
+  <div class="barra"><label>Año comercial<select id="rn-anio">${opcionesAnio(anios, anio)}</select></label>${botonesExportar()}</div>
+  <div id="rn-tarjetas">${htmlTarjetasRenta(r, c)}</div>
+  <form id="form-renta" data-form="n-renta" class="caja">
+    <div class="form"><label>Régimen<select id="rn-regimen" ${S.puedeEscribir ? "" : "disabled"}>${Object.entries(REGIMENES_RENTA).map(([k, [n]]) => `<option value="${k}" ${r.regimen === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <label>Tasa del impuesto de primera categoría (%)<input id="rn-tasa" inputmode="decimal" value="${comaDecimal(r.tasa)}" ${S.puedeEscribir ? "" : "readonly"}></label></div>
+    <h2>1. Resultado del ejercicio</h2>
+    <div class="tabla"><table><tbody><tr class="titulo"><td colspan="3">Ingresos</td></tr>${cuentas(c.er.ingresos)}<tr class="sub"><td colspan="2">Total ingresos</td><td class="num">${clp(c.er.ingresos.total)}</td></tr>
+      <tr class="titulo"><td colspan="3">Gastos</td></tr>${cuentas(c.er.gastos)}<tr class="sub"><td colspan="2">Total gastos</td><td class="num">${clp(c.er.gastos.total)}</td></tr>
+      <tr class="total"><td colspan="2">${c.er.resultado < 0 ? "Pérdida" : "Utilidad"} del ejercicio</td><td class="num">${clp(c.er.resultado)}</td></tr></tbody></table></div>
+    <h2>2. Ajustes a la renta líquida imponible</h2>
+    ${listaAjuste("agregado", AJUSTES_SUGERIDOS.agregado)}${listaAjuste("deduccion", AJUSTES_SUGERIDOS.deduccion)}
+    ${bloqueAjustes("agregado", "Agregados (aumentan la renta)")}${bloqueAjustes("deduccion", "Deducciones (la disminuyen)")}
+    <label class="campo-largo">Pérdida tributaria de años anteriores ($)<input id="rn-perdida" inputmode="numeric" value="${r.perdida_anterior ? clp(r.perdida_anterior) : ""}" ${S.puedeEscribir ? "" : "readonly"}></label>
+    <div id="rn-calculo">${htmlCalculoRenta(r, c)}</div>
+    <h2>3. Créditos</h2>
+    <div class="form"><label>PPM pagados en el año ($)<input id="rn-ppm" inputmode="numeric" placeholder="${clp(c.ppm.total)}" value="${r.ppm_manual == null ? "" : clp(r.ppm_manual)}" ${S.puedeEscribir ? "" : "readonly"}>
+      <small>Si lo dejas vacío se usan los F29 guardados: $${clp(c.ppm.total)} (código 62).</small></label></div>
+    ${r.creditos.length ? `<div class="tabla"><table><tbody>${r.creditos.map((x, i) => `<tr><td><input id="rn-cr-con-${i}" value="${esc(x.concepto)}" placeholder="Ej. Crédito por capacitación SENCE" style="width:100%" ${S.puedeEscribir ? "" : "readonly"}></td>
+      <td class="num"><input id="rn-cr-monto-${i}" class="monto" inputmode="numeric" value="${x.monto ? clp(x.monto) : ""}" ${S.puedeEscribir ? "" : "readonly"}></td><td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-credito" data-id="${i}">Quitar</button>`)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-credito">+ Otro crédito</button></div>`)}
+    <div id="rn-final">${htmlFinalRenta(r, c)}</div>
+    <h2>4. Propietarios${r.regimen === "d8" ? " (atribución de la renta)" : ""}</h2>
+    ${r.propietarios.length ? `<div class="tabla"><table><thead><tr><th>Nombre</th><th>RUT</th><th class="num">Participación (%)</th><th class="num">Renta atribuida</th><th></th></tr></thead><tbody>${r.propietarios.map((p, i) => `<tr>
+      <td><input id="rn-pr-nom-${i}" value="${esc(p.nombre)}" ${S.puedeEscribir ? "" : "readonly"}></td><td><input id="rn-pr-rut-${i}" value="${esc(p.rut)}" ${S.puedeEscribir ? "" : "readonly"}></td>
+      <td class="num"><input id="rn-pr-pct-${i}" class="monto" style="width:6em" inputmode="decimal" value="${comaDecimal(p.porcentaje)}" ${S.puedeEscribir ? "" : "readonly"}></td><td class="num" id="rn-pr-monto-${i}">${clp(c.atribuida[i]?.monto || 0)}</td>
+      <td>${puedeEditar(`<button class="btn enlace" type="button" data-n="rn-del-prop" data-id="${i}">Quitar</button>`)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="ayuda">Sin propietarios registrados.</p>`}
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-prop">+ Agregar propietario</button></div>`)}
+    <label class="campo-largo">Observaciones<textarea id="rn-obs" rows="2" ${S.puedeEscribir ? "" : "readonly"}>${esc(r.observacion)}</textarea></label>
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="rn-guardar">Guardar borrador</button><button class="btn sec" type="submit">Recalcular</button>${guardado ? `<button class="btn sec" type="button" data-n="rn-descartar">Volver a lo guardado</button>` : ""}</div>`)}
+    ${guardado?.guardado_en ? `<p class="ayuda">Último borrador guardado el ${fechaHora(guardado.guardado_en)}.</p>` : ""}
+  </form>
+  <p class="ayuda">Pro Pyme general (14 D N° 3) determina la renta con ingresos percibidos y egresos pagados: registra en «Ajustes» las diferencias con la contabilidad devengada. Este borrador no calcula el capital propio tributario ni los registros de rentas empresariales (RAI, SAC, REX).</p>`;
+}
+
+
+function htmlTarjetasRenta(r, c) {
+  const alertas = [];
+  if (c.ppm.faltan.length && r.ppm_manual == null) alertas.push(`No hay borrador de F29 guardado para ${c.ppm.faltan.map((m) => mesCap(m)).join(", ")}: el crédito por PPM puede estar incompleto. Guarda esos F29 o ingresa el PPM pagado a mano.`);
+  if (r.regimen === "d8" && !r.propietarios.length) alertas.push("En el régimen transparente la renta se atribuye a los propietarios: agrégalos más abajo con su porcentaje.");
+  if (r.regimen === "d8" && r.propietarios.length && Math.abs(r.propietarios.reduce((s, p) => s + (p.porcentaje || 0), 0) - 100) > 0.001) alertas.push("Los porcentajes de los propietarios no suman 100 %.");
+  if (c.antes < 0) alertas.push(`El ejercicio termina con pérdida tributaria de $${clp(-c.antes)}; se arrastra a los años siguientes.`);
+  return `<div class="tarjetas">
+    <div class="tarjeta ${c.er.resultado < 0 ? "neg" : ""}"><span>Resultado contable</span><strong>$${clp(c.er.resultado)}</strong></div>
+    <div class="tarjeta"><span>Renta líquida imponible</span><strong>$${clp(c.rli)}</strong></div>
+    <div class="tarjeta"><span>Impuesto ${comaDecimal(r.tasa)} %</span><strong>$${clp(c.idpc)}</strong></div>
+    <div class="tarjeta ${c.resultado < 0 ? "" : "neg"}"><span>${c.resultado < 0 ? "Devolución estimada" : "Saldo a pagar"}</span><strong>$${clp(Math.abs(c.resultado))}</strong></div></div>
+  ${alertas.map((a) => `<div class="aviso">${esc(a)}</div>`).join("")}`;
+}
+function htmlCalculoRenta(r, c) {
+  return `<div class="tabla"><table><tbody><tr><td>Resultado contable</td><td class="num">${clp(c.er.resultado)}</td></tr><tr><td>(+) Agregados</td><td class="num">${clp(c.agregados)}</td></tr><tr><td>(−) Deducciones</td><td class="num">${clp(c.deducciones)}</td></tr>
+      ${c.perdidaUsada ? `<tr><td>(−) Pérdida de años anteriores imputada</td><td class="num">${clp(c.perdidaUsada)}</td></tr>` : ""}<tr class="total"><td>Renta líquida imponible</td><td class="num">${clp(c.rli)}</td></tr>
+      <tr><td>Impuesto de primera categoría (${comaDecimal(r.tasa)} %)${r.regimen === "d8" ? " · no se paga en el régimen transparente" : ""}</td><td class="num">${clp(c.idpc)}</td></tr></tbody></table></div>`;
+}
+function htmlFinalRenta(r, c) {
+  return `<div class="tabla"><table><tbody><tr><td>Impuesto de primera categoría</td><td class="num">${clp(c.idpc)}</td></tr><tr><td>(−) Créditos</td><td class="num">${clp(c.creditos)}</td></tr>
+      <tr class="pagar"><td>${c.resultado < 0 ? "Devolución estimada" : "Saldo a pagar"}</td><td class="num">${clp(Math.abs(c.resultado))}</td></tr></tbody></table></div>`;
+}
+const csvRenta = (r, c) => ({ archivo: `renta_${slug()}_${r.anio}.csv`, filas: filasRenta(r, c).map(([n, v]) => [n, v ?? ""]) });
+/* Recalcula sin volver a dibujar el formulario, para no perder el foco al pasar de un campo a otro. */
+function actualizarRenta() {
+  leerFormularioRenta();
+  const r = S.rentaEdit, c = calcularRenta(r);
+  $("#rn-tarjetas").innerHTML = htmlTarjetasRenta(r, c); $("#rn-calculo").innerHTML = htmlCalculoRenta(r, c); $("#rn-final").innerHTML = htmlFinalRenta(r, c);
+  c.atribuida.forEach((p, i) => { const el = $(`#rn-pr-monto-${i}`); if (el) el.textContent = clp(p.monto); });
+  S.csv = csvRenta(r, c);
+}
+
+function filasRenta(r, c) {
+  return [["Resultado contable del ejercicio", c.er.resultado], ["Agregados", c.agregados], ...r.ajustes.filter((a) => a.tipo === "agregado").map((a) => [`   ${a.concepto || "(sin detalle)"}`, a.monto]),
+    ["Deducciones", c.deducciones], ...r.ajustes.filter((a) => a.tipo === "deduccion").map((a) => [`   ${a.concepto || "(sin detalle)"}`, a.monto]),
+    ["Pérdida tributaria de años anteriores imputada", c.perdidaUsada], ["Renta líquida imponible", c.rli], [`Tasa del impuesto (${comaDecimal(r.tasa)} %)`, null], ["Impuesto de primera categoría", c.idpc],
+    ["PPM pagados", c.ppmMonto], ...r.creditos.map((x) => [`   ${x.concepto || "Otro crédito"}`, x.monto]), ["Total créditos", c.creditos], [c.resultado < 0 ? "Devolución estimada" : "Saldo a pagar", Math.abs(c.resultado)]];
+}
+function informeRenta(r) {
+  const c = calcularRenta(r);
+  const inf = new Informe("BORRADOR DE RENTA ANUAL (F22)", `AÑO COMERCIAL ${r.anio} · AÑO TRIBUTARIO ${r.anio + 1} · ${REGIMENES_RENTA[r.regimen][0].toUpperCase()}`,
+    [col("Concepto", 62), col("Monto", 18, "monto")], `renta_anual_${r.anio}`, { firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  const sec = (t) => inf.agregar([t], { estilo: "seccion", abarca: 0 });
+  sec("Resultado del ejercicio");
+  inf.agregar(["Ingresos", c.er.ingresos.total]); inf.agregar(["Gastos", c.er.gastos.total]); inf.agregar([c.er.resultado < 0 ? "Pérdida del ejercicio" : "Utilidad del ejercicio", c.er.resultado], { estilo: "subtotal" });
+  sec("Renta líquida imponible");
+  inf.agregar(["Resultado contable", c.er.resultado]);
+  inf.agregar(["(+) Agregados", sinCeros(c.agregados)]); for (const a of r.ajustes.filter((x) => x.tipo === "agregado")) inf.agregar([`      ${a.concepto || "(sin detalle)"}`, a.monto]);
+  inf.agregar(["(−) Deducciones", sinCeros(c.deducciones)]); for (const a of r.ajustes.filter((x) => x.tipo === "deduccion")) inf.agregar([`      ${a.concepto || "(sin detalle)"}`, a.monto]);
+  if (c.perdidaUsada) inf.agregar(["(−) Pérdida tributaria de años anteriores imputada", c.perdidaUsada]);
+  inf.agregar(["RENTA LÍQUIDA IMPONIBLE", c.rli], { estilo: "total" });
+  sec("Impuesto y créditos");
+  inf.agregar([`Impuesto de primera categoría (${comaDecimal(r.tasa)} %)`, c.idpc]);
+  inf.agregar(["(−) Pagos provisionales mensuales (PPM)", sinCeros(c.ppmMonto)]); for (const x of r.creditos) inf.agregar([`(−) ${x.concepto || "Otro crédito"}`, x.monto]);
+  inf.agregar([c.resultado < 0 ? "DEVOLUCIÓN ESTIMADA" : "SALDO A PAGAR", Math.abs(c.resultado)], { estilo: "destacado" });
+  if (c.atribuida.length) { sec("Atribución a los propietarios"); for (const p of c.atribuida) inf.agregar([`${p.nombre} · RUT ${p.rut} · ${comaDecimal(p.porcentaje)} %`, p.monto]); }
+  inf.recuadro = [[c.resultado < 0 ? "DEVOLUCIÓN ESTIMADA" : "SALDO A PAGAR", Math.abs(c.resultado)]];
+  inf.notas.push("Borrador referencial calculado a partir de la contabilidad. Verifica los valores con la propuesta de declaración del SII antes de declarar.");
+  if (r.observacion) inf.notas.push(`Observaciones: ${r.observacion}`);
+  return inf;
+}
+
+async function guardarRenta() {
+  leerFormularioRenta();
+  const r = S.rentaEdit, c = calcularRenta(r), { anio } = r;
+  if (!(r.tasa >= 0 && r.tasa <= 100)) return aviso("La tasa del impuesto debe estar entre 0 y 100 %.");
+  await ocupado(async () => {
+    const { id: _i, ...cuerpo } = r;
+    await S.almacen.set(`empresas/${S.eid}/renta/${anio}`, { ...cuerpo, calculo: { resultado_contable: c.er.resultado, rli: c.rli, idpc: c.idpc, creditos: c.creditos, resultado: c.resultado, perdida_siguiente: c.perdidaSiguiente }, guardado_en: new Date().toISOString() });
+    render(); aviso(`Borrador de renta ${anio} guardado.`);
+  }, "No se pudo guardar el borrador de renta");
+}
+
+/* ------------------------------------------------------------------ declaraciones juradas */
+function filas1887(anio) {
+  const filas = [], y = String(anio);
+  for (const l of S.liquidaciones.filter((x) => x.periodo.startsWith(y))) {
+    const t = trabajadorPorId(l.trabajador); if (!t) continue;
+    filas.push({ rut: t.rut, nombre: t.nombre, tipo: "Trabajador", periodo: l.periodo, imponible: l.imponible, no_imponible: l.no_imponible, cotizaciones: l.afp + l.salud + l.cesantia, tributable: l.base_tributable, impuesto: l.impuesto_unico, liquido: l.liquido });
+  }
+  for (const s of S.sueldos.filter((x) => x.periodo.startsWith(y))) {
+    const so = socioPorId(s.socio); if (!so) continue;
+    filas.push({ rut: so.rut, nombre: so.nombre, tipo: "Socio (sueldo empresarial)", periodo: s.periodo, imponible: s.bruto, no_imponible: 0, cotizaciones: s.afp + s.salud, tributable: s.base, impuesto: s.impuesto_unico, liquido: s.liquido });
+  }
+  return filas;
+}
+function perceptores1887(anio) {
+  const m = new Map();
+  for (const f of filas1887(anio)) {
+    const x = m.get(f.rut) || { rut: f.rut, nombre: f.nombre, tipo: f.tipo, meses: 0, imponible: 0, no_imponible: 0, cotizaciones: 0, tributable: 0, impuesto: 0, liquido: 0 };
+    x.meses++; for (const k of ["imponible", "no_imponible", "cotizaciones", "tributable", "impuesto", "liquido"]) x[k] += f[k];
+    m.set(f.rut, x);
+  }
+  return [...m.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+function filas1879(anio) { return S.honorarios.filter((b) => b.tipo === "BHE" && b.fecha.startsWith(String(anio))); }
+function prestadores1879(anio) {
+  const m = new Map();
+  for (const b of filas1879(anio)) {
+    const x = m.get(b.rut) || { rut: b.rut, nombre: b.nombre, boletas: 0, bruto: 0, retencion: 0, liquido: 0 };
+    x.boletas++; x.bruto += b.bruto; x.retencion += b.retencion; x.liquido += b.liquido; m.set(b.rut, x);
+  }
+  return [...m.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+function vistaDj() {
+  const anios = aniosDesde(S.liquidaciones.map((l) => l.periodo), S.sueldos.map((l) => l.periodo), S.honorarios.map((b) => b.fecha), empresa().ejercicio);
+  const anio = +(S.djAnio || empresa().ejercicio);
+  if (!anios.includes(String(anio))) anios.unshift(String(anio));
+  const t = pestanaActual("dj", "1887");
+  return `${pestanasDe("dj", [["1887", "DJ 1887 · Sueldos"], ["1879", "DJ 1879 · Honorarios"]])}
+  ${cabecera(t === "1879" ? "Declaración jurada 1879: retenciones de honorarios" : "Declaración jurada 1887: sueldos y otras rentas", `Año comercial ${anio} · Año tributario ${anio + 1}`)}
+  <div class="barra"><label>Año comercial<select id="dj-anio">${opcionesAnio(anios, anio)}</select></label></div>
+  ${t === "1879" ? vistaDj1879(anio) : vistaDj1887(anio)}`;
+}
+function vistaDj1887(anio) {
+  const lista = perceptores1887(anio), cols = ["imponible", "no_imponible", "cotizaciones", "tributable", "impuesto", "liquido"];
+  S.informe = () => informeDj1887(anio, lista);
+  S.csv = { archivo: `planilla_dj1887_${slug()}_${anio}.csv`, filas: [["RUT", "Nombre", "Tipo", "Meses", "Renta imponible", "Renta no imponible", "Cotizaciones", "Renta tributable", "Impuesto único retenido", "Líquido pagado"],
+    ...lista.map((x) => [x.rut, x.nombre, x.tipo, x.meses, ...cols.map((k) => x[k])])] };
+  return `<p class="ayuda">Resumen anual por persona de los sueldos de trabajadores y del sueldo empresarial de los socios, con el impuesto único retenido. Sirve de respaldo para ingresar la DJ 1887 y para entregar el certificado de sueldos. El SII cambió el formato de la declaración para el año tributario 2026, así que usa su formulario vigente y confirma el plazo (habitualmente fines de marzo).</p>
+  <div class="barra">${lista.length ? botonesExportar() : ""}</div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Nombre</th><th>RUT</th><th>Tipo</th><th class="num">Meses</th><th class="num">Renta imponible</th><th class="num">No imponible</th><th class="num">Cotizaciones</th><th class="num">Renta tributable</th><th class="num">Impuesto único</th><th class="num">Líquido</th><th></th></tr></thead>
+    <tbody>${lista.map((x) => `<tr><td>${esc(x.nombre)}</td><td class="cod">${esc(x.rut)}</td><td>${esc(x.tipo)}</td><td class="num">${x.meses}</td>${cols.map((k) => `<td class="num">${clp(x[k])}</td>`).join("")}
+      <td>${S.descargas ? `<button class="btn enlace" type="button" data-n="cert-1887" data-id="${esc(x.rut)}">Certificado</button>` : ""}</td></tr>`).join("")}</tbody>
+    <tfoot><tr class="total"><td colspan="3">Total</td><td></td>${cols.map((k) => `<td class="num">${clp(sumaDe(lista, k))}</td>`).join("")}<td></td></tr></tfoot></table></div>`
+    : `<div class="caja vacio"><p>No hay liquidaciones ni sueldos empresariales guardados en ${anio}.</p></div>`}`;
+}
+function vistaDj1879(anio) {
+  const lista = prestadores1879(anio);
+  S.informe = () => informeDj1879(anio, lista);
+  S.csv = { archivo: `planilla_dj1879_${slug()}_${anio}.csv`, filas: [["RUT", "Nombre", "Boletas", "Honorarios brutos", "Retención", "Líquido pagado"], ...lista.map((x) => [x.rut, x.nombre, x.boletas, x.bruto, x.retencion, x.liquido])] };
+  return `<p class="ayuda">Honorarios brutos y retenciones de las boletas de honorarios recibidas (BHE) del año, por prestador. El SII precarga gran parte de esta declaración con las boletas electrónicas: compara y completa con lo que falte. Plazo habitual: fines de marzo; confírmalo en la resolución anual del SII.</p>
+  <div class="barra">${lista.length ? botonesExportar() : ""}</div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Prestador</th><th>RUT</th><th class="num">Boletas</th><th class="num">Honorarios brutos</th><th class="num">Retención</th><th class="num">Líquido pagado</th><th></th></tr></thead>
+    <tbody>${lista.map((x) => `<tr><td>${esc(x.nombre)}</td><td class="cod">${esc(x.rut)}</td><td class="num">${x.boletas}</td><td class="num">${clp(x.bruto)}</td><td class="num">${clp(x.retencion)}</td><td class="num">${clp(x.liquido)}</td>
+      <td>${S.descargas ? `<button class="btn enlace" type="button" data-n="cert-1879" data-id="${esc(x.rut)}">Certificado</button>` : ""}</td></tr>`).join("")}</tbody>
+    <tfoot><tr class="total"><td colspan="2">Total</td><td class="num">${sumaDe(lista, "boletas")}</td><td class="num">${clp(sumaDe(lista, "bruto"))}</td><td class="num">${clp(sumaDe(lista, "retencion"))}</td><td class="num">${clp(sumaDe(lista, "liquido"))}</td><td></td></tr></tfoot></table></div>`
+    : `<div class="caja vacio"><p>No hay boletas de honorarios recibidas en ${anio}. Se registran en Tributario → Honorarios.</p></div>`}`;
+}
+
+function informeDj1887(anio, lista) {
+  const inf = new Informe("PLANILLA DE APOYO DJ 1887", `SUELDOS Y OTRAS RENTAS · AÑO COMERCIAL ${anio} · AÑO TRIBUTARIO ${anio + 1}`,
+    [col("Nombre", 24), col("RUT", 11), col("Meses", 6, "numero"), col("Renta imponible", 12, "monto"), col("No imponible", 11, "monto"), col("Cotizaciones", 11, "monto"), col("Renta tributable", 12, "monto"), col("Impuesto único", 11, "monto"), col("Líquido", 12, "monto")],
+    `planilla_dj1887_${anio}`, { horizontal: true, firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  for (const x of lista) inf.agregar([x.nombre, x.rut, x.meses, x.imponible, sinCeros(x.no_imponible), x.cotizaciones, x.tributable, x.impuesto, x.liquido]);
+  inf.agregar(["TOTAL", null, null, ...["imponible", "no_imponible", "cotizaciones", "tributable", "impuesto", "liquido"].map((k) => sumaDe(lista, k))], { estilo: "total" });
+  inf.notas.push("Planilla de apoyo para la DJ 1887; no es el formulario del SII.");
+  return inf;
+}
+function informeDj1879(anio, lista) {
+  const inf = new Informe("PLANILLA DE APOYO DJ 1879", `RETENCIONES DE HONORARIOS · AÑO COMERCIAL ${anio} · AÑO TRIBUTARIO ${anio + 1}`,
+    [col("Prestador", 30), col("RUT", 12), col("Boletas", 8, "numero"), col("Honorarios brutos", 14, "monto"), col("Retención", 14, "monto"), col("Líquido pagado", 14, "monto")], `planilla_dj1879_${anio}`, { firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  for (const x of lista) inf.agregar([x.nombre, x.rut, x.boletas, x.bruto, x.retencion, x.liquido]);
+  inf.agregar(["TOTAL", null, sumaDe(lista, "boletas"), sumaDe(lista, "bruto"), sumaDe(lista, "retencion"), sumaDe(lista, "liquido")], { estilo: "total" });
+  inf.notas.push("Planilla de apoyo para la DJ 1879; no es el formulario del SII.");
+  return inf;
+}
+function informeCertificado1887(anio, rut) {
+  const filas = filas1887(anio).filter((f) => f.rut === rut).sort((a, b) => (a.periodo < b.periodo ? -1 : 1)), p = filas[0] || { nombre: "", tipo: "" };
+  const inf = new Informe("CERTIFICADO DE SUELDOS Y RETENCIONES", `AÑO ${anio} · ${p.nombre.toUpperCase()} · RUT ${rut}`,
+    [col("Mes", 16), col("Renta imponible", 14, "monto"), col("Cotizaciones", 13, "monto"), col("Renta tributable", 14, "monto"), col("Impuesto único retenido", 15, "monto"), col("Líquido pagado", 14, "monto")], `certificado_sueldos_${limpiarRut(rut)}_${anio}`, { firmas: ["EMPLEADOR"] });
+  for (const f of filas) inf.agregar([mesCap(f.periodo), f.imponible + 0, f.cotizaciones, f.tributable, f.impuesto, f.liquido]);
+  inf.agregar(["TOTAL", ...["imponible", "cotizaciones", "tributable", "impuesto", "liquido"].map((k) => sumaDe(filas, k))], { estilo: "total" });
+  inf.notas.push(`Se certifica que ${p.nombre}, RUT ${rut}, recibió de ${empresa().razon_social} las rentas y retenciones indicadas durante ${anio}.`);
+  inf.notas.push("Documento de respaldo de la empresa. Para efectos del SII, usa el Certificado de sueldos oficial que genera su sistema al presentar la DJ 1887.");
+  return inf;
+}
+function informeCertificado1879(anio, rut) {
+  const filas = filas1879(anio).filter((b) => b.rut === rut).sort((a, b) => (a.fecha < b.fecha ? -1 : 1)), p = filas[0] || { nombre: "" };
+  const inf = new Informe("CERTIFICADO DE HONORARIOS Y RETENCIONES", `AÑO ${anio} · ${p.nombre.toUpperCase()} · RUT ${rut}`,
+    [col("Fecha", 12, "fecha"), col("Folio", 10), col("Honorario bruto", 14, "monto"), col("Tasa", 8), col("Retención", 14, "monto"), col("Líquido pagado", 14, "monto")], `certificado_honorarios_${limpiarRut(rut)}_${anio}`, { firmas: ["EMPLEADOR"] });
+  for (const b of filas) inf.agregar([b.fecha, b.folio, b.bruto, `${comaDecimal(b.tasa)} %`, b.retencion, b.liquido]);
+  inf.agregar([null, "TOTAL", sumaDe(filas, "bruto"), null, sumaDe(filas, "retencion"), sumaDe(filas, "liquido")], { estilo: "total" });
+  inf.notas.push(`Se certifica que ${empresa().razon_social} pagó a ${p.nombre}, RUT ${rut}, los honorarios y retuvo los impuestos indicados durante ${anio}.`);
+  return inf;
+}
+
+/* ------------------------------------------------------------------ eventos de los módulos nuevos */
+/* En fase de captura para reiniciar la edición antes de que el manejador común cambie de pestaña. */
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-pestana]");
+  if (t && /^(activos|rrhh|dj):/.test(t.dataset.pestana)) { S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null; }
+}, true);
+
+async function descargarBlob(nombre, blob, mensaje) {
+  if (await guardarArchivo(nombre, blob)) aviso(mensaje);
+}
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-n]");
+  if (!t || t.disabled) return;
+  const id = t.dataset.id;
+  if (t.dataset.n.startsWith("rn-")) leerFormularioRenta();
+  const r = S.rentaEdit;
+  switch (t.dataset.n) {
+    case "nuevo-activo": S.activoEdit = activoVacio(); render(); $("#af-nombre")?.focus(); break;
+    case "editar-activo": { const a = activoPorId(id); S.activoEdit = { ...a, vida_anios: String(a.vida_normal_meses / 12) }; render(); window.scrollTo(0, 0); break; }
+    case "cancelar-activo": S.activoEdit = null; render(); break;
+    case "pedir-eliminar-activo": S.confirmar = "activo:" + id; render(); break;
+    case "eliminar-activo":
+      if (S.depreciaciones.some((d) => (d.items || []).some((i) => i.activo === id && contabilizado(i)))) { S.confirmar = null; render(); aviso("El activo tiene depreciación contabilizada: dalo de baja en lugar de eliminarlo."); break; }
+      ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/activos/${id}`); S.confirmar = null; render(); aviso("Activo eliminado."); }, "No se pudo eliminar el activo"); break;
+    case "contabilizar-dep":
+      try { const p = propuestaDepreciacion(periodoActivos()); abrirPropuesta(p.fecha, p.glosa, p.lineas, `Depreciación de ${nombrePeriodo(p.periodo)}: ${p.cantidad} bien(es).`, { depPeriodo: p.periodo, depItems: p.items }); }
+      catch (e) { if (e instanceof ErrorRcv) aviso(e.message); else throw e; } break;
+    case "ir-dep": S.afPeriodo = id; S.afPeriodoEid = S.eid; render(); window.scrollTo(0, 0); break;
+
+    case "nuevo-trabajador": S.trabEdit = trabajadorVacio(); render(); $("#tb-nombre")?.focus(); break;
+    case "editar-trabajador": S.trabEdit = { ...trabajadorPorId(id) }; render(); window.scrollTo(0, 0); break;
+    case "cancelar-trabajador": S.trabEdit = null; render(); break;
+    case "pedir-eliminar-trabajador": S.confirmar = "trab:" + id; render(); break;
+    case "eliminar-trabajador":
+      if (S.liquidaciones.some((l) => l.trabajador === id)) { S.confirmar = null; render(); aviso("El trabajador tiene liquidaciones registradas: registra su fecha de término en lugar de eliminarlo."); break; }
+      ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/trabajadores/${id}`); S.confirmar = null; render(); aviso("Trabajador eliminado."); }, "No se pudo eliminar el trabajador"); break;
+    case "ver-contrato": S.contratoVer = id; render(); window.scrollTo(0, 0); break;
+    case "volver-trabajadores": S.contratoVer = null; render(); break;
+    case "pdf-contrato": { const tr = trabajadorPorId(id); ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`contrato_${nombreSeguro(tr.nombre)}.pdf`, await pdfContrato(tr), "Contrato descargado."); }, "No se pudo generar el contrato"); break; }
+    case "ver-liquidacion": S.liqVer = id; render(); window.scrollTo(0, 0); break;
+    case "volver-liquidaciones": S.liqVer = null; render(); break;
+    case "liquidar-mes": liquidarMes(); break;
+    case "eliminar-liquidacion": ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/liquidaciones/${id}`); render(); aviso("Liquidación eliminada."); }, "No se pudo eliminar la liquidación"); break;
+    case "contabilizar-rem":
+      try { const p = propuestaRemuneraciones(periodoLiquidaciones()); abrirPropuesta(p.fecha, p.glosa, p.lineas, `Remuneraciones de ${nombrePeriodo(p.periodo)}: ${p.cantidad} liquidación(es).`, { liquidacionIds: p.ids }); }
+      catch (e) { if (e instanceof ErrorRcv) aviso(e.message); else throw e; } break;
+    case "editar-parametros": S.prevEdit = (S.prev.parametros || []).find((x) => x.desde === id) || null; render(); window.scrollTo(0, 0); break;
+    case "eliminar-parametros": ocupado(async () => { S.prev = { ...S.prev, parametros: (S.prev.parametros || []).filter((x) => x.desde !== id) }; await S.almacen.set("config/previsional", S.prev); render(); aviso("Valores eliminados."); }, "No se pudieron eliminar los valores"); break;
+
+    case "rn-add-ajuste": r.ajustes.push({ tipo: id, concepto: "", monto: 0 }); render(); break;
+    case "rn-del-ajuste": r.ajustes.splice(+id, 1); render(); break;
+    case "rn-add-credito": r.creditos.push({ concepto: "", monto: 0 }); render(); break;
+    case "rn-del-credito": r.creditos.splice(+id, 1); render(); break;
+    case "rn-add-prop": r.propietarios.push({ nombre: "", rut: "", porcentaje: 0 }); render(); break;
+    case "rn-del-prop": r.propietarios.splice(+id, 1); render(); break;
+    case "rn-guardar": guardarRenta(); break;
+    case "rn-descartar": S.rentaEdit = null; render(); break;
+    case "cert-1887": S.informe = () => informeCertificado1887(+(S.djAnio || empresa().ejercicio), id); exportar("pdf"); break;
+    case "cert-1879": S.informe = () => informeCertificado1879(+(S.djAnio || empresa().ejercicio), id); exportar("pdf"); break;
+  }
+});
+
+document.addEventListener("submit", (ev) => {
+  const f = ev.target.closest("form[data-form]");
+  if (!f) return;
+  switch (f.dataset.form) {
+    case "n-activo": ev.preventDefault(); guardarActivo(); break;
+    case "n-trabajador": ev.preventDefault(); guardarTrabajador(); break;
+    case "n-parametros": ev.preventDefault(); guardarParametros(); break;
+    case "n-mutual": ev.preventDefault(); guardarMutual(); break;
+    case "n-renta": ev.preventDefault(); actualizarRenta(); break;
+  }
+});
+
+document.addEventListener("change", (ev) => {
+  const el = ev.target, id = el.id || "";
+  if (id === "af-periodo" && /^\d{4}-\d{2}$/.test(el.value)) { S.afPeriodo = el.value; S.afPeriodoEid = S.eid; render(); }
+  else if (id === "af-anio") { S.afAnio = el.value; render(); }
+  else if (id === "af-cat") { const anios = CATEGORIAS_ACTIVO[+el.value]?.[1]; if (anios) $("#af-vida").value = String(anios); }
+  else if (id === "tb-afp") { $("#tb-afp_comision").value = comaDecimal(AFPS[el.value] ?? ""); }
+  else if (id === "tb-jornada") { const d = $("#tb-distribucion"), h = Number(el.value); if (Number.isFinite(h) && h > 0 && (!d.value || d.value.startsWith("Lunes a viernes, de 09:00"))) d.value = distribucionSugerida(h); }
+  else if (id === "lq-periodo" && /^\d{4}-\d{2}$/.test(el.value)) { S.liqPeriodo = el.value; S.liqPeriodoEid = S.eid; S.liqVer = null; render(); }
+  else if (id === "dj-anio") { S.djAnio = el.value; render(); }
+  else if (id === "rn-anio") { S.rentaAnio = el.value; S.rentaEdit = null; render(); }
+  else if (id === "rn-regimen" && S.rentaEdit) { leerFormularioRenta(); S.rentaEdit.tasa = REGIMENES_RENTA[S.rentaEdit.regimen][1](S.rentaEdit.anio); render(); }
+  else if (el.closest?.("#form-renta") && S.rentaEdit) actualizarRenta();
+});
+
 /* ------------------------------------------------------------------ eventos */
 function slug() { return (empresa()?.razon_social || "empresa").normalize("NFD").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").toLowerCase(); }
 
@@ -3332,6 +4446,9 @@ function cambiarEmpresa(id) {
   S.desuscribirRcv?.(); S.desuscribirRcv = null; S.rcv = []; S.rcvSel.clear(); S.docEdit = null;
   S.desuscribirF29?.(); S.desuscribirF29 = null; S.f29Borradores = []; S.f29 = null;
   S.desuscribirRem.forEach((f) => f?.()); S.desuscribirRem = []; S.socios = []; S.sueldos = []; S.honorarios = []; S.remPeriodo = null;
+  S.desuscribirNx.forEach((f) => f?.()); S.desuscribirNx = [];
+  S.activos = []; S.depreciaciones = []; S.trabajadores = []; S.liquidaciones = []; S.renta = [];
+  S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null; S.rentaEdit = null; S.afPeriodo = null; S.liqPeriodo = null;
   S.periodosAnio = null; S.cierreAnio = null; S.apertura = null;
   S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
   prepararCuentas();
@@ -3345,6 +4462,12 @@ function cambiarEmpresa(id) {
     if (id !== S.eid) return;
     S[col] = lista;
     if (["sueldos", "honorarios", "f29"].includes(S.vista) && !S.ocupado) render();
+  }, () => {}));
+  const vistasNx = { activos: ["activos"], depreciaciones: ["activos"], trabajadores: ["rrhh", "dj"], liquidaciones: ["rrhh", "dj", "renta"], renta: [] };
+  S.desuscribirNx = Object.keys(vistasNx).map((col) => S.almacen.onCol(`empresas/${id}/${col}`, (lista) => {
+    if (id !== S.eid) return;
+    S[col] = lista;
+    if (vistasNx[col].includes(S.vista) && !S.ocupado && !S.activoEdit && !S.trabEdit && !S.prevEdit) render();
   }, () => {}));
   S.desuscribirF29 = S.almacen.onCol(`empresas/${id}/f29`, (lista) => {
     if (id !== S.eid) return;
@@ -3400,6 +4523,7 @@ document.addEventListener("click", (ev) => {
       await BD.deleteAsiento(S.eid, ed.id);
       await liberarDocumentos(ed.id);
       await liberarRemuneraciones(ed.id);
+      await liberarDepreciacion(ed.id);
       if (mesCerrado(ed.fechaOriginal)) await registrarCambio("Eliminación", describirAsiento(n, ed.fechaOriginal, ed.glosaOriginal), [ed.fechaOriginal.slice(0, 7)], ed.motivo);
       S.edit = null; ir("asientos"); aviso(`Asiento N° ${n} eliminado.`);
     }, "No se pudo eliminar el asiento"); break;
@@ -3551,6 +4675,10 @@ async function iniciar() {
   S.almacen.onDoc("config/utm", (d) => {
     S.utm = d?.valores || {};
     if (["f29", "sueldos", "honorarios"].includes(S.vista) && !S.ocupado) render();
+  }, () => {});
+  S.almacen.onDoc("config/previsional", (d) => {
+    S.prev = { uf: d?.uf || {}, parametros: d?.parametros || [] };
+    if (S.vista === "rrhh" && !S.ocupado && !S.trabEdit) render();
   }, () => {});
   S.almacen.onDoc("config/contador", (d) => {
     S.contador = { nombre: d?.nombre || "", rut: d?.rut || "", firma: d?.firma || "" };
