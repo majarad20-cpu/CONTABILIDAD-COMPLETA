@@ -78,6 +78,8 @@ cada bien.
 
 Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tributarias**.
 
+Lo que falta por hacer, con su prioridad, está en [PENDIENTES.md](PENDIENTES.md).
+
 ## Versiones del artefacto
 
 El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
