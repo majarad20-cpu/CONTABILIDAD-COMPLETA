@@ -73,7 +73,7 @@ cada bien.
   - **Capital propio tributario**: activos que son inversión efectiva a valor tributario menos el pasivo exigible (art. 41 N° 1 LIR), con el tratamiento y el ajuste de cada cuenta, el ajuste del activo fijo según las fichas, el CPT inicial reajustado y su variación.
   - **Registros de rentas empresariales**: RAI, REX y SAC (y DDAN en el 14 A), capital aportado, retiros con su orden de imputación (RAI, DDAN y REX) y arrastre de los saldos finales al año siguiente.
   Cada pestaña se exporta a PDF, Excel y CSV. Todo es un borrador referencial: compáralo con la propuesta del SII y con los recuadros del F22 antes de declarar.
-- *Declaraciones juradas*: planillas de apoyo para la **DJ 1887** (sueldos de trabajadores y sueldo empresarial) y la
+- *Declaraciones juradas*: planillas de apoyo para la **DJ 1887** (sueldos de trabajadores, finiquitos y sueldo empresarial) y la
   **DJ 1879** (retenciones de honorarios), con certificados por persona. No reemplazan el formulario del SII.
 
 Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tributarias**.
@@ -82,6 +82,7 @@ Las cuentas que usan estos módulos se configuran en **Tributario → Cuentas tr
 
 El número de versión aparece al pie del menú lateral y se define en `VERSION` dentro de `artefacto/contabilidad.html`.
 
+- **1.4.1**: la DJ 1887 incluye los finiquitos (remuneración del mes e indemnizaciones).
 - **1.4.0**: remuneraciones ampliadas: Ley 21.735 (cotización adicional del empleador con calendario), asignación familiar, comisiones y semana corrida, haberes y descuentos fijos, APV, trabajo pesado, costo de la empresa, planilla Previred, vacaciones y finiquitos con PDF y asiento. Valores referenciales (trabajo pesado, composición 2027-2032, asignación familiar): confírmalos con la Superintendencia de Pensiones y Previred.
 - **1.3.0**: renta con capital propio tributario, registros de rentas empresariales (RAI, DDAN, REX y SAC), renta líquida imponible con ajustes automáticos, base de caja Pro Pyme y pérdida reajustada; depreciación tributaria por bien en las fichas de activo fijo.
 - **1.2.0**: respaldo y restauración de la empresa (Datos de la empresa y Empresas e importación), protección de activos con depreciación contabilizada, aviso en pantalla ante errores inesperados, corrección del botón «Editar» de activo fijo y pruebas automáticas.
