@@ -88,6 +88,12 @@ tr.nc td { color: var(--neg); }
 tr.inactiva td { color: var(--muted); }
 td input.monto { width: 9em; text-align: right; font-family: var(--font-num); }
 tr.pagar td { font-weight: 700; font-size: 15px; background: var(--accent-soft); color: var(--accent); border-top: 2px solid var(--accent); }
+.pestanas { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.pestanas button { all: unset; cursor: pointer; padding: 8px 14px; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 500; }
+.pestanas button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.pestanas button:focus-visible { outline: 2px solid var(--accent); }
+.campo-largo { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.campo-largo textarea { width: 100%; resize: vertical; }
 .pagar-caja { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; border: 2px solid var(--accent); background: var(--accent-soft); }
 .pagar-caja span { font-weight: 600; text-transform: uppercase; letter-spacing: .05em; font-size: 13px; color: var(--accent); }
 .pagar-caja strong { font: 600 26px var(--font-num); color: var(--accent); font-variant-numeric: tabular-nums; }
@@ -157,6 +163,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const clp = (n) => (n < 0 ? "-" : "") + Math.round(Math.abs(n || 0)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const monto = (n) => n ? `<span class="${n < 0 ? "neg" : ""}">${clp(n)}</span>` : "";
 const fmtFecha = (f) => f ? `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}` : "";
+const fechaHora = (iso) => { const d = new Date(iso), dd = (n) => String(n).padStart(2, "0"); return isNaN(d) ? "" : `${dd(d.getDate())}/${dd(d.getMonth() + 1)}/${d.getFullYear()} ${dd(d.getHours())}:${dd(d.getMinutes())}`; };
 const hoy = () => new Date().toISOString().slice(0, 10);
 const nuevoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const porCodigo = (a, b) => (a.codigo < b.codigo ? -1 : a.codigo > b.codigo ? 1 : 0);
@@ -252,7 +259,7 @@ const S = {
   contador: { nombre: "", rut: "", firma: "" }, cambios: [], desuscribirCambios: null,
   periodosAnio: null, cierreAnio: null, apertura: null,
   f29Borradores: [], desuscribirF29: null, f29: null, utm: {},
-  informe: null, folioPendiente: false,
+  informe: null, folioPendiente: false, pestana: {}, historialAnio: {}, f29Ver: null,
   socios: [], sueldos: [], honorarios: [], desuscribirRem: [], remPeriodo: null, remPeriodoEid: null, socioEdit: null, boletaEdit: null,
   rcv: [], desuscribirRcv: null, rcvPeriodo: null, rcvPeriodoEid: null, rcvSel: new Set(), rcvMensajes: null, docEdit: null,
 };
@@ -425,7 +432,7 @@ const SECCIONES = [
 
 function ir(vista) {
   if (vista === "nuevo") { abrirEditor(null); return; }
-  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.docEdit = null; S.rcvMensajes = null; S.socioEdit = null; S.boletaEdit = null;
+  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.docEdit = null; S.rcvMensajes = null; S.socioEdit = null; S.boletaEdit = null;
   if (vista !== "editor") recordar("vista", vista);
   render();
   window.scrollTo(0, 0);
@@ -2129,7 +2136,7 @@ function resultadoF29() {
   return r;
 }
 
-function vistaF29() {
+function vistaF29Mes() {
   const p = parametrosF29();
   const f = resultadoF29(), c = f.codigos;
   const presentacion = periodoSiguiente(p.periodo), guardado = borradorF29(p.periodo);
@@ -2157,7 +2164,7 @@ function vistaF29() {
   <p class="ayuda">Remanente anterior tomado de: ${esc(f.entradas.origen_remanente)}.
     ${f.remanenteUtm != null ? `Reajuste como el SII: $${clp(f.entradas.remanente_anterior)} ÷ UTM de ${nombrePeriodo(p.periodo)} = ${f.remanenteUtm.toFixed(2).replace(".", ",")} UTM (dos decimales, aproximando desde 5) × UTM de ${nombrePeriodo(presentacion)} = $${clp(c["504"])} (reajuste ${f.reajuste >= 0 ? "+" : ""}${clp(f.reajuste)}).`
       : `Para reajustar el remanente ingresa la UTM de ${nombrePeriodo(p.periodo)} (cuando se presentó el F29 anterior) y la de ${nombrePeriodo(presentacion)} (cuando se presenta este F29).`}
-    ${guardado ? `Último guardado: ${new Date(guardado.guardado_en).toLocaleString("es-CL")}.` : ""}</p>
+    ${guardado ? `Último guardado: ${fechaHora(guardado.guardado_en)}.` : ""}</p>
   ${f.alertas.map((a) => `<div class="aviso">${esc(a)}</div>`).join("")}
   <div class="tabla f29"><table><thead><tr><th>Concepto</th><th class="num">Cód.</th><th class="num">Cantidad</th><th class="num">Cód.</th><th class="num">Monto</th></tr></thead><tbody>${filas}</tbody></table></div>
   <div class="caja pagar-caja"><span>Total a pagar (código 91)</span><strong>$${clp(c["91"])}</strong>
@@ -2181,9 +2188,11 @@ async function guardarF29() {
   if (!leerEntradasF29()) return;
   const f = resultadoF29(), p = parametrosF29();
   await ocupado(async () => {
-    await S.almacen.set(`empresas/${S.eid}/f29/${p.periodo}`, { codigos: f.codigos, entradas: f.entradas, guardado_en: new Date().toISOString() });
+    const previo = borradorF29(p.periodo) || {};
+    await S.almacen.set(`empresas/${S.eid}/f29/${p.periodo}`, { declarado: !!previo.declarado, fecha_declaracion: previo.fecha_declaracion || "", folio_sii: previo.folio_sii || "",
+      observacion: previo.observacion || "", codigos: f.codigos, entradas: f.entradas, alertas: f.alertas, comparacion: f.comparacion, guardado_en: new Date().toISOString() });
     p.manual = null; render();
-    aviso(`Borrador del F29 de ${nombrePeriodo(p.periodo)} guardado. Su remanente (código 77) se usará como remanente anterior del mes siguiente.`);
+    aviso(`Borrador del F29 de ${nombrePeriodo(p.periodo)} guardado en el historial. Su remanente (código 77) se usará como remanente anterior del mes siguiente.`);
   }, "No se pudo guardar el borrador");
 }
 
@@ -2273,7 +2282,7 @@ function propuestaSueldos(periodo) {
   return { ids: pendientes.map((l) => l.id), lineas: lineasNetas(netos), fecha: ultimoDia(periodo), glosa: `SUELDO EMPRESARIAL ${mesMayus(periodo)}`, cantidad: pendientes.length, periodo };
 }
 
-function vistaSueldos() {
+function vistaSueldosMes() {
   const periodo = periodoRemuneraciones();
   const liq = new Map(liquidacionesMes(periodo).map((l) => [l.socio, l]));
   const socios = [...S.socios].sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -2385,7 +2394,7 @@ function propuestaHonorarios(periodo) {
   return { ids: pendientes.map((b) => b.id), lineas: lineasNetas(netos), fecha: ultimoDia(periodo), glosa: `HONORARIOS ${mesMayus(periodo)}`, cantidad: pendientes.length, periodo };
 }
 
-function vistaHonorarios() {
+function vistaHonorariosMes() {
   const periodo = periodoRemuneraciones();
   const lista = boletasMes(periodo);
   const be = S.boletaEdit || { tipo: "BHE", folio: "", fecha: `${periodo}-01`, rut: "", nombre: "", monto: "", base: "bruto", sin_retencion: false, glosa: "" };
@@ -2596,8 +2605,8 @@ function informePlan() {
   return inf;
 }
 
-function informeF29() {
-  const f = resultadoF29(), c = f.codigos;
+function informeF29(f = resultadoF29(), guardado = null) {
+  const c = f.codigos;
   const inf = new Informe("BORRADOR FORMULARIO 29", `PERÍODO TRIBUTARIO: ${nombrePeriodo(f.periodo).toUpperCase()}`,
     [col("Código", 9), col("Concepto", 52), col("Cód.", 7), col("Cantidad", 10, "numero"), col("Monto", 16, "monto")], `borrador_f29_${f.periodo}`);
   for (const l of LINEAS_F29) {
@@ -2611,6 +2620,10 @@ function informeF29() {
   if (c["77"]) inf.recuadro.push(["Remanente de crédito fiscal para el período siguiente (código 77)", c["77"]]);
   inf.notas.push("Borrador referencial calculado a partir del Registro de Compras y Ventas y de la contabilidad. Verifica los valores con la propuesta del SII antes de declarar.");
   inf.notas.push(...f.alertas);
+  if (guardado) {
+    inf.notas.push(`Borrador guardado el ${guardado.guardado_en ? fechaHora(guardado.guardado_en) : "—"}.${guardado.declarado ? ` Declarado en el SII${guardado.fecha_declaracion ? ` el ${fmtFecha(guardado.fecha_declaracion)}` : ""}${guardado.folio_sii ? `, folio ${guardado.folio_sii}` : ""}.` : ""}`);
+    if (guardado.observacion) inf.notas.push(`Observaciones: ${guardado.observacion}`);
+  }
   return inf;
 }
 
@@ -3030,6 +3043,195 @@ function botonesExportar(csv = true) {
   return `<button class="btn sec" type="button" data-accion="pdf">PDF</button><button class="btn sec" type="button" data-accion="excel">Excel</button>${csv ? `<button class="btn sec" type="button" data-accion="csv">CSV</button>` : ""}`;
 }
 
+/* ------------------------------------------------------------------ historiales */
+/* Pestañas «Mes» e «Historial» de F29, sueldo empresarial y honorarios. */
+function pestanas(modulo) {
+  const actual = S.pestana[modulo] || "mes";
+  return `<div class="pestanas" role="tablist">
+    <button type="button" role="tab" data-pestana="${modulo}:mes" aria-selected="${actual === "mes"}">Mes</button>
+    <button type="button" role="tab" data-pestana="${modulo}:historial" aria-selected="${actual === "historial"}">Historial</button></div>`;
+}
+function filtroAnio(id, anios, actual) {
+  return `<label>Año<select id="${id}"><option value="">Todos</option>${anios.map((y) => `<option ${y === actual ? "selected" : ""}>${y}</option>`).join("")}</select></label>`;
+}
+const aniosDe = (lista) => [...new Set(lista.map((x) => x.periodo.slice(0, 4)))].sort().reverse();
+const mesCap = (p) => nombrePeriodo(p).replace(/^./, (x) => x.toUpperCase());
+
+/* ---------- F29 ---------- */
+function vistaF29() {
+  if (S.f29Ver) return pestanas("f29") + vistaF29Guardado(S.f29Ver);
+  return pestanas("f29") + ((S.pestana.f29 || "mes") === "historial" ? vistaF29Historial() : vistaF29Mes());
+}
+
+function vistaF29Historial() {
+  const anio = S.historialAnio.f29 ?? "";
+  const lista = [...S.f29Borradores].filter((b) => !anio || b.id.startsWith(anio)).sort((a, b) => (a.id < b.id ? 1 : -1));
+  const c = (b, k) => b.codigos?.[k] || 0;
+  S.informe = () => informeHistorialF29(lista);
+  S.csv = { archivo: `historial_f29_${slug()}${anio ? "_" + anio : ""}.csv`, filas: [["Período", "Débitos (538)", "Créditos (537)", "IVA determinado (89)", "Remanente (77)", "PPM (62)", "Retenciones (151+48)", "Total a pagar (91)", "Estado", "Guardado", "Observaciones"],
+    ...lista.map((b) => [b.id, c(b, "538"), c(b, "537"), c(b, "89"), c(b, "77"), c(b, "62"), c(b, "151") + c(b, "48"), c(b, "91"), b.declarado ? "Declarado" : "Borrador", (b.guardado_en || "").slice(0, 10), b.observacion || ""])] };
+  return `${cabecera("Historial de borradores del F29", `${lista.length} guardado${lista.length === 1 ? "" : "s"}`)}
+  <div class="barra">${filtroAnio("hist-f29-anio", aniosDe(S.f29Borradores.map((b) => ({ periodo: b.id }))), anio)}${botonesExportar()}</div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Período</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">IVA det.</th><th class="num">Remanente</th><th class="num">PPM</th><th class="num">Retenciones</th><th class="num">Total a pagar</th><th>Estado</th><th>Guardado</th><th></th></tr></thead>
+    <tbody>${lista.map((b) => `<tr class="clic" data-ver-f29="${esc(b.id)}"><td>${mesCap(b.id)}</td><td class="num">${clp(c(b, "538"))}</td><td class="num">${clp(c(b, "537"))}</td><td class="num">${clp(c(b, "89"))}</td>
+      <td class="num">${clp(c(b, "77"))}</td><td class="num">${clp(c(b, "62"))}</td><td class="num">${clp(c(b, "151") + c(b, "48"))}</td><td class="num"><strong>${clp(c(b, "91"))}</strong></td>
+      <td>${b.declarado ? '<span class="etiqueta">declarado</span>' : '<span class="etiqueta cerrado">borrador</span>'}</td><td>${b.guardado_en ? fmtFecha(b.guardado_en.slice(0, 10)) : ""}</td>
+      <td><button class="btn enlace" type="button" data-ver-f29="${esc(b.id)}">Ver</button></td></tr>`).join("")}</tbody>
+    <tfoot><tr class="total"><td>Total</td>${["538", "537", "89"].map((k) => `<td class="num">${clp(lista.reduce((s, b) => s + c(b, k), 0))}</td>`).join("")}<td></td>
+      <td class="num">${clp(lista.reduce((s, b) => s + c(b, "62"), 0))}</td><td class="num">${clp(lista.reduce((s, b) => s + c(b, "151") + c(b, "48"), 0))}</td><td class="num">${clp(lista.reduce((s, b) => s + c(b, "91"), 0))}</td><td colspan="3"></td></tr></tfoot></table></div>`
+    : `<div class="caja vacio"><p>Todavía no hay borradores guardados. En la pestaña «Mes», calcula el F29 y pulsa «Guardar borrador».</p></div>`}`;
+}
+
+function resultadoGuardado(b) {
+  return { periodo: b.id, codigos: b.codigos, entradas: b.entradas || {}, alertas: b.alertas || [], comparacion: b.comparacion || [] };
+}
+
+function vistaF29Guardado(periodo) {
+  const b = borradorF29(periodo);
+  if (!b) { S.f29Ver = null; return vistaF29Historial(); }
+  const f = resultadoGuardado(b), c = f.codigos;
+  S.informe = () => informeF29(f, b);
+  S.csv = { archivo: `borrador_f29_${slug()}_${periodo}.csv`, filas: [["Código", "Concepto", "Cód. cantidad", "Cantidad", "Monto"],
+    ...LINEAS_F29.filter((l) => l[0] !== "titulo").map((l) => [l[1], l[2], l[0] && l[0] !== "total" ? l[0] : "", l[0] && l[0] !== "total" ? c[l[0]] ?? "" : "", c[l[1]] ?? ""])] };
+  let actual = null;
+  try { const e = f.entradas; actual = calcularF29(periodo, e.remanente_anterior || 0, e.utm_anterior, e.utm_actual).codigos; } catch (_) { /* sin datos para recalcular */ }
+  const cambios = actual ? ["538", "537", "77", "62", "91"].filter((k) => (actual[k] || 0) !== (c[k] || 0)) : [];
+  const filas = LINEAS_F29.map((l) => {
+    if (l[0] === "titulo") return `<tr class="titulo"><td colspan="5">${l[1]}</td></tr>`;
+    const v = (k) => (k === "115" ? `${String(c["115"] ?? 0).replace(".", ",")} %` : `$${clp(c[k] || 0)}`);
+    if (l[0] === "total") return `<tr class="${l[1] === "91" ? "pagar" : "sub"}"><td>${l[2]}</td><td></td><td></td><td class="num">${l[1]}</td><td class="num">${v(l[1])}</td></tr>`;
+    return `<tr><td>${l[2]}</td><td class="num cod">${l[0] || ""}</td><td class="num">${l[0] ? c[l[0]] ?? 0 : ""}</td><td class="num cod">${l[1]}</td><td class="num">${v(l[1])}</td></tr>`;
+  }).join("");
+  const e = f.entradas;
+  return `<div class="cabecera"><h1>Borrador F29 guardado — ${mesCap(periodo)}</h1>
+    <div class="acciones"><button class="btn sec" type="button" data-accion="volver-historial-f29">← Volver al historial</button></div></div>
+  <p class="ayuda">Guardado el ${b.guardado_en ? fechaHora(b.guardado_en) : "—"}. Remanente anterior $${clp(e.remanente_anterior || 0)} (${esc(e.origen_remanente || "—")})${e.utm_anterior ? `, UTM ${clp(e.utm_anterior)} → ${clp(e.utm_actual || 0)}` : ""}, tasa PPM ${String(e.tasa_ppm ?? 0).replace(".", ",")} %.</p>
+  ${cambios.length ? `<div class="aviso">Con los datos actuales del RCV y la contabilidad, este borrador daría otros valores (${cambios.map((k) => `cód. ${k}: $${clp(actual[k] || 0)}`).join(", ")}). Si corresponde, usa «Editar cálculo» y vuelve a guardarlo.</div>` : ""}
+  <div class="barra">${puedeEditar(`<button class="btn" type="button" data-accion="editar-f29" data-periodo="${periodo}">Editar cálculo</button>`)}${botonesExportar()}</div>
+  <div class="tabla f29"><table><thead><tr><th>Concepto</th><th class="num">Cód.</th><th class="num">Cantidad</th><th class="num">Cód.</th><th class="num">Monto</th></tr></thead><tbody>${filas}</tbody></table></div>
+  <div class="caja pagar-caja"><span>Total a pagar (código 91)</span><strong>$${clp(c["91"] || 0)}</strong>${c["77"] ? `<small>Remanente de crédito fiscal para el período siguiente (código 77): $${clp(c["77"])}</small>` : ""}</div>
+  ${f.alertas.length ? `<h2>Alertas al guardar</h2>${f.alertas.map((a) => `<div class="aviso">${esc(a)}</div>`).join("")}` : ""}
+  <form class="caja" data-form="f29-guardado"><h2>Estado y observaciones</h2>
+    <div class="form"><label class="check"><input type="checkbox" id="fg-declarado" ${b.declarado ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Declarado en el SII</label>
+      <label>Fecha de declaración<input type="date" id="fg-fecha" value="${esc(b.fecha_declaracion || "")}" ${S.puedeEscribir ? "" : "readonly"}></label>
+      <label>Folio del F29 en el SII<input id="fg-folio" value="${esc(b.folio_sii || "")}" ${S.puedeEscribir ? "" : "readonly"}></label></div>
+    <label class="campo-largo">Observaciones<textarea id="fg-obs" rows="3" ${S.puedeEscribir ? "" : "readonly"}>${esc(b.observacion || "")}</textarea></label>
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="submit">Guardar estado</button>
+      ${S.confirmar === "f29" ? `<span class="confirmar"><span>¿Eliminar el borrador de ${nombrePeriodo(periodo)}? El mes siguiente ya no tomará su remanente.</span><button class="btn peligro" type="button" data-accion="eliminar-f29">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
+        : `<button class="btn enlace" type="button" data-accion="pedir-eliminar-f29">Eliminar borrador</button>`}</div>`)}
+  </form>`;
+}
+
+async function guardarEstadoF29() {
+  const periodo = S.f29Ver, b = borradorF29(periodo);
+  if (!b) return;
+  const datos = { ...b, declarado: $("#fg-declarado").checked, fecha_declaracion: $("#fg-fecha").value, folio_sii: $("#fg-folio").value.trim(), observacion: $("#fg-obs").value.trim() };
+  await ocupado(async () => { await S.almacen.set(`empresas/${S.eid}/f29/${periodo}`, datos); render(); aviso("Estado del borrador guardado."); }, "No se pudo guardar el estado");
+}
+
+function informeHistorialF29(lista) {
+  const inf = new Informe("HISTORIAL BORRADORES F29", `${lista.length} PERÍODOS GUARDADOS`,
+    [col("Período", 16), col("Débitos", 12, "monto"), col("Créditos", 12, "monto"), col("IVA det.", 11, "monto"), col("Remanente", 12, "monto"), col("PPM", 10, "monto"),
+      col("Retenciones", 11, "monto"), col("Total a pagar", 13, "monto"), col("Estado", 10)], `historial_f29`, { horizontal: true });
+  const c = (b, k) => b.codigos?.[k] || 0;
+  for (const b of lista) inf.agregar([mesCap(b.id), c(b, "538"), c(b, "537"), c(b, "89"), c(b, "77"), c(b, "62"), c(b, "151") + c(b, "48"), c(b, "91"), b.declarado ? "Declarado" : "Borrador"]);
+  inf.agregar(["TOTAL", ...["538", "537", "89"].map((k) => lista.reduce((s, b) => s + c(b, k), 0)), null, lista.reduce((s, b) => s + c(b, "62"), 0),
+    lista.reduce((s, b) => s + c(b, "151") + c(b, "48"), 0), lista.reduce((s, b) => s + c(b, "91"), 0), null], { estilo: "total" });
+  return inf;
+}
+
+/* ---------- Sueldo empresarial ---------- */
+function vistaSueldos() { return pestanas("sueldos") + ((S.pestana.sueldos || "mes") === "historial" ? vistaSueldosHistorial() : vistaSueldosMes()); }
+
+function vistaSueldosHistorial() {
+  const anio = S.historialAnio.sueldos ?? "";
+  const lista = S.sueldos.filter((l) => !anio || l.periodo.startsWith(anio))
+    .sort((a, b) => (a.periodo < b.periodo ? 1 : a.periodo > b.periodo ? -1 : (socioPorId(a.socio)?.nombre || "").localeCompare(socioPorId(b.socio)?.nombre || "")));
+  const periodos = [...new Set(lista.map((l) => l.periodo))];
+  const suma = (ls, k) => ls.reduce((s, l) => s + (l[k] || 0), 0);
+  S.informe = () => informeHistorialSueldos(lista);
+  S.csv = { archivo: `historial_sueldos_${slug()}${anio ? "_" + anio : ""}.csv`, filas: [["Período", "Socio", "RUT", "Bruto", "AFP", "Salud", "Base", "UTM", "Impuesto único", "Líquido", "Asiento"],
+    ...lista.map((l) => { const s = socioPorId(l.socio) || {}; const a = contabilizado(l) ? S.lista.find((x) => x.id === l.asiento) : null;
+      return [l.periodo, s.nombre || "", s.rut || "", l.bruto, l.afp, l.salud, l.base, l.utm, l.impuesto_unico, l.liquido, a ? a.numero : "pendiente"]; })] };
+  const filas = periodos.map((p) => {
+    const del = lista.filter((l) => l.periodo === p);
+    return del.map((l) => {
+      const s = socioPorId(l.socio) || { nombre: "(socio eliminado)" }, cerrada = contabilizado(l), a = cerrada ? S.lista.find((x) => x.id === l.asiento) : null;
+      return `<tr><td>${mesCap(p)}</td><td>${esc(s.nombre)}</td><td class="num">${clp(l.bruto)}</td><td class="num">${l.afp ? clp(l.afp) : ""}</td><td class="num">${l.salud ? clp(l.salud) : ""}</td>
+        <td class="num">${clp(l.base)}</td><td class="num">${clp(l.impuesto_unico)}</td><td class="num"><strong>${clp(l.liquido)}</strong></td>
+        <td>${a ? `<button class="btn enlace" data-asiento="${esc(a.id)}">N° ${a.numero}</button>` : '<span class="etiqueta cerrado">pendiente</span>'}</td>
+        <td>${puedeEditar(`<button class="btn enlace" type="button" data-ir-mes="sueldos:${p}">${cerrada ? "Ver mes" : "Editar"}</button>${cerrada ? "" : S.confirmar === "liq:" + l.id
+          ? `<span class="acciones"><button class="btn peligro" data-accion="eliminar-liquidacion" data-id="${esc(l.id)}">Sí, eliminar</button><button class="btn sec" data-accion="cancelar-confirmacion">No</button></span>`
+          : `<button class="btn enlace" type="button" data-accion="pedir-eliminar-liq" data-id="${esc(l.id)}">Eliminar</button>`}`)}</td></tr>`;
+    }).join("") + `<tr class="sub"><td colspan="2">Total ${nombrePeriodo(p)}</td><td class="num">${clp(suma(del, "bruto"))}</td><td class="num">${clp(suma(del, "afp"))}</td><td class="num">${clp(suma(del, "salud"))}</td>
+      <td class="num">${clp(suma(del, "base"))}</td><td class="num">${clp(suma(del, "impuesto_unico"))}</td><td class="num">${clp(suma(del, "liquido"))}</td><td colspan="2"></td></tr>`;
+  }).join("");
+  return `${cabecera("Historial de sueldo empresarial", `${lista.length} liquidación${lista.length === 1 ? "" : "es"}`)}
+  <div class="barra">${filtroAnio("hist-sueldos-anio", aniosDe(S.sueldos), anio)}${botonesExportar()}</div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Mes</th><th>Socio</th><th class="num">Bruto</th><th class="num">AFP</th><th class="num">Salud</th><th class="num">Base</th><th class="num">Impuesto único</th><th class="num">Líquido</th><th>Asiento</th><th></th></tr></thead>
+    <tbody>${filas}</tbody><tfoot><tr class="total"><td colspan="2">Total ${anio || "general"}</td><td class="num">${clp(suma(lista, "bruto"))}</td><td class="num">${clp(suma(lista, "afp"))}</td><td class="num">${clp(suma(lista, "salud"))}</td>
+      <td class="num">${clp(suma(lista, "base"))}</td><td class="num">${clp(suma(lista, "impuesto_unico"))}</td><td class="num">${clp(suma(lista, "liquido"))}</td><td colspan="2"></td></tr></tfoot></table></div>
+    <p class="ayuda">«Editar» abre el mes para cambiar sus montos y recalcular. Las liquidaciones contabilizadas solo se pueden modificar eliminando primero su asiento.</p>`
+    : `<div class="caja vacio"><p>Todavía no hay liquidaciones guardadas.</p></div>`}`;
+}
+
+function informeHistorialSueldos(lista) {
+  const inf = new Informe("HISTORIAL SUELDO EMPRESARIAL", `${lista.length} LIQUIDACIONES`,
+    [col("Mes", 14), col("Socio", 26), col("Bruto", 12, "monto"), col("AFP", 10, "monto"), col("Salud", 10, "monto"), col("Base", 12, "monto"), col("Imp. único", 11, "monto"), col("Líquido", 12, "monto")],
+    "historial_sueldo_empresarial", { horizontal: true });
+  const suma = (ls, k) => ls.reduce((s, l) => s + (l[k] || 0), 0);
+  for (const p of [...new Set(lista.map((l) => l.periodo))]) {
+    const del = lista.filter((l) => l.periodo === p);
+    for (const l of del) inf.agregar([mesCap(p), socioPorId(l.socio)?.nombre || "(socio eliminado)", l.bruto, sinCeros(l.afp), sinCeros(l.salud), l.base, l.impuesto_unico, l.liquido]);
+    inf.agregar([null, `TOTAL ${nombrePeriodo(p).toUpperCase()}`, ...["bruto", "afp", "salud", "base", "impuesto_unico", "liquido"].map((k) => suma(del, k))], { estilo: "subtotal", derecha: true });
+  }
+  inf.agregar([null, "TOTAL GENERAL", ...["bruto", "afp", "salud", "base", "impuesto_unico", "liquido"].map((k) => suma(lista, k))], { estilo: "total", derecha: true });
+  return inf;
+}
+
+/* ---------- Honorarios ---------- */
+function vistaHonorarios() { return pestanas("honorarios") + ((S.pestana.honorarios || "mes") === "historial" ? vistaHonorariosHistorial() : vistaHonorariosMes()); }
+
+function vistaHonorariosHistorial() {
+  const anio = S.historialAnio.honorarios ?? "";
+  const lista = S.honorarios.filter((b) => !anio || b.periodo.startsWith(anio)).sort((a, b) => (a.periodo < b.periodo ? 1 : a.periodo > b.periodo ? -1 : a.fecha < b.fecha ? -1 : 1));
+  const periodos = [...new Set(lista.map((b) => b.periodo))];
+  const suma = (ls, k) => ls.reduce((s, b) => s + (b[k] || 0), 0);
+  S.informe = () => informeHistorialHonorarios(lista);
+  S.csv = { archivo: `historial_honorarios_${slug()}${anio ? "_" + anio : ""}.csv`, filas: [["Período", "Tipo", "Folio", "Fecha", "RUT", "Prestador", "Bruto", "Tasa", "Retención", "Líquido", "Detalle", "Asiento"],
+    ...lista.map((b) => { const a = contabilizado(b) ? S.lista.find((x) => x.id === b.asiento) : null; return [b.periodo, b.tipo, b.folio, b.fecha, b.rut, b.nombre, b.bruto, b.tasa, b.retencion, b.liquido, b.glosa || "", a ? a.numero : "pendiente"]; })] };
+  const filas = periodos.map((p) => {
+    const del = lista.filter((b) => b.periodo === p);
+    return del.map((b) => {
+      const c = contabilizado(b), a = c ? S.lista.find((x) => x.id === b.asiento) : null;
+      return `<tr><td>${mesCap(p)}</td><td>${b.tipo}</td><td>${esc(b.folio)}</td><td>${fmtFecha(b.fecha)}</td><td>${esc(b.nombre)}</td><td class="num">${clp(b.bruto)}</td><td class="num">${clp(b.retencion)}</td><td class="num">${clp(b.liquido)}</td>
+        <td>${a ? `<button class="btn enlace" data-asiento="${esc(a.id)}">N° ${a.numero}</button>` : '<span class="etiqueta cerrado">pendiente</span>'}</td>
+        <td>${puedeEditar(c ? `<button class="btn enlace" type="button" data-ir-mes="honorarios:${p}">Ver mes</button>` : `<button class="btn enlace" type="button" data-editar-boleta-hist="${esc(b.id)}">Editar</button>${S.confirmar === "boleta:" + b.id
+        ? `<span class="acciones"><button class="btn peligro" data-accion="eliminar-boleta" data-id="${esc(b.id)}">Sí, eliminar</button><button class="btn sec" data-accion="cancelar-confirmacion">No</button></span>`
+        : `<button class="btn enlace" type="button" data-accion="pedir-eliminar-boleta" data-id="${esc(b.id)}">Eliminar</button>`}`)}</td></tr>`;
+    }).join("") + `<tr class="sub"><td colspan="5">Total ${nombrePeriodo(p)} (${del.length} boleta${del.length === 1 ? "" : "s"})</td><td class="num">${clp(suma(del, "bruto"))}</td><td class="num">${clp(suma(del, "retencion"))}</td><td class="num">${clp(suma(del, "liquido"))}</td><td colspan="2"></td></tr>`;
+  }).join("");
+  return `${cabecera("Historial de honorarios", `${lista.length} boleta${lista.length === 1 ? "" : "s"}`)}
+  <div class="barra">${filtroAnio("hist-honorarios-anio", aniosDe(S.honorarios), anio)}${botonesExportar()}</div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Mes</th><th>Tipo</th><th>Folio</th><th>Fecha</th><th>Prestador</th><th class="num">Bruto</th><th class="num">Retención</th><th class="num">Líquido</th><th>Asiento</th><th></th></tr></thead>
+    <tbody>${filas}</tbody><tfoot><tr class="total"><td colspan="5">Total ${anio || "general"}</td><td class="num">${clp(suma(lista, "bruto"))}</td><td class="num">${clp(suma(lista, "retencion"))}</td><td class="num">${clp(suma(lista, "liquido"))}</td><td colspan="2"></td></tr></tfoot></table></div>`
+    : `<div class="caja vacio"><p>Todavía no hay boletas registradas.</p></div>`}`;
+}
+
+function informeHistorialHonorarios(lista) {
+  const inf = new Informe("HISTORIAL DE HONORARIOS", `${lista.length} BOLETAS`,
+    [col("Mes", 13), col("Tipo", 6), col("Folio", 9), col("Fecha", 10, "fecha"), col("RUT", 12), col("Prestador", 28), col("Bruto", 12, "monto"), col("Retención", 11, "monto"), col("Líquido", 12, "monto")],
+    "historial_honorarios", { horizontal: true });
+  const suma = (ls, k) => ls.reduce((s, b) => s + (b[k] || 0), 0);
+  for (const p of [...new Set(lista.map((b) => b.periodo))]) {
+    const del = lista.filter((b) => b.periodo === p);
+    for (const b of del) inf.agregar([mesCap(p), b.tipo, b.folio, b.fecha, b.rut, b.nombre, b.bruto, b.retencion, b.liquido]);
+    inf.agregar([null, null, null, null, null, `TOTAL ${nombrePeriodo(p).toUpperCase()}`, suma(del, "bruto"), suma(del, "retencion"), suma(del, "liquido")], { estilo: "subtotal", derecha: true });
+  }
+  inf.agregar([null, null, null, null, null, "TOTAL GENERAL", suma(lista, "bruto"), suma(lista, "retencion"), suma(lista, "liquido")], { estilo: "total", derecha: true });
+  return inf;
+}
+
 /* ------------------------------------------------------------------ eventos */
 function slug() { return (empresa()?.razon_social || "empresa").normalize("NFD").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").toLowerCase(); }
 
@@ -3093,7 +3295,7 @@ function cambiarEmpresa(id) {
 }
 
 document.addEventListener("click", (ev) => {
-  const t = ev.target.closest("[data-ir],[data-accion],[data-asiento],[data-cuenta],[data-empresa],[data-editar-doc],[data-nuevo-doc],[data-centralizar]");
+  const t = ev.target.closest("[data-ir],[data-accion],[data-asiento],[data-cuenta],[data-empresa],[data-editar-doc],[data-nuevo-doc],[data-centralizar],[data-pestana],[data-ver-f29],[data-ir-mes],[data-editar-boleta-hist]");
   if (!t || t.disabled) return;
   if (t.dataset.ir) { ev.preventDefault(); ir(t.dataset.ir); return; }
   if (t.dataset.asiento) { abrirEditor(t.dataset.asiento); return; }
@@ -3105,6 +3307,14 @@ document.addEventListener("click", (ev) => {
   if (t.dataset.editarDoc) { abrirDoc(t.dataset.editarDoc); return; }
   if (t.dataset.nuevoDoc) { abrirDoc(null, t.dataset.nuevoDoc); return; }
   if (t.dataset.centralizar) { centralizar(t.dataset.centralizar); return; }
+  if (t.dataset.pestana) { const [m, p] = t.dataset.pestana.split(":"); S.pestana[m] = p; S.f29Ver = null; S.confirmar = null; S.boletaEdit = null; S.socioEdit = null; render(); return; }
+  if (t.dataset.verF29) { S.f29Ver = t.dataset.verF29; S.confirmar = null; render(); window.scrollTo(0, 0); return; }
+  if (t.dataset.irMes) { const [m, p] = t.dataset.irMes.split(":"); S.remPeriodo = p; S.remPeriodoEid = S.eid; S.pestana[m] = "mes"; S.confirmar = null; render(); window.scrollTo(0, 0); return; }
+  if (t.dataset.editarBoletaHist) {
+    const b = S.honorarios.find((x) => x.id === t.dataset.editarBoletaHist);
+    S.remPeriodo = b.periodo; S.remPeriodoEid = S.eid; S.pestana.honorarios = "mes"; S.confirmar = null;
+    S.boletaEdit = { ...b, monto: clp(b.bruto), base: "bruto", sin_retencion: !b.tasa }; render(); window.scrollTo(0, 0); return;
+  }
   const accion = t.dataset.accion;
   const ed = S.edit;
   switch (accion) {
@@ -3137,6 +3347,13 @@ document.addEventListener("click", (ev) => {
     case "pedir-eliminar-marcados": S.confirmar = "docs"; render(); break;
     case "eliminar-marcados": eliminarDocs([...S.rcvSel]); break;
     case "guardar-f29": guardarF29(); break;
+    case "volver-historial-f29": S.f29Ver = null; S.pestana.f29 = "historial"; S.confirmar = null; render(); break;
+    case "editar-f29": { const b = borradorF29(t.dataset.periodo); const p = parametrosF29(); p.periodo = t.dataset.periodo;
+      p.manual = { remanente_anterior: b.entradas.remanente_anterior || 0, utm_anterior: b.entradas.utm_anterior ?? null, utm_actual: b.entradas.utm_actual ?? null };
+      S.f29Ver = null; S.pestana.f29 = "mes"; render(); window.scrollTo(0, 0); aviso("Revisa el cálculo y pulsa «Guardar borrador» para actualizar el historial."); break; }
+    case "pedir-eliminar-f29": S.confirmar = "f29"; render(); break;
+    case "eliminar-f29": { const periodo = S.f29Ver; ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/f29/${periodo}`); S.f29Ver = null; S.confirmar = null; S.pestana.f29 = "historial"; render(); aviso(`Borrador de ${nombrePeriodo(periodo)} eliminado.`); }, "No se pudo eliminar el borrador"); break; }
+    case "pedir-eliminar-liq": S.confirmar = "liq:" + t.dataset.id; render(); break;
     case "pdf": exportar("pdf"); break;
     case "excel": exportar("excel"); break;
     case "cancelar-folio": S.folioPendiente = false; render(); break;
@@ -3147,7 +3364,7 @@ document.addEventListener("click", (ev) => {
     case "pedir-eliminar-socio": S.confirmar = "socio:" + t.dataset.id; render(); break;
     case "eliminar-socio": eliminarSocio(t.dataset.id); break;
     case "liquidar": liquidar(); break;
-    case "eliminar-liquidacion": ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/sueldos/${t.dataset.id}`); render(); aviso("Liquidación eliminada."); }, "No se pudo eliminar la liquidación"); break;
+    case "eliminar-liquidacion": ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/sueldos/${t.dataset.id}`); S.confirmar = null; render(); aviso("Liquidación eliminada."); }, "No se pudo eliminar la liquidación"); break;
     case "contabilizar-sueldos": contabilizarRemuneraciones("sueldos"); break;
     case "contabilizar-honorarios": contabilizarRemuneraciones("honorarios"); break;
     case "editar-boleta": { const b = S.honorarios.find((x) => x.id === t.dataset.id); S.boletaEdit = { ...b, monto: clp(b.bruto), base: "bruto", sin_retencion: !b.tasa }; render(); window.scrollTo(0, 0); break; }
@@ -3190,6 +3407,7 @@ document.addEventListener("submit", (ev) => {
     case "f29": if (leerEntradasF29()) render(); break;
     case "socio": guardarSocio(); break;
     case "folio": generarPdfConFolio(); break;
+    case "f29-guardado": guardarEstadoF29(); break;
     case "boleta": guardarBoleta(); break;
   }
 });
@@ -3229,6 +3447,7 @@ document.addEventListener("change", (ev) => {
   if (ev.target.dataset.cuentaDoc) cambiarCuentaDoc(ev.target.dataset.cuentaDoc, ev.target.value);
   if (ev.target.dataset.selDoc) { if (ev.target.checked) S.rcvSel.add(ev.target.dataset.selDoc); else S.rcvSel.delete(ev.target.dataset.selDoc); S.confirmar = null; render(); }
   if (ev.target.id === "doc-tipo_doc") { leerFormularioDoc(); render(); }
+  for (const m of ["f29", "sueldos", "honorarios"]) if (ev.target.id === `hist-${m}-anio`) { S.historialAnio[m] = ev.target.value; S.confirmar = null; render(); }
   if (ev.target.id === "rem-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.remPeriodo = ev.target.value; S.boletaEdit = null; S.socioEdit = null; render(); }
   if (ev.target.id === "f29-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { const p = parametrosF29(); p.periodo = ev.target.value; p.manual = null; render(); }
 });
