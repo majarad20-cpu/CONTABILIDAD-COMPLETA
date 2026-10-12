@@ -90,7 +90,22 @@ Qué conviene adoptar:
 - **Verificación de RUT de la empresa** al importar (viene en el nombre de la hoja de ventas del SII).
 - **Normalización de etiquetas de centralización** (equivalencias de nombres) para el cuadre automático.
 
-Falta: el resto del RCV de 2022 (de junio a diciembre; el usuario lo enviará en tandas de 5 archivos), una contabilidad completa (diario, mayor o balance) y una simplificada.
+
+**Archivos 4: RCV de 2022 (junio a septiembre)**
+
+Recibidos: `RCV_06-2022_COMPRA`, `RCV_06-2022_VENTA`, `RCV_07-2022_COMPRA`, `RCV_08-2022_COMPRA`, `RCV_09-2022_COMPRA`. De ventas solo vino junio (3 facturas); julio, agosto y septiembre no traen archivo de ventas (confirmar si hubo ventas).
+
+Novedades:
+1. **Nombre de hoja truncado:** las hojas llamadas `RCV_COMPRA_REGISTRO_77447556-7_` son el nombre original de la descarga del SII cortado a 31 caracteres (límite de Excel): **pierden el período**. Hay que sacarlo del nombre del archivo (`RCV_07-2022_COMPRA`) o, si no, del mes dominante de las fechas de recepción.
+2. **Otro nombre para la pareja de hojas:** `MALO` / `BUENO` (antes `ERRÓNEO` / `CORRECTO` y `MALO` / `CORRECTO`). Hay que reconocer los sinónimos: malo, erróneo, incorrecto, original frente a correcto, bueno, corregido.
+3. **Dos criterios conviven en un mismo archivo:** en junio, la hoja `MALO` cuadra PROVEEDORES con la suma del «Monto total» del RCV (480.176) y la `BUENO` con neto + IVA + otros (566.232). En julio, agosto y septiembre hay una sola hoja: la columna «Monto total» queda con el valor del RCV, pero una columna auxiliar y el asiento usan neto + IVA + otros. Es la misma práctica de siempre.
+4. **Observación importante sobre el criterio del total:** en las facturas de combustible el «Monto total» del RCV es un **número redondo** (20.000, 117.000, 36.004, 51.003…), como lo que se paga en el surtidor, mientras que neto + IVA da cifras que no son redondas y **mayores**. Esto sugiere que el total del RCV podría ser el monto real de la factura y que recalcular infla la deuda con proveedores y el gasto (por unos 61.000 en julio de 2022 y 44.000 en septiembre de 2022). El IVA que va al F29 es el del RCV en ambos casos. **Hay que confirmarlo con la contadora antes de fijar el criterio por defecto.**
+5. **Primera compra de activo fijo:** un **tractor** en agosto de 2022 (neto 9.243.697), que la contadora separa en la centralización como «TRACTOR / MAQUINARIAS». Compras de ese mes con las columnas «Monto neto activo fijo» e «IVA activo fijo» (repetidas, ver archivos 2).
+6. **Etiquetas de centralización con espacios y nombres de activo:** «TRACTOR MAQUINARIAS» es una cuenta que depende de la compra. Reafirma la idea de la **cuenta por proveedor / por documento** y de crear la **ficha de activo fijo** automáticamente.
+
+Resumen de lo recibido de 2022: marzo (compras), abril (compras y ventas), mayo (compras y ventas), junio (compras y ventas), julio, agosto y septiembre (solo compras). Faltan octubre a diciembre y las ventas de julio a septiembre, si las hubo.
+
+Falta: octubre a diciembre de 2022 (y las ventas de julio a septiembre, si existen; el usuario lo enviará en tandas de 5 archivos), una contabilidad completa (diario, mayor o balance) y una simplificada.
 
 
 ## Prioridad media (pospuesto por el dueño)
