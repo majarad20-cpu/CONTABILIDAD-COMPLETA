@@ -45,6 +45,33 @@ Qué conviene adoptar en el sistema a partir de este archivo:
 
 Falta recibir: una **contabilidad completa** (libro diario, mayor o balance) y una **simplificada** (libro de caja o de ingresos y egresos).
 
+**Archivos 2: `RCV_2024.xlsx`, `RCV_2025.xlsx`, `RCV_2026.xlsx` (hasta septiembre) — empresa del rubro maquinaria**
+
+Panorama de los cuatro años (2023-2026): unos 900 documentos (compras: 696 filas; ventas: 202), 12 + 12 + 12 + 9 hojas. Documentos tipo 33 (factura), 34 (factura exenta, los servicios contables) y 61 (nota de crédito, 14 casos). Todas las compras y ventas son «Del Giro», salvo 5 compras de **activo fijo**.
+
+La forma del libro cambió con el tiempo, y el importador debe tolerarlo:
+1. **Nombre de las hojas:** `01-2023` en 2023; `RCV 01-2024` desde 2024. Una hoja vacía (`Hoja1`) en 2026. El período sale del nombre de la hoja, con cualquiera de las dos formas.
+2. **Posición de los bloques:** hasta marzo de 2026 el rótulo es «COMPRAS»/«VENTAS» en la columna E, con la cabecera en la fila 2. Desde abril de 2026 hay rótulos «1.- REGISTRO DE COMPRAS» y «2.- REGISTRO DE VENTAS» en la columna A, y la cabecera baja a la fila 3. Hay que **buscar la fila cuya primera celda dice «Nro»**, no usar posiciones fijas.
+3. **Cabecera de compras con 9 variantes** (de 14 a 21 columnas): con o sin «Impto. sin derecho a crédito», «IVA no retenido», «Monto neto activo fijo», «IVA activo fijo», «Código/valor/tasa otro impuesto». Hay que leer las columnas **por su nombre**. La de ventas es siempre la misma (14 columnas).
+4. **Columnas auxiliares del contador** a la derecha de la tabla (suma de control, a veces repetida), que no hay que confundir con datos.
+5. **Documentos con dos impuestos específicos:** una factura ocupa dos filas; la segunda no trae número ni montos, solo código y valor del segundo impuesto (código 35 junto al 28). Debe tratarse como continuación, no como documento nuevo (si no, aparece como folio repetido).
+6. **Activo fijo:** cuando «Tipo compra» es «Activo Fijo», las columnas «Monto neto activo fijo» e «IVA activo fijo» **repiten** el neto y el IVA ya incluidos en «Monto neto» e «IVA recuperable»; sumarlas duplica el documento. Son 5 compras (un vehículo de 21,3 M neto en agosto de 2025 y maquinaria en 2026). En agosto de 2026 hay dos facturas de activo fijo (10 M y 20 M) y una **nota de crédito de 20 M** que revierte una: el sistema debería ligarlas.
+7. **Notas de crédito** siempre con montos negativos (14 casos). Pasarlas a valor absoluto al importar.
+8. **Discrepancias en el total:** 38 compras (de 696) donde neto + IVA + otros impuestos no es igual al total. 33 son combustibles (código 28 con «valor» = 1, o código 35), y 5 son activo fijo contadas dos veces por las columnas repetidas (ver punto 6; no es un error real). La contadora lo anota en la hoja de julio de 2026: «en algunas facturas el monto total está mal totalizado». Se concilia siempre con el **total** como verdad.
+9. **Rezagados:** 16 compras con fecha anterior al mes de su hoja; ninguna venta.
+10. **RUT sin puntos** en todos los casos (899 filas). **80 razones sociales** con la codificación dañada.
+11. **Centralización por categoría a partir de abril de 2026:** además de «Insumos y servicios» (luego «Insumos y existencias») aparecen **«Servicios contables»**, **«Maquinarias y equipos»** y **«Vehículos»**, más una fila TOTALES que cuadra debe y haber. Es decir, la contadora ya clasifica cada compra por proveedor o tipo de gasto.
+
+Qué conviene adoptar en el sistema a partir de estos archivos (se suma a lo del primer archivo):
+- **Cuenta por proveedor (reglas de clasificación):** guardar «este RUT va a esta cuenta» y aplicarlo en la centralización, en lugar de una única cuenta de compras. Reemplaza el trabajo manual que hoy hace la contadora en el Excel (insumos, servicios contables, maquinaria, vehículos).
+- **Alta automática de fichas de activo fijo** desde las compras marcadas «Activo Fijo» (con fecha, neto e IVA), y detección de la nota de crédito que las revierte.
+- **Lector de cabecera por nombre y por búsqueda de «Nro»**, tolerante a variantes de columnas, filas vacías y hojas sin datos.
+- **Manejo de documentos con varias filas de impuestos específicos** (tanto en el importador del CSV del SII como en el de Excel).
+- **Cuadre automático por mes** contra las filas de centralización y TOTALES del Excel (neto, IVA, no recuperable, total), con la lista de documentos que no cuadran y su causa.
+- En el revisor de datos: aviso de **neto + IVA + otros ≠ total** explicando que en combustibles suele ser un error del RCV, y aviso de **nota de crédito sin documento de origen**.
+
+Falta: el RCV de 2022 (repartido en varios Excel), una contabilidad completa (diario, mayor o balance) y una simplificada.
+
 
 ## Prioridad media (pospuesto por el dueño)
 
