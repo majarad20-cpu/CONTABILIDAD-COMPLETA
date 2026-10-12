@@ -1900,7 +1900,7 @@ function csvRcv() {
   return { archivo: `rcv_${slug()}_${p}.csv`, filas };
 }
 
-function vistaRcv() {
+function vistaRcvMes() {
   if (!S.rcvPeriodo || S.rcvPeriodoEid !== S.eid) { S.rcvPeriodo = periodoRcvInicial(); S.rcvPeriodoEid = S.eid; }
   S.csv = csvRcv();
   S.informe = () => informeRcv(S.rcvPeriodo);
@@ -3057,6 +3057,64 @@ function filtroAnio(id, anios, actual) {
 const aniosDe = (lista) => [...new Set(lista.map((x) => x.periodo.slice(0, 4)))].sort().reverse();
 const mesCap = (p) => nombrePeriodo(p).replace(/^./, (x) => x.toUpperCase());
 
+/* ---------- Registro de Compras y Ventas ---------- */
+function vistaRcv() {
+  if (!S.rcvPeriodo || S.rcvPeriodoEid !== S.eid) { S.rcvPeriodo = periodoRcvInicial(); S.rcvPeriodoEid = S.eid; }
+  return pestanas("rcv") + ((S.pestana.rcv || "mes") === "historial" ? vistaRcvHistorial() : vistaRcvMes());
+}
+
+/* Resumen de un período del RCV: cantidades y montos con signo (las notas de crédito restan). */
+function resumenRcv(periodo) {
+  const docs = docsPeriodo(periodo);
+  const compras = totalesRcv(docs.filter((d) => d.registro === "COMPRA")), ventas = totalesRcv(docs.filter((d) => d.registro === "VENTA"));
+  const asientos = [...new Set(docs.filter((d) => !pendiente(d)).map((d) => d.asiento))].map((id) => S.lista.find((a) => a.id === id)).filter(Boolean);
+  return { periodo, compras, ventas, pendientes: compras.pendientes + ventas.pendientes, documentos: docs.length, asientos };
+}
+
+function vistaRcvHistorial() {
+  const anio = S.historialAnio.rcv ?? "";
+  const periodos = [...new Set(S.rcv.map((d) => d.periodo))].filter((p) => !anio || p.startsWith(anio)).sort().reverse();
+  const filas = periodos.map(resumenRcv);
+  const suma = (reg, k) => filas.reduce((s, f) => s + f[reg][k], 0);
+  S.informe = () => informeHistorialRcv(filas);
+  S.csv = { archivo: `historial_rcv_${slug()}${anio ? "_" + anio : ""}.csv`, filas: [["Período", "Compras (doc.)", "Compras neto", "Compras exento", "IVA crédito", "Compras total", "Ventas (doc.)", "Ventas neto", "Ventas exento", "IVA débito", "Ventas total", "Pendientes", "Asientos"],
+    ...filas.map((f) => [f.periodo, f.compras.cantidad, f.compras.neto, f.compras.exento, f.compras.iva, f.compras.total, f.ventas.cantidad, f.ventas.neto, f.ventas.exento, f.ventas.iva, f.ventas.total, f.pendientes, f.asientos.map((a) => a.numero).join(" ")])] };
+  const estado = (f) => !f.documentos ? "" : f.pendientes ? `<span class="etiqueta cerrado">${f.pendientes} pendiente${f.pendientes === 1 ? "" : "s"}</span>` : '<span class="etiqueta">centralizado</span>';
+  return `${cabecera("Historial del Registro de Compras y Ventas", `${filas.length} período${filas.length === 1 ? "" : "s"}`)}
+  <div class="barra">${filtroAnio("hist-rcv-anio", aniosDe(S.rcv), anio)}${botonesExportar()}</div>
+  ${filas.length ? `<div class="tabla"><table>
+    <thead><tr><th rowspan="2">Período</th><th colspan="4" class="num">Compras</th><th colspan="4" class="num">Ventas</th><th rowspan="2">Estado</th><th rowspan="2">Asientos</th><th rowspan="2"></th></tr>
+      <tr><th class="num">Doc.</th><th class="num">Neto + exento</th><th class="num">IVA crédito</th><th class="num">Total</th><th class="num">Doc.</th><th class="num">Neto + exento</th><th class="num">IVA débito</th><th class="num">Total</th></tr></thead>
+    <tbody>${filas.map((f) => `<tr><td>${mesCap(f.periodo)}</td>
+      <td class="num">${f.compras.cantidad || ""}</td><td class="num">${clp(f.compras.neto + f.compras.exento)}</td><td class="num">${clp(f.compras.iva)}</td><td class="num">${clp(f.compras.total)}</td>
+      <td class="num">${f.ventas.cantidad || ""}</td><td class="num">${clp(f.ventas.neto + f.ventas.exento)}</td><td class="num">${clp(f.ventas.iva)}</td><td class="num">${clp(f.ventas.total)}</td>
+      <td>${estado(f)}</td><td>${f.asientos.map((a) => `<button class="btn enlace" data-asiento="${esc(a.id)}">N° ${a.numero}</button>`).join(" ")}</td>
+      <td><button class="btn enlace" type="button" data-ir-rcv="${f.periodo}">${f.pendientes && S.puedeEscribir ? "Editar" : "Ver mes"}</button>
+        ${f.pendientes && S.puedeEscribir ? (S.confirmar === "rcvmes:" + f.periodo
+          ? `<span class="acciones"><span>¿Eliminar los ${f.pendientes} documento(s) pendiente(s) de ${nombrePeriodo(f.periodo)}?</span><button class="btn peligro" type="button" data-accion="eliminar-rcv-mes" data-periodo="${f.periodo}">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
+          : `<button class="btn enlace" type="button" data-accion="pedir-eliminar-rcv-mes" data-periodo="${f.periodo}">Eliminar pendientes</button>`) : ""}</td></tr>`).join("")}</tbody>
+    <tfoot><tr class="total"><td>Total ${anio || "general"}</td>
+      <td class="num">${suma("compras", "cantidad")}</td><td class="num">${clp(suma("compras", "neto") + suma("compras", "exento"))}</td><td class="num">${clp(suma("compras", "iva"))}</td><td class="num">${clp(suma("compras", "total"))}</td>
+      <td class="num">${suma("ventas", "cantidad")}</td><td class="num">${clp(suma("ventas", "neto") + suma("ventas", "exento"))}</td><td class="num">${clp(suma("ventas", "iva"))}</td><td class="num">${clp(suma("ventas", "total"))}</td><td colspan="3"></td></tr></tfoot>
+  </table></div>
+  <p class="ayuda">Las notas de crédito restan. «Editar» abre el mes para agregar, corregir o centralizar documentos. «Eliminar pendientes» borra solo los documentos aún no centralizados; los centralizados se liberan eliminando su asiento.</p>`
+    : `<div class="caja vacio"><p>Todavía no hay documentos del RCV. Impórtalos desde el SII en la pestaña «Mes».</p></div>`}`;
+}
+
+function informeHistorialRcv(filas) {
+  const inf = new Informe("HISTORIAL REGISTRO DE COMPRAS Y VENTAS", `${filas.length} PERÍODO${filas.length === 1 ? "" : "S"}`,
+    [col("Período", 14), col("Doc.", 6, "numero"), col("Compras neto+exento", 13, "monto"), col("IVA crédito", 11, "monto"), col("Compras total", 13, "monto"),
+      col("Doc.", 6, "numero"), col("Ventas neto+exento", 13, "monto"), col("IVA débito", 11, "monto"), col("Ventas total", 13, "monto"), col("Estado", 11)],
+    "historial_rcv", { horizontal: true, grupos: [["", 1], ["COMPRAS", 4], ["VENTAS", 4], ["", 1]] });
+  for (const f of filas) inf.agregar([mesCap(f.periodo), f.compras.cantidad, f.compras.neto + f.compras.exento, f.compras.iva, f.compras.total,
+    f.ventas.cantidad, f.ventas.neto + f.ventas.exento, f.ventas.iva, f.ventas.total, f.pendientes ? `${f.pendientes} pendientes` : "Centralizado"]);
+  const suma = (reg, k) => filas.reduce((s, f) => s + f[reg][k], 0);
+  inf.agregar(["TOTAL", suma("compras", "cantidad"), suma("compras", "neto") + suma("compras", "exento"), suma("compras", "iva"), suma("compras", "total"),
+    suma("ventas", "cantidad"), suma("ventas", "neto") + suma("ventas", "exento"), suma("ventas", "iva"), suma("ventas", "total"), null], { estilo: "total" });
+  inf.notas.push("Las notas de crédito restan.");
+  return inf;
+}
+
 /* ---------- F29 ---------- */
 function vistaF29() {
   if (S.f29Ver) return pestanas("f29") + vistaF29Guardado(S.f29Ver);
@@ -3130,7 +3188,7 @@ async function guardarEstadoF29() {
 }
 
 function informeHistorialF29(lista) {
-  const inf = new Informe("HISTORIAL BORRADORES F29", `${lista.length} PERÍODOS GUARDADOS`,
+  const inf = new Informe("HISTORIAL BORRADORES F29", `${lista.length} PERÍODO${lista.length === 1 ? "" : "S"} GUARDADO${lista.length === 1 ? "" : "S"}`,
     [col("Período", 16), col("Débitos", 12, "monto"), col("Créditos", 12, "monto"), col("IVA det.", 11, "monto"), col("Remanente", 12, "monto"), col("PPM", 10, "monto"),
       col("Retenciones", 11, "monto"), col("Total a pagar", 13, "monto"), col("Estado", 10)], `historial_f29`, { horizontal: true });
   const c = (b, k) => b.codigos?.[k] || 0;
@@ -3176,7 +3234,7 @@ function vistaSueldosHistorial() {
 }
 
 function informeHistorialSueldos(lista) {
-  const inf = new Informe("HISTORIAL SUELDO EMPRESARIAL", `${lista.length} LIQUIDACIONES`,
+  const inf = new Informe("HISTORIAL SUELDO EMPRESARIAL", `${lista.length} LIQUIDACI${lista.length === 1 ? "ÓN" : "ONES"}`,
     [col("Mes", 14), col("Socio", 26), col("Bruto", 12, "monto"), col("AFP", 10, "monto"), col("Salud", 10, "monto"), col("Base", 12, "monto"), col("Imp. único", 11, "monto"), col("Líquido", 12, "monto")],
     "historial_sueldo_empresarial", { horizontal: true });
   const suma = (ls, k) => ls.reduce((s, l) => s + (l[k] || 0), 0);
@@ -3219,7 +3277,7 @@ function vistaHonorariosHistorial() {
 }
 
 function informeHistorialHonorarios(lista) {
-  const inf = new Informe("HISTORIAL DE HONORARIOS", `${lista.length} BOLETAS`,
+  const inf = new Informe("HISTORIAL DE HONORARIOS", `${lista.length} BOLETA${lista.length === 1 ? "" : "S"}`,
     [col("Mes", 13), col("Tipo", 6), col("Folio", 9), col("Fecha", 10, "fecha"), col("RUT", 12), col("Prestador", 28), col("Bruto", 12, "monto"), col("Retención", 11, "monto"), col("Líquido", 12, "monto")],
     "historial_honorarios", { horizontal: true });
   const suma = (ls, k) => ls.reduce((s, b) => s + (b[k] || 0), 0);
@@ -3295,7 +3353,7 @@ function cambiarEmpresa(id) {
 }
 
 document.addEventListener("click", (ev) => {
-  const t = ev.target.closest("[data-ir],[data-accion],[data-asiento],[data-cuenta],[data-empresa],[data-editar-doc],[data-nuevo-doc],[data-centralizar],[data-pestana],[data-ver-f29],[data-ir-mes],[data-editar-boleta-hist]");
+  const t = ev.target.closest("[data-ir],[data-accion],[data-asiento],[data-cuenta],[data-empresa],[data-editar-doc],[data-nuevo-doc],[data-centralizar],[data-pestana],[data-ver-f29],[data-ir-mes],[data-editar-boleta-hist],[data-ir-rcv]");
   if (!t || t.disabled) return;
   if (t.dataset.ir) { ev.preventDefault(); ir(t.dataset.ir); return; }
   if (t.dataset.asiento) { abrirEditor(t.dataset.asiento); return; }
@@ -3308,6 +3366,7 @@ document.addEventListener("click", (ev) => {
   if (t.dataset.nuevoDoc) { abrirDoc(null, t.dataset.nuevoDoc); return; }
   if (t.dataset.centralizar) { centralizar(t.dataset.centralizar); return; }
   if (t.dataset.pestana) { const [m, p] = t.dataset.pestana.split(":"); S.pestana[m] = p; S.f29Ver = null; S.confirmar = null; S.boletaEdit = null; S.socioEdit = null; render(); return; }
+  if (t.dataset.irRcv) { S.rcvPeriodo = t.dataset.irRcv; S.rcvPeriodoEid = S.eid; S.pestana.rcv = "mes"; S.rcvSel.clear(); S.docEdit = null; S.rcvMensajes = null; S.confirmar = null; render(); window.scrollTo(0, 0); return; }
   if (t.dataset.verF29) { S.f29Ver = t.dataset.verF29; S.confirmar = null; render(); window.scrollTo(0, 0); return; }
   if (t.dataset.irMes) { const [m, p] = t.dataset.irMes.split(":"); S.remPeriodo = p; S.remPeriodoEid = S.eid; S.pestana[m] = "mes"; S.confirmar = null; render(); window.scrollTo(0, 0); return; }
   if (t.dataset.editarBoletaHist) {
@@ -3354,6 +3413,8 @@ document.addEventListener("click", (ev) => {
     case "pedir-eliminar-f29": S.confirmar = "f29"; render(); break;
     case "eliminar-f29": { const periodo = S.f29Ver; ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/f29/${periodo}`); S.f29Ver = null; S.confirmar = null; S.pestana.f29 = "historial"; render(); aviso(`Borrador de ${nombrePeriodo(periodo)} eliminado.`); }, "No se pudo eliminar el borrador"); break; }
     case "pedir-eliminar-liq": S.confirmar = "liq:" + t.dataset.id; render(); break;
+    case "pedir-eliminar-rcv-mes": S.confirmar = "rcvmes:" + t.dataset.periodo; render(); break;
+    case "eliminar-rcv-mes": eliminarDocs(docsPeriodo(t.dataset.periodo).filter(pendiente).map((d) => d.id)); break;
     case "pdf": exportar("pdf"); break;
     case "excel": exportar("excel"); break;
     case "cancelar-folio": S.folioPendiente = false; render(); break;
@@ -3447,7 +3508,7 @@ document.addEventListener("change", (ev) => {
   if (ev.target.dataset.cuentaDoc) cambiarCuentaDoc(ev.target.dataset.cuentaDoc, ev.target.value);
   if (ev.target.dataset.selDoc) { if (ev.target.checked) S.rcvSel.add(ev.target.dataset.selDoc); else S.rcvSel.delete(ev.target.dataset.selDoc); S.confirmar = null; render(); }
   if (ev.target.id === "doc-tipo_doc") { leerFormularioDoc(); render(); }
-  for (const m of ["f29", "sueldos", "honorarios"]) if (ev.target.id === `hist-${m}-anio`) { S.historialAnio[m] = ev.target.value; S.confirmar = null; render(); }
+  for (const m of ["f29", "sueldos", "honorarios", "rcv"]) if (ev.target.id === `hist-${m}-anio`) { S.historialAnio[m] = ev.target.value; S.confirmar = null; render(); }
   if (ev.target.id === "rem-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.remPeriodo = ev.target.value; S.boletaEdit = null; S.socioEdit = null; render(); }
   if (ev.target.id === "f29-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { const p = parametrosF29(); p.periodo = ev.target.value; p.manual = null; render(); }
 });
