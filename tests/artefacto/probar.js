@@ -234,6 +234,47 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("los comentarios del contador se recuerdan", await page.evaluate(() => /Nota de prueba/.test(document.querySelector("main").textContent)));
   await page.evaluate(() => { recordar(claveNotas("2026-09"), ""); ir("inicio"); });
 
+  console.log("Contabilidad simplificada");
+  const sm = await page.evaluate(async () => {
+    const e2 = { razon_social: "TALLER LOPEZ EIRL", rut: "76.543.210-3", giro: "Taller", ejercicio: 2026, tasa_ppm: 0.25, ultimo_folio: 0, tipo_contabilidad: "simplificada", regimen: "Pro Pyme General 14 D3", creado: Date.now(), cuentas: planBase() };
+    await BD.setEmpresa("e9", e2); cambiarEmpresa("e9"); await new Promise((r) => setTimeout(r, 120));
+    const menu = [...document.querySelectorAll("#nav button")].map((b) => b.textContent);
+    ir("asientos"); await new Promise((r) => setTimeout(r, 40));
+    const guarda = document.querySelector("main").textContent.includes("Resumen del ejercicio");
+    await S.almacen.set("empresas/e9/rcv/d1", { registro: "VENTA", periodo: "2026-09", tipo_doc: 33, folio: "101", fecha: "2026-09-05", rut: "76.111.111-1", razon_social: "Cliente Uno", neto: 1000000, exento: 0, iva: 190000, iva_no_recuperable: 0, otros_impuestos: 0, total: 1190000, cantidad: 1 });
+    await S.almacen.set("empresas/e9/rcv/d2", { registro: "COMPRA", periodo: "2026-09", tipo_doc: 33, folio: "55", fecha: "2026-09-10", rut: "76.222.222-2", razon_social: "Proveedor Dos", neto: 400000, exento: 0, iva: 76000, iva_no_recuperable: 0, otros_impuestos: 0, total: 476000, cantidad: 1 });
+    await S.almacen.set("empresas/e9/rcv/d3", { registro: "VENTA", periodo: "2026-09", tipo_doc: 33, folio: "102", fecha: "2026-09-20", rut: "76.111.111-1", razon_social: "Cliente Uno", neto: 500000, exento: 0, iva: 95000, iva_no_recuperable: 0, otros_impuestos: 0, total: 595000, cantidad: 1 });
+    await new Promise((r) => setTimeout(r, 120));
+    await BD.setEmpresa("e9", { ...empresa(), caja_inicial: { 2026: 300000 } }); await new Promise((r) => setTimeout(r, 80));
+    S.cajaImp = "2026-09"; await importarCaja("rcv"); await new Promise((r) => setTimeout(r, 120));
+    await guardarMovimientos([{ id: "mx1", fecha: "2026-09-25", tipo: 2, categoria: "Retiros de socios", glosa: "Retiro del dueño", monto: 200000, base: 0, doc_tipo: "", doc_num: "", rut: "", nombre: "", origen: "manual", ref: "" }]); await new Promise((r) => setTimeout(r, 120));
+    const L = libroCaja(2026), er = estadoCaja("2026-01-01", "2026-12-31"), dev = devengadosHasta("2026-09-30");
+    const f29 = calcularF29("2026-09", 0, null, null);
+    S.cajaAnio = "2026"; S.pestana.caja = "libro"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
+    const tabla = document.querySelectorAll("main tbody tr").length;
+    const inf = informeLibroCaja(2026, "", false), infD = informeLibroCaja(2026, "", true), infIE = informeIngresosEgresos(2026);
+    const rdo = datosResumen("2026-09"); ir("resumen"); await new Promise((r) => setTimeout(r, 60));
+    const renta = calcularRenta(completarRenta(nuevaRenta(2026)));
+    S.pestana.caja = "ingresos"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
+    const pdf = await pdfResumen(rdo, "");
+    return { menu, guarda, n: S.caja.length, inicial: L.inicial, ing: L.ing, eg: L.eg, saldo: L.saldo, baseIng: L.baseIng, baseEg: L.baseEg, erRes: er.resultado, cobrar: dev.cobrar, iva: f29.codigos["89"], avisos: f29.alertas.length, tabla, filas: inf.filas.length, dia: infD.filas.length, ie: infIE.filas.length, caja: rdo.caja, titular: rdo.titular, patrimonio: rdo.patrimonio, rli: renta.rli, pdf: pdf.size, ieTexto: /Documentos por cobrar/.test(document.querySelector("main").textContent) };
+  });
+  ok("el menú de la empresa simplificada trae el libro de caja y oculta los asientos", sm.menu.includes("Libro de caja e ingresos y egresos") && !sm.menu.includes("Asientos") && !sm.menu.includes("Plan de cuentas") && sm.menu.includes("Resumen ejecutivo"), JSON.stringify(sm.menu));
+  ok("una vista de contabilidad completa lleva al inicio simplificado", sm.guarda);
+  igual("la importación del RCV registra las dos facturas del mes y el retiro", sm.n, 4);
+  igual("el libro de caja: saldo inicial, ingresos y egresos", [sm.inicial, sm.ing, sm.eg, sm.saldo], [300000, 1785000, 676000, 1409000]);
+  igual("la base imponible excluye el IVA y los retiros", [sm.baseIng, sm.baseEg], [1500000, 400000]);
+  igual("el resultado de caja es la base de ingresos menos egresos", sm.erRes, 1100000);
+  ok("el IVA del F29 sale del RCV sin necesidad de asientos", sm.iva === 285000 - 76000 || sm.iva === 209000, String(sm.iva));
+  ok("el F29 no pide cuentas contables en contabilidad simplificada", sm.avisos === 0, String(sm.avisos));
+  ok("la pantalla del libro de caja se dibuja", sm.tabla >= 5);
+  ok("los libros se arman en formato de informe", sm.filas === 1 + 4 + 3 && sm.dia >= 4 && sm.ie >= 4, JSON.stringify([sm.filas, sm.dia, sm.ie]));
+  igual("el saldo de caja del resumen ejecutivo", sm.caja, 1409000);
+  ok("el resumen ejecutivo no muestra patrimonio y sí un titular", sm.patrimonio === null && /su empresa ganó/.test(sm.titular), sm.titular);
+  igual("la renta líquida parte del libro de caja", sm.rli, 1100000);
+  ok("el PDF del resumen se genera para la empresa simplificada", sm.pdf > 3000);
+  await page.evaluate(async () => { cambiarEmpresa("e1"); await new Promise((r) => setTimeout(r, 120)); await BD.deleteEmpresa("e9"); await new Promise((r) => setTimeout(r, 120)); ir("inicio"); });
+
   console.log("Apariencia");
   await page.evaluate(() => ir("apariencia")); await espera();
   ok("la pantalla de apariencia se dibuja con estilos, temas y colores", await page.evaluate(() => document.querySelectorAll("[data-estilo]").length >= 8 && document.querySelectorAll('[data-ap="tema"]').length >= 8 && document.querySelectorAll('[data-ap="acento"]').length >= 9));
@@ -266,7 +307,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     return { total: a.total, repetida: a.repetida, errores: [analizarRespaldo("no es json").error, analizarRespaldo(JSON.stringify({ formato: "otro" })).error, analizarRespaldo(JSON.stringify(malo)).error, analizarRespaldo(JSON.stringify(incompleto)).error],
       cols: Object.fromEntries(Object.entries(d.colecciones).map(([k, v]) => [k, v.length])), texto };
   });
-  ok("el respaldo incluye todas las colecciones", ["asientos", "activos", "trabajadores", "liquidaciones", "finiquitos", "renta", "depreciaciones", "f29", "rcv", "socios", "sueldos", "honorarios", "cambios"].every((k) => k in resp.cols));
+  ok("el respaldo incluye todas las colecciones", ["asientos", "activos", "trabajadores", "liquidaciones", "finiquitos", "caja", "renta", "depreciaciones", "f29", "rcv", "socios", "sueldos", "honorarios", "cambios"].every((k) => k in resp.cols));
   igual("detecta que la empresa ya existe", resp.repetida, "e1");
   ok("rechaza archivos inválidos con un mensaje", resp.errores.every((e) => typeof e === "string" && e.length > 10), JSON.stringify(resp.errores));
   ok("rechaza identificadores peligrosos", /identificador inválido/.test(resp.errores[2]));
