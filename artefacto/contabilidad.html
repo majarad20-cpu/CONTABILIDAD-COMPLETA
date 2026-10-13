@@ -259,7 +259,7 @@ input[type="color"].ap-color-input { width: 40px; height: 30px; padding: 0; bord
 .rs-barra { display: grid; gap: 3px; padding: 5px 0; } .rs-barra div { height: 9px; background: var(--surface-2); border-radius: 99px; overflow: hidden; } .rs-barra i { display: block; height: 100%; background: var(--accent); }
 .rs-barra span { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
 .rs-punto { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0; } .rs-punto i { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: #2e9e6b; }
-.rs-punto.aviso i { background: #d99a00; } .rs-punto.mal i { background: var(--neg); }
+.chk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); } .rs-punto.aviso i { background: #d99a00; } .rs-punto.mal i { background: var(--neg); }
 .rs-leyenda { display: flex; gap: 16px; font-size: 12px; color: var(--muted); } .rs-leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 .rs-salir { display: none; } body.presentando .menu { display: none; } body.presentando .app { grid-template-columns: minmax(0, 1fr); }
 body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra-controles { display: none; } body.presentando .banner-sistema { display: none; }
@@ -289,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.30.1";
+const VERSION = "1.31.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -7388,6 +7388,13 @@ function resumenPeriodo() {
   return S.resPeriodo;
 }
 const claveNotas = (p) => `resumen-${S.eid}-${p}`;
+const resumenValores = () => recuerdo("resumen-valores", false) === true;
+const abreviarPesos = (n) => { const a = Math.abs(n), sg = n < 0 ? "-" : ""; return a >= 1e6 ? `${sg}$${comaDecimal((a / 1e6).toFixed(1))} M` : a >= 1e3 ? `${sg}$${Math.round(a / 1e3)} mil` : `${sg}$${a}`; };
+const etiquetaMes = (q) => `${MESES[+q.slice(5) - 1].slice(0, 3)} ${q.slice(2, 4)}`;
+function vencimientoF29(p) {
+  const [a, m] = p.split("-").map(Number), sig = m === 12 ? [a + 1, 1] : [a, m + 1];
+  return `${MESES[sig[1] - 1].toLowerCase()} de ${sig[0]}`;
+}
 function datosResumen(p) {
   const anio = p.slice(0, 4), mm = p.slice(5), hasta = ultimoDia(p), ct = cuentasTributarias(), pasado = `${+anio - 1}-${mm}`, previo = periodoAnterior(p);
   const mes = resultadoMes(p), ant = resultadoMes(previo), pa = resultadoMes(pasado);
@@ -7415,10 +7422,12 @@ function datosResumen(p) {
     caja: caja < 0 ? "mal" : caja < aPagar ? "aviso" : "ok" };
   /* Puntos de atención */
   const pt = [], nm = nombrePeriodo(p);
+  if (mes.hay && mes.ingresos > 0 && mes.gastos <= mes.ingresos * 0.02) pt.push(["aviso", `Los gastos de ${nm} son casi nulos frente a los ingresos: puede faltar registrar compras, remuneraciones u otros gastos, y el resultado podría estar sobrestimado.`]);
+  if (mes.hay && mes.ingresos > 0 && !(+empresa().tasa_ppm > 0)) pt.push(["aviso", "La tasa de PPM de la empresa está en 0 %: el PPM aparece sin monto. Configúrela en la sección Cuentas tributarias."]);
   if (!mes.hay) pt.push(["aviso", `No hay movimientos contables registrados en ${nm}.`]);
   if (caja < 0) pt.push(["mal", "El saldo de caja y bancos es negativo: revise los registros o los giros en descubierto."]);
   else if (aPagar && caja < aPagar) pt.push(["aviso", `El dinero disponible ($${clp(caja)}) no alcanza para las obligaciones del mes siguiente ($${clp(aPagar)}).`]);
-  if (mes.hay && mes.resultado < 0) pt.push(["aviso", `${nm[0].toUpperCase() + nm.slice(1)} cerró con pérdida de $${clp(-mes.resultado)}.`]);
+  if (mes.hay && mes.resultado < 0) pt.push(["aviso", `${nm[0].toUpperCase() + nm.slice(1)} cerró con pérdida de ${pesosTexto(mes.resultado)}.`]);
   if (acum.resultado < 0) pt.push(["mal", `En lo que va del año los gastos superan a los ingresos en $${clp(-acum.resultado)}.`]);
   if (d.liquidez != null && d.liquidez < 1) pt.push(["aviso", "Sus deudas de corto plazo son mayores que lo que tiene disponible o por cobrar en el corto plazo."]);
   if (bg.totalPatrimonio < 0) pt.push(["mal", "El patrimonio es negativo: las deudas superan a los bienes de la empresa."]);
@@ -7429,17 +7438,18 @@ function datosResumen(p) {
   if (!d.cuadra) pt.push(["mal", "El balance no cuadra: se debe revisar la contabilidad antes de entregar este resumen."]);
   if (f29?.remanente) pt.push(["ok", `Tiene un remanente de IVA a su favor de $${clp(f29.remanente)}, que se descuenta del IVA de los próximos meses.`]);
   if (!pt.length) pt.push(["ok", "Sin observaciones relevantes: la contabilidad está al día y los indicadores son sanos."]);
-  d.puntos = pt;
+  const orden = { mal: 0, aviso: 1, ok: 2 }; d.puntos = pt.sort((x, y) => orden[x[0]] - orden[y[0]]);
+  d.vence = vencimientoF29(p);
   /* Sugerencias */
   const sg = [];
-  if (f29?.total > 0) sg.push(`Reserve $${clp(f29.total)} para el F29 de ${nm}: se declara y paga en la primera quincena del mes siguiente (hasta el día 20 si lo hace por internet).`);
+  if (f29?.total > 0) sg.push(`Reserve $${clp(f29.total)} para el F29 de ${nm}: vence el 12 de ${vencimientoF29(p)} (el 20 si se declara por internet).`);
   if (aPagar && caja < aPagar) sg.push("Conviene adelantar cobros o postergar gastos que no sean urgentes, para cubrir los pagos de impuestos y cotizaciones.");
   if (mes.ingresos && clientes > mes.ingresos * 1.5) sg.push(`Sus clientes le deben $${clp(clientes)}, más que un mes y medio de ventas: vale la pena reforzar la cobranza.`);
   if (acum.resultado > 0) sg.push("Antes de retirar utilidades o hacer inversiones grandes, conversemos el efecto en sus impuestos.");
   if (acum.resultado < 0) sg.push("Revisemos juntos sus gastos principales para recuperar el resultado.");
   d.sugerencias = sg;
   d.titular = !mes.hay ? `No hay movimientos contables registrados en ${nm}.`
-    : `En ${nm} su empresa ${mes.resultado >= 0 ? "ganó" : "perdió"} $${clp(Math.abs(mes.resultado))}, con ingresos por $${clp(mes.ingresos)}${d.vIngresos != null ? ` (${textoVar(d.vIngresos, nombrePeriodo(previo))})` : ""}. Al cierre del mes dispone de $${clp(caja)} en caja y bancos.`;
+    : `En ${nm} el resultado del mes fue ${mes.resultado >= 0 ? "una utilidad" : "una pérdida"} de $${clp(Math.abs(mes.resultado))}, con ingresos por $${clp(mes.ingresos)}${d.vIngresos != null ? ` (${textoVar(d.vIngresos, nombrePeriodo(previo))})` : ""}. Al cierre del mes dispone de $${clp(caja)} en caja y bancos.`;
   return d;
 }
 const lecturaIndicadores = (d) => [
@@ -7463,35 +7473,46 @@ function informeResumenTabular(d) {
   sec("Puntos de atención"); for (const [, x] of d.puntos) inf.agregar([x, null, ""], { abarca: 0 });
   return inf;
 }
-function svgSerie(serie) {
-  const W = 600, H = 190, base = 160, top = 12, max = Math.max(1, ...serie.flatMap((x) => [x.ingresos, x.gastos])), paso = (W - 20) / serie.length, ancho = paso * 0.34;
-  const alto = (v) => Math.max(0, (v / max) * (base - top));
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ingresos y gastos de los últimos 12 meses" style="width:100%;height:auto"><line x1="10" x2="${W - 10}" y1="${base}" y2="${base}" stroke="var(--line)"/>
-    ${serie.map((x, i) => { const cx = 10 + paso * i + paso / 2;
-      return `<g><title>${esc(nombrePeriodo(x.periodo))}: ingresos $${clp(x.ingresos)}, gastos $${clp(x.gastos)}</title>
-        <rect x="${cx - ancho - 1}" y="${base - alto(x.ingresos)}" width="${ancho}" height="${alto(x.ingresos)}" fill="var(--accent)" rx="2"/>
-        <rect x="${cx + 1}" y="${base - alto(x.gastos)}" width="${ancho}" height="${alto(x.gastos)}" fill="var(--muted)" opacity=".55" rx="2"/>
-        <text x="${cx}" y="${base + 16}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(MESES[+x.periodo.slice(5) - 1].slice(0, 3))}</text></g>`; }).join("")}</svg>`;
+function svgSerie(serie, valores = false) {
+  const W = 600, H = valores ? 214 : 200, top = valores ? 26 : 14, bot = 164, mx = Math.max(1, ...serie.flatMap((x) => [x.ingresos, x.gastos, x.resultado])), mn = Math.min(0, ...serie.map((x) => x.resultado)), paso = (W - 20) / serie.length, ancho = paso * 0.3;
+  const yv = (v) => top + ((mx - v) / (mx - mn)) * (bot - top), y0 = yv(0), ult = serie.length - 1;
+  const alto = (v) => Math.abs(yv(v) - y0), yTop = (v) => Math.min(yv(v), y0);
+  const pts = serie.map((x, i) => `${10 + paso * i + paso / 2},${yv(x.resultado)}`).join(" ");
+  const val = (cx, v, y, c) => (valores ? `<text x="${cx}" y="${y}" text-anchor="middle" font-size="8.5" fill="${c}">${esc(abreviarPesos(v))}</text>` : "");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ingresos, gastos y resultado de los últimos 12 meses" style="width:100%;height:auto">
+    <rect x="${10 + paso * ult}" y="4" width="${paso}" height="${H - 8}" fill="var(--accent)" opacity=".09" rx="4"/>
+    <line x1="10" x2="${W - 10}" y1="${y0}" y2="${y0}" stroke="var(--line)"/>
+    ${serie.map((x, i) => { const cx = 10 + paso * i + paso / 2, perdida = x.resultado < 0;
+      return `<g><title>${esc(nombrePeriodo(x.periodo))}: ingresos $${clp(x.ingresos)}, gastos $${clp(x.gastos)}, resultado ${pesosTexto(x.resultado)}</title>
+        <rect x="${cx - ancho - 1}" y="${yTop(x.ingresos)}" width="${ancho}" height="${alto(x.ingresos)}" fill="var(--accent)" rx="2"/>
+        <rect x="${cx + 1}" y="${yTop(x.gastos)}" width="${ancho}" height="${alto(x.gastos)}" fill="var(--muted)" opacity=".55" rx="2"/>
+        ${val(cx - ancho / 2 - 1, x.ingresos, yTop(x.ingresos) - 3, "var(--fg)")}${val(cx + ancho / 2 + 1, x.gastos, yTop(x.gastos) - 3, "var(--muted)")}
+        <circle cx="${cx}" cy="${yv(x.resultado)}" r="3.2" fill="${perdida ? "var(--neg)" : "var(--fg)"}"/>
+        <text x="${cx}" y="${bot + 18}" text-anchor="middle" font-size="9.5" ${i === ult ? 'font-weight="700" fill="var(--fg)"' : `fill="${perdida ? "var(--neg)" : "var(--muted)"}"`}>${esc(etiquetaMes(x.periodo))}</text></g>`; }).join("")}
+    <polyline points="${pts}" fill="none" stroke="var(--fg)" stroke-width="1.4" opacity=".6"/></svg>`;
 }
 function vistaResumen() {
   const p = resumenPeriodo(), d = datosResumen(p), e = empresa(), notas = recuerdo(claveNotas(p), ""), nm = nombrePeriodo(p);
   S.informe = () => informeResumenTabular(d); S.csv = csvDeInforme(informeResumenTabular(d));
-  const tile = (titulo, valor, sub, tono) => `<div class="rs-tile ${tono}"><span>${titulo}</span><strong>$${clp(valor)}</strong><small>${esc(sub)}</small></div>`;
+  const tile = (titulo, valor, sub, tono) => `<div class="rs-tile ${tono}"><span>${titulo}</span><strong${valor < 0 ? ' style="color:var(--neg)"' : ""}>${pesosTexto(valor)}</strong><small>${esc(sub)}</small></div>`;
+  const verValores = resumenValores();
   const fila = (t, sub, v) => `<div class="rs-fila"><div>${t}${sub ? `<small>${sub}</small>` : ""}</div><b>${v}</b></div>`;
   const maxG = Math.max(1, ...d.top.map((x) => x.monto)), totG = d.top.reduce((x, f) => x + f.monto, 0) || 1;
   return `${cabecera("Resumen ejecutivo", e.razon_social)}
   <div class="barra rs-barra-controles"><label>Mes a presentar<input type="month" id="rs-periodo" value="${p}"></label>
-    ${S.descargas ? `<button class="btn" type="button" data-n="rs-pdf">Descargar PDF</button><button class="btn sec" type="button" data-accion="excel">Excel</button><button class="btn sec" type="button" data-accion="csv">CSV</button>` : ""}<button class="btn sec" type="button" data-n="rs-presentar">Modo presentación</button></div>
+    ${S.descargas ? `<button class="btn" type="button" data-n="rs-pdf">Descargar PDF</button><button class="btn sec" type="button" data-accion="excel">Excel</button><button class="btn sec" type="button" data-accion="csv">CSV</button>` : ""}<button class="btn sec" type="button" data-n="rs-presentar">Modo presentación</button>
+    <label class="chk"><input type="checkbox" id="rs-valores" ${verValores ? "checked" : ""}> Mostrar valores en los gráficos</label></div>
   <button class="btn sec rs-salir" type="button" data-n="rs-salir">Salir de la presentación</button>
   <section class="rs-hero"><small>${esc(e.razon_social)} · Resumen de ${nm} · Información al ${fmtFecha(d.hasta)}</small><p>${esc(d.titular)}</p></section>
+  <section class="caja"><h2>Lo más importante hoy</h2>${d.puntos.map(([t, x]) => `<div class="rs-punto ${t}"><i></i><span>${esc(x)}</span></div>`).join("")}</section>
   <div class="tarjetas">
     ${tile("Lo que entró (ingresos)", d.mes.ingresos, d.vIngresos != null ? textoVar(d.vIngresos, nombrePeriodo(d.previo)) : "Sin mes anterior para comparar", d.tonos.ingresos)}
     ${tile("Lo que salió (gastos)", d.mes.gastos, d.vGastos != null ? textoVar(d.vGastos, nombrePeriodo(d.previo)) : "Sin mes anterior para comparar", d.tonos.gastos)}
-    ${tile(d.mes.resultado < 0 ? "Lo que perdió" : "Lo que le quedó (utilidad)", Math.abs(d.mes.resultado), `Acumulado del año: ${d.acum.resultado < 0 ? "-" : ""}$${clp(Math.abs(d.acum.resultado))}`, d.tonos.resultado)}
+    ${tile(d.mes.resultado < 0 ? "Pérdida del mes" : "Utilidad del mes", d.mes.resultado, `Acumulado del año: ${pesosTexto(d.acum.resultado)}`, d.tonos.resultado)}
     ${tile("Dinero disponible", d.caja, d.aPagar ? `Obligaciones del mes siguiente: $${clp(d.aPagar)}` : "Caja y bancos al cierre", d.tonos.caja)}
   </div>
-  <section class="caja"><h2>Ingresos y gastos de los últimos 12 meses</h2>${svgSerie(d.serie)}
-    <div class="rs-leyenda"><span><i style="background:var(--accent)"></i>Ingresos</span><span><i style="background:var(--muted);opacity:.55"></i>Gastos</span>${d.pa.hay ? `<span>${esc(nm)} del año anterior: ingresos $${clp(d.pa.ingresos)}</span>` : ""}</div></section>
+  <section class="caja"><h2>Ingresos, gastos y resultado de los últimos 12 meses</h2>${svgSerie(d.serie, verValores)}
+    <div class="rs-leyenda"><span><i style="background:var(--accent)"></i>Ingresos</span><span><i style="background:var(--muted);opacity:.55"></i>Gastos</span><span><i style="background:var(--fg);border-radius:50%"></i>Resultado (rojo: pérdida)</span><span>Mes resaltado: ${esc(nm)}</span>${d.pa.hay ? `<span>${esc(nm)} del año anterior: ingresos $${clp(d.pa.ingresos)}</span>` : ""}</div></section>
   <div class="rs-grid">
     <section class="caja"><h2>¿Cómo está su empresa hoy?</h2>
       ${fila("Dinero disponible", "Caja y bancos", `$${clp(d.caja)}`)}
@@ -7500,15 +7521,14 @@ function vistaResumen() {
       ${d.patrimonio != null ? fila("Lo que vale la empresa (patrimonio)", "Bienes menos deudas", `$${clp(d.patrimonio)}`) : ""}
       ${lecturaIndicadores(d).map(([t, v, sub]) => fila(t, sub, v)).join("")}</section>
     <section class="caja"><h2>¿En qué se va el dinero?</h2><p class="ayuda">Mayores gastos en lo que va de ${d.anio}.</p>
-      ${d.top.length ? d.top.map((x) => `<div class="rs-barra"><span><span>${esc(x.nombre)}</span><b>$${clp(x.monto)} · ${Math.round((x.monto / totG) * 100)} %</b></span><div><i style="width:${Math.max(2, (x.monto / maxG) * 100)}%"></i></div></div>`).join("") : `<p class="ayuda">Aún no hay gastos registrados en el año.</p>`}</section>
+      ${d.top.length ? d.top.map((x) => `<div class="rs-barra"><span><span>${esc(x.nombre)}</span><b>${verValores ? `$${clp(x.monto)} · ` : ""}${Math.round((x.monto / totG) * 100)} %</b></span><div><i style="width:${Math.max(2, (x.monto / maxG) * 100)}%"></i></div></div>`).join("") : `<p class="ayuda">Aún no hay gastos registrados en el año.</p>`}</section>
   </div>
   <section class="caja"><h2>Lo que viene: pagos del mes siguiente</h2>
     ${d.f29 ? `${fila("IVA a pagar", "Ventas menos compras del mes", `$${clp(d.f29.iva)}`)}${fila("Pago provisional mensual (PPM)", "Adelanto de su impuesto a la renta", `$${clp(d.f29.ppm)}`)}
       ${d.f29.retenciones ? fila("Retención de honorarios", "", `$${clp(d.f29.retenciones)}`) : ""}${d.f29.unico ? fila("Impuesto único del sueldo", "", `$${clp(d.f29.unico)}`) : ""}
-      ${fila("<strong>Total del F29</strong>", "Se declara y paga hasta el día 12 del mes siguiente (20 por internet)", `<strong>$${clp(d.f29.total)}</strong>`)}` : `<p class="ayuda">No se pudo calcular el F29: configure las cuentas en Tributario → Cuentas tributarias.</p>`}
+      ${fila("<strong>Total del F29</strong>", `Vence el 12 de ${d.vence} (el 20 si se declara por internet)`, `<strong>$${clp(d.f29.total)}</strong>`)}` : `<p class="ayuda">No se pudo calcular el F29: configure las cuentas en Tributario → Cuentas tributarias.</p>`}
     ${d.cotizaciones > 0 ? fila("Cotizaciones previsionales por pagar", "AFP, salud y seguro de cesantía", `$${clp(d.cotizaciones)}`) : ""}
     ${d.rem ? fila(`Remuneraciones de ${nm}`, `${d.rem.cantidad} trabajador(es); costo total para la empresa $${clp(d.rem.costo)}`, `$${clp(d.rem.liquido)}`) : ""}</section>
-  <section class="caja"><h2>Puntos de atención</h2>${d.puntos.map(([t, x]) => `<div class="rs-punto ${t}"><i></i><span>${esc(x)}</span></div>`).join("")}</section>
   <section class="caja"><h2>Recomendaciones</h2>${d.sugerencias.map((x) => `<div class="rs-punto"><i style="background:var(--accent)"></i><span>${esc(x)}</span></div>`).join("")}
     <label class="rs-barra-controles" style="display:grid;gap:4px;color:var(--muted);font-size:13px">Comentarios del contador (aparecen en el PDF)<textarea class="rs-notas" id="rs-notas" placeholder="Escriba aquí sus comentarios personalizados para el cliente">${esc(notas)}</textarea></label>
     ${notas ? `<p class="ayuda" style="color:var(--fg);white-space:pre-wrap;max-width:none">${esc(notas)}</p>` : ""}</section>
@@ -7522,7 +7542,7 @@ async function pdfResumen(d, notas) {
   const doc = new jsPDF({ unit: "pt", format: "letter", compress: true }), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 40, ancho = W - 2 * m;
   const GRIS = [110, 110, 110], TXT = [30, 30, 30], VERDE = [46, 158, 107], AMAR = [217, 154, 0], ROJOP = [180, 35, 24], CLARO = [243, 244, 244];
   const tono = (t) => (t === "mal" ? ROJOP : t === "aviso" ? AMAR : VERDE), nm = nombrePeriodo(d.periodo), Nm = nm[0].toUpperCase() + nm.slice(1);
-  const t = (x) => textoPdf(x), $$ = (n) => `$${clp(n)}`;
+  const t = (x) => textoPdf(x), $$ = pesosTexto, verValores = resumenValores();
   doc.setProperties({ title: `Resumen ejecutivo ${Nm} – ${e.razon_social}`, author: S.contador.nombre || e.razon_social });
   let y = 0;
   const salto = (alto) => { if (y + alto > H - 50) { doc.addPage(); y = m; } };
@@ -7533,23 +7553,34 @@ async function pdfResumen(d, notas) {
   const punto = (color, x) => { const ls = doc.splitTextToSize(t(x), ancho - 16); salto(ls.length * 12 + 4); doc.setFillColor(...color); doc.circle(m + 3, y - 3, 3, "F"); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...TXT); for (const l of ls) { doc.text(l, m + 14, y); y += 12.5; } y += 2; };
 
   doc.setFillColor(...AC); doc.rect(0, 0, W, 78, "F"); doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(17); doc.text(t((e.razon_social || "").toUpperCase()), m, 34, { maxWidth: ancho - 120 });
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.text(t(`Resumen ejecutivo · ${Nm}`), m, 54); doc.text(t(e.rut ? `RUT ${e.rut}` : ""), W - m, 34, { align: "right" }); doc.text(t(`Información al ${fmtFecha(d.hasta)}`), W - m, 54, { align: "right" });
+  doc.setFont("helvetica", "bold"); const nomE = t((e.razon_social || "").toUpperCase()); let tamE = 17; doc.setFontSize(tamE); while (tamE > 10 && doc.getTextWidth(nomE) > ancho - 150) { tamE -= 0.5; doc.setFontSize(tamE); }
+  const lineasE = doc.splitTextToSize(nomE, ancho - 150).slice(0, 2); doc.text(lineasE, m, lineasE.length > 1 ? 26 : 34);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.text(t(`Resumen ejecutivo · ${Nm}`), m, 62); doc.text(t(e.rut ? `RUT ${e.rut}` : ""), W - m, 34, { align: "right" }); doc.text(t(`Información al ${fmtFecha(d.hasta)}`), W - m, 62, { align: "right" });
   y = 108;
   doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(...TXT); for (const l of doc.splitTextToSize(t(d.titular), ancho)) { doc.text(l, m, y); y += 19; }
-  y += 8;
+  y += 4;
+  titulo("Lo más importante hoy", 60); for (const [tn, x] of d.puntos) punto(tono(tn), x);
+  y += 4;
   const tw = (ancho - 30) / 4, tiles = [["Lo que entró", d.mes.ingresos, d.vIngresos != null ? textoVar(d.vIngresos, nombrePeriodo(d.previo)) : "", d.tonos.ingresos], ["Lo que salió", d.mes.gastos, d.vGastos != null ? textoVar(d.vGastos, nombrePeriodo(d.previo)) : "", d.tonos.gastos],
-    [d.mes.resultado < 0 ? "Lo que perdió" : "Lo que le quedó", Math.abs(d.mes.resultado), `Acumulado año: ${d.acum.resultado < 0 ? "-" : ""}${$$(Math.abs(d.acum.resultado))}`, d.tonos.resultado], ["Dinero disponible", d.caja, d.aPagar ? `A pagar mes siguiente: ${$$(d.aPagar)}` : "Caja y bancos", d.tonos.caja]];
+    [d.mes.resultado < 0 ? "Pérdida del mes" : "Utilidad del mes", d.mes.resultado, `Acumulado año: ${$$(d.acum.resultado)}`, d.tonos.resultado], ["Dinero disponible", d.caja, d.aPagar ? `A pagar mes siguiente: ${$$(d.aPagar)}` : "Caja y bancos", d.tonos.caja]];
   tiles.forEach(([r, v, sub, tn], i) => { const x = m + i * (tw + 10); doc.setFillColor(...CLARO); doc.rect(x, y, tw, 66, "F"); doc.setFillColor(...tono(tn)); doc.rect(x, y, tw, 4, "F");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GRIS); doc.text(t(r), x + 8, y + 19); doc.setFont("helvetica", "bold"); doc.setFontSize(14.5); doc.setTextColor(...TXT); doc.text(t($$(v)), x + 8, y + 40);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GRIS); doc.text(t(r), x + 8, y + 19); doc.setFont("helvetica", "bold"); doc.setFontSize(14.5); doc.setTextColor(...(v < 0 ? ROJOP : TXT)); doc.text(t($$(v)), x + 8, y + 40);
     doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GRIS); doc.text(doc.splitTextToSize(t(sub), tw - 14).slice(0, 2), x + 8, y + 54); });
   y += 84;
-  titulo("Ingresos y gastos de los últimos 12 meses");
-  const base = y + 100, paso = ancho / 12, bw = paso * 0.34, mx = Math.max(1, ...d.serie.flatMap((x) => [x.ingresos, x.gastos])), alt = (v) => (v / mx) * 92;
-  doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.5); doc.line(m, base, W - m, base);
-  d.serie.forEach((x, i) => { const cx = m + paso * i + paso / 2; doc.setFillColor(...AC); doc.rect(cx - bw - 0.5, base - alt(x.ingresos), bw, alt(x.ingresos), "F"); doc.setFillColor(175, 175, 175); doc.rect(cx + 0.5, base - alt(x.gastos), bw, alt(x.gastos), "F");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GRIS); doc.text(t(MESES[+x.periodo.slice(5) - 1].slice(0, 3)), cx, base + 10, { align: "center" }); });
-  y = base + 26; doc.setFillColor(...AC); doc.rect(m, y - 6, 8, 8, "F"); doc.setFontSize(8); doc.text("Ingresos", m + 12, y); doc.setFillColor(175, 175, 175); doc.rect(m + 60, y - 6, 8, 8, "F"); doc.text("Gastos", m + 72, y); y += 16;
+  titulo("Ingresos, gastos y resultado de los últimos 12 meses", 190);
+  const top0 = y + (verValores ? 12 : 0), base = top0 + 100, paso = ancho / 12, bw = paso * 0.3, mx = Math.max(1, ...d.serie.flatMap((x) => [x.ingresos, x.gastos, x.resultado])), mn = Math.min(0, ...d.serie.map((x) => x.resultado));
+  const yv = (v) => top0 + ((mx - v) / (mx - mn)) * 92, y0 = yv(0), ult = d.serie.length - 1;
+  doc.setFillColor(236, 240, 238); doc.rect(m + paso * ult, top0 - 8, paso, y0 - top0 + 8 + 30 + (base - y0), "F");
+  doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.5); doc.line(m, y0, W - m, y0);
+  const val = (cx, v, yy, c) => { if (!verValores) return; doc.setFont("helvetica", "normal"); doc.setFontSize(5.8); doc.setTextColor(...c); doc.text(t(abreviarPesos(v)), cx, yy, { align: "center" }); };
+  d.serie.forEach((x, i) => { const cx = m + paso * i + paso / 2, perd = x.resultado < 0;
+    doc.setFillColor(...AC); doc.rect(cx - bw - 0.5, Math.min(yv(x.ingresos), y0), bw, Math.abs(yv(x.ingresos) - y0), "F"); doc.setFillColor(175, 175, 175); doc.rect(cx + 0.5, Math.min(yv(x.gastos), y0), bw, Math.abs(yv(x.gastos) - y0), "F");
+    val(cx - bw / 2, x.ingresos, yv(x.ingresos) - 2, TXT); val(cx + bw / 2 + 1, x.gastos, yv(x.gastos) - 2, GRIS);
+    doc.setFillColor(...(perd ? ROJOP : TXT)); doc.circle(cx, yv(x.resultado), 2, "F");
+    doc.setFont("helvetica", i === ult ? "bold" : "normal"); doc.setFontSize(6.8); doc.setTextColor(...(perd ? ROJOP : i === ult ? TXT : GRIS)); doc.text(t(etiquetaMes(x.periodo)), cx, base + 14, { align: "center" }); });
+  doc.setDrawColor(...TXT); doc.setLineWidth(0.7); d.serie.slice(1).forEach((x, i) => { const a = d.serie[i], c0 = m + paso * i + paso / 2, c1 = m + paso * (i + 1) + paso / 2; doc.line(c0, yv(a.resultado), c1, yv(x.resultado)); });
+  y = base + 32; doc.setFontSize(8); doc.setTextColor(...GRIS); doc.setFillColor(...AC); doc.rect(m, y - 6, 8, 8, "F"); doc.text("Ingresos", m + 12, y); doc.setFillColor(175, 175, 175); doc.rect(m + 60, y - 6, 8, 8, "F"); doc.text("Gastos", m + 72, y);
+  doc.setFillColor(...TXT); doc.circle(m + 126, y - 2, 2, "F"); doc.text("Resultado (rojo: pérdida)", m + 132, y); y += 16;
   titulo("¿Cómo está su empresa hoy?");
   fila("Dinero disponible", "Caja y bancos", $$(d.caja));
   if (d.clientes) fila("Lo que le deben sus clientes", "Ventas aún no cobradas", $$(d.clientes));
@@ -7559,16 +7590,15 @@ async function pdfResumen(d, notas) {
   titulo("¿En qué se va el dinero?"); parrafo(`Mayores gastos en lo que va de ${d.anio}.`, 8.5, GRIS);
   const tg = d.top.reduce((x, f) => x + f.monto, 0) || 1, mg = Math.max(1, ...d.top.map((x) => x.monto));
   if (!d.top.length) parrafo("Aún no hay gastos registrados en el año.");
-  for (const g of d.top) { salto(30); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...TXT); doc.text(t(g.nombre), m, y); doc.text(t(`${$$(g.monto)} · ${Math.round((g.monto / tg) * 100)} %`), W - m, y, { align: "right" });
+  for (const g of d.top) { salto(30); doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...TXT); doc.text(t(g.nombre), m, y); doc.text(t(`${verValores ? `${$$(g.monto)} · ` : ""}${Math.round((g.monto / tg) * 100)} %`), W - m, y, { align: "right" });
     y += 5; doc.setFillColor(232, 232, 232); doc.rect(m, y, ancho, 6, "F"); doc.setFillColor(...AC); doc.rect(m, y, Math.max(3, (g.monto / mg) * ancho), 6, "F"); y += 19; }
   titulo("Lo que viene: pagos del mes siguiente", 190);
   if (d.f29) { fila("IVA a pagar", "Ventas menos compras del mes", $$(d.f29.iva)); fila("Pago provisional mensual (PPM)", "Adelanto de su impuesto a la renta", $$(d.f29.ppm));
     if (d.f29.retenciones) fila("Retención de honorarios", "", $$(d.f29.retenciones)); if (d.f29.unico) fila("Impuesto único del sueldo", "", $$(d.f29.unico));
-    fila("Total del F29", "Se declara y paga hasta el día 12 del mes siguiente (20 por internet)", $$(d.f29.total), true); }
+    fila("Total del F29", `Vence el 12 de ${d.vence} (el 20 si se declara por internet)`, $$(d.f29.total), true); }
   else parrafo("No se pudo calcular el F29 con la información disponible.", 9, GRIS);
   if (d.cotizaciones > 0) fila("Cotizaciones previsionales por pagar", "AFP, salud y seguro de cesantía", $$(d.cotizaciones));
   if (d.rem) fila(`Remuneraciones de ${nm}`, `${d.rem.cantidad} trabajador(es); costo total para la empresa ${$$(d.rem.costo)}`, $$(d.rem.liquido));
-  titulo("Puntos de atención", 90); for (const [tn, x] of d.puntos) punto(tono(tn), x);
   if (d.sugerencias.length || notas) { titulo("Recomendaciones"); for (const x of d.sugerencias) punto(AC, x); if (notas) { y += 4; parrafo("Comentarios del contador", 9, GRIS, 0, true); parrafo(notas, 9.5); } }
   y += 10; parrafo("Información preliminar basada en los registros contables a la fecha indicada. No reemplaza las declaraciones tributarias ni los estados financieros formales.", 7.5, GRIS);
   const n = doc.getNumberOfPages();
@@ -7597,6 +7627,7 @@ document.addEventListener("change", (ev) => {
   if (cid === "cj-categoria") { const [t, b] = CATEGORIAS_CAJA[ev.target.value] || [1, true]; $("#cj-tipo").value = String(t); $("#cj-afecta").checked = b; if (ev.target.value === "Pago de impuestos (IVA, PPM, F29)" && !$("#cj-f29per").value) $("#cj-f29per").value = periodoAnterior(($("#cj-fecha").value || hoy()).slice(0, 7)); actualizarCalculoCaja(); return; }
   if (cid === "cj-tipo" || cid === "cj-doc" || cid === "cj-fecha") { actualizarCalculoCaja(); return; }
   if (ev.target.id === "rs-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.resPeriodo = ev.target.value; S.resEid = S.eid; render(); }
+  else if (ev.target.id === "rs-valores") { recordar("resumen-valores", ev.target.checked); render(); }
   else if (ev.target.id === "rs-notas") { recordar(claveNotas(resumenPeriodo()), ev.target.value); render(); }
 });
 

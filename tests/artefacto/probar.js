@@ -442,14 +442,22 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     ir("resumen"); await new Promise((r) => setTimeout(r, 60));
     const html = document.querySelector("main").textContent;
     const blob = await pdfResumen(d, "Comentario de prueba");
-    return { ok: d.serie.length === 12 && d.tonos && Array.isArray(d.puntos) && d.puntos.length > 0, titular: d.titular, hay: d.mes.hay, res: d.mes.resultado, ing: d.mes.ingresos, gas: d.mes.gastos, cuadra: d.cuadra, vacio: d0.titular, pdf: blob.size, tiles: document.querySelectorAll(".rs-tile").length, svg: !!document.querySelector("main svg"), html: /Puntos de atención/.test(html) && /Recomendaciones/.test(html) };
+    return { ok: d.serie.length === 12 && d.tonos && Array.isArray(d.puntos) && d.puntos.length > 0, titular: d.titular, hay: d.mes.hay, res: d.mes.resultado, ing: d.mes.ingresos, gas: d.mes.gastos, cuadra: d.cuadra, vacio: d0.titular, pdf: blob.size, tiles: document.querySelectorAll(".rs-tile").length, svg: !!document.querySelector("main svg"), html: /Lo más importante hoy/.test(html) && /Recomendaciones/.test(html) };
   });
   ok("el resumen reúne indicadores, serie de 12 meses y puntos de atención", rs.ok, JSON.stringify(rs));
   ok("el resultado del mes es ingresos menos gastos", rs.res === rs.ing - rs.gas);
   ok("un mes sin movimientos lo dice con claridad", /No hay movimientos/.test(rs.vacio));
-  ok("el titular está en lenguaje simple", /su empresa (ganó|perdió)|No hay movimientos/.test(rs.titular), rs.titular);
+  ok("el titular está en lenguaje simple", /el resultado del mes fue una (utilidad|pérdida) de \$[\d.]+|No hay movimientos/.test(rs.titular), rs.titular);
   ok("la pantalla muestra cuatro indicadores, el gráfico y las secciones", rs.tiles === 4 && rs.svg && rs.html);
   ok("el PDF del resumen se genera", rs.pdf > 3000, String(rs.pdf));
+  const rs2 = await page.evaluate(async () => {
+    const d = datosResumen(resumenPeriodo()), sin = svgSerie(d.serie, false), con = svgSerie(d.serie, true);
+    recordar("resumen-valores", true); const b1 = (await pdfResumen(d, "")).size; recordar("resumen-valores", false);
+    return { sinValores: !/font-size="8.5"/.test(sin), conValores: /font-size="8.5"/.test(con), etiqueta: etiquetaMes("2026-09"), venc: vencimientoF29("2026-12"), abre: [abreviarPesos(1700000), abreviarPesos(-250000), abreviarPesos(900)], neg: pesosTexto(-11439836), pdfValores: b1 > 3000, switchApagado: resumenValores() === false, ordenado: d.puntos.every((p, i, a) => !i || ({ mal: 0, aviso: 1, ok: 2 })[a[i - 1][0]] <= ({ mal: 0, aviso: 1, ok: 2 })[p[0]]) };
+  });
+  ok("los valores del gráfico solo aparecen si se activa el interruptor, que parte apagado", rs2.sinValores && rs2.conValores && rs2.switchApagado && rs2.pdfValores, JSON.stringify(rs2));
+  igual("etiquetas con año, vencimiento del F29, montos abreviados y negativos", [rs2.etiqueta, rs2.venc, rs2.abre, rs2.neg], ["Sep 26", "enero de 2027", ["$1,7 M", "-$250 mil", "$900"], "-$11.439.836"]);
+  ok("los puntos de atención van ordenados de lo más grave a lo menos", rs2.ordenado);
   await page.evaluate(() => { presentar(true); });
   ok("el modo presentación oculta el menú", await page.evaluate(() => getComputedStyle(document.querySelector(".menu")).display === "none"));
   await page.keyboard.press("Escape");
@@ -494,7 +502,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("la pantalla del libro de caja se dibuja", sm.tabla >= 5);
   ok("los libros se arman en formato de informe", sm.filas === 1 + 4 + 3 + 3 && sm.dia >= 4 && sm.ie >= 4, JSON.stringify([sm.filas, sm.dia, sm.ie]));
   igual("el saldo de caja del resumen ejecutivo", sm.caja, 1409000);
-  ok("el resumen ejecutivo no muestra patrimonio y sí un titular", sm.patrimonio === null && /su empresa ganó/.test(sm.titular), sm.titular);
+  ok("el resumen ejecutivo no muestra patrimonio y sí un titular", sm.patrimonio === null && /el resultado del mes fue una utilidad/.test(sm.titular), sm.titular);
   igual("la renta líquida parte del libro de caja", sm.rli, 1100000);
   ok("el PDF del resumen se genera para la empresa simplificada", sm.pdf > 3000);
   console.log("Simplificada: reglas del programa propio (IVA, honorarios, PPM, cierres, libros)");
