@@ -209,6 +209,30 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("una línea se edita en su lugar y sale del modo de edición", lc.editada, ["Línea editada", 238000, 200000, 2, null]);
   ok("el rango de meses del libro suma los meses elegidos", lc.rango[0] >= lc.rango[1] && lc.rango[3] >= lc.rango[0] && lc.rango[2] >= 1, JSON.stringify(lc.rango));
   ok("el período del informe por rango lleva los meses y su total", /AGOSTO A SEPTIEMBRE 2026/.test(lc.periodo[0]) && lc.periodo[2] === "TOTAL DEL PERÍODO", JSON.stringify(lc.periodo));
+  console.log("Contabilidad al día: inicio de actividades y meses sin movimientos");
+  const ca = await page.evaluate(async () => {
+    const r = {}, e = empresa(), ant = { ini: e.inicio_actividades, desde: e.contab_desde, sm: e.meses_sin_mov, lista: S.lista };
+    const mov = (f) => ({ fecha: f }), hoyF = "2026-10-13";
+    r.a = mesesPendientesContables({ inicio_actividades: "2024-04-23", contab_desde: "ejercicio" }, [mov("2026-02-10"), mov("2026-05-03")], true, hoyF).pendientes;
+    r.b = mesesPendientesContables({ inicio_actividades: "2026-04-15", contab_desde: "ejercicio" }, [mov("2026-05-03")], true, hoyF).pendientes;
+    r.c = mesesPendientesContables({ inicio_actividades: "2025-11-20", contab_desde: "inicio" }, [mov("2025-11-25")], true, "2026-02-05").pendientes;
+    r.d = mesesPendientesContables({ inicio_actividades: "2026-08-01", contab_desde: "ejercicio", meses_sin_mov: { "2026-08": true } }, [], true, hoyF).pendientes;
+    r.e = mesesPendientesContables({ contab_desde: "ejercicio" }, [], true, "2026-03-10");
+    e.inicio_actividades = "2026-04-15"; e.contab_desde = "ejercicio"; e.meses_sin_mov = { "2026-06": true }; S.lista = [{ id: "z", fecha: "2026-05-05", numero: 1, glosa: "x", lineas: [] }];
+    const hall = revisarDatos().filter((h) => /Contabilidad sin hacer/.test(h.texto)); r.revisor = [hall.length, hall[0]?.cantidad === mesesPendientesContables(e, S.lista, false).pendientes.length];
+    const inf = informeDiario("2026-04-01", "2026-07-31"); r.diario = inf.filas.some((f) => f.valores.some((v) => /MES SIN MOVIMIENTOS CONTABLES/.test(String(v))));
+    r.vistaDiario = (S.vista = "diario", true);
+    e.inicio_actividades = ant.ini; e.contab_desde = ant.desde; e.meses_sin_mov = ant.sm; S.lista = ant.lista;
+    if (ant.ini === undefined) delete e.inicio_actividades; if (ant.desde === undefined) delete e.contab_desde; if (ant.sm === undefined) delete e.meses_sin_mov;
+    return r;
+  });
+  igual("avisa desde el año en curso aunque el inicio de actividades sea de 2024", ca.a, ["2026-01", "2026-03", "2026-04", "2026-06", "2026-07", "2026-08", "2026-09"]);
+  igual("una empresa que inició en abril de 2026 avisa desde abril", ca.b, ["2026-04", "2026-06", "2026-07", "2026-08", "2026-09"]);
+  igual("con «desde el inicio de actividades» avisa los meses históricos", ca.c, ["2025-12", "2026-01"]);
+  igual("un mes marcado sin movimientos no cuenta como pendiente", ca.d, ["2026-09"]);
+  ok("sin inicio de actividades se avisa desde enero del año en curso", ca.e.sinInicio && ca.e.desde === "2026-01");
+  igual("el revisor da un solo aviso con el detalle de los meses", ca.revisor, [1, true]);
+  ok("el libro diario deja constancia del mes sin movimientos contables", ca.diario);
   console.log("PPM por período del F29");
   const pp2 = await page.evaluate(async () => {
     const ant = S.caja, r = {}, mk = (id, fecha, monto, per, extra = {}) => ({ id, fecha, tipo: 2, categoria: "Pago de impuestos (IVA, PPM, F29)", doc_tipo: "Formulario 29", doc_num: "1", rut: "", nombre: "", glosa: "Pago F29 PPM", monto, base: 0, clase: "f29_ppm", ...(per ? { f29_periodo: per } : {}), origen: "manual", ref: "", ...extra });
