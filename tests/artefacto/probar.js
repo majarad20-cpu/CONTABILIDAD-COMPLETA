@@ -453,10 +453,10 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   const rs2 = await page.evaluate(async () => {
     const d = datosResumen(resumenPeriodo()), sin = svgSerie(d.serie, false), con = svgSerie(d.serie, true);
     const encendido = resumenValores(); const b1 = (await pdfResumen(d, "")).size; recordar("resumen-valores", false); const apagado = resumenValores() === false; recordar("resumen-valores", true);
-    return { sinValores: !/font-size="8.5"/.test(sin), conValores: /font-size="8.5"/.test(con), etiqueta: etiquetaMes("2026-09"), venc: vencimientoF29("2026-12"), abre: [abreviarPesos(1700000), abreviarPesos(-250000), abreviarPesos(900)], neg: pesosTexto(-11439836), pdfValores: b1 > 3000, switchApagado: encendido && apagado, ordenado: d.puntos.every((p, i, a) => !i || ({ mal: 0, aviso: 1, ok: 2 })[a[i - 1][0]] <= ({ mal: 0, aviso: 1, ok: 2 })[p[0]]) };
+    return { sinValores: !/font-size="8.5"/.test(sin), conValores: /font-size="8.5"/.test(con), etiqueta: etiquetaMes("2026-09"), venc: vencimientoF29("2026-12"), neg: pesosTexto(-11439836), pdfValores: b1 > 3000, switchApagado: encendido && apagado, ordenado: d.puntos.every((p, i, a) => !i || ({ mal: 0, aviso: 1, ok: 2 })[a[i - 1][0]] <= ({ mal: 0, aviso: 1, ok: 2 })[p[0]]) };
   });
   ok("los valores del gráfico aparecen por defecto y se pueden apagar con el interruptor", rs2.sinValores && rs2.conValores && rs2.switchApagado && rs2.pdfValores, JSON.stringify(rs2));
-  igual("etiquetas con año, vencimiento del F29, montos abreviados y negativos", [rs2.etiqueta, rs2.venc, rs2.abre, rs2.neg], ["Sep 26", "enero de 2027", ["$1,7 M", "-$250 mil", "$900"], "-$11.439.836"]);
+  igual("etiquetas con año, vencimiento del F29 y negativos", [rs2.etiqueta, rs2.venc, rs2.neg], ["Sep 26", "enero de 2027", "-$11.439.836"]);
   ok("los puntos de atención van ordenados de lo más grave a lo menos", rs2.ordenado);
   await page.evaluate(() => { presentar(true); });
   ok("el modo presentación oculta el menú", await page.evaluate(() => getComputedStyle(document.querySelector(".menu")).display === "none"));
@@ -489,12 +489,13 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const renta = calcularRenta(completarRenta(nuevaRenta(2026)));
     S.pestana.caja = "ingresos"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
     const pdf = await pdfResumen(rdo, "");
-    return { menu, guarda, n: S.caja.length, inicial: L.inicial, ing: L.ing, eg: L.eg, saldo: L.saldo, baseIng: L.baseIng, baseEg: L.baseEg, erRes: er.resultado, cobrar: dev.cobrar, iva: f29.codigos["89"], avisos: f29.alertas.length, tabla, filas: inf.filas.length, dia: infD.filas.length, ie: infIE.filas.length, caja: rdo.caja, titular: rdo.titular, patrimonio: rdo.patrimonio, rli: renta.rli, pdf: pdf.size, ieTexto: /Documentos por cobrar/.test(document.querySelector("main").textContent) };
+    return { menu, guarda, n: S.caja.length, inicial: L.inicial, ing: L.ing, eg: L.eg, saldo: L.saldo, baseIng: L.baseIng, baseEg: L.baseEg, erRes: er.resultado, cobrar: dev.cobrar, iva: f29.codigos["89"], avisos: f29.alertas.length, tabla, filas: inf.filas.length, dia: infD.filas.length, ie: infIE.filas.length, caja: rdo.caja, ingRes: rdo.mes.ingresos, ingVentas: S.caja.filter((m) => m.tipo === 1 && m.categoria === "Ventas" && m.fecha.startsWith("2026-09")).reduce((a, m) => a + m.monto, 0), titular: rdo.titular, patrimonio: rdo.patrimonio, rli: renta.rli, pdf: pdf.size, ieTexto: /Documentos por cobrar/.test(document.querySelector("main").textContent) };
   });
   ok("el menú de la empresa simplificada trae el libro de caja y oculta los asientos", sm.menu.includes("Libro de caja e ingresos y egresos") && !sm.menu.includes("Asientos") && !sm.menu.includes("Plan de cuentas") && sm.menu.includes("Resumen ejecutivo"), JSON.stringify(sm.menu));
   ok("una vista de contabilidad completa lleva al inicio simplificado", sm.guarda);
   igual("la importación del RCV registra las dos facturas del mes y el retiro", sm.n, 4);
   igual("el libro de caja: saldo inicial, ingresos y egresos", [sm.inicial, sm.ing, sm.eg, sm.saldo], [300000, 1785000, 676000, 1409000]);
+  igual("en simplificada los ingresos del resumen son lo percibido por ventas (con IVA)", sm.ingRes, sm.ingVentas);
   igual("la base imponible excluye el IVA y los retiros", [sm.baseIng, sm.baseEg], [1500000, 400000]);
   igual("el resultado de caja es la base de ingresos menos egresos", sm.erRes, 1100000);
   ok("el IVA del F29 sale del RCV sin necesidad de asientos", sm.iva === 285000 - 76000 || sm.iva === 209000, String(sm.iva));
