@@ -8,7 +8,7 @@ try { ({ chromium } = require("playwright")); } catch (_) { ({ chromium } = requ
 
 const HTML = process.env.ARCHIVO || path.resolve(__dirname, "../../artefacto/contabilidad.html");
 const LIBS = path.join(__dirname, "node_modules");
-const LIB = { "jspdf.umd.min.js": "jspdf/dist/jspdf.umd.min.js", "jspdf.plugin.autotable.min.js": "jspdf-autotable/dist/jspdf.plugin.autotable.min.js", "exceljs.min.js": "exceljs/dist/exceljs.min.js" };
+const LIB = { "jspdf.umd.min.js": "jspdf/dist/jspdf.umd.min.js", "jspdf.plugin.autotable.min.js": "jspdf-autotable/dist/jspdf.plugin.autotable.min.js", "exceljs.min.js": "exceljs/dist/exceljs.min.js", "pdf-lib.min.js": "pdf-lib/dist/pdf-lib.min.js" };
 const espera = (ms = 80) => new Promise((r) => setTimeout(r, ms));
 
 let fallos = 0, pasaron = 0;
@@ -209,6 +209,34 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("una línea se edita en su lugar y sale del modo de edición", lc.editada, ["Línea editada", 238000, 200000, 2, null]);
   ok("el rango de meses del libro suma los meses elegidos", lc.rango[0] >= lc.rango[1] && lc.rango[3] >= lc.rango[0] && lc.rango[2] >= 1, JSON.stringify(lc.rango));
   ok("el período del informe por rango lleva los meses y su total", /AGOSTO A SEPTIEMBRE 2026/.test(lc.periodo[0]) && lc.periodo[2] === "TOTAL DEL PERÍODO", JSON.stringify(lc.periodo));
+  console.log("Libro de caja: modelo del contador, PDF con folios e informes");
+  const md = await page.evaluate(async () => {
+    const r = {}, ant = { c: S.caja, e: { ...empresa() } };
+    S.caja = [{ id: "a1", fecha: "2026-01-11", tipo: 2, categoria: "Honorarios", doc_tipo: "Boleta de honorarios", doc_num: "73", rut: "17.992.401-3", glosa: "Pago honorarios", monto: 21611, base: 21611, origen: "manual", ref: "" },
+      { id: "a2", fecha: "2026-01-31", tipo: 1, categoria: "Ventas", doc_tipo: "", doc_num: "xx", rut: "", glosa: "Ventas del mes", monto: 2377262, base: 1997699, origen: "manual", ref: "" },
+      { id: "b1", fecha: "2026-02-28", tipo: 1, categoria: "Ventas", doc_tipo: "", doc_num: "xx", rut: "", glosa: "Ventas febrero", monto: 1000000, base: 800000, origen: "manual", ref: "" },
+      { id: "b2", fecha: "2026-02-28", tipo: 2, categoria: "Compras y gastos", doc_tipo: "", doc_num: "xx", rut: "", glosa: "Compras febrero", monto: 300000, base: 250000, origen: "manual", ref: "" }];
+    empresa().caja_inicial = { 2026: 1000000 }; empresa().folios_caja = {};
+    const m1 = modeloLibroCaja(2026, "01"), m2 = modeloLibroCaja(2026, "02");
+    r.ene = [m1.ini.monto, m1.filas.map((f) => f.monto), m1.totales];
+    r.feb = [m2.ini.monto, m2.ini.base, m2.totales];
+    r.glosaIni = [m1.ini.glosa, m2.ini.glosa, m1.ini.doc_tipo];
+    const x = await aPdfLibroCaja({ anio: 2026, m1: "01", m2: "02" }, 22); r.folios = [x.paginas, x.folios["2026-01"], x.folios["2026-02"]];
+    const pdfs = await unirPdfs([x.blob, (await aPdf(informeControlPpm(2026))).blob]); const { PDFDocument } = window.PDFLib; r.paginasUnido = (await PDFDocument.load(await pdfs.arrayBuffer())).getPageCount();
+    r.ppm = informeControlPpm(2026).filas.map((f) => f.valores.slice(4));
+    empresa().folios_caja = { "2026-01": [22, 22], "2026-02": [23, 23] }; const m3 = modeloLibroCaja(2026, "02"); r.docNum = [m3.ini.doc_num, m3.folio, folioSugeridoCaja({ anio: 2026, m1: "03" })];
+    const f29 = clasificarMovimientoExcel(2, "Formulario 29", "Pago F29 Mayo, PPM.", "2026-06-15"), f29b = clasificarMovimientoExcel(2, "Formulario 29", "Pago F29 Diciembre, PPM.", "2026-01-12"), f29c = clasificarMovimientoExcel(2, "Formulario 29", "Pago F29 Marzo Abril, PPM.", "2026-05-08");
+    r.periodos = [f29.f29_periodo, f29b.f29_periodo, f29c.f29_periodo];
+    S.caja = ant.c; const em = empresa(); em.caja_inicial = ant.e.caja_inicial; if (ant.e.folios_caja === undefined) delete em.folios_caja; else em.folios_caja = ant.e.folios_caja; return r;
+  });
+  igual("modelo de enero: saldo inicial, egresos en negativo y totales con el saldo inicial", [md.ene[0], md.ene[1], md.ene[2]], [1000000, [-21611, 2377262], { ing: 3377262, egr: 21611, saldo: 3355651, bIng: 1997699, bEgr: 21611, neto: 1976088 }]);
+  igual("febrero parte con el saldo de enero y el resultado acumulado como base", [md.feb[0], md.feb[1], md.feb[2].bIng, md.feb[2].neto], [3355651, 1976088, 1976088 + 800000, 1976088 + 800000 - 250000]);
+  igual("glosa y tipo de documento del saldo inicial", md.glosaIni, ["Saldo Inicial Libro de Caja Diciembre de 2025", "Saldo Inicial Libro de Caja Enero de 2026", "Libro de Caja Diciembre 2025"]);
+  igual("el PDF lleva una hoja y un folio por mes", [md.folios[0], md.folios[1], md.folios[2]], [2, [22, 22], [23, 23]]);
+  ok("los informes se pueden unir al PDF del libro", md.paginasUnido >= 3, String(md.paginasUnido));
+  ok("el PPM actualizado queda pendiente de corrección monetaria", md.ppm.length >= 1 && md.ppm.every((v) => v[2] === "Pendiente"), JSON.stringify(md.ppm));
+  igual("el saldo inicial cita el folio de la hoja anterior y se sugiere el folio siguiente", md.docNum, [22, [23, 23], 24]);
+  igual("el período del F29 sin año sale del mes de pago", md.periodos, ["2026-05", "2025-12", "2026-04"]);
   const sa = await page.evaluate(async () => {
     const ant = { mes: S.cajaMes, anio: S.cajaAnio, sal: S.cajaSaldos }, tarjetas = () => [...document.querySelectorAll(".tarjetas .tarjeta strong")].map((x) => x.textContent.replace(/[$.]/g, ""));
     S.cajaAnio = "2026"; S.cajaMes = "09"; S.cajaSaldos = "mes"; S.pestana.caja = "libro"; ir("caja"); await new Promise((x) => setTimeout(x, 60));
@@ -546,7 +574,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("el PPM y la retención del F29 salen en sus filas y la retención se suma a honorarios", [ct.ppmFlujo, ct.retFlujo, ct.ret], [-12000, -3000, ct.ret]);
   ok("el control de resultados trae el resumen para el F22 y el capital propio simplificado", ct.resumen);
   ok("la pestaña Control anual dibuja las tablas", ct.titulo && ct.tabla > 10 && ct.tablaR > 10 && ct.cols[0] === 14 && ct.cols[1] === 14, JSON.stringify([ct.tabla, ct.tablaR, ct.cols]));
-  igual("el control de PPM muestra el PPM pagado del F29 de junio", ct.junio, ["Junio", 12000, 0, 12000]);
+  igual("el control de PPM muestra el PPM pagado del F29 de junio", ct.junio.slice(0, 4), ["Junio", 12000, 0, 12000]);
   if (hayLibs) {
     const exc = await page.evaluate(async () => { const r = []; for (const f of [informeControlResultados, informeControlFlujo, informeControlPpm]) { try { r.push([(await aExcel(f(2026))).size > 1000, (await aPdf(f(2026))).blob.size > 1000]); } catch (e) { r.push("ERR " + e.message); } } return r; });
     ok("los informes de control se exportan a Excel y a PDF", JSON.stringify(exc) === JSON.stringify([[true, true], [true, true], [true, true]]), JSON.stringify(exc));

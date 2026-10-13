@@ -77,6 +77,26 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent);
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--surface-2); position: sticky; top: 0; }
+td.c, th.c { text-align: center; }
+.bloque-caja { margin: 0 0 1.6rem; min-width: 0; }
+.bloque-caja .tabla { margin-bottom: .6rem; }
+.bloque-caja table { font-size: 12px; }
+.bloque-caja th { font-size: 10px; letter-spacing: .03em; }
+.bloque-caja th, .bloque-caja td { padding: 4px 5px; }
+.bloque-caja td:nth-child(7), .bloque-caja th:nth-child(7) { min-width: 13rem; }
+.bloque-caja td:nth-child(2), .bloque-caja td:nth-child(3) { max-width: 9rem; }
+.bloque-caja td:nth-child(4), .bloque-caja th:nth-child(4) { min-width: 7rem; }
+.bloque-caja td:nth-child(5), .bloque-caja td:nth-child(6), .bloque-caja td:nth-child(10) { white-space: nowrap; }
+.bloque-caja td.c { white-space: nowrap; }
+.bloque-caja input, .bloque-caja select { font-size: 11.5px; padding: 3px 5px; min-width: 0; }
+.bloque-caja td:nth-child(2) select { width: 6.2rem; }
+.bloque-caja td:nth-child(3) input { width: 6rem !important; }
+.bloque-caja td:nth-child(4) select, .bloque-caja td:nth-child(4) input { width: 8rem !important; }
+.bloque-caja td:nth-child(5) input { width: 7rem !important; }
+.bloque-caja td:nth-child(6) input { width: 7.4rem; }
+.bloque-caja td:nth-child(8) input, .bloque-caja td:nth-child(9) input { width: 6rem !important; }
+.bloque-caja h2 { margin: 1rem 0 .4rem; }
+.bloque-caja table.totales { width: auto; min-width: 60%; }
 td.num, th.num { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
 td.cod { font-family: var(--font-num); white-space: nowrap; color: var(--muted); }
 tr.clic { cursor: pointer; }
@@ -238,7 +258,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.25.0";
+const VERSION = "1.26.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -2692,7 +2712,7 @@ async function liberarRemuneraciones(asientoId) {
 /* Cada informe se describe una vez (columnas y filas con un estilo) y se convierte a PDF o Excel,
    con el mismo formato del programa de escritorio. Estilos de fila: "" normal, seccion, glosa,
    subtotal, total, nota, destacado. */
-const NOMBRE_PROGRAMA = "CONTABILIDAD COMPLETA";
+const nombrePrograma = () => (esSimplificada() ? "CONTABILIDAD SIMPLIFICADA" : "CONTABILIDAD COMPLETA");
 const ARTICULO_100 = "Artículo 100 Código Tributario: Declaración jurada de que los datos corresponden a los registros contables de la empresa.";
 const MESES_MAYUS = MESES.map((m) => m.toUpperCase());
 const NEGRITA_FILA = new Set(["seccion", "glosa", "subtotal", "total", "destacado"]);
@@ -2895,6 +2915,7 @@ const LIBRERIAS = {
   jspdf: "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
   autotable: "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js",
   exceljs: "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js",
+  pdflib: "https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js",
 };
 const scriptsCargados = {};
 function cargarScript(clave) {
@@ -2904,6 +2925,70 @@ function cargarScript(clave) {
     document.head.appendChild(s);
   });
   return scriptsCargados[clave];
+}
+/* PDF del libro de caja idéntico al modelo del contador: hoja apaisada, una por mes (más si no caben las filas), con folio, saldo inicial como línea 1,
+   egresos en negativo, saldos y totales al pie y firmas del representante legal y del contador. Los informes de control se pueden agregar al final (sin folio). */
+async function aPdfLibroCaja(spec, folioInicial) {
+  await cargarScript("jspdf"); await cargarScript("autotable");
+  const { jsPDF } = window.jspdf, e = empresa(), T = textoPdf;
+  const doc = new jsPDF({ unit: "pt", format: "letter", orientation: "landscape", compress: true });
+  const W = 792, H = 612, X0 = 30, X1 = 762, AN = X1 - X0, Y0 = 170;
+  doc.setProperties({ title: `Libro de caja ${spec.anio} – ${e.razon_social}`, author: e.razon_social });
+  const caja = (x, y, w, h) => { doc.setDrawColor(0); doc.setLineWidth(0.5); doc.rect(x, y, w, h); };
+  const cabecera = (M, folio) => {
+    doc.setDrawColor(0); doc.setLineWidth(0.8); doc.rect(20, 20, W - 40, H - 40);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(0);
+    [["Nombre:", e.razon_social], ["Rut:", e.rut], ["Dirección:", e.direccion], ["Giro:", e.giro]].forEach(([k, v], i) => { doc.text(k, X0, 40 + i * 11); doc.text(T(v || ""), X0 + 62, 40 + i * 11); });
+    doc.setFont("helvetica", "bold"); doc.text("Folio", X1 - 60, 40); doc.text(String(folio), X1, 40, { align: "right" });
+    caja(X0, 88, AN, 12); doc.setFontSize(7); doc.text("LIBRO DE CAJA CONTRIBUYENTES ACOGIDOS AL RÉGIMEN DEL ARTÍCULO 14 LETRA D) DEL N°3 Y N°8 LETRA (a) DE LA LEY SOBRE IMPUESTO A LA RENTA", W / 2, 96.5, { align: "center" });
+    doc.setFontSize(7.5);
+    caja(X0, 108, 180, 12); doc.line(X0 + 70, 108, X0 + 70, 120); doc.text("PERÍODO", X0 + 4, 116.5); doc.text(T(`${MESES[+M.mes - 1].toUpperCase()} ${M.anio}`), X0 + 125, 116.5, { align: "center" });
+    caja(X0, 124, 180, 12); doc.line(X0 + 70, 124, X0 + 70, 136); doc.text("RUT", X0 + 4, 132.5); doc.setFont("helvetica", "normal"); doc.text(T(e.rut || ""), X0 + 125, 132.5, { align: "center" });
+    doc.setFont("helvetica", "bold"); caja(X0, 140, AN, 12); doc.line(X0 + 110, 140, X0 + 110, 152); doc.text("NOMBRE/RAZÓN SOCIAL", X0 + 4, 148.5); doc.setFont("helvetica", "normal"); doc.text(T(e.razon_social || ""), X0 + 116, 148.5);
+    doc.setFont("helvetica", "bold"); caja(X0, 156, AN, 12); doc.text("REGISTRO DE OPERACIONES", W / 2, 164.5, { align: "center" });
+  };
+  const monto = (v) => (v ? clp(v) : "-");
+  const ancho = [48, 78, 54, 100, 66, 54, 184, 74, 74];
+  const cab = [["N° CORRELATIVO", "TIPO OPERACIÓN\n(FLUJO INGRESO = 1;\nFLUJO EGRESO = 2\nSALDO INICIAL = 0)", "N° DE\nDOCUMENTO", "TIPO DOCUMENTO", "RUT EMISOR", "FECHA\nOPERACIÓN", "GLOSA DE OPERACIÓN", "MONTO TOTAL\nFLUJO DE\nINGRESO O\nEGRESO", "MONTO QUE\nAFECTA LA BASE\nIMPONIBLE"].map((t) => T(t.replace(/\\n/g, "\n")))];
+  const meses = []; for (let m = +spec.m1; m <= +spec.m2; m++) meses.push(String(m).padStart(2, "0"));
+  let folio = folioInicial - 1, previa = folioInicial - 1; const folios = {};
+  meses.forEach((mes, idx) => {
+    const M = modeloLibroCaja(spec.anio, mes); if (idx > 0) M.ini.doc_num = previa;  else M.ini.doc_num = folioInicial - 1;
+    if (idx > 0) doc.addPage();
+    folio++; folios[`${spec.anio}-${mes}`] = [folio, folio]; let pag = 0;
+    const filas = [M.ini, ...M.filas].map((f) => [f.n ?? "", f.tipo, f.doc_num ?? "", T(f.doc_tipo), T(f.rut), f.fecha.split("-").reverse().join("-"), T(f.glosa), f.monto === 0 && f.tipo !== 0 ? "-" : monto(f.monto), monto(f.base)]);
+    doc.autoTable({ startY: Y0, margin: { top: Y0, left: X0, right: W - X1, bottom: 90 }, head: cab, body: filas, theme: "grid", tableWidth: AN,
+      styles: { font: "helvetica", fontSize: 6.8, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 }, lineColor: [0, 0, 0], lineWidth: 0.4, textColor: 0, halign: "center", valign: "middle", overflow: "linebreak" },
+      headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: "bold", fontSize: 6, lineColor: [0, 0, 0], lineWidth: 0.4 },
+      columnStyles: Object.fromEntries(ancho.map((w, j) => [j, { cellWidth: w, ...(j >= 7 ? { halign: "right", cellPadding: { top: 2, bottom: 2, left: 12, right: 4 } } : {}) }])), rowPageBreak: "avoid",
+      didDrawCell: (d) => { if (d.section === "body" && d.column.index >= 7) { doc.setFont("helvetica", "normal"); doc.setFontSize(6.8); doc.setTextColor(0); doc.text("$", d.cell.x + 3.5, d.cell.y + d.cell.height / 2 + 2.3); } },
+      didDrawPage: () => { pag++; if (pag > 1) { folio++; folios[`${spec.anio}-${mes}`][1] = folio; } cabecera(M, folio); } });
+    let y = doc.lastAutoTable.finalY + 14;
+    if (y + 125 > H - 32) { doc.addPage(); folio++; folios[`${spec.anio}-${mes}`][1] = folio; cabecera(M, folio); y = Y0 + 4; }
+    const t = M.totales;
+    doc.autoTable({ startY: y, margin: { left: X0 }, tableWidth: 340, theme: "grid", styles: { font: "helvetica", fontSize: 6.8, cellPadding: 2.5, lineColor: [0, 0, 0], lineWidth: 0.4, textColor: 0, halign: "center", valign: "middle" },
+      headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: "bold", lineColor: [0, 0, 0], lineWidth: 0.4 },
+      head: [[{ content: "SALDOS Y TOTALES LIBRO DE CAJA", colSpan: 6 }], [{ content: "FLUJO DE INGRESOS Y EGRESOS", colSpan: 3 }, { content: "MONTOS QUE AFECTAN LA BASE IMPONIBLE", colSpan: 3 }],
+        ["TOTAL MONTO FLUJO\nDE INGRESOS", "TOTAL MONTO FLUJO DE\nEGRESOS", "SALDO FLUJO DE CAJA", "INGRESOS", "EGRESOS", "RESULTADO NETO"].map((x) => T(x.replace(/\\n/g, "\n")))],
+      body: [[clp(t.ing), `- ${clp(t.egr)}`, clp(t.saldo), clp(t.bIng), `- ${clp(t.bEgr)}`, clp(t.neto)]], columnStyles: { 0: { halign: "right" }, 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } } });
+    const ly = H - 70;
+    doc.setDrawColor(0); doc.setLineWidth(0.6); doc.line(40, ly, 250, ly); doc.line(520, ly, 730, ly);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.text("Firma Representante Legal", 145, ly + 11, { align: "center" }); doc.text("Firma Contador", 625, ly + 11, { align: "center" });
+    previa = folio;
+  });
+  return { blob: doc.output("blob"), paginas: folio - folioInicial + 1, folios };
+}
+async function unirPdfs(blobs) {
+  await cargarScript("pdflib");
+  const { PDFDocument } = window.PDFLib, salida = await PDFDocument.create();
+  for (const b of blobs) { const origen = await PDFDocument.load(await b.arrayBuffer()), paginas = await salida.copyPages(origen, origen.getPageIndices()); paginas.forEach((pg) => salida.addPage(pg)); }
+  return new Blob([await salida.save()], { type: "application/pdf" });
+}
+/* Folio sugerido para el PDF del libro: el de la hoja ya impresa de ese mes, o el siguiente a la hoja del mes anterior, o el siguiente al último folio de la empresa. */
+function folioSugeridoCaja(spec) {
+  const propio = folioMesCaja(spec.anio, spec.m1); if (propio) return propio[0];
+  const m = +spec.m1, ant = m === 1 ? folioMesCaja(spec.anio - 1, "12") : folioMesCaja(spec.anio, String(m - 1).padStart(2, "0"));
+  return ant ? ant[1] + 1 : (empresa().ultimo_folio || 0) + 1;
 }
 function lineasEmpresa(e) {
   return [`RAZON SOCIAL: ${e.razon_social || ""}`.toUpperCase(), `R.U.T.: ${e.rut || ""}`, `GIRO: ${e.giro || ""}`.toUpperCase(),
@@ -2928,7 +3013,7 @@ async function aPdf(inf, folioInicial = null) {
   const n = inf.columnas.length, principal = textoPrincipal(inf);
   const peso = inf.columnas.reduce((s, c) => s + c.ancho, 0);
   const anchos = inf.columnas.map((c) => (anchoUtil * c.ancho) / peso);
-  const cuerpo = n > 7 ? 7 : 7.5;
+  const cuerpo = n >= 12 ? 5.8 : n > 7 ? 7 : 7.5, relleno = n >= 12 ? 1.5 : 4;
   const e = empresa();
   doc.setProperties({ title: `${inf.titulo} – ${e.razon_social}`, author: e.razon_social });
 
@@ -2986,7 +3071,7 @@ async function aPdf(inf, folioInicial = null) {
   const base = {
     margin: { top: arribaMargen, bottom: abajoMargen, left: margen, right: margen },
     theme: "grid", tableWidth: anchoUtil,
-    styles: { font: "helvetica", fontSize: cuerpo, cellPadding: { top: 2.3, bottom: 2.3, left: 4, right: 4 }, lineColor: GRIS_GRILLA, lineWidth: 0.5, textColor: [0, 0, 0], valign: "middle", overflow: "linebreak" },
+    styles: { font: "helvetica", fontSize: cuerpo, cellPadding: { top: 2.3, bottom: 2.3, left: relleno, right: relleno }, lineColor: GRIS_GRILLA, lineWidth: 0.5, textColor: [0, 0, 0], valign: "middle", overflow: "linebreak" },
     headStyles: { fillColor: GRIS_FONDO, textColor: [0, 0, 0], fontStyle: "bold", lineColor: GRIS_GRILLA, lineWidth: 0.5 },
     columnStyles: Object.fromEntries(anchos.map((w, j) => [j, { cellWidth: w }])),
     rowPageBreak: "avoid",
@@ -3089,7 +3174,7 @@ async function aPdf(inf, folioInicial = null) {
     doc.setDrawColor(...GRIS_GRILLA); doc.setLineWidth(0.5);
     doc.line(margen, arriba + 2.1 * CM, W - margen, arriba + 2.1 * CM);
     doc.line(margen, H - 1.35 * CM, W - margen, H - 1.35 * CM);
-    doc.setFontSize(7); doc.text(NOMBRE_PROGRAMA, margen, H - 1.0 * CM);
+    doc.setFontSize(7); doc.text(nombrePrograma(), margen, H - 1.0 * CM);
     doc.text(`PÁGINA ${p} DE ${total}`, W - margen, H - 1.0 * CM, { align: "right" });
     if (folioInicial != null) { doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(`FOLIO: ${folioInicial + p - 1}`, W - margen, arriba, { align: "right" }); }
   }
@@ -3184,7 +3269,7 @@ async function excelSii(inf) {
     });
   }
   ws.pageSetup = { paperSize: 1, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } };
-  ws.headerFooter = { oddFooter: `&L&7${NOMBRE_PROGRAMA}&R&7PÁGINA &P DE &N` };
+  ws.headerFooter = { oddFooter: `&L&7${nombrePrograma()}&R&7PÁGINA &P DE &N` };
   return new Blob([await wb.xlsx.writeBuffer()], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 async function aExcel(inf) {
@@ -3293,7 +3378,7 @@ async function aExcel(inf) {
   }
   ws.pageSetup = { paperSize: 1, orientation: inf.horizontal ? "landscape" : "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0,
     printTitlesRow: `${primeraEncabezado}:${filaTitulos}`, margins: { left: 0.5, right: 0.5, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 } };
-  ws.headerFooter = { oddFooter: `&L&7${NOMBRE_PROGRAMA}&R&7PÁGINA &P DE &N` };
+  ws.headerFooter = { oddFooter: `&L&7${nombrePrograma()}&R&7PÁGINA &P DE &N` };
   return new Blob([await wb.xlsx.writeBuffer()], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
@@ -3320,13 +3405,25 @@ async function exportar(formato) {
 async function generarPdfConFolio() {
   const folio = Number($("#folio-inicial").value);
   if (!Number.isInteger(folio) || folio < 1) return aviso("Ingresa un número entero mayor o igual a 1.");
-  const inf = S.informe();
+  const inf = S.informe(), libro = inf.libroCajaPdf;
+  const extras = libro ? { res: !!$("#fo-res")?.checked, flujo: !!$("#fo-flujo")?.checked, ppm: !!$("#fo-ppm")?.checked } : null;
+  if (extras) S.pdfExtras = extras;
   await ocupado(async () => {
     aviso("Generando PDF…");
-    const { blob, paginas } = await aPdf(inf, folio);
+    let r;
+    if (libro) {
+      r = await aPdfLibroCaja(libro, folio);
+      const blobs = [r.blob];
+      for (const [k, f] of [["res", informeControlResultados], ["flujo", informeControlFlujo], ["ppm", informeControlPpm]]) if (extras[k]) blobs.push((await aPdf(f(libro.anio))).blob);
+      if (blobs.length > 1) r.blob = await unirPdfs(blobs);
+    } else r = await aPdf(inf, folio);
+    const { blob, paginas } = r;
     if (!(await guardarArchivo(nombreArchivo(inf, "pdf"), blob))) { aviso("Descarga cancelada: los folios no se usaron."); return; }
     const ultimo = folio + paginas - 1;
-    if (ultimo > (empresa().ultimo_folio || 0)) await BD.setEmpresa(S.eid, { ...empresa(), ultimo_folio: ultimo });
+    const nuevo = { ...empresa() };
+    if (ultimo > (nuevo.ultimo_folio || 0)) nuevo.ultimo_folio = ultimo;
+    if (r.folios) nuevo.folios_caja = { ...(nuevo.folios_caja || {}), ...r.folios };
+    await BD.setEmpresa(S.eid, nuevo);
     S.folioPendiente = false; render();
     aviso(`${paginas === 1 ? `PDF generado con el folio ${folio}.` : `PDF generado con los folios ${folio} al ${ultimo}.`} Próximo folio sugerido: ${Math.max(empresa().ultimo_folio || 0, ultimo) + 1}.`);
   }, "No se pudo generar el PDF");
@@ -3334,12 +3431,15 @@ async function generarPdfConFolio() {
 
 function panelFolio() {
   if (!S.folioPendiente) return "";
-  const proximo = (empresa().ultimo_folio || 0) + 1;
+  let libro = null; try { libro = S.informe?.().libroCajaPdf || null; } catch (_) { libro = null; }
+  const proximo = libro ? folioSugeridoCaja(libro) : (empresa().ultimo_folio || 0) + 1, x = S.pdfExtras || {};
   return `<form class="caja" data-form="folio"><h2>Folio inicial</h2>
-    <p>¿Con qué número de folio comienza este PDF? Cada página usará el folio siguiente.</p>
+    <p>${libro ? `¿Con qué folio comienza la primera hoja (${MESES[+libro.m1 - 1]} ${libro.anio})? Cada hoja del libro usa el folio siguiente.` : "¿Con qué número de folio comienza este PDF? Cada página usará el folio siguiente."}</p>
     <div class="barra"><label>Folio inicial<input type="number" id="folio-inicial" min="1" step="1" value="${proximo}"></label>
       <button class="btn" type="submit">Generar PDF</button><button class="btn sec" type="button" data-accion="cancelar-folio">Cancelar</button></div>
-    <p class="ayuda">Sugerido: <strong>${proximo}</strong>, el siguiente al último folio utilizado por ${esc(empresa().razon_social)}.</p></form>`;
+    ${libro ? `<p><strong>¿Agregar al final de este mismo PDF los informes de control?</strong> Van sin folio; también los puedes imprimir por separado en «Control anual».</p>
+      <div class="form"><label class="check"><input type="checkbox" id="fo-res" ${x.res ? "checked" : ""}> Control de resultados tributarios</label><label class="check"><input type="checkbox" id="fo-flujo" ${x.flujo ? "checked" : ""}> Control de flujo de caja</label><label class="check"><input type="checkbox" id="fo-ppm" ${x.ppm ? "checked" : ""}> PPM pagados (corrección monetaria pendiente)</label></div>` : ""}
+    <p class="ayuda">Sugerido: <strong>${proximo}</strong>${libro ? ", según las hojas ya impresas" : `, el siguiente al último folio utilizado por ${esc(empresa().razon_social)}`}.</p></form>`;
 }
 function botonesExportar(csv = true) {
   if (!S.descargas) return "";
@@ -6185,6 +6285,7 @@ function informeLibroCaja(anio, mes, diario, hastaMes = "") {
     inf.agregar([null, null, null, null, null, null, `CIERRE ${nombreMes(c)}: TOTAL EGRESOS (C11) · AFECTA BASE (C14)`, c.c11, c.c14], { estilo: "subtotal", derecha: true });
     inf.agregar([null, null, null, null, null, null, `CIERRE ${nombreMes(c)}: SALDO DE CAJA (C12) · RESULTADO NETO (C15)`, c.c12, c.c15], { estilo: "subtotal", derecha: true });
   }
+  inf.oficial = true; inf.libroCajaPdf = { anio, m1, m2 };
   inf.notas.push("C2: 0 saldo inicial, 1 flujo de ingreso, 2 flujo de egreso. C5 es el RUT de quien emitió el documento: el de la empresa en lo que emite (ventas, remuneraciones). C6 es la fecha de percepción o pago. C9 es el monto que incide en la base imponible (el neto de una factura, cero para préstamos, retiros e IVA). Se registran todos los flujos, afecten o no la base, y los de las cuentas corrientes bancarias. Cierres mensuales y anual (C10 a C15): el resultado neto C15 es negativo cuando los ingresos superan a los egresos (Anexo 4). Formato de la Res. Ex. SII N° 14 de 2021 (Anexos 3 y 4, numeración corregida por la Res. 31).");
   return inf;
 }
@@ -6322,13 +6423,14 @@ function informeControlFlujo(anio) {
   return inf;
 }
 function informeControlPpm(anio) {
-  const e = empresa(), inf = new Informe("CONTROL DE PPM PAGADOS", `${e.razon_social} · AÑO COMERCIAL ${anio}`, [col("Mes del F29", 18), col("PPM pagado (libro de caja)", 20, "monto"), col("PPM del borrador del F29", 20, "monto"), col("Diferencia", 16, "monto")], `control_ppm_${anio}`);
-  const pagado = cerosMes(), declarado = cerosMes();
+  const e = empresa(), inf = new Informe("PPM PAGADOS ACTUALIZADOS", `${e.razon_social} · AÑO COMERCIAL ${anio}`, [col("Mes del F29", 16), col("PPM pagado (libro de caja)", 18, "monto"), col("PPM del borrador del F29", 18, "monto"), col("Diferencia", 14, "monto"), col("% corrección monetaria", 16), col("Ajuste PPM", 12), col("PPM actualizado", 16)], `control_ppm_${anio}`, { horizontal: true });
+  const pagado = cerosMes(), declarado = cerosMes(), pend = "Pendiente";
   for (const m of S.caja.filter((x) => x.clase === "f29_ppm" && String(x.f29_periodo || "").startsWith(String(anio)))) pagado[+m.f29_periodo.slice(5, 7) - 1] += m.monto;
   for (const b of S.f29Borradores.filter((x) => x.id.startsWith(String(anio)))) declarado[+b.id.slice(5, 7) - 1] += b.codigos?.["62"] || 0;
-  MESES.forEach((mes, i) => { if (pagado[i] || declarado[i]) inf.agregar([mes, pagado[i], declarado[i], pagado[i] - declarado[i]]); });
-  inf.agregar(["TOTAL", totalAnio(pagado), totalAnio(declarado), totalAnio(pagado) - totalAnio(declarado)], { estilo: "total" });
-  inf.notas.push("Los PPM pagados corresponden a los F29 del año comercial (el PPM de diciembre se paga en enero y pertenece al año anterior). Es el dato para la declaración jurada 1947 del régimen transparente, sin actualizar por corrección monetaria.");
+  MESES.forEach((mes, i) => { if (pagado[i] || declarado[i]) inf.agregar([mes, pagado[i], declarado[i], pagado[i] - declarado[i], pend, pend, pend]); });
+  inf.agregar(["TOTAL", totalAnio(pagado), totalAnio(declarado), totalAnio(pagado) - totalAnio(declarado), "", "", pend], { estilo: "total" });
+  inf.notas.push("Los PPM pagados corresponden a los F29 del año comercial (el PPM de diciembre se paga en enero y pertenece al año anterior). Es el dato para la declaración jurada 1947 del régimen transparente.");
+  inf.notas.push(`Corrección monetaria pendiente: los porcentajes de actualización se aplican según el año tributario ${+anio + 1}; mientras no se publiquen y se ingresen, el ajuste y el PPM actualizado quedan en espera.`);
   return inf;
 }
 function tablaDeInforme(inf) {
@@ -6351,12 +6453,14 @@ const sinTildes = (t) => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036
 function periodoDeHojaCaja(titulo) { const m = sinTildes(titulo).toUpperCase().trim().match(/^([A-Z]+)\s+(\d{4})$/), i = m ? NOMBRES_MES.indexOf(m[1]) : -1; return i < 0 ? null : `${m[2]}-${String(i + 1).padStart(2, "0")}`; }
 const claseVentaGlosa = (g) => (/exent/.test(g) && /boleta/.test(g) ? "boleta_exenta" : /exent/.test(g) && /factura/.test(g) ? "factura_exenta" : /comprobante/.test(g) ? "comprobante" : /boleta/.test(g) ? "boleta" : "factura");
 /* Propone la categoría y la clase de un movimiento a partir del tipo de documento y la glosa (el contador las escribe a mano). */
-function clasificarMovimientoExcel(tipo, docTipo, glosa) {
+function clasificarMovimientoExcel(tipo, docTipo, glosa, fecha = "") {
   const g = sinTildes(glosa).toLowerCase(), d = sinTildes(docTipo).toLowerCase(), r = {};
   if (d === "formulario 29" || /\bf29\b/.test(g)) {
     r.categoria = "Pago de impuestos (IVA, PPM, F29)";
     r.clase = /\bppm\b/.test(g) ? "f29_ppm" : /retencion/.test(g) ? "f29_ret" : /impuesto unico|iusc/.test(g) ? "f29_iusc" : /\biva\b/.test(g) ? "f29_iva" : "";
-    const m = g.match(/f29\s+([a-z]+)\s+(\d{4})/), i = m ? NOMBRES_MES.indexOf(m[1].toUpperCase()) : -1; if (i >= 0) r.f29_periodo = `${m[2]}-${String(i + 1).padStart(2, "0")}`;
+    /* El período es el último mes nombrado; si la glosa no trae el año («Pago F29 Mayo»), es el del pago, o el anterior si el mes es posterior al del pago. */
+    const nombres = [...g.matchAll(/\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:de\s+)?(\d{4}))?/g)], u = nombres.at(-1);
+    if (u) { const i = NOMBRES_MES.indexOf(u[1].toUpperCase()); let anio = u[2] ? +u[2] : fecha ? +fecha.slice(0, 4) - (i + 1 > +fecha.slice(5, 7) ? 1 : 0) : 0; if (i >= 0 && anio) r.f29_periodo = `${anio}-${String(i + 1).padStart(2, "0")}`; }
     return r;
   }
   if (tipo === 1) {
@@ -6433,7 +6537,7 @@ function saldoInicialLibro(r, h) {
 }
 function movimientosDeLibroCaja(h) {
   return h.filas.filter((f) => f.op > 0).map((f) => {
-    const c = clasificarMovimientoExcel(f.op, f.doc, f.glosa), doc = tipoDocCaja(f.doc), propio = DOCS_PROPIOS_CAJA.has(doc) || limpiarRut(f.rut) === limpiarRut(empresa().rut);
+    const c = clasificarMovimientoExcel(f.op, f.doc, f.glosa, f.fecha || ultimoDia(h.periodo)), doc = tipoDocCaja(f.doc), propio = DOCS_PROPIOS_CAJA.has(doc) || limpiarRut(f.rut) === limpiarRut(empresa().rut);
     return { id: "mx_" + h.periodo.replace("-", "") + "_" + f.fila, fecha: f.fueraDeMes || !f.fecha ? ultimoDia(h.periodo) : f.fecha, tipo: f.op, categoria: c.categoria, doc_tipo: doc, doc_num: f.num, rut: propio ? "" : f.rut ? (rutValido(f.rut) ? formatoRut(f.rut) : f.rut) : "", nombre: "", glosa: f.glosa, monto: Math.abs(f.monto), base: Math.abs(f.base),
       ...(c.clase ? { clase: c.clase } : {}), ...(c.f29_periodo ? { f29_periodo: c.f29_periodo } : {}), origen: "excel", ref: `xl:${h.periodo}:${f.fila}` };
   });
@@ -6491,13 +6595,55 @@ function vistaInicioSimple() {
     : `<div class="caja vacio"><p>Todavía no hay movimientos en ${anio}. Registra el saldo inicial de caja y los ingresos y egresos, o impórtalos desde el RCV y las remuneraciones.</p></div>`}`;
 }
 
+/* Modelo del libro de caja como lo lleva el contador: una hoja por mes, el saldo inicial es la línea 1 (con el folio de la hoja anterior y el resultado acumulado como base),
+   los egresos van en negativo y los saldos y totales van al pie. */
+const folioMesCaja = (anio, mes) => (empresa().folios_caja || {})[`${anio}-${mes}`] || null;
+function modeloLibroCaja(anio, mes) {
+  const L = libroCaja(anio, mes), previos = cajaDe(anio).filter((m) => m.fecha.slice(5, 7) < mes);
+  const baseIni = previos.reduce((x, m) => x + (m.tipo === 1 ? m.base : -m.base), 0);
+  const ant = mes === "01" ? { mes: "12", anio: anio - 1 } : { mes: String(+mes - 1).padStart(2, "0"), anio: +anio }, fAnt = folioMesCaja(ant.anio, ant.mes), fCur = folioMesCaja(anio, mes);
+  const ini = { n: 1, tipo: 0, doc_num: fAnt ? fAnt[1] : fCur ? fCur[0] - 1 : "", doc_tipo: `Libro de Caja ${MESES[+ant.mes - 1]} ${ant.anio}`, rut: empresa().rut || "", fecha: `${anio}-${mes}-01`, glosa: `Saldo Inicial Libro de Caja ${MESES[+ant.mes - 1]} de ${ant.anio}`, monto: L.inicial, base: baseIni };
+  const filas = L.filas.map((m, i) => ({ n: i + 2, tipo: m.tipo, doc_num: m.doc_num || "", doc_tipo: m.doc_tipo || "", rut: rutEmisorCaja(m) || "", fecha: m.fecha, glosa: m.glosa || "", monto: m.tipo === 2 ? -m.monto : m.monto, base: m.tipo === 2 ? -m.base : m.base, id: m.id, m }));
+  return { anio, mes, ini, filas, folio: fCur, totales: { ing: L.inicial + L.ing, egr: L.eg, saldo: L.saldo, bIng: baseIni + L.baseIng, bEgr: L.baseEg, neto: baseIni + L.baseIng - L.baseEg } };
+}
+const pesosCaja = (v) => `$ ${v ? clp(v) : "-"}`;
+function bloqueMesCaja(anio, mes, unico) {
+  const M = modeloLibroCaja(anio, mes), t = M.totales, ed = S.puedeEscribir;
+  const filaIni = `<tr class="sub"><td class="c">${M.ini.n}</td><td class="c">0</td><td class="c">${esc(M.ini.doc_num)}</td><td>${esc(M.ini.doc_tipo)}</td><td>${esc(M.ini.rut)}</td><td>${fmtFecha(M.ini.fecha)}</td><td>${esc(M.ini.glosa)}</td><td class="num">${pesosCaja(M.ini.monto)}</td><td class="num">${pesosCaja(M.ini.base)}</td><td></td></tr>`;
+  const filas = M.filas.map((f) => {
+    const m = f.m;
+    if (S.cajaEdit === m.id && ed) return `<tr class="editando"><td class="c">${f.n}</td><td><select id="ce-tipo"><option value="1" ${m.tipo === 1 ? "selected" : ""}>1 · Ingreso</option><option value="2" ${m.tipo === 2 ? "selected" : ""}>2 · Egreso</option></select></td>
+      <td><input id="ce-num" value="${esc(m.doc_num || "")}" style="width:7em"></td><td><input id="ce-doc" value="${esc(m.doc_tipo || "")}" style="width:100%"></td><td><input id="ce-rut" value="${esc(m.rut || "")}" style="width:8em"></td>
+      <td><input type="date" id="ce-fecha" value="${esc(m.fecha)}"></td><td><input id="ce-glosa" value="${esc(m.glosa)}" style="width:100%"></td>
+      <td class="num"><input id="ce-monto" inputmode="numeric" value="${clp(m.monto)}" style="width:7em" aria-label="Monto"></td><td class="num"><input id="ce-base" inputmode="numeric" value="${clp(m.base)}" style="width:7em" aria-label="Afecta la base"></td>
+      <td><button class="btn" type="button" data-n="caja-editar-guardar">Guardar</button> <button class="btn enlace" type="button" data-n="caja-editar-cancelar">Cancelar</button></td></tr>
+      <tr class="editando"><td></td><td colspan="9"><div class="form"><label>Categoría<select id="ce-categoria">${Object.keys(CATEGORIAS_CAJA).map((c) => `<option ${m.categoria === c ? "selected" : ""}>${esc(c)}</option>`).join("")}${CATEGORIAS_CAJA[m.categoria] ? "" : `<option selected>${esc(m.categoria || "")}</option>`}</select></label>
+        <label>Cliente o proveedor<input id="ce-nombre" value="${esc(m.nombre || "")}"></label></div></td></tr>`;
+    return `<tr><td class="c">${f.n}</td><td class="c">${f.tipo}</td><td class="c">${esc(f.doc_num)}</td><td>${esc(f.doc_tipo)}</td><td>${esc(f.rut)}</td><td>${fmtFecha(f.fecha)}</td><td>${esc(f.glosa)}${m.nombre ? `<br><small class="ayuda">${esc(m.nombre)}</small>` : ""}</td><td class="num">${pesosCaja(f.monto)}</td><td class="num ${f.base === 0 ? "cod" : ""}">${pesosCaja(f.base)}</td>
+      <td>${ed ? `<button class="btn enlace" type="button" data-n="caja-editar" data-id="${esc(m.id)}">Editar</button> <button class="btn enlace" type="button" data-n="caja-eliminar" data-id="${esc(m.id)}">Eliminar</button>` : ""}</td></tr>`;
+  }).join("");
+  const rapida = ed && unico ? filaRapidaCaja(mes, anio, M.filas.length + 2) : "";
+  return `<section class="bloque-caja"><h2>${MESES[+mes - 1]} ${anio}${M.folio ? ` · Folio ${M.folio[0]}${M.folio[1] !== M.folio[0] ? ` al ${M.folio[1]}` : ""}` : ""}</h2>
+    <div class="tabla"><table><thead><tr><th class="c" title="N° correlativo">N°</th><th class="c" title="Tipo de operación: flujo de ingreso = 1; flujo de egreso = 2; saldo inicial = 0">Tipo op.</th><th class="c" title="N° de documento">N° doc.</th><th>Tipo documento</th><th>RUT emisor</th><th title="Fecha de la operación">Fecha</th><th>Glosa de operación</th><th class="num" title="Monto total del flujo de ingreso o egreso">Monto flujo</th><th class="num" title="Monto que afecta la base imponible">Afecta base</th><th></th></tr></thead>
+      <tbody>${filaIni}${filas}${rapida}</tbody></table></div>
+    <p class="ayuda">Tipo de operación: 1 flujo de ingreso · 2 flujo de egreso · 0 saldo inicial. Monto flujo: monto total del flujo de ingreso o egreso (los egresos en negativo). Afecta base: monto que afecta la base imponible.</p>
+    <div class="tabla"><table class="totales"><thead><tr><th colspan="6" class="c">SALDOS Y TOTALES LIBRO DE CAJA</th></tr><tr><th colspan="3" class="c">Flujo de ingresos y egresos</th><th colspan="3" class="c">Montos que afectan la base imponible</th></tr>
+      <tr><th class="num">Total monto flujo de ingresos</th><th class="num">Total monto flujo de egresos</th><th class="num">Saldo flujo de caja</th><th class="num">Ingresos</th><th class="num">Egresos</th><th class="num">Resultado neto</th></tr></thead>
+      <tbody><tr><td class="num">${clp(t.ing)}</td><td class="num">- ${clp(t.egr)}</td><td class="num"><strong>${clp(t.saldo)}</strong></td><td class="num">${clp(t.bIng)}</td><td class="num">- ${clp(t.bEgr)}</td><td class="num"><strong>${clp(t.neto)}</strong></td></tr></tbody></table></div></section>`;
+}
+function bloquesCaja(anio, mes) {
+  if (mes) return bloqueMesCaja(anio, mes, true);
+  const ms = [...new Set(cajaDe(anio).map((m) => m.fecha.slice(5, 7)))].sort();
+  return ms.length ? ms.map((m) => bloqueMesCaja(anio, m, false)).join("") : `<div class="caja vacio"><p>No hay movimientos en ${anio}.</p></div>`;
+}
 const mesPorDefectoCaja = (anio) => { const h = hoy(); if (h.startsWith(String(anio))) return h.slice(5, 7); const ms = cajaDe(anio).map((m) => m.fecha.slice(5, 7)); return ms.length ? ms.at(-1) : "01"; };
 /* Línea de captura rápida al pie de la tabla: fecha, glosa, tipo y monto; el detalle (IVA, documento) va en «+ Nuevo movimiento». */
-function filaRapidaCaja(mes, anio) {
+function filaRapidaCaja(mes, anio, n = "") {
   const fecha = S.cajaFecha && S.cajaFecha.startsWith(String(anio)) && (!mes || S.cajaFecha.slice(5, 7) === mes) ? S.cajaFecha : mes ? (hoy().startsWith(`${anio}-${mes}`) ? hoy() : `${anio}-${mes}-01`) : hoy().startsWith(String(anio)) ? hoy() : `${anio}-01-01`;
-  return `<tr class="rapida"><td><input type="date" id="ql-fecha" value="${fecha}" aria-label="Fecha"></td><td><input id="ql-glosa" placeholder="Nueva línea: glosa" style="width:100%" aria-label="Glosa"></td>
-    <td class="num" colspan="2"><select id="ql-tipo" aria-label="Tipo"><option value="1">Ingreso</option><option value="2">Egreso</option></select> <input id="ql-monto" inputmode="numeric" placeholder="Monto" style="width:8em" aria-label="Monto"></td>
-    <td></td><td class="num"><input id="ql-base" inputmode="numeric" placeholder="= monto" style="width:8em" aria-label="Afecta la base (vacío = todo el monto)"></td><td><button class="btn" type="button" data-n="caja-linea">Agregar</button></td></tr>`;
+  return `<tr class="rapida"><td class="c">${n}</td><td><select id="ql-tipo" aria-label="Tipo de operación"><option value="1">1 · Ingreso</option><option value="2">2 · Egreso</option></select></td><td><input id="ql-num" placeholder="N°" style="width:7em" aria-label="N° de documento"></td>
+    <td><select id="ql-doc" aria-label="Tipo de documento">${TIPOS_DOC_CAJA.map((t) => `<option>${esc(t)}</option>`).join("")}</select></td><td><input id="ql-rut" placeholder="RUT" style="width:8em" aria-label="RUT emisor"></td>
+    <td><input type="date" id="ql-fecha" value="${fecha}" aria-label="Fecha"></td><td><input id="ql-glosa" placeholder="Nueva línea: glosa" style="width:100%" aria-label="Glosa"></td>
+    <td class="num"><input id="ql-monto" inputmode="numeric" placeholder="Monto" style="width:7em" aria-label="Monto"></td><td class="num"><input id="ql-base" inputmode="numeric" placeholder="= monto" style="width:7em" aria-label="Afecta la base (vacío = todo el monto)"></td><td><button class="btn" type="button" data-n="caja-linea">Agregar</button></td></tr>`;
 }
 async function agregarLineaCaja() {
   const fecha = $("#ql-fecha").value, glosa = $("#ql-glosa").value.trim(), tipo = +$("#ql-tipo").value, monto = parseMonto($("#ql-monto").value || ""), baseTxt = $("#ql-base").value.trim();
@@ -6507,8 +6653,11 @@ async function agregarLineaCaja() {
   const base = baseTxt ? parseMonto(baseTxt) : monto;
   if (!Number.isFinite(base) || base < 0 || base > monto) return aviso("El monto que afecta la base no puede ser negativo ni mayor al total.");
   const cerr = CAJA_CERRADO([fecha]); if (cerr) return aviso(cerr);
+  const docTipo = $("#ql-doc").value, num = $("#ql-num").value.trim(), rut = $("#ql-rut").value.trim();
+  if (rut && !rutValido(rut)) return aviso("El RUT no es válido (revisa el dígito verificador).");
+  if (DOCS_TRIBUTARIOS_CAJA.has(docTipo) && !num) return aviso("Indica el número del documento: el libro lo exige para documentos tributarios.");
   S.cajaFecha = fecha;
-  await ocupado(async () => { await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria: tipo === 1 ? "Ventas" : "Compras y gastos", doc_tipo: "", doc_num: "", rut: "", nombre: "", glosa, monto, base, origen: "manual", ref: "" }]); render(); aviso("Línea agregada."); }, "No se pudo agregar la línea");
+  await ocupado(async () => { await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria: tipo === 1 ? "Ventas" : "Compras y gastos", doc_tipo: docTipo, doc_num: num, rut: rut ? formatoRut(rut) : "", nombre: "", glosa, monto, base, origen: "manual", ref: "" }]); render(); aviso("Línea agregada."); }, "No se pudo agregar la línea");
 }
 async function guardarEdicionCaja() {
   const m = S.caja.find((x) => x.id === S.cajaEdit); if (!m) { S.cajaEdit = null; return render(); }
@@ -6552,14 +6701,7 @@ function vistaCaja() {
   let saldo = Lmes.inicial;
   const lineas = S.cajaDiario ? [...L.filas.reduce((mp, m) => { const x = mp.get(m.fecha) || { n: 0, i: 0, e: 0, bi: 0, be: 0 }; x.n++; if (m.tipo === 1) { x.i += m.monto; x.bi += m.base; } else { x.e += m.monto; x.be += m.base; } return mp.set(m.fecha, x); }, new Map())]
       .map(([f, x]) => { saldo += x.i - x.e; return `<tr><td>${fmtFecha(f)}</td><td>${x.n} movimiento(s)</td><td class="num">${x.i ? clp(x.i) : ""}</td><td class="num">${x.e ? clp(x.e) : ""}</td><td class="num">${clp(saldo)}</td><td class="num">${clp(x.bi - x.be)}</td><td></td></tr>`; })
-    : L.filas.map((m) => { saldo += flujo(m);
-      if (S.cajaEdit === m.id && S.puedeEscribir) return `<tr class="editando"><td><input type="date" id="ce-fecha" value="${esc(m.fecha)}"></td><td><input id="ce-glosa" value="${esc(m.glosa)}" style="width:100%"></td>
-        <td class="num" colspan="2"><select id="ce-tipo"><option value="1" ${m.tipo === 1 ? "selected" : ""}>Ingreso</option><option value="2" ${m.tipo === 2 ? "selected" : ""}>Egreso</option></select> <input id="ce-monto" inputmode="numeric" value="${clp(m.monto)}" style="width:8em" aria-label="Monto"></td>
-        <td class="num">${clp(saldo)}</td><td class="num"><input id="ce-base" inputmode="numeric" value="${clp(m.base)}" style="width:8em" aria-label="Afecta la base"></td>
-        <td><button class="btn" type="button" data-n="caja-editar-guardar">Guardar</button> <button class="btn enlace" type="button" data-n="caja-editar-cancelar">Cancelar</button></td></tr>
-        <tr class="editando"><td></td><td colspan="6"><div class="form"><label>Categoría<select id="ce-categoria">${Object.keys(CATEGORIAS_CAJA).map((c) => `<option ${m.categoria === c ? "selected" : ""}>${esc(c)}</option>`).join("")}${CATEGORIAS_CAJA[m.categoria] ? "" : `<option selected>${esc(m.categoria || "")}</option>`}</select></label>
-          <label>Tipo de documento<input id="ce-doc" value="${esc(m.doc_tipo || "")}"></label><label>N° documento<input id="ce-num" value="${esc(m.doc_num || "")}"></label><label>RUT<input id="ce-rut" value="${esc(m.rut || "")}"></label><label>Cliente o proveedor<input id="ce-nombre" value="${esc(m.nombre || "")}"></label></div></td></tr>`;
-      return `<tr><td>${fmtFecha(m.fecha)}</td><td>${esc(m.glosa)}${m.doc_tipo ? `<br><small class="ayuda">${esc([m.doc_tipo, m.doc_num, m.nombre].filter(Boolean).join(" · "))}</small>` : ""}</td><td class="num">${m.tipo === 1 ? clp(m.monto) : ""}</td><td class="num">${m.tipo === 2 ? clp(m.monto) : ""}</td><td class="num">${clp(saldo)}</td><td class="num ${m.base === 0 ? "cod" : ""}">${clp(m.base)}</td><td>${S.puedeEscribir ? `<button class="btn enlace" type="button" data-n="caja-editar" data-id="${esc(m.id)}">Editar</button> <button class="btn enlace" type="button" data-n="caja-eliminar" data-id="${esc(m.id)}">Eliminar</button>` : ""}</td></tr>`; });
+    : [];
   const e = empresa();
   return `${cab}<div class="barra"><label>Año<select id="caja-anio">${opcionesAnio(anios, anio)}</select></label>
       ${mes ? `<button class="btn sec" type="button" data-n="caja-mes-prev" ${mes === "01" ? "disabled" : ""} aria-label="Mes anterior">◀</button>` : ""}<label>Mes<select id="caja-mes">${opMes(mes, "Todo el año")}</select></label>${mes ? `<button class="btn sec" type="button" data-n="caja-mes-sig" ${mes === "12" ? "disabled" : ""} aria-label="Mes siguiente">▶</button>` : ""}
@@ -6600,8 +6742,8 @@ function vistaCaja() {
         <p class="ayuda">Crea una línea de egreso por cada concepto, como se anota en el libro. Solo la retención de honorarios afecta la base imponible (se descuenta al pagarla; las boletas se registran por su líquido). El IVA y el PPM no la afectan, y el impuesto único se descuenta al importar las remuneraciones. No registres la retención aquí si importaste las boletas de honorarios por su monto bruto.</p>
         <div class="acciones"><button class="btn sec" type="button" data-n="f29p-rellenar">Usar el borrador del F29</button><button class="btn" type="submit">Registrar el pago</button></div></form>` : "")}
     ${puedeEditar(S.cajaPanel === "ini" ? `<form class="barra" data-form="n-caja-inicial"><label>Saldo inicial de caja ${anio} ($)<input id="caja-inicial" inputmode="numeric" value="${saldoInicialCaja(anio) ? clp(saldoInicialCaja(anio)) : ""}" placeholder="0"></label><button class="btn sec" type="submit">Guardar saldo inicial</button></form>` : "")}
-    ${L.filas.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Ingreso</th><th class="num">Egreso</th><th class="num">Saldo</th><th class="num">${S.cajaDiario ? "Base del día" : "Afecta base"}</th><th></th></tr></thead>
-      <tbody><tr class="sub"><td></td><td>Saldo inicial</td><td class="num"></td><td class="num"></td><td class="num">${clp(Lmes.inicial)}</td><td></td><td></td></tr>${lineas.join("")}${S.puedeEscribir && !S.cajaDiario ? filaRapidaCaja(mes, anio) : ""}</tbody></table></div>` : `<div class="caja vacio"><p>No hay movimientos ${mes ? "en el mes elegido" : `en ${anio}`}.</p></div>${S.puedeEscribir && !S.cajaDiario ? `<div class="tabla"><table><tbody>${filaRapidaCaja(mes, anio)}</tbody></table></div>` : ""}`}
+    ${S.cajaDiario ? (L.filas.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Ingreso</th><th class="num">Egreso</th><th class="num">Saldo</th><th class="num">${S.cajaDiario ? "Base del día" : "Afecta base"}</th><th></th></tr></thead>
+      <tbody><tr class="sub"><td></td><td>Saldo inicial</td><td class="num"></td><td class="num"></td><td class="num">${clp(Lmes.inicial)}</td><td></td><td></td></tr>${lineas.join("")}</tbody></table></div>` : `<div class="caja vacio"><p>No hay movimientos ${mes ? "en el mes elegido" : `en ${anio}`}.</p></div>`) : bloquesCaja(anio, mes)}
     <p class="ayuda">Libro de caja según la Resolución Ex. SII N° 14 de 2021 (Anexos 3 y 4 tras la corrección de la Res. 31): lo llevan los Pro Pyme del 14 D N° 3 con contabilidad simplificada y todos los del 14 D N° 8. Debe llevarse cronológico y al día, puede ser computacional, y el SII puede exigir que esté autorizado (llevarlo atrasado o en otra forma se sanciona según el art. 97 N° 7 del Código Tributario). El formato de columnas (Anexos) hay que confirmarlo en sii.cl antes de presentarlo.</p>`;
 }
 function vistaImportarCaja(anio) {
