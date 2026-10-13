@@ -78,6 +78,12 @@ table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--surface-2); position: sticky; top: 0; }
 td.c, th.c { text-align: center; }
+.tabla.ancha table { font-size: 11.5px; }
+.tabla.ancha th, .tabla.ancha td { padding: 3px 6px; }
+.tabla.ancha td:first-child, .tabla.ancha th:first-child { min-width: 15rem; }
+.tabla.ancha td.num { font-size: 11px; }
+.paneles { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 14px; align-items: start; margin: 14px 0; }
+.paneles-der { display: grid; gap: 14px; }
 .bloque-caja { margin: 0 0 1.6rem; min-width: 0; }
 .bloque-caja .tabla { margin-bottom: .6rem; }
 .bloque-caja table { font-size: 12px; }
@@ -258,7 +264,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.26.0";
+const VERSION = "1.27.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -3013,7 +3019,7 @@ async function aPdf(inf, folioInicial = null) {
   const n = inf.columnas.length, principal = textoPrincipal(inf);
   const peso = inf.columnas.reduce((s, c) => s + c.ancho, 0);
   const anchos = inf.columnas.map((c) => (anchoUtil * c.ancho) / peso);
-  const cuerpo = n >= 12 ? 5.8 : n > 7 ? 7 : 7.5, relleno = n >= 12 ? 1.5 : 4;
+  const cuerpo = n >= 12 ? 5.8 : n > 7 ? 7 : 7.5, relleno = n >= 12 ? 1.5 : 4, vrelleno = inf.paneles ? 1.1 : 2.3;
   const e = empresa();
   doc.setProperties({ title: `${inf.titulo} – ${e.razon_social}`, author: e.razon_social });
 
@@ -3071,7 +3077,7 @@ async function aPdf(inf, folioInicial = null) {
   const base = {
     margin: { top: arribaMargen, bottom: abajoMargen, left: margen, right: margen },
     theme: "grid", tableWidth: anchoUtil,
-    styles: { font: "helvetica", fontSize: cuerpo, cellPadding: { top: 2.3, bottom: 2.3, left: relleno, right: relleno }, lineColor: GRIS_GRILLA, lineWidth: 0.5, textColor: [0, 0, 0], valign: "middle", overflow: "linebreak" },
+    styles: { font: "helvetica", fontSize: cuerpo, cellPadding: { top: vrelleno, bottom: vrelleno, left: relleno, right: relleno }, lineColor: GRIS_GRILLA, lineWidth: 0.5, textColor: [0, 0, 0], valign: "middle", overflow: "linebreak" },
     headStyles: { fillColor: GRIS_FONDO, textColor: [0, 0, 0], fontStyle: "bold", lineColor: GRIS_GRILLA, lineWidth: 0.5 },
     columnStyles: Object.fromEntries(anchos.map((w, j) => [j, { cellWidth: w }])),
     rowPageBreak: "avoid",
@@ -3096,15 +3102,39 @@ async function aPdf(inf, folioInicial = null) {
   let y = arribaMargen;
   const yFinal = () => doc.lastAutoTable?.finalY ?? y;
   const nuevaPagina = () => { doc.addPage(); y = arribaMargen; };
+  /* Resúmenes uno al lado del otro (F22 a la izquierda; capital propio, DJ 1947 y observaciones a la derecha), como en la planilla del contador. */
+  const dibujarPaneles = (pn, yIni) => {
+    const gap = 14, ancho = (anchoUtil - gap) / 2, xD = margen + ancho + gap;
+    const tabla = (t, x, y0) => {
+      doc.autoTable({ startY: y0, margin: { left: x, right: W - x - ancho, top: arribaMargen, bottom: abajoMargen }, tableWidth: ancho, theme: "grid", head: [[{ content: textoPdf(t.titulo), colSpan: 2 }]], showHead: "firstPage",
+        body: t.filas.map(([n, v, est]) => [{ content: textoPdf(n), styles: { fontStyle: est ? "bold" : "normal" } }, { content: pesosTexto(v), styles: { halign: "right", fontStyle: est ? "bold" : "normal", ...(est === "total" ? { fillColor: AMARILLO } : {}) } }]),
+        styles: { font: "helvetica", fontSize: 7.5, cellPadding: { top: 1.6, bottom: 1.6, left: 4, right: 4 }, lineColor: GRIS_GRILLA, lineWidth: 0.5, textColor: [0, 0, 0], valign: "middle" },
+        headStyles: { fillColor: GRIS_FONDO, textColor: [0, 0, 0], fontStyle: "bold", lineColor: GRIS_GRILLA, lineWidth: 0.5 }, columnStyles: { 0: { cellWidth: ancho * 0.68 }, 1: { cellWidth: ancho * 0.32 } } });
+      return doc.lastAutoTable.finalY;
+    };
+    const filas = Math.max(pn.izq.filas.length + 1, pn.der.reduce((x, t) => x + t.filas.length + 1, 0) + (pn.observaciones ? 4 : 0));
+    let y0 = yIni + 12;
+    if (y0 + filas * 13 > H - abajoMargen) { nuevaPagina(); y0 = arribaMargen; }
+    const yi = tabla(pn.izq, margen, y0);
+    let yd = y0;
+    for (const t of pn.der) yd = tabla(t, xD, yd) + 8;
+    if (pn.observaciones) {
+      const h = Math.max(40, yi - yd - 12);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(180, 35, 24); doc.text("OBSERVACIONES", xD, yd + 8); doc.setTextColor(0, 0, 0);
+      doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.6); doc.rect(xD, yd + 12, ancho, h); yd += 12 + h;
+    }
+    return Math.max(yi, yd);
+  };
 
-  const filasCola = inf.oficial ? Math.min(4, inf.filas.length - 1) : 0;
-  const cuerpoFilas = filasCola > 0 ? inf.filas.slice(0, inf.filas.length - filasCola) : inf.filas;
-  const cola = filasCola > 0 ? inf.filas.slice(inf.filas.length - filasCola) : [];
-  const cortes = inf.filas.map((f, i) => (f.bloque ? i : -1)).filter((i) => i > 0);
+  const todas = inf.paneles ? inf.filas.slice(0, inf.panelDesde) : inf.filas;
+  const filasCola = inf.oficial ? Math.min(4, todas.length - 1) : 0;
+  const cuerpoFilas = filasCola > 0 ? todas.slice(0, todas.length - filasCola) : todas;
+  const cola = filasCola > 0 ? todas.slice(todas.length - filasCola) : [];
+  const cortes = todas.map((f, i) => (f.bloque ? i : -1)).filter((i) => i > 0);
   if (cortes.length && !filasCola) {
     let desde = 0;
-    for (const corte of [...cortes, inf.filas.length]) {
-      const parte = inf.filas.slice(desde, corte);
+    for (const corte of [...cortes, todas.length]) {
+      const parte = todas.slice(desde, corte);
       if (!parte.length) continue;
       if (desde > 0) { y = yFinal(); if (y + alto(parte) > H - abajoMargen && alto(parte) < H - arribaMargen - abajoMargen) nuevaPagina(); }
       dibujar(parte, { y, sinCabeza: desde > 0 });
@@ -3112,6 +3142,7 @@ async function aPdf(inf, folioInicial = null) {
     }
   } else dibujar(cuerpoFilas, { y });
   y = yFinal();
+  if (inf.paneles) y = dibujarPaneles(inf.paneles, y);
 
   // Cola (últimas filas, recuadro, notas, Art. 100 y firmas): se mantiene junta en la misma página
   const firmaH = inf.oficial ? 0.5 * CM + 20 + 0.3 * CM + 1.8 * CM + 34 : inf.firmas.length ? 0.8 * CM + 1.6 * CM + 14 : 0;
@@ -6388,7 +6419,10 @@ function informeControlResultados(anio) {
   const ficha = S.renta.find((x) => x.id === String(anio)), perdida = +(ficha?.perdida_anterior ?? (typeof rentaPrevia === "function" ? rentaPrevia(anio)?.perdida_siguiente : 0) ?? 0) || 0;
   const ingresosGiro = totalAnio(d.tIng) - totalAnio(d.ing.find((x) => x[2] === "otros_ing")[1]), otrosIng = totalAnio(d.ing.find((x) => x[2] === "otros_ing")[1]);
   const base = totalAnio(d.resultado) - perdida, retiros = cajaDe(anio).filter((m) => m.categoria === "Retiros de socios").reduce((t, m) => t + m.monto, 0), cpIni = +(ficha?.cpt?.inicial ?? rentaPrevia(anio)?.cpt_final ?? 0) || 0;
-  const ppmPagado = totalAnio(matrizControl(anio, (m, c) => (c === "f29_ppm" ? m.monto : 0)).get("f29_ppm") || cerosMes()) || ppmDelAnio(anio).total;
+  /* PPM de los F29 del año comercial (período enero a diciembre), aunque se paguen al mes siguiente; sin período, por fecha de pago. */
+  const ppmPeriodo = S.caja.filter((m) => m.clase === "f29_ppm" && String(m.f29_periodo || "").startsWith(String(anio))).reduce((t, m) => t + m.monto, 0);
+  const ppmPagado = ppmPeriodo || totalAnio(matrizControl(anio, (m, c) => (c === "f29_ppm" ? m.monto : 0)).get("f29_ppm") || cerosMes()) || ppmDelAnio(anio).total;
+  inf.panelDesde = inf.filas.length;
   inf.agregar(["RESULTADOS PARA EL FORMULARIO 22 DE LA EMPRESA"], { estilo: "seccion", abarca: 0 });
   [["(+) Ingresos del giro", ingresosGiro], ["(+) Otros ingresos", otrosIng], ["(−) Existencias y servicios pagados", g("compra_afecta") + g("compra_exenta") + g("servicios") + g("intereses")], ["(−) Compra de activo fijo", g("activo_fijo")], ["(−) Remuneraciones pagadas", g("remuneraciones") + g("leyes")],
     ["(−) Honorarios pagados", g("honorarios")], ["(−) Arriendos pagados", g("arriendos")], ["(−) Patente municipal", g("patente")], ["(−) Otros egresos", g("otros_egr")], ["(−) Pérdida tributaria del ejercicio anterior", -perdida]].forEach(([t, v]) => fila(t, v));
@@ -6400,6 +6434,12 @@ function informeControlResultados(anio) {
     inf.agregar(["DATOS PARA LA DECLARACIÓN JURADA 1947 (PRO PYME TRANSPARENTE)"], { estilo: "seccion", abarca: 0 });
     fila("PPM pagado acumulado (no actualizado)", ppmPagado); fila("Resultado tributario a traspasar a los propietarios", base);
   }
+  /* En pantalla y en PDF los dos resúmenes van uno al lado del otro, como en la planilla del contador. */
+  const lineasF22 = [["(+) Ingresos del giro", ingresosGiro], ["(+) Otros ingresos", otrosIng], ["(=) Total ingresos", ingresosGiro + otrosIng, "sub"], ["(−) Existencias y servicios pagados", g("compra_afecta") + g("compra_exenta") + g("servicios") + g("intereses")], ["(−) Compra de activo fijo", g("activo_fijo")], ["(−) Remuneraciones pagadas", g("remuneraciones") + g("leyes")],
+    ["(−) Honorarios pagados", g("honorarios")], ["(−) Arriendos pagados", g("arriendos")], ["(−) Patente municipal", g("patente")], ["(−) Otros egresos", g("otros_egr")], ["(−) Pérdida tributaria del ejercicio anterior", -perdida], ["Base imponible o pérdida tributaria del ejercicio", base, "total"]];
+  inf.paneles = { izq: { titulo: "RESULTADOS PARA EL FORMULARIO 22 DE LA EMPRESA", filas: lineasF22 },
+    der: [{ titulo: "CAPITAL PROPIO TRIBUTARIO SIMPLIFICADO", filas: [["Capital propio tributario positivo inicial", cpIni], ["(−) Retiros efectuados (valor nominal)", -retiros], ["(+) Base imponible determinada", base], ["Capital propio tributario simplificado", cpIni - retiros + base, "total"]] },
+      ...(regimenSugerido() === "d8" ? [{ titulo: "DATOS A INFORMAR EN LA DECLARACIÓN JURADA 1947", filas: [["PPM pagado acumulado (no actualizado)", ppmPagado], ["Resultado tributario a traspasar a los propietarios", base, "total"]] }] : [])], observaciones: true };
   inf.notas.push("Es la misma base que usa el libro de caja (columna «Afecta base»): ingresos percibidos menos egresos pagados. Los egresos van con signo negativo. Los gastos rechazados, retiros, préstamos y pagos de IVA y PPM no afectan la base. La retención de honorarios pagada en el F29 se suma a la fila de honorarios. El capital propio inicial y la pérdida anterior salen de la ficha de renta anual; los retiros y el PPM, del libro de caja y de los borradores de F29.");
   return inf;
 }
@@ -6433,11 +6473,16 @@ function informeControlPpm(anio) {
   inf.notas.push(`Corrección monetaria pendiente: los porcentajes de actualización se aplican según el año tributario ${+anio + 1}; mientras no se publiquen y se ingresen, el ajuste y el PPM actualizado quedan en espera.`);
   return inf;
 }
+function panelesHtml(pn) {
+  const tabla = (t) => `<div class="tabla"><table><thead><tr><th colspan="2">${esc(t.titulo)}</th></tr></thead><tbody>${t.filas.map(([n, v, est]) => `<tr class="${est === "total" ? "total" : est === "sub" ? "sub" : ""}"><td>${esc(n)}</td><td class="num">${clp(v)}</td></tr>`).join("")}</tbody></table></div>`;
+  return `<div class="paneles">${tabla(pn.izq)}<div class="paneles-der">${pn.der.map(tabla).join("")}</div></div>`;
+}
 function tablaDeInforme(inf) {
+  const pn = inf.paneles, filas = pn ? inf.filas.slice(0, inf.panelDesde) : inf.filas;
   const celda = (c, v) => (v == null ? "" : c.tipo === "monto" || c.tipo === "numero" ? (typeof v === "number" ? clp(v) : esc(v)) : c.tipo === "fecha" ? fmtFecha(v) : esc(v));
-  return `<div class="tabla"><table><thead><tr>${inf.columnas.map((c) => `<th class="${c.tipo === "monto" ? "num" : ""}">${esc(c.titulo)}</th>`).join("")}</tr></thead><tbody>${inf.filas.map((f) => f.estilo === "seccion"
+  return `<div class="tabla ${inf.columnas.length >= 12 ? "ancha" : ""}"><table><thead><tr>${inf.columnas.map((c) => `<th class="${c.tipo === "monto" ? "num" : ""}">${esc(c.titulo)}</th>`).join("")}</tr></thead><tbody>${filas.map((f) => f.estilo === "seccion"
     ? `<tr class="sub"><td colspan="${inf.columnas.length}"><strong>${esc(f.valores[0])}</strong></td></tr>`
-    : `<tr class="${f.estilo === "total" ? "total" : f.estilo === "subtotal" ? "sub" : ""}">${inf.columnas.map((c, j) => `<td class="${c.tipo === "monto" ? "num" : ""}">${celda(c, f.valores[j])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>${inf.notas.map((t) => `<p class="ayuda">${esc(t)}</p>`).join("")}`;
+    : `<tr class="${f.estilo === "total" ? "total" : f.estilo === "subtotal" ? "sub" : ""}">${inf.columnas.map((c, j) => `<td class="${c.tipo === "monto" ? "num" : ""}">${celda(c, f.valores[j])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>${pn ? panelesHtml(pn) : ""}${inf.notas.map((t) => `<p class="ayuda">${esc(t)}</p>`).join("")}`;
 }
 function vistaControlCaja(anio, anios) {
   const sel = S.cajaControl || "resultados", fn = { resultados: informeControlResultados, flujo: informeControlFlujo, ppm: informeControlPpm }[sel];

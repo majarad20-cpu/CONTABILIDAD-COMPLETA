@@ -209,6 +209,16 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("una línea se edita en su lugar y sale del modo de edición", lc.editada, ["Línea editada", 238000, 200000, 2, null]);
   ok("el rango de meses del libro suma los meses elegidos", lc.rango[0] >= lc.rango[1] && lc.rango[3] >= lc.rango[0] && lc.rango[2] >= 1, JSON.stringify(lc.rango));
   ok("el período del informe por rango lleva los meses y su total", /AGOSTO A SEPTIEMBRE 2026/.test(lc.periodo[0]) && lc.periodo[2] === "TOTAL DEL PERÍODO", JSON.stringify(lc.periodo));
+  const pr = await page.evaluate(async () => {
+    const inf = informeControlResultados(2026), r = {};
+    r.paneles = [!!inf.paneles, inf.paneles?.izq.titulo, inf.paneles?.der.map((t) => t.titulo), inf.filas.length > inf.panelDesde];
+    r.pdf = (await aPdf(inf)).paginas;
+    S.cajaControl = "resultados"; S.pestana.caja = "control"; S.cajaAnio = "2026"; ir("caja"); await new Promise((x) => setTimeout(x, 60));
+    r.pantalla = !!document.querySelector(".paneles") && document.querySelectorAll(".paneles table").length >= 2; S.cajaControl = null;
+    return r;
+  });
+  ok("el resumen para el F22 y el capital propio quedan lado a lado, y las filas planas siguen para Excel y CSV", pr.paneles[0] && /FORMULARIO 22/.test(pr.paneles[1]) && /CAPITAL PROPIO/.test(pr.paneles[2][0]) && pr.paneles[3], JSON.stringify(pr.paneles));
+  ok("el control de resultados con sus resúmenes cabe en una página y se ve en pantalla", pr.pdf === 1 && pr.pantalla, JSON.stringify([pr.pdf, pr.pantalla]));
   console.log("Libro de caja: modelo del contador, PDF con folios e informes");
   const md = await page.evaluate(async () => {
     const r = {}, ant = { c: S.caja, e: { ...empresa() } };
