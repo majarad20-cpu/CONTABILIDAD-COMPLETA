@@ -169,6 +169,20 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("LRE: encabezado y dos filas con las mismas columnas", pv.lre.length === 3 && pv.lre.every((x) => x.replace(/^\uFEFF/, "").split(";").length === 72), String(pv.lre.map((x) => x.split(";").length)));
   ok("la revisión previa avisa lo que falta (sexo, región y comuna)", pv.rev.some((x) => /sexo/.test(x)) && pv.rev.some((x) => /región/.test(x)), JSON.stringify(pv.rev));
   igual("el tope de 11 años no rige para contratos anteriores a 1981-08-14", fq2.ant, 47);
+  console.log("Vacaciones con feriados");
+  const vc = await page.evaluate(() => {
+    const d = (ing, al, ap) => feriadoDevengado({ fecha_ingreso: ing, anios_previos: ap }, al), F = feriadosLegales();
+    const antes = (S.prev.feriados || []).slice();
+    return { dev: [d("2020-03-10", "2026-10-15", 0), d("2012-02-29", "2026-10-15", 5), d("2005-06-01", "2026-10-15", 10), d("2026-01-15", "2026-10-15", 0), d("2016-05-05", "2026-05-05", 8)],
+      per: periodoVacaciones("2026-12-21", 5, F), per2: periodoVacaciones("2026-04-01", 3, F), antes };
+  });
+  igual("feriado devengado igual al programa de remuneraciones", vc.dev, [99.04, 233.34, 393.26, 11.26, 159.05]);
+  igual("el período de vacaciones salta feriados y fines de semana", [vc.per, vc.per2], [{ hasta: "2026-12-28", reintegro: "2026-12-29" }, { hasta: "2026-04-06", reintegro: "2026-04-07" }]);
+  await page.evaluate(() => { S.pestana.rrhh = "vacaciones"; ir("rrhh"); });
+  await page.evaluate(() => { $("#fer-fecha").value = "2030-05-01"; agregarFeriado(); }); await espera(200);
+  ok("agregar un feriado adicional lo suma al calendario", await page.evaluate(() => feriadosLegales().has("2030-05-01") && (S.prev.feriados || []).includes("2030-05-01")));
+  await page.click('[data-n="feriado-quitar"]'); await espera(200);
+  ok("quitar el feriado adicional", await page.evaluate(() => !feriadosLegales().has("2030-05-01")));
 
   console.log("Renta");
   const renta = await page.evaluate(() => {
