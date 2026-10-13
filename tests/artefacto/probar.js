@@ -870,6 +870,20 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el botón rápido cambia el tema", await page.evaluate(() => apariencia().tema === "sistema" || apariencia().tema === "light" || apariencia().tema === "dark"));
   await page.click("[data-ap-reset]");
   igual("restablecer vuelve al valor inicial", await page.evaluate(() => [apariencia().tema, apariencia().acento, apariencia().texto, document.body.style.zoom, estilosPropios().length]), ["sistema", "verde", 100, "1", 1]);
+  const tm = await page.evaluate(async () => {
+    const r = {}, cs = () => getComputedStyle(document.documentElement);
+    for (const t of ["menta", "cielo", "lavanda", "durazno", "niebla", "marfil"]) { fijarApariencia({ tema: t }); r[t] = [document.documentElement.dataset.theme, cs().getPropertyValue("--surface").trim(), cs().colorScheme]; }
+    fijarApariencia({ brillo: 90, calido: 20 }); const v = document.getElementById("ap-velo"); r.velo = [!!v, v?.style.display, /255, 165, 60, 0\.1\)/.test(v?.style.background || "")];
+    fijarApariencia({ brillo: 100, calido: 0 }); r.sinVelo = document.getElementById("ap-velo").style.display;
+    fijarApariencia({ resalte: "marcado" }); r.resalte = [document.documentElement.dataset.resalte, getComputedStyle(document.querySelector("body")).display];
+    fijarApariencia({ resalte: "ninguno" }); r.ninguno = document.documentElement.dataset.resalte;
+    fijarApariencia(ESTILOS.find((x) => x[0] === "confort")[3], true); r.estilo = [document.documentElement.dataset.theme, document.documentElement.dataset.resalte, apariencia().calido];
+    fijarApariencia({}, true); return r;
+  });
+  igual("los temas claros suaves se aplican con su color de superficie", [tm.menta[0], tm.menta[1], tm.cielo[0], tm.marfil[0]], ["menta", "#f4faf6", "cielo", "marfil"]);
+  ok("todos los temas nuevos son claros", ["menta", "cielo", "lavanda", "durazno", "niebla", "marfil"].every((t) => tm[t][2] === "light"));
+  ok("el velo de confort atenúa el brillo y calienta el color, y desaparece en 100 % y 0 %", tm.velo[0] && tm.velo[1] === "block" && tm.velo[2] && tm.sinVelo === "none", JSON.stringify([tm.velo, tm.sinVelo]));
+  igual("el resaltado se cambia y un estilo trae su propio resaltado", [tm.resalte[0], tm.ninguno, tm.estilo], ["marcado", "ninguno", ["marfil", "marcado", 22]]);
   await page.evaluate(() => { recordar("estilos", []); ir("inicio"); });
 
   console.log("Respaldo y restauración");

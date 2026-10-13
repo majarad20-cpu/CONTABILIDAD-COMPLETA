@@ -179,6 +179,31 @@ td input.monto { width: 9em; }
 @media (prefers-reduced-motion: no-preference) { tr.clic td, nav button { transition: background .12s; } }
 /* ---- apariencia: temas, forma, espacio y estilos de las tablas (los colores de acento y las fuentes los fija el script) */
 :root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="menta"] { --bg: #e4eee8; --surface: #f4faf6; --surface-2: #dbe8e0; --fg: #1e2c26; --muted: #4f6358; --line: #c3d4ca; color-scheme: light; }
+:root[data-theme="cielo"] { --bg: #e5eef7; --surface: #f4f8fc; --surface-2: #dae7f3; --fg: #1b2938; --muted: #4a6177; --line: #c4d5e6; color-scheme: light; }
+:root[data-theme="lavanda"] { --bg: #ebe8f3; --surface: #f6f4fa; --surface-2: #e0dcee; --fg: #29253f; --muted: #5b5677; --line: #d1cbe4; color-scheme: light; }
+:root[data-theme="durazno"] { --bg: #f3e7df; --surface: #fbf3ed; --surface-2: #efdfd4; --fg: #3a2920; --muted: #775e4f; --line: #e0cdbf; --warn-bg: #f7e1b5; color-scheme: light; }
+:root[data-theme="niebla"] { --bg: #e6e8ea; --surface: #f5f6f7; --surface-2: #dcdfe2; --fg: #22262a; --muted: #515a63; --line: #cdd2d7; color-scheme: light; }
+:root[data-theme="marfil"] { --bg: #e8e6de; --surface: #f3f1ea; --surface-2: #dfdcd1; --fg: #2a2924; --muted: #5b5849; --line: #d0ccbd; --warn-bg: #f2e3b3; color-scheme: light; }
+input[type="range"] { accent-color: var(--accent); }
+/* confort visual: velo que atenúa el brillo y calienta el color sin cambiar los datos ni los PDF */
+#ap-velo { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; mix-blend-mode: multiply; display: none; }
+@media print { #ap-velo { display: none !important; } }
+/* resaltado de lo importante: totales, saldos, negativos, avisos y cifras clave */
+:root[data-resalte="suave"] tr.total td:first-child, :root[data-resalte="suave"] tr.pagar td:first-child, :root[data-resalte="suave"] tr.sub td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+:root[data-resalte="suave"] .neg { font-weight: 600; }
+:root[data-resalte="suave"] .aviso { border-left: 4px solid var(--warn-fg); }
+:root[data-resalte="suave"] .tarjeta.clave { border-color: var(--accent); }
+:root[data-resalte="suave"] .tarjeta.neg { border-color: var(--neg); }
+:root[data-resalte="marcado"] tr.total td, :root[data-resalte="marcado"] tr.pagar td { background: var(--accent-soft); color: var(--fg); border-top: 2px solid var(--accent); }
+:root[data-resalte="marcado"] tr.total td:first-child, :root[data-resalte="marcado"] tr.pagar td:first-child, :root[data-resalte="marcado"] tr.sub td:first-child { box-shadow: inset 5px 0 0 var(--accent); }
+:root[data-resalte="marcado"] tr.sub td { background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface-2)); }
+:root[data-resalte="marcado"] td.neg, :root[data-resalte="marcado"] span.neg { background: color-mix(in srgb, var(--neg) 13%, transparent); font-weight: 700; border-radius: 4px; }
+:root[data-resalte="marcado"] .aviso { border-left: 6px solid var(--warn-fg); font-weight: 500; }
+:root[data-resalte="marcado"] .tarjeta.clave { background: var(--accent-soft); border: 2px solid var(--accent); }
+:root[data-resalte="marcado"] .tarjeta.clave strong { color: var(--accent); font-size: 23px; }
+:root[data-resalte="marcado"] .tarjeta.neg { background: color-mix(in srgb, var(--neg) 10%, var(--surface)); border: 2px solid var(--neg); }
+:root[data-resalte="marcado"] .etiqueta.cerrado { box-shadow: 0 0 0 1px var(--warn-fg); }
 :root[data-theme="papel"] { --bg: #f1e9d6; --surface: #fbf6e9; --surface-2: #f0e6cc; --fg: #3b3226; --muted: #7a6c55; --line: #dccfb0; --warn-bg: #f7e6b8; color-scheme: light; }
 :root[data-theme="nordico"] { --bg: #eceff4; --surface: #ffffff; --surface-2: #e5e9f0; --fg: #2e3440; --muted: #5e6b80; --line: #d3dae6; color-scheme: light; }
 :root[data-theme="medianoche"] { --bg: #0b1020; --surface: #111830; --surface-2: #19213f; --fg: #e6eaf7; --muted: #9aa5c6; --line: #263056; --neg: #f28b82; --warn-bg: #3a2f12; --warn-fg: #f3d58a; --ok-bg: #173226; --ok-fg: #9fdcbd; color-scheme: dark; }
@@ -264,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.29.0";
+const VERSION = "1.30.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -6680,8 +6705,8 @@ function vistaInicioSimple() {
   <div class="tarjetas">
     <div class="tarjeta"><span>Ingresos (afectan base)</span><strong>$${clp(er.ingresos.total)}</strong></div>
     <div class="tarjeta"><span>Egresos (afectan base)</span><strong>$${clp(er.gastos.total)}</strong></div>
-    <div class="tarjeta ${er.resultado < 0 ? "neg" : ""}"><span>${er.resultado < 0 ? "Pérdida de caja" : "Resultado de caja"}</span><strong>$${clp(Math.abs(er.resultado))}</strong></div>
-    <div class="tarjeta ${caja < 0 ? "neg" : ""}"><span>Saldo de caja</span><strong>$${clp(caja)}</strong></div></div>
+    <div class="tarjeta clave ${er.resultado < 0 ? "neg" : ""}"><span>${er.resultado < 0 ? "Pérdida de caja" : "Resultado de caja"}</span><strong>$${clp(Math.abs(er.resultado))}</strong></div>
+    <div class="tarjeta clave ${caja < 0 ? "neg" : ""}"><span>Saldo de caja</span><strong>$${clp(caja)}</strong></div></div>
   <div class="acciones">${puedeEditar(`<button class="btn" data-ir="caja">+ Nuevo movimiento</button>`)}</div>
   <div class="cabecera"><h2>Últimos movimientos</h2><span class="sub">${cajaDe(anio).length} en el ejercicio</span></div>
   ${ult.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Ingreso</th><th class="num">Egreso</th></tr></thead><tbody>${ult.map((m) => `<tr><td>${fmtFecha(m.fecha)}</td><td>${esc(m.glosa)}</td><td class="num">${m.tipo === 1 ? clp(m.monto) : ""}</td><td class="num">${m.tipo === 2 ? clp(m.monto) : ""}</td></tr>`).join("")}</tbody></table></div>`
@@ -6817,7 +6842,7 @@ function vistaCaja() {
       <span class="ayuda">${acum ? `Ingresos, egresos y base de enero a ${MESES[+mes - 1]}; la tabla de abajo sigue mostrando solo ${MESES[+mes - 1]}.` : `Ingresos, egresos y base de ${MESES[+mes - 1]}, partiendo del saldo con que cerró el mes anterior.`}</span></div>` : ""}
     <div class="tarjetas"><div class="tarjeta"><span>${acum ? "Saldo inicial del año" : "Saldo inicial"}</span><strong>$${clp(L.inicial)}</strong></div><div class="tarjeta"><span>Ingresos</span><strong>$${clp(L.ing)}</strong></div>
       <div class="tarjeta"><span>Egresos</span><strong>$${clp(L.eg)}</strong></div><div class="tarjeta ${L.saldo < 0 ? "neg" : ""}"><span>Saldo de caja</span><strong>$${clp(L.saldo)}</strong></div>
-      <div class="tarjeta"><span>Afecta la base imponible</span><strong>$${clp(L.baseIng - L.baseEg)}</strong></div></div>
+      <div class="tarjeta clave"><span>Afecta la base imponible</span><strong>$${clp(L.baseIng - L.baseEg)}</strong></div></div>
     ${puedeEditar(`<div class="acciones"><button class="btn ${S.cajaPanel === "mov" ? "" : "sec"}" type="button" data-n="caja-panel" data-id="mov">+ Nuevo movimiento</button><button class="btn ${S.cajaPanel === "f29" ? "" : "sec"}" type="button" data-n="caja-panel" data-id="f29">Pago de F29</button><button class="btn ${S.cajaPanel === "ini" ? "" : "sec"}" type="button" data-n="caja-panel" data-id="ini">Saldo inicial</button></div>`)}
     ${puedeEditar(S.cajaPanel === "mov" ? `<form class="caja" data-form="n-caja"><h2>Nuevo movimiento</h2><div class="form">
       <label>Fecha *<input type="date" id="cj-fecha" value="${S.cajaFecha || hoy()}"></label>
@@ -7566,7 +7591,8 @@ document.addEventListener("change", (ev) => {
 /* ------------------------------------------------------------------ apariencia */
 /* [nombre, fondo, superficie, texto, ¿oscuro?] */
 const TEMAS = { light: ["Claro", "#f3f6f5", "#ffffff", "#16201c", false], dark: ["Oscuro", "#0e1412", "#151d1a", "#e3ebe8", true], papel: ["Papel", "#f1e9d6", "#fbf6e9", "#3b3226", false],
-  nordico: ["Nórdico", "#eceff4", "#ffffff", "#2e3440", false], medianoche: ["Medianoche", "#0b1020", "#111830", "#e6eaf7", true], carbon: ["Carbón", "#111111", "#1a1a1a", "#eeeeee", true], hc: ["Alto contraste", "#ffffff", "#ffffff", "#000000", false] };
+  nordico: ["Nórdico", "#eceff4", "#ffffff", "#2e3440", false], medianoche: ["Medianoche", "#0b1020", "#111830", "#e6eaf7", true], carbon: ["Carbón", "#111111", "#1a1a1a", "#eeeeee", true], hc: ["Alto contraste", "#ffffff", "#ffffff", "#000000", false],
+  menta: ["Menta suave", "#e4eee8", "#f4faf6", "#1e2c26", false], cielo: ["Cielo", "#e5eef7", "#f4f8fc", "#1b2938", false], lavanda: ["Lavanda", "#ebe8f3", "#f6f4fa", "#29253f", false], durazno: ["Durazno", "#f3e7df", "#fbf3ed", "#3a2920", false], niebla: ["Niebla", "#e6e8ea", "#f5f6f7", "#22262a", false], marfil: ["Marfil tenue", "#e8e6de", "#f3f1ea", "#2a2924", false] };
 const ACENTOS = { verde: ["Verde", "#1b6a55"], azul: ["Azul", "#1f5fae"], celeste: ["Celeste", "#0e7490"], violeta: ["Violeta", "#6b46c1"], rosa: ["Rosa", "#be185d"], rojo: ["Rojo", "#b91c1c"],
   terracota: ["Terracota", "#b4532a"], ambar: ["Ámbar", "#a16207"], grafito: ["Grafito", "#3b4752"] };
 const FUENTES_UI = { plex: ["IBM Plex Sans", '"IBM Plex Sans", "Segoe UI", system-ui, sans-serif'], inter: ["Inter", 'Inter, "Segoe UI", system-ui, sans-serif'], sourcesans: ["Source Sans", '"Source Sans 3", "Segoe UI", system-ui, sans-serif'],
@@ -7575,7 +7601,7 @@ const FUENTES_NUM = { plex: ["IBM Plex Mono", '"IBM Plex Mono", ui-monospace, "C
   sistema: ["Monoespaciada del sistema", 'ui-monospace, "Cascadia Mono", Consolas, monospace'], igual: ["Igual que el texto", "var(--font-ui)"] };
 const RADIOS = { recto: ["Recto", 0], suave: ["Suave", 6], redondo: ["Redondeado", 12] };
 const MENUS = { estrecho: "Estrecho", normal: "Normal", ancho: "Ancho" };
-const APARIENCIA_BASE = { tema: "sistema", acento: "verde", acentoPersonal: "#1b6a55", fuente: "plex", fuenteNum: "plex", texto: 100, densidad: "normal", radio: "suave", ancho: "completo", menu: "normal", bordes: "sutil", sombras: "ninguna", cebra: "no", movimiento: "normal" };
+const APARIENCIA_BASE = { tema: "sistema", acento: "verde", acentoPersonal: "#1b6a55", fuente: "plex", fuenteNum: "plex", texto: 100, densidad: "normal", radio: "suave", ancho: "completo", menu: "normal", bordes: "sutil", sombras: "ninguna", cebra: "no", movimiento: "normal", brillo: 100, calido: 0, calidoAuto: "no", resalte: "suave" };
 const ESTILOS = [
   ["clasico", "Clásico", "El aspecto original: verde sereno y bordes suaves.", {}],
   ["moderno", "Moderno", "Limpio y luminoso, con esquinas redondeadas y sombras suaves.", { tema: "light", acento: "azul", fuente: "inter", fuenteNum: "jetbrains", radio: "redondo", sombras: "suave" }],
@@ -7583,6 +7609,9 @@ const ESTILOS = [
   ["ejecutivo", "Ejecutivo", "Sobrio en grises fríos, compacto y centrado.", { tema: "nordico", acento: "grafito", fuente: "sourcesans", densidad: "compacta", cebra: "si", ancho: "centrado" }],
   ["medianoche", "Medianoche", "Oscuro azulado con acento celeste, para trabajar de noche.", { tema: "medianoche", acento: "celeste", fuente: "inter", radio: "redondo" }],
   ["carbon", "Carbón", "Oscuro neutro, sin distracciones.", { tema: "carbon", acento: "verde", fuenteNum: "jetbrains", bordes: "marcado" }],
+  ["suave", "Suave a la vista", "Menta clara con el brillo atenuado y un leve tono cálido, para jornadas largas.", { tema: "menta", acento: "verde", texto: 105, brillo: 94, calido: 12, resalte: "suave" }],
+  ["confort", "Confort cálido", "Marfil tenue, tono cálido y resaltado marcado de totales y saldos.", { tema: "marfil", acento: "terracota", texto: 105, brillo: 92, calido: 22, resalte: "marcado" }],
+  ["cielo", "Cielo claro", "Celeste muy claro, fresco y luminoso, con lo importante resaltado.", { tema: "cielo", acento: "azul", radio: "redondo", resalte: "marcado" }],
   ["oficina", "Oficina compacta", "Máxima información por pantalla: texto menor, filas apretadas y cebra.", { densidad: "compacta", texto: 94, cebra: "si", fuente: "sistema", radio: "recto" }],
   ["lectura", "Lectura cómoda", "Texto grande, espacios amplios y tipografía de alta legibilidad.", { tema: "light", fuente: "atkinson", texto: 115, densidad: "amplia", ancho: "centrado" }],
   ["contraste", "Alto contraste", "Negro sobre blanco, bordes marcados y letra legible.", { tema: "hc", acento: "azul", fuente: "atkinson", texto: 108, bordes: "marcado", radio: "recto", movimiento: "reducido" }],
@@ -7596,6 +7625,9 @@ function apariencia() {
   if (!FUENTES_UI[a.fuente]) a.fuente = "plex";
   if (!FUENTES_NUM[a.fuenteNum]) a.fuenteNum = "plex";
   if (!RADIOS[a.radio]) a.radio = "suave";
+  a.brillo = Math.min(100, Math.max(70, Number(a.brillo) || 100)); a.calido = Math.min(50, Math.max(0, Number(a.calido) || 0));
+  if (!["no", "noche"].includes(a.calidoAuto)) a.calidoAuto = "no";
+  if (!["ninguno", "suave", "marcado"].includes(a.resalte)) a.resalte = "suave";
   return a;
 }
 const luminancia = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -7610,7 +7642,14 @@ function aplicarApariencia() {
   st.setProperty("--font-ui", FUENTES_UI[a.fuente][1]); st.setProperty("--font-num", FUENTES_NUM[a.fuenteNum][1]);
   st.setProperty("--radius", RADIOS[a.radio][1] + "px");
   if (document.body) document.body.style.zoom = String(a.texto / 100);
-  for (const k of ["densidad", "ancho", "menu", "bordes", "sombras", "cebra", "movimiento"]) r.dataset[k] = a[k];
+  for (const k of ["densidad", "ancho", "menu", "bordes", "sombras", "cebra", "movimiento", "resalte"]) r.dataset[k] = a[k];
+  /* Velo de confort: atenúa el brillo y, si se pide, calienta el color (más por la noche). */
+  if (document.body) {
+    let velo = document.getElementById("ap-velo"); if (!velo) { velo = document.createElement("div"); velo.id = "ap-velo"; velo.setAttribute("aria-hidden", "true"); document.body.appendChild(velo); }
+    const h = new Date().getHours(), noche = a.calidoAuto === "noche" && (h >= 19 || h < 7), calor = Math.min(60, a.calido + (noche ? 15 : 0)), oscuro_ = ((100 - a.brillo) / 100) * 0.7, tinte = (calor / 100) * 0.5;
+    velo.style.background = `linear-gradient(rgba(0,0,0,${oscuro_.toFixed(3)}), rgba(0,0,0,${oscuro_.toFixed(3)})), linear-gradient(rgba(255,165,60,${tinte.toFixed(3)}), rgba(255,165,60,${tinte.toFixed(3)}))`;
+    velo.style.display = oscuro_ || tinte ? "block" : "none";
+  }
   const rapido = $("#ap-rapido"); if (rapido) rapido.textContent = `Tema: ${a.tema === "sistema" ? "del sistema" : TEMAS[a.tema]?.[0] || ""}`;
 }
 function fijarApariencia(parcial, reiniciar = false) {
@@ -7635,6 +7674,17 @@ function vistaApariencia() {
     <p class="ayuda">«Del sistema» cambia solo entre claro y oscuro según tu dispositivo.</p></section>
   <section class="caja"><h2>Color de acento</h2><div class="ap-grupo">${Object.entries(ACENTOS).map(([k, [n, c]]) => `<button type="button" class="ap-color" data-ap="acento" data-v="${k}" title="${n}" aria-label="${n}" aria-pressed="${a.acento === k}" style="background:${c}"></button>`).join("")}
     <label class="ap-grupo" style="gap:6px">Personalizado <input type="color" class="ap-color-input" id="ap-color" value="${esc(/^#[0-9a-f]{6}$/i.test(a.acentoPersonal) ? a.acentoPersonal : "#1b6a55")}"></label></div></section>
+  <section class="caja"><h2>Confort visual</h2>
+    <p class="ayuda">Para cuidar la vista en jornadas largas: atenúa el brillo del fondo y calienta el color (menos luz azul). No cambia los datos ni los PDF o Excel.</p>
+    <div class="ap-rejilla">
+      <div><h3>Brillo: <span id="ap-brillo-val">${a.brillo} %</span></h3><input type="range" id="ap-brillo" min="70" max="100" step="1" value="${a.brillo}"></div>
+      <div><h3>Tono cálido: <span id="ap-calido-val">${a.calido} %</span></h3><input type="range" id="ap-calido" min="0" max="50" step="1" value="${a.calido}"></div>
+      <div><h3>Más cálido por la noche</h3><div class="ap-grupo">${b("calidoAuto", "no", "No")}${b("calidoAuto", "noche", "De 19:00 a 07:00")}</div></div></div></section>
+  <section class="caja"><h2>Resaltar lo importante</h2>
+    <p class="ayuda">Destaca en las tablas y tarjetas los totales, los saldos, las cifras negativas y los avisos.</p>
+    <div class="ap-grupo">${b("resalte", "ninguno", "Sin resaltar")}${b("resalte", "suave", "Suave")}${b("resalte", "marcado", "Marcado")}</div>
+    <div class="tarjetas" style="margin-top:12px"><div class="tarjeta clave"><span>Saldo de caja</span><strong>$1.409.000</strong></div><div class="tarjeta neg"><span>Resultado</span><strong>-$84.500</strong></div></div>
+    <div class="tabla" style="margin-top:12px"><table><tbody><tr><td>Ventas del mes</td><td class="num">1.500.000</td></tr><tr><td>Egresos del mes</td><td class="num neg">-400.000</td></tr><tr class="total"><td>Resultado del mes</td><td class="num">1.100.000</td></tr></tbody></table></div></section>
   <section class="caja"><h2>Letra</h2><div class="ap-rejilla">
     <div><h3>Texto</h3>${grupo("fuente", FUENTES_UI, (v) => v[0])}</div>
     <div><h3>Números y cuentas</h3>${grupo("fuenteNum", FUENTES_NUM, (v) => v[0])}</div>
@@ -7658,6 +7708,7 @@ function vistaApariencia() {
 }
 aplicarApariencia();
 document.addEventListener("DOMContentLoaded", aplicarApariencia);
+window.setInterval(() => { if (apariencia().calidoAuto === "noche") aplicarApariencia(); }, 600000);
 try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", aplicarApariencia); } catch (_) {}
 document.addEventListener("click", (ev) => {
   const t = ev.target;
@@ -7672,6 +7723,7 @@ document.addEventListener("input", (ev) => {
   const el = ev.target;
   if (el.id === "cj-neto" || el.id === "cj-exento" || el.id === "cj-iva") { actualizarCalculoCaja(); return; }
   if (el.id === "ap-texto") { recordar("apariencia", { ...apariencia(), texto: +el.value }); aplicarApariencia(); $("#ap-texto-val").textContent = `${el.value} %`; }
+  else if (el.id === "ap-brillo" || el.id === "ap-calido") { recordar("apariencia", { ...apariencia(), [el.id === "ap-brillo" ? "brillo" : "calido"]: +el.value }); aplicarApariencia(); $(`#${el.id}-val`).textContent = `${el.value} %`; }
   else if (el.id === "ap-color") { recordar("apariencia", { ...apariencia(), acento: "personal", acentoPersonal: el.value }); aplicarApariencia(); document.querySelectorAll('button[data-ap="acento"]').forEach((x) => x.setAttribute("aria-pressed", "false")); }
 });
 document.addEventListener("submit", (ev) => {
