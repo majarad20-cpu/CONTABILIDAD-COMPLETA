@@ -189,7 +189,7 @@ Dos libros de caja en Excel de empresas Pro Pyme transparente (14 D N°8), uno c
 - **Errores encontrados en el libro de uno de ellos:** abril 2025 resta la fila de honorarios (−K16) en vez de sumarla en los egresos y en la base, lo que sube $80.000 el saldo de caja y la base imponible desde esa fecha; y en el control de flujo de caja, de septiembre a diciembre 2026, el saldo final suma solo hasta la fila 27 y deja fuera honorarios, patente, intereses, retiros y multas.
 - El «Resultado neto» de estos libros es ingresos menos egresos (positivo si hay utilidad), distinto del signo que pide el Anexo 4 (negativo si los ingresos superan a los egresos). Falta que el contador decida cuál usar.
 - Ambas empresas pagan PPM del 1 % sobre las ventas netas.
-Ideas para la app, por traer: separar en el formulario el pago de F29 con su retención; importar el RCV como líneas resumen del mes; informes de control de resultados tributarios, flujo de caja por categoría y PPM pagados; capital propio tributario simplificado y datos de la DJ 1947; importador de estos libros de Excel (una hoja por mes) para migrar empresas.
+Hecho en 1.14.0: pago de F29 en líneas con la retención sobre la base e importación del RCV como líneas resumen del mes. Ideas para la app, por traer: informes de control de resultados tributarios, flujo de caja por categoría y PPM pagados; capital propio tributario simplificado y datos de la DJ 1947; importador de estos libros de Excel (una hoja por mes) para migrar empresas.
 
 ## Prioridad media (pospuesto por el dueño)
 
