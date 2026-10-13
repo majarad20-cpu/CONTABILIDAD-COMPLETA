@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.11.0";
+const VERSION = "1.12.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -2086,7 +2086,8 @@ function vistaTributarias() {
       <select id="tr-${k}" ${S.puedeEscribir ? "" : "disabled"}><option value="">— Sin cuenta —</option>${imputables.map((c) => `<option value="${esc(c.id)}" ${c.id === actuales[k] ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}</select></label>`).join("")}</div>`).join("")}
     <h2>Pagos provisionales mensuales</h2>
     <div class="form"><label>Tasa de PPM (%)<input id="tr-ppm" inputmode="decimal" placeholder="0,25" value="${esc(String(e.tasa_ppm || 0).replace(".", ","))}" ${S.puedeEscribir ? "" : "readonly"}>
-      <small>Porcentaje que se aplica a los ingresos del giro del mes (código 115 del F29).</small></label></div>
+      <small>Porcentaje que se aplica a los ingresos del giro del mes (código 115 del F29).${(() => { const g = sugerenciaPpm(); return g ? ` Tasa vigente para ${g.regimen === "d8" ? "Pro Pyme transparente" : "Pro Pyme general"} en ${empresa().ejercicio}: ${textoTasa(g.tasa)} % (${textoTasa(g.alta)} % si los ingresos del año anterior superan 50.000 UF). Verifícala con el SII.` : " Tu régimen depende de los ingresos del año anterior: no hay una tasa sugerida."; })()}</small>
+      ${(() => { const g = sugerenciaPpm(); return g && S.puedeEscribir ? `<button class="btn sec" type="button" data-n="ppm-vigente" data-v="${textoTasa(g.tasa)}">Usar la tasa vigente (${textoTasa(g.tasa)} %)</button>` : ""; })()}</label></div>
     <div class="acciones">${puedeEditar(`<button class="btn" type="submit">Guardar</button>`)}<button class="btn sec" type="button" data-ir="rcv">Volver al RCV</button></div>
   </form>`;
 }
@@ -2246,7 +2247,7 @@ function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActu
   for (const [concepto, rcv, cont] of comparacion)
     if (rcv !== cont) alertas.push(`${concepto}: el RCV indica $${clp(rcv)} y la contabilidad $${clp(cont)} (diferencia $${clp(rcv - cont)}).`);
   for (const k of ["iva_debito", "iva_credito"]) if (!ct[k] && !esSimplificada()) alertas.push(`Falta configurar la cuenta «${CONCEPTOS[k][0]}» para comparar con la contabilidad.`);
-  if (!tasa) alertas.push("La tasa de PPM es 0 %. Configúrala en Tributario → Cuentas tributarias.");
+  if (!tasa) { const g = sugerenciaPpm(); alertas.push(`La tasa de PPM es 0 %. Configúrala en Tributario → Cuentas tributarias${g ? ` (vigente para tu régimen: ${textoTasa(g.tasa)} %)` : ""}.`); }
   if (remanente && !(utmAnterior && utmActual)) alertas.push("Ingresa la UTM del mes en que se presentó el F29 anterior y la del mes en que se presenta este F29, para reajustar el remanente.");
   return { periodo, codigos: c, alertas, comparacion, reajuste, remanenteUtm, documentos: docs.length, pendientes: pendientes.length,
     entradas: { remanente_anterior: remanente, utm_anterior: utmAnterior, utm_actual: utmActual, tasa_ppm: tasa } };
@@ -5177,7 +5178,8 @@ document.addEventListener("click", (ev) => {
     case "panel-presentado": { const e = S.empresas.find((x) => x.id === id), p = S.cartera.periodo; if (!e || !p) break;
       ocupado(async () => { const mapa = { ...(e.f29_presentado || {}) }; if (mapa[p]) delete mapa[p]; else mapa[p] = hoy(); await BD.setEmpresa(id, { ...e, f29_presentado: mapa }); const f = S.cartera.filas.find((x) => x.id === id); if (f) f.f29Presentado = !!mapa[p]; render(); }, "No se pudo actualizar el estado"); break; }
     case "recordatorio-quitar": recordar("recordatorios", recuerdo("recordatorios", []).filter((r) => r.id !== id)); render(); break;
-    case "caja-eliminar": ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/caja/${id}`); render(); aviso("Movimiento eliminado."); }, "No se pudo eliminar el movimiento"); break;
+    case "ppm-vigente": $("#tr-ppm").value = t.dataset.v; break;
+    case "caja-eliminar": { const cerr = CAJA_CERRADO([S.caja.find((m) => m.id === id)?.fecha || ""]); if (cerr) { aviso(cerr); break; } } ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/caja/${id}`); render(); aviso("Movimiento eliminado."); }, "No se pudo eliminar el movimiento"); break;
     case "caja-importar-rcv": importarCaja("rcv"); break;
     case "caja-importar-rem": importarCaja("rem"); break;
     case "caja-importar-bhe": importarCaja("bhe"); break;
@@ -5649,8 +5651,57 @@ const esSimplificada = () => empresa()?.tipo_contabilidad === "simplificada";
 /* categoría: [tipo (1 ingreso, 2 egreso), ¿afecta la base imponible?] */
 const CATEGORIAS_CAJA = { "Ventas": [1, true], "Otros ingresos": [1, true], "Préstamo recibido": [1, false], "Aporte de capital": [1, false],
   "Compras y gastos": [2, true], "Remuneraciones": [2, true], "Honorarios": [2, true], "Arriendo": [2, true], "Servicios básicos": [2, true], "Patentes y contribuciones": [2, true],
-  "Compra de activo fijo": [2, true], "Pago de impuestos (IVA, PPM, F29)": [2, false], "Pago de préstamo": [2, false], "Retiros de socios": [2, false], "Otros egresos": [2, true] };
-const TIPOS_DOC_CAJA = ["", "Factura", "Factura exenta", "Boleta", "Boleta de honorarios", "Nota de crédito", "Nota de débito", "Contrato u otro"];
+  "Compra de activo fijo": [2, true], "Pago de impuestos (IVA, PPM, F29)": [2, false], "Pago de préstamo": [2, false], "Retiros de socios": [2, false], "Otros egresos": [2, true],
+  "Venta de activo fijo": [1, true], "Devolución de impuestos": [1, false], "Ingreso no constitutivo de renta": [1, false], "Compra de existencias": [2, true],
+  "Leyes sociales y cotizaciones": [2, true], "Intereses y gastos financieros": [2, true], "Gasto rechazado (art. 21 LIR)": [2, false, "rechazado"] };
+const TIPOS_DOC_CAJA = ["", "Factura", "Factura exenta", "Boleta", "Boleta de honorarios", "Nota de crédito", "Nota de débito", "Declaración de ingreso (DIN)", "Contrato u otro"];
+/* Reglas del programa de contabilidad simplificada del dueño (Res. Ex. SII N° 14 y 31 de 2021, art. 14 D N° 3 y N° 8 LIR). Sin documento o con documento exento, de honorarios o contrato no hay IVA;
+   solo la factura, la nota de crédito o débito y la DIN dan crédito fiscal (cuando el gasto no es rechazado): sin crédito, el IVA es parte del gasto y afecta la base. */
+const DOCS_SIN_IVA_CAJA = new Set(["", "Factura exenta", "Boleta de honorarios", "Contrato u otro"]);
+const DOCS_CON_CREDITO_CAJA = new Set(["Factura", "Nota de débito", "Nota de crédito", "Declaración de ingreso (DIN)"]);
+const DOCS_TRIBUTARIOS_CAJA = new Set(["Factura", "Factura exenta", "Boleta", "Boleta de honorarios", "Nota de crédito", "Nota de débito", "Declaración de ingreso (DIN)"]);
+const DIAS_REGISTRO_ATRASADO = 31;
+/* Neto, exento, IVA, retención, total del flujo de caja y monto que afecta la base de un documento. IVA: `iva` si se informa o 19 % del neto. */
+function calcularMontosCaja({ categoria, tipo, docTipo = "", neto = 0, exento = 0, iva = null, anio }) {
+  const [, afecta, especial] = CATEGORIAS_CAJA[categoria] || [tipo, true];
+  neto = Math.max(0, Math.round(neto || 0)); exento = Math.max(0, Math.round(exento || 0));
+  if (docTipo === "Boleta de honorarios" || categoria === "Honorarios") {
+    const [, ret] = calcularBoleta(neto, false, tasaRetencion(anio));
+    return { neto, exento, iva: 0, retencion: ret, monto: neto + exento - ret, base: afecta ? neto + exento : 0 };
+  }
+  const sinIva = DOCS_SIN_IVA_CAJA.has(docTipo) || (!afecta && !especial);
+  const ivaFinal = sinIva ? 0 : iva == null ? Math.round(neto * TASA_IVA) : Math.max(0, Math.round(iva));
+  const conCredito = tipo === 2 && afecta && !especial && DOCS_CON_CREDITO_CAJA.has(docTipo);
+  const base = !afecta ? 0 : tipo === 1 ? neto + exento : neto + exento + (conCredito ? 0 : ivaFinal);
+  return { neto, exento, iva: ivaFinal, retencion: 0, monto: neto + exento + ivaFinal, base };
+}
+/* Tasa vigente de PPM (%) sobre los ingresos del mes: Pro Pyme general 0,25 % (0,5 % si supera 50.000 UF), con rebaja a la mitad de agosto de 2025 a diciembre de 2027;
+   Pro Pyme transparente 0,2 % (0,5 %). Otros regímenes dependen del año anterior: no hay sugerencia. Verifica cada año con el SII. */
+function tasaPpmVigente(anio, mes, regimen, supera = false) {
+  if (regimen === "d8") return supera ? 0.5 : 0.2;
+  if (regimen !== "d3") return null;
+  const base = supera ? 0.5 : 0.25;
+  return (anio > 2025 || (anio === 2025 && mes >= 8)) && anio <= 2027 ? base / 2 : base;
+}
+const textoTasa = (t) => String(t).replace(".", ",");
+function sugerenciaPpm() {
+  const e = empresa(), anio = +e.ejercicio, hoyP = hoy().slice(0, 7), mes = hoyP.startsWith(String(anio)) ? +hoyP.slice(5) : 12, reg = regimenSugerido();
+  const t = tasaPpmVigente(anio, mes, reg), alta = tasaPpmVigente(anio, mes, reg, true);
+  return t == null ? null : { tasa: t, alta, regimen: reg };
+}
+const CAJA_CERRADO = (fechas) => { const c = [...new Set(fechas.filter(mesCerrado).map((f) => f.slice(0, 7)))].sort(); return c.length ? `${c.map(nombrePeriodo).join(", ")} ${c.length === 1 ? "está cerrado" : "están cerrados"}: reábrelo en el cierre de meses para registrar o cambiar movimientos.` : ""; };
+const rutEmisorCaja = (m) => ((m.emisor_propio ?? ((m.tipo === 1 && !!m.doc_tipo && m.doc_tipo !== "Contrato u otro") || m.origen === "remuneraciones")) ? (empresa().rut || "") : (m.rut || ""));
+function cierresCaja(anio) {
+  const out = []; let saldo = saldoInicialCaja(anio);
+  for (let n = 1; n <= 12; n++) {
+    const mes = String(n).padStart(2, "0"), L = cajaDe(anio).filter((m) => m.fecha.slice(5, 7) === mes);
+    const c10 = saldo + L.filter((m) => m.tipo === 1).reduce((x, m) => x + m.monto, 0), c11 = L.filter((m) => m.tipo === 2).reduce((x, m) => x + m.monto, 0);
+    const c13 = L.filter((m) => m.tipo === 1).reduce((x, m) => x + m.base, 0), c14 = L.filter((m) => m.tipo === 2).reduce((x, m) => x + m.base, 0);
+    if (L.length) out.push({ mes, c10, c11, c12: c10 - c11, c13, c14, c15: c14 - c13 });
+    saldo = c10 - c11;
+  }
+  return out;
+}
 const saldoInicialCaja = (anio) => +((empresa()?.caja_inicial || {})[anio] || 0);
 const cajaDe = (anio) => S.caja.filter((m) => m.fecha.startsWith(String(anio))).sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : String(a.id).localeCompare(String(b.id))));
 const flujo = (m) => (m.tipo === 1 ? m.monto : -m.monto);
@@ -5696,17 +5747,28 @@ function informeLibroCaja(anio, mes, diario) {
     inf.notas.push("La primera fila muestra el saldo inicial. Formato de resumen diario voluntario (Resolución Ex. SII N° 31 de 2021).");
     return inf;
   }
-  const inf = new Informe("LIBRO DE CAJA", periodoTexto(desde, hasta), [col("N°", 5, "numero"), col("Op.", 5), col("Fecha", 10, "fecha"), col("Tipo de documento", 14), col("N° doc.", 9), col("RUT", 12), col("Glosa", 27), col("Monto total", 14, "monto"), col("Afecta base", 14, "monto")], `libro_caja_${anio}${mes ? "_" + mes : ""}`, { oficial: true, horizontal: true });
+  const inf = new Informe("LIBRO DE CAJA", periodoTexto(desde, hasta), [col("N°", 5, "numero"), col("Op.", 5), col("Fecha", 10, "fecha"), col("Tipo de documento", 14), col("N° doc.", 9), col("RUT emisor", 12), col("Glosa", 27), col("Monto total", 14, "monto"), col("Afecta base", 14, "monto")], `libro_caja_${anio}${mes ? "_" + mes : ""}`, { oficial: true, horizontal: true });
   inf.agregar([0, "0", desde, null, null, null, "SALDO INICIAL", L.inicial, null]);
-  L.filas.forEach((m, i) => inf.agregar([i + 1, String(m.tipo), m.fecha, m.doc_tipo || null, m.doc_num || null, m.rut || null, (m.glosa || "").toUpperCase(), m.monto, m.base]));
+  L.filas.forEach((m, i) => inf.agregar([i + 1, String(m.tipo), m.fecha, m.doc_tipo || null, m.doc_num || null, rutEmisorCaja(m) || null, (m.glosa || "").toUpperCase(), m.monto, m.base]));
   inf.agregar([null, null, null, null, null, null, "TOTAL INGRESOS (con saldo inicial)", L.inicial + L.ing, L.baseIng], { estilo: "subtotal", derecha: true });
   inf.agregar([null, null, null, null, null, null, "TOTAL EGRESOS", L.eg, L.baseEg], { estilo: "subtotal", derecha: true });
   inf.agregar([null, null, null, null, null, null, "SALDO FINAL DE CAJA", L.saldo, L.baseIng - L.baseEg], { estilo: "total", derecha: true });
-  inf.notas.push("Op.: 0 saldo inicial, 1 ingreso, 2 egreso. «Afecta base» es el monto que incide en la base imponible (cero para préstamos, retiros e IVA). Estructura según la Resolución Ex. SII N° 14 de 2021: verifica el formato vigente en sii.cl.");
+  if (!mes) for (const c of cierresCaja(anio)) {
+    const n = MESES[+c.mes - 1].toUpperCase();
+    inf.agregar([null, null, null, null, null, null, `CIERRE ${n}: TOTAL INGRESOS CON SALDO INICIAL (C10) · AFECTA BASE (C13)`, c.c10, c.c13], { estilo: "subtotal", derecha: true });
+    inf.agregar([null, null, null, null, null, null, `CIERRE ${n}: TOTAL EGRESOS (C11) · AFECTA BASE (C14)`, c.c11, c.c14], { estilo: "subtotal", derecha: true });
+    inf.agregar([null, null, null, null, null, null, `CIERRE ${n}: SALDO DE CAJA (C12) · RESULTADO NETO (C15)`, c.c12, c.c15], { estilo: "subtotal", derecha: true });
+  }
+  inf.notas.push("Op.: 0 saldo inicial, 1 ingreso, 2 egreso. «RUT emisor» es el de la empresa en los documentos que emite (ventas, remuneraciones). «Afecta base» es el monto que incide en la base imponible (cero para préstamos, retiros e IVA). Cierres mensuales: C10 a C15 según la Resolución Ex. SII N° 14 de 2021; C15 es negativo cuando los ingresos superan a los egresos (Anexo 4). Verifica el formato vigente en sii.cl.");
   return inf;
 }
 function filasIngresosEgresos(anio) {
   const filas = cajaDe(anio).map((m) => ({ fecha: m.fecha, tipo_doc: m.doc_tipo, num: m.doc_num, rut: m.rut, desc: m.glosa, ip: m.tipo === 1 ? m.monto : 0, id: 0, ep: m.tipo === 2 ? m.monto : 0, ea: 0 }));
+  /* Un documento cobrado o pagado después de su fecha se anota dos veces: devengado/adeudado (fecha del documento) y percibido/pagado (fecha del cobro o pago). */
+  for (const m of cajaDe(anio)) {
+    const d = m.ref?.startsWith("rcv:") ? S.rcv.find((x) => refRcv(x) === m.ref) : null;
+    if (d && d.fecha < m.fecha && d.fecha.startsWith(String(anio))) { const v = d.registro === "VENTA"; filas.push({ fecha: d.fecha, tipo_doc: TIPOS_DOCUMENTO[+d.tipo_doc] || String(d.tipo_doc), num: String(d.folio), rut: d.rut, desc: `${v ? "Venta" : "Compra"} · ${d.razon_social || ""}`, ip: 0, id: v ? d.total : 0, ep: 0, ea: v ? 0 : d.total }); }
+  }
   for (const d of documentosPendientesCaja(anio)) { const v = d.registro === "VENTA"; filas.push({ fecha: d.fecha, tipo_doc: TIPOS_DOCUMENTO[+d.tipo_doc] || String(d.tipo_doc), num: String(d.folio), rut: d.rut, desc: `${v ? "Venta" : "Compra"} · ${d.razon_social || ""}`, ip: 0, id: v ? d.total : 0, ep: 0, ea: v ? 0 : d.total }); }
   return filas.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
 }
@@ -5714,7 +5776,7 @@ function informeIngresosEgresos(anio) {
   const f = filasIngresosEgresos(anio), inf = new Informe("LIBRO DE INGRESOS Y EGRESOS", periodoTexto(`${anio}-01-01`, `${anio}-12-31`), [col("N°", 5, "numero"), col("Fecha", 10, "fecha"), col("Tipo de documento", 14), col("N° doc.", 9), col("RUT", 12), col("Descripción", 22), col("Ingreso percibido", 13, "monto"), col("Ingreso devengado", 13, "monto"), col("Egreso pagado", 13, "monto"), col("Egreso adeudado", 13, "monto")], `libro_ingresos_egresos_${anio}`, { oficial: true, horizontal: true });
   f.forEach((x, i) => inf.agregar([i + 1, x.fecha, x.tipo_doc || null, x.num || null, x.rut || null, x.desc, sinCeros(x.ip), sinCeros(x.id), sinCeros(x.ep), sinCeros(x.ea)]));
   inf.agregar([null, null, null, null, null, "TOTALES", f.reduce((s, x) => s + x.ip, 0), f.reduce((s, x) => s + x.id, 0), f.reduce((s, x) => s + x.ep, 0), f.reduce((s, x) => s + x.ea, 0)], { estilo: "total", derecha: true });
-  inf.notas.push("Percibido y pagado: ya se cobró o pagó (Libro de caja). Devengado y adeudado: documentos del RCV aún sin cobrar ni pagar.");
+  inf.notas.push("Percibido y pagado: ya se cobró o pagó (Libro de caja). Devengado y adeudado: documentos del RCV aún sin cobrar ni pagar. Un documento cobrado o pagado después de su fecha aparece dos veces: devengado (fecha del documento) y percibido o pagado (fecha del cobro o pago).");
   return inf;
 }
 
@@ -5769,8 +5831,13 @@ function vistaCaja() {
       <label>Fecha *<input type="date" id="cj-fecha" value="${S.cajaFecha || hoy()}"></label>
       <label>Categoría<select id="cj-categoria">${Object.keys(CATEGORIAS_CAJA).map((c) => `<option>${esc(c)}</option>`).join("")}</select></label>
       <label>Tipo<select id="cj-tipo"><option value="1">Ingreso</option><option value="2">Egreso</option></select></label>
-      <label>Monto total ($) *<input id="cj-monto" inputmode="numeric" placeholder="1.190.000"></label>
-      <label>Afecta la base imponible por ($)<input id="cj-base" inputmode="numeric" placeholder="Igual al total"><small>Déjalo vacío si afecta el total. Para una factura con IVA, escribe solo el neto.</small></label>
+      <label>Neto ($)<input id="cj-neto" inputmode="numeric" placeholder="1.000.000"></label>
+      <label>Exento ($)<input id="cj-exento" inputmode="numeric" placeholder="0"></label>
+      <label>IVA ($)<input id="cj-iva" inputmode="numeric" placeholder="19 % del neto"></label>
+      <p class="ayuda campo-largo" id="cj-calculo">Escribe el neto o el exento y el programa calcula el IVA, la retención de honorarios, el total y el monto que afecta la base. O escribe solo el monto total abajo.</p>
+      <label>Monto total ($)<input id="cj-monto" inputmode="numeric" placeholder="1.190.000"></label>
+      <label>Afecta la base imponible por ($)<input id="cj-base" inputmode="numeric" placeholder="Igual al total"><small>Solo si escribes el monto total: vacío = todo. Con neto o exento se calcula solo.</small></label>
+      <label>Fecha del documento<input type="date" id="cj-fechadoc"><small>Opcional. Si es anterior al cobro o pago, también se anota como devengado.</small></label>
       <label class="check"><input type="checkbox" id="cj-afecta" checked> Afecta la base imponible</label>
       <label>Tipo de documento<select id="cj-doc">${TIPOS_DOC_CAJA.map((t) => `<option>${esc(t)}</option>`).join("")}</select></label>
       <label>N° de documento<input id="cj-num"></label><label>RUT<input id="cj-rut" placeholder="12.345.678-5"></label>
@@ -5794,16 +5861,49 @@ function vistaImportarCaja(anio) {
   <section class="caja"><h2>Boletas de honorarios</h2><p class="ayuda">Registra un egreso por cada boleta de honorarios recibida en el mes, por su monto bruto.</p>
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-bhe" ${bhe ? "" : "disabled"}>Importar ${bhe} boleta(s)</button></div>`)}</section>`;
 }
+/* Calcula lo que se guardaría con los datos del formulario; null si no hay neto ni exento. */
+function calculoFormularioCaja() {
+  const n = (id) => { const t = ($(id)?.value || "").trim(); return t ? parseMonto(t) : 0; };
+  const neto = n("#cj-neto"), exento = n("#cj-exento"), ivaTxt = ($("#cj-iva")?.value || "").trim();
+  if (!(neto > 0 || exento > 0) || [neto, exento].some((x) => !Number.isFinite(x))) return null;
+  const iva = ivaTxt ? parseMonto(ivaTxt) : null;
+  return calcularMontosCaja({ categoria: $("#cj-categoria").value, tipo: +$("#cj-tipo").value, docTipo: $("#cj-doc").value, neto, exento, iva: Number.isFinite(iva) ? iva : null, anio: +($("#cj-fecha").value || hoy()).slice(0, 4) });
+}
+function actualizarCalculoCaja() {
+  const el = $("#cj-calculo"); if (!el) return;
+  const c = calculoFormularioCaja();
+  el.textContent = c ? `Total $${clp(c.monto)} (neto ${clp(c.neto)}${c.exento ? ` + exento ${clp(c.exento)}` : ""}${c.iva ? ` + IVA ${clp(c.iva)}` : ""}${c.retencion ? ` − retención ${clp(c.retencion)}` : ""}) · afecta la base por $${clp(c.base)}.`
+    : "Escribe el neto o el exento y el programa calcula el IVA, la retención de honorarios, el total y el monto que afecta la base. O escribe solo el monto total abajo.";
+}
 async function guardarMovimientoCaja() {
-  const fecha = $("#cj-fecha").value, glosa = $("#cj-glosa").value.trim(), monto = parseMonto($("#cj-monto").value || ""), baseTxt = $("#cj-base").value.trim(), tipo = +$("#cj-tipo").value;
+  const fecha = $("#cj-fecha").value, glosa = $("#cj-glosa").value.trim(), tipo = +$("#cj-tipo").value, categoria = $("#cj-categoria").value, docTipo = $("#cj-doc").value, num = $("#cj-num").value.trim();
+  const fechaDoc = ($("#cj-fechadoc")?.value || "").trim(), rut = $("#cj-rut").value.trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return aviso("Ingresa la fecha del movimiento.");
+  if (fechaDoc && !/^\d{4}-\d{2}-\d{2}$/.test(fechaDoc)) return aviso("La fecha del documento no es válida.");
+  if (fechaDoc && fechaDoc > fecha) return aviso("La fecha del documento no puede ser posterior a la del cobro o pago.");
   if (!glosa) return aviso("Escribe la glosa del movimiento.");
-  if (!Number.isFinite(monto) || monto <= 0) return aviso("El monto debe ser un número positivo en pesos enteros.");
-  let base = baseTxt ? parseMonto(baseTxt) : $("#cj-afecta").checked ? monto : 0;
-  if (!Number.isFinite(base) || base < 0 || base > monto) return aviso("El monto que afecta la base no puede ser negativo ni mayor al total.");
-  const rut = $("#cj-rut").value.trim(); if (rut && !rutValido(rut)) return aviso("El RUT no es válido (revisa el dígito verificador).");
+  const cerr = CAJA_CERRADO([fecha]); if (cerr) return aviso(cerr);
+  if (rut && !rutValido(rut)) return aviso("El RUT no es válido (revisa el dígito verificador).");
+  if (DOCS_TRIBUTARIOS_CAJA.has(docTipo)) {
+    if (!num) return aviso("Indica el número del documento: el libro lo exige para documentos tributarios.");
+    if (!rut && !(docTipo === "Boleta" && tipo === 1)) return aviso("Indica el RUT de la contraparte: el libro exige el RUT del emisor del documento.");
+  }
+  const calc = calculoFormularioCaja();
+  let monto, base, extra = {};
+  if (calc) { monto = calc.monto; base = calc.base; extra = { neto: calc.neto, exento: calc.exento, iva: calc.iva, retencion: calc.retencion }; }
+  else {
+    const baseTxt = $("#cj-base").value.trim(); monto = parseMonto($("#cj-monto").value || "");
+    if (!Number.isFinite(monto) || monto <= 0) return aviso("Escribe el neto o el exento, o un monto total positivo en pesos enteros.");
+    base = baseTxt ? parseMonto(baseTxt) : $("#cj-afecta").checked ? monto : 0;
+    if (!Number.isFinite(base) || base < 0 || base > monto) return aviso("El monto que afecta la base no puede ser negativo ni mayor al total.");
+  }
+  if (!(monto > 0)) return aviso("El total del movimiento debe ser mayor que cero.");
   S.cajaFecha = fecha;
-  await ocupado(async () => { await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria: $("#cj-categoria").value, doc_tipo: $("#cj-doc").value, doc_num: $("#cj-num").value.trim(), rut: rut ? formatoRut(rut) : "", nombre: $("#cj-nombre").value.trim(), glosa, monto, base, origen: "manual", ref: "" }]); render(); aviso("Movimiento registrado."); }, "No se pudo registrar el movimiento");
+  const atrasado = (Date.parse(hoy()) - Date.parse(fechaDoc || fecha)) / 864e5 > DIAS_REGISTRO_ATRASADO;
+  await ocupado(async () => {
+    await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria, doc_tipo: docTipo, doc_num: num, rut: rut ? formatoRut(rut) : "", nombre: $("#cj-nombre").value.trim(), glosa, monto, base, ...extra, ...(fechaDoc ? { fecha_doc: fechaDoc } : {}), origen: "manual", ref: "" }]);
+    render(); aviso(atrasado ? `Movimiento registrado con más de ${DIAS_REGISTRO_ATRASADO} días de atraso: el art. 17 del Código Tributario exige anotar las operaciones al día (art. 97 N° 7).` : "Movimiento registrado.");
+  }, "No se pudo registrar el movimiento");
 }
 async function importarCaja(origen) {
   const ph = S.cajaImp || `${S.cajaAnio || empresa().ejercicio}-${String(new Date().getMonth() + 1).padStart(2, "0")}`, nuevos = [];
@@ -5817,11 +5917,13 @@ async function importarCaja(origen) {
     add("cotizaciones", `Cotizaciones, aportes del empleador e impuesto único de ${nombrePeriodo(ph)}`, suma((l) => (l.afp || 0) + (l.salud || 0) + (l.cesantia || 0) + (l.aportes_empleador || 0) + (l.impuesto_unico || 0)));
   }
   if (!nuevos.length) return aviso("No hay movimientos nuevos para importar.");
+  const cerr = CAJA_CERRADO(nuevos.map((m) => m.fecha)); if (cerr) return aviso(cerr);
   await ocupado(async () => { await guardarMovimientos(nuevos.map((m) => ({ ...m, id: idMov(m.ref) }))); render(); aviso(`${nuevos.length} movimiento(s) importado(s) al Libro de caja.`); }, "No se pudieron importar los movimientos");
 }
 async function registrarPagoDoc(idDoc) {
   const d = S.rcv.find((x) => x.id === idDoc), fecha = $("#ie-fecha")?.value;
   if (!d) return; if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || "")) return aviso("Ingresa la fecha de cobro o pago.");
+  const cerr = CAJA_CERRADO([fecha]); if (cerr) return aviso(cerr);
   await ocupado(async () => { await guardarMovimientos([{ ...movimientoDesdeDoc(d, fecha), id: idMov(refRcv(d)) }]); render(); aviso(d.registro === "VENTA" ? "Cobro registrado." : "Pago registrado."); }, "No se pudo registrar el movimiento");
 }
 
@@ -5834,7 +5936,9 @@ function revisarDatos() {
   /* Empresa */
   if (!e.rut || !rutValido(e.rut)) add("aviso", "Empresa", e.rut ? "El RUT de la empresa no es válido." : "Falta el RUT de la empresa: aparecerá en blanco en los informes.", [], "empresa");
   if (!S.contador.nombre) add("info", "Empresa", "No hay contador configurado: los informes saldrán sin nombre en la firma.", [], "contador");
-  if (!+e.tasa_ppm) add("aviso", "Empresa", "La tasa de PPM es 0 %: el borrador del F29 no calculará el pago provisional mensual.", [], simp ? "empresa" : "tributarias");
+  const sugPpm = sugerenciaPpm();
+  if (!+e.tasa_ppm) add("aviso", "Empresa", `La tasa de PPM es 0 %: el borrador del F29 no calculará el pago provisional mensual.${sugPpm ? ` La tasa vigente para tu régimen es ${textoTasa(sugPpm.tasa)} % (en Cuentas tributarias puedes aplicarla).` : ""}`, [], "tributarias");
+  else if (sugPpm && ![sugPpm.tasa, sugPpm.alta].some((t) => Math.abs(t - +e.tasa_ppm) < 1e-9)) add("info", "Empresa", `La tasa de PPM (${textoTasa(+e.tasa_ppm)} %) no coincide con la vigente para ${sugPpm.regimen === "d8" ? "Pro Pyme transparente" : "Pro Pyme general"} (${textoTasa(sugPpm.tasa)} %, o ${textoTasa(sugPpm.alta)} % si superas 50.000 UF). Verifícala.`, [], "tributarias");
   if (!simp) {
     const ct = cuentasTributarias(), faltan = ["iva_debito", "iva_credito", "ventas_neto", "compras_neto", "clientes", "proveedores"].filter((k) => !ct[k]);
     if (faltan.length) add("aviso", "Empresa", "Faltan cuentas tributarias por configurar (sin ellas no se pueden centralizar las compras y ventas).", faltan.map((k) => CONCEPTOS[k][0]), "tributarias");
@@ -6392,7 +6496,8 @@ document.addEventListener("change", (ev) => {
   if (cid === "caja-mes") { S.cajaMes = ev.target.value; render(); return; }
   if (cid === "caja-diario") { S.cajaDiario = ev.target.checked; render(); return; }
   if (cid === "caja-imp-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.cajaImp = ev.target.value; render(); return; }
-  if (cid === "cj-categoria") { const [t, b] = CATEGORIAS_CAJA[ev.target.value] || [1, true]; $("#cj-tipo").value = String(t); $("#cj-afecta").checked = b; return; }
+  if (cid === "cj-categoria") { const [t, b] = CATEGORIAS_CAJA[ev.target.value] || [1, true]; $("#cj-tipo").value = String(t); $("#cj-afecta").checked = b; actualizarCalculoCaja(); return; }
+  if (cid === "cj-tipo" || cid === "cj-doc" || cid === "cj-fecha") { actualizarCalculoCaja(); return; }
   if (ev.target.id === "rs-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.resPeriodo = ev.target.value; S.resEid = S.eid; render(); }
   else if (ev.target.id === "rs-notas") { recordar(claveNotas(resumenPeriodo()), ev.target.value); render(); }
 });
@@ -6504,6 +6609,7 @@ document.addEventListener("click", (ev) => {
 });
 document.addEventListener("input", (ev) => {
   const el = ev.target;
+  if (el.id === "cj-neto" || el.id === "cj-exento" || el.id === "cj-iva") { actualizarCalculoCaja(); return; }
   if (el.id === "ap-texto") { recordar("apariencia", { ...apariencia(), texto: +el.value }); aplicarApariencia(); $("#ap-texto-val").textContent = `${el.value} %`; }
   else if (el.id === "ap-color") { recordar("apariencia", { ...apariencia(), acento: "personal", acentoPersonal: el.value }); aplicarApariencia(); document.querySelectorAll('button[data-ap="acento"]').forEach((x) => x.setAttribute("aria-pressed", "false")); }
 });

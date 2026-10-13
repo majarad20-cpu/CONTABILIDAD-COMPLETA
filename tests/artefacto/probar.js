@@ -268,11 +268,65 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el IVA del F29 sale del RCV sin necesidad de asientos", sm.iva === 285000 - 76000 || sm.iva === 209000, String(sm.iva));
   ok("el F29 no pide cuentas contables en contabilidad simplificada", sm.avisos === 0, String(sm.avisos));
   ok("la pantalla del libro de caja se dibuja", sm.tabla >= 5);
-  ok("los libros se arman en formato de informe", sm.filas === 1 + 4 + 3 && sm.dia >= 4 && sm.ie >= 4, JSON.stringify([sm.filas, sm.dia, sm.ie]));
+  ok("los libros se arman en formato de informe", sm.filas === 1 + 4 + 3 + 3 && sm.dia >= 4 && sm.ie >= 4, JSON.stringify([sm.filas, sm.dia, sm.ie]));
   igual("el saldo de caja del resumen ejecutivo", sm.caja, 1409000);
   ok("el resumen ejecutivo no muestra patrimonio y sí un titular", sm.patrimonio === null && /su empresa ganó/.test(sm.titular), sm.titular);
   igual("la renta líquida parte del libro de caja", sm.rli, 1100000);
   ok("el PDF del resumen se genera para la empresa simplificada", sm.pdf > 3000);
+  console.log("Simplificada: reglas del programa propio (IVA, honorarios, PPM, cierres, libros)");
+  const sr = await page.evaluate(async () => {
+    const m = (o) => { const x = calcularMontosCaja(o); return [x.neto, x.iva, x.retencion, x.monto, x.base]; };
+    const calc = {
+      factura: m({ categoria: "Compras y gastos", tipo: 2, docTipo: "Factura", neto: 100000, anio: 2026 }),
+      boleta: m({ categoria: "Compras y gastos", tipo: 2, docTipo: "Boleta", neto: 100000, anio: 2026 }),
+      exenta: m({ categoria: "Ventas", tipo: 1, docTipo: "Factura exenta", exento: 50000, anio: 2026 }),
+      honorarios: m({ categoria: "Honorarios", tipo: 2, docTipo: "Boleta de honorarios", neto: 1000000, anio: 2026 }),
+      rechazado: m({ categoria: "Gasto rechazado (art. 21 LIR)", tipo: 2, docTipo: "Factura", neto: 100000, anio: 2026 }),
+      retiro: m({ categoria: "Retiros de socios", tipo: 2, docTipo: "", neto: 100000, anio: 2026 }),
+      venta: m({ categoria: "Ventas", tipo: 1, docTipo: "Factura", neto: 1000000, anio: 2026 }),
+    };
+    const ppm = [tasaPpmVigente(2026, 3, "d3"), tasaPpmVigente(2025, 7, "d3"), tasaPpmVigente(2028, 1, "d3"), tasaPpmVigente(2026, 1, "d8"), tasaPpmVigente(2026, 1, "a"), tasaPpmVigente(2026, 3, "d3", true), tasaPpmVigente(2025, 8, "d3")];
+    const cierre = cierresCaja(2026).find((c) => c.mes === "09"), L = libroCaja(2026);
+    const imp = S.caja.find((x) => x.ref === "rcv:d1"), egr = S.caja.find((x) => x.ref === "rcv:d2");
+    const emisores = [rutEmisorCaja(imp), rutEmisorCaja(egr)];
+    S.pestana.caja = "libro"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
+    const poner = (id, v) => { const el = document.getElementById(id); el.value = v; return el; };
+    const llenar = (extra) => { for (const [k, v] of Object.entries({ "cj-fecha": hoy(), "cj-categoria": "Compras y gastos", "cj-tipo": "2", "cj-doc": "Factura", "cj-num": "9", "cj-rut": "76.543.210-3", "cj-nombre": "Prov", "cj-glosa": "Compra de prueba", "cj-neto": "200000", "cj-exento": "", "cj-iva": "", "cj-monto": "", "cj-base": "", "cj-fechadoc": "", ...extra })) poner(k, v); };
+    const n0 = S.caja.length;
+    llenar({ "cj-num": "" }); await guardarMovimientoCaja(); await new Promise((r) => setTimeout(r, 80));
+    const sinFolio = S.caja.length === n0;
+    llenar({}); poner("cj-neto", "200000").dispatchEvent(new Event("input", { bubbles: true }));
+    const vista = document.getElementById("cj-calculo").textContent;
+    await guardarMovimientoCaja(); await new Promise((r) => setTimeout(r, 150));
+    const nuevo = S.caja.find((x) => x.glosa === "Compra de prueba");
+    const e = empresa(); await BD.setEmpresa("e9", { ...e, cerrados: { [hoy().slice(0, 7)]: "x" } }); await new Promise((r) => setTimeout(r, 100));
+    S.pestana.caja = "libro"; ir("caja"); await new Promise((r) => setTimeout(r, 60)); llenar({ "cj-glosa": "En mes cerrado" }); const n1 = S.caja.length; await guardarMovimientoCaja(); await new Promise((r) => setTimeout(r, 80));
+    const bloqueado = S.caja.length === n1;
+    await BD.setEmpresa("e9", { ...e, cerrados: {} }); await new Promise((r) => setTimeout(r, 100));
+    await S.almacen.set("empresas/e9/rcv/d4", { registro: "VENTA", periodo: "2026-08", tipo_doc: 33, folio: "888", fecha: "2026-08-10", rut: "76.111.111-1", razon_social: "Cliente Uno", neto: 100000, exento: 0, iva: 19000, iva_no_recuperable: 0, otros_impuestos: 0, total: 119000, cantidad: 1 });
+    await new Promise((r) => setTimeout(r, 100));
+    const d4 = S.rcv.find((x) => x.id === "d4");
+    await guardarMovimientos([{ ...movimientoDesdeDoc(d4, "2026-10-02"), id: idMov(refRcv(d4)) }]); await new Promise((r) => setTimeout(r, 120));
+    const filas888 = filasIngresosEgresos(2026).filter((x) => x.num === "888").map((x) => [x.fecha, x.ip, x.id]);
+    const infCaja = informeLibroCaja(2026, "", false);
+    return { calc, ppm, cierre, saldoL: L.saldo, emisores, rut: e.rut, sinFolio, vista, nuevo: nuevo && [nuevo.neto, nuevo.iva, nuevo.monto, nuevo.base], bloqueado, filas888, notas: infCaja.notas.join(" ") };
+  });
+  igual("factura de compra: IVA con crédito, el neto afecta la base", sr.calc.factura, [100000, 19000, 0, 119000, 100000]);
+  igual("boleta de compra: sin crédito fiscal, el IVA es parte del gasto", sr.calc.boleta, [100000, 19000, 0, 119000, 119000]);
+  igual("factura exenta: sin IVA", sr.calc.exenta, [0, 0, 0, 50000, 50000]);
+  igual("honorarios: retención del 15,25 % en 2026, el líquido es el flujo y el bruto la base", sr.calc.honorarios, [1000000, 0, 152500, 847500, 1000000]);
+  igual("gasto rechazado: paga el total pero no afecta la base", sr.calc.rechazado, [100000, 19000, 0, 119000, 0]);
+  igual("un retiro no lleva IVA ni afecta la base", sr.calc.retiro, [100000, 0, 0, 100000, 0]);
+  igual("factura de venta: IVA débito fuera de la base", sr.calc.venta, [1000000, 190000, 0, 1190000, 1000000]);
+  igual("tasas vigentes de PPM: rebaja 2025-2027, vuelve en 2028, transparente 0,2 %", sr.ppm, [0.125, 0.25, 0.25, 0.2, null, 0.25, 0.125]);
+  ok("el cierre mensual C10 a C15 cuadra con el libro", sr.cierre && sr.cierre.c12 === sr.saldoL && sr.cierre.c15 === sr.cierre.c14 - sr.cierre.c13, JSON.stringify(sr.cierre));
+  igual("el RUT emisor es el de la empresa en los documentos que emite", sr.emisores, [sr.rut, "76.222.222-2"]);
+  ok("la factura sin número no se registra", sr.sinFolio);
+  ok("el formulario muestra el cálculo", /Total \$238\.000/.test(sr.vista) && /afecta la base por \$200\.000/.test(sr.vista), sr.vista);
+  igual("el movimiento calculado guarda neto, IVA, total y base", sr.nuevo, [200000, 38000, 238000, 200000]);
+  ok("un mes cerrado no admite movimientos nuevos", sr.bloqueado);
+  igual("el documento cobrado después se anota devengado y percibido", sr.filas888, [["2026-08-10", 0, 119000], ["2026-10-02", 119000, 0]]);
+  ok("el libro de caja explica los cierres mensuales", /C10 a C15/.test(sr.notas));
   await page.evaluate(async () => { cambiarEmpresa("e1"); await new Promise((r) => setTimeout(r, 120)); await BD.deleteEmpresa("e9"); await new Promise((r) => setTimeout(r, 120)); ir("inicio"); });
 
   console.log("Revisor de datos y panel de clientes");
