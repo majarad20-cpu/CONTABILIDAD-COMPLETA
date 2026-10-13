@@ -183,6 +183,25 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("agregar un feriado adicional lo suma al calendario", await page.evaluate(() => feriadosLegales().has("2030-05-01") && (S.prev.feriados || []).includes("2030-05-01")));
   await page.click('[data-n="feriado-quitar"]'); await espera(200);
   ok("quitar el feriado adicional", await page.evaluate(() => !feriadosLegales().has("2030-05-01")));
+  console.log("Meses sin movimiento, IVA como gasto y F29 compacto");
+  const mv = await page.evaluate(() => {
+    const e = empresa(), ant = { m: e.rcv_meses, rcv: S.rcv }, per = "2031-03", r = {};
+    e.rcv_meses = {}; S.rcv = [];
+    const vacio = calcularF29(per); r.alertaVacio = vacio.alertas.some((a) => /No hay ventas ni compras/.test(a)); r.sinIva = vacio.sinIva; r.lineasCompactas = lineasF29Visibles(vacio.codigos, false).filter((l) => l[0] !== "titulo").length; r.lineasTodas = lineasF29Visibles(vacio.codigos, true).filter((l) => l[0] !== "titulo").length;
+    e.rcv_meses = { [per]: { sin_ventas: true, sin_compras: true } }; r.alertaMarcado = calcularF29(per).alertas.some((a) => /No hay (ventas|compras)/.test(a));
+    const b = calcularF29(per, 0, null, null, 1, 500000); r.base = [b.codigos["563"], b.codigos["62"]];
+    S.rcv = [{ id: "g1", registro: "COMPRA", periodo: per, tipo_doc: 33, folio: "1", fecha: per + "-10", rut: "1-9", razon_social: "P", cantidad: 1, exento: 0, neto: 100000, iva: 19000, iva_no_recuperable: 0, otros_impuestos: 0, total: 119000, activo_fijo: false, cuenta: "", asiento: "" }];
+    e.rcv_meses = {}; const normal = calcularF29(per).codigos; e.rcv_meses = { [per]: { iva_gasto: true } }; const gasto = calcularF29(per).codigos;
+    r.credito = [normal["520"], normal["564"], gasto["520"], gasto["564"], gasto["521"]];
+    try { const pc = propuestaCentralizacion(per, "COMPRA"); r.central = [pc.lineas.length, pc.lineas.reduce((s, l) => s + l.debe, 0)]; } catch (x) { r.central = String(x.message); }
+    e.rcv_meses = {}; try { r.centralNormal = propuestaCentralizacion(per, "COMPRA").lineas.length; } catch (x) { r.centralNormal = String(x.message); }
+    e.rcv_meses = ant.m; S.rcv = ant.rcv; return r;
+  });
+  ok("un mes vacío avisa; marcado «sin ventas / sin compras» deja de avisar", mv.alertaVacio && !mv.alertaMarcado);
+  ok("sin operaciones con IVA el F29 muestra solo las líneas con valor", mv.sinIva && mv.lineasCompactas < mv.lineasTodas && mv.lineasCompactas <= 8, JSON.stringify([mv.lineasCompactas, mv.lineasTodas]));
+  igual("base del PPM ingresada a mano: 500.000 al 1 % = 5.000", mv.base, [500000, 5000]);
+  igual("IVA como gasto: sin crédito (cód. 520) y la compra pasa a «sin derecho a crédito»", mv.credito, [19000, 0, 0, 1, 100000]);
+  ok("la centralización con IVA como gasto no usa la cuenta de crédito fiscal", Array.isArray(mv.central) ? mv.central[0] === mv.centralNormal - 1 : /Falta configurar/.test(mv.central), JSON.stringify([mv.central, mv.centralNormal]));
   console.log("F29: tasa de PPM en el borrador y base desde el libro de caja");
   const pp = await page.evaluate(async () => {
     const e = empresa(), ant = { tipo: e.tipo_contabilidad, tasa: e.tasa_ppm, caja: S.caja, f29: S.f29, rcv: S.rcv };
