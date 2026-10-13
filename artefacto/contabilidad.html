@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.13.0";
+const VERSION = "1.13.1";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -3027,7 +3027,92 @@ function medidasPng(dataUrl) {
   const leer = (i) => ((bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | bytes[i + 3]) >>> 0;
   return { ancho: leer(16), alto: leer(20) };
 }
+/* Excel con la disposición de las planillas oficiales del SII (Res. Ex. N° 14, Anexos 1 y 3; Res. Ex. N° 31, Anexos 1.1 y 3.1): título, período, RUT y razón social,
+   registro de operaciones con la fila de códigos C1…, y el bloque de saldos y totales con los cierres mensuales. */
+async function excelSii(inf) {
+  await cargarScript("exceljs");
+  const d = inf.sii, e = empresa(), wb = new window.ExcelJS.Workbook();
+  wb.title = inf.titulo; wb.creator = e.razon_social;
+  const ws = wb.addWorksheet(d.hoja, { views: [{ showGridLines: false }] });
+  const linea = { style: "thin", color: { argb: "FF9E9E9E" } }, borde = { top: linea, left: linea, bottom: linea, right: linea };
+  const gris = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE6F1" } }, pesos = '#,##0;-#,##0;0';
+  const REG = "DEL ARTÍCULO 14 LETRA D) DEL N°3 Y N°8 LETRA (a) DE LA LEY SOBRE IMPUESTO A LA RENTA";
+  const config = {
+    caja: { anchos: [12, 22, 14, 22, 14, 14, 40, 18, 18], titulo: `ANEXO 3. LIBRO DE CAJA CONTRIBUYENTES ACOGIDOS AL RÉGIMEN ${REG}` },
+    caja_diario: { anchos: [14, 22, 24, 24, 20, 20, 20], titulo: `ANEXO 3.1. LIBRO RESUMEN DIARIO DE CAJA CONTRIBUYENTES ACOGIDOS AL RÉGIMEN ${REG}` },
+    ie: { anchos: [12, 14, 16, 14, 13, 14, 14, 38, 18], titulo: `ANEXO 1. LIBRO DE INGRESOS Y EGRESOS PARA CONTRIBUYENTES ACOGIDOS AL RÉGIMEN ${REG}`, sub: true },
+    ie_diario: { anchos: [16, 18, 18, 24], titulo: `ANEXO 1.1 LIBRO DE RESUMEN DIARIO DE INGRESOS Y EGRESOS PARA CONTRIBUYENTES ACOGIDOS AL RÉGIMEN ${REG}`, sub: true },
+  }[d.tipo], ncol = config.anchos.length;
+  config.anchos.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  let f = 0;
+  const unir = (f1, c1, f2, c2) => { if (f2 > f1 || c2 > c1) ws.mergeCells(f1, c1, f2, c2); };
+  const celda = (fila, col, valor, o = {}) => {
+    const c = ws.getCell(fila, col); c.value = valor ?? null;
+    c.font = { bold: !!o.negrita, size: o.tam || 9 }; if (o.relleno) c.fill = gris; if (o.borde) c.border = borde;
+    c.alignment = { horizontal: o.centro ? "center" : o.derecha ? "right" : "left", vertical: "middle", wrapText: true };
+    if (o.fmt) c.numFmt = o.fmt; return c;
+  };
+  const caja = (f1, c1, f2, c2, valor, o = {}) => { for (let a = f1; a <= f2; a++) for (let b = c1; b <= c2; b++) celda(a, b, a === f1 && b === c1 ? valor : null, o); unir(f1, c1, f2, c2); };
+  const fechaXl = (iso) => { const [a, m, dd] = iso.split("-").map(Number); return new Date(Date.UTC(a, m - 1, dd)); };
+  const cab = { negrita: true, relleno: true, borde: true, centro: true };
+  f++; caja(f, 1, f, ncol, config.titulo, { negrita: true, tam: 11 }); ws.getRow(f).height = 36;
+  if (config.sub) { f++; caja(f, 1, f, ncol, "CONTRIBUYENTES ACOGIDOS AL RÉGIMEN DEL ARTÍCULO 14 LETRA D) DEL N°3 Y N°8 LETRA (a) Y NO SE ENCUENTREN OBLIGADOS A LLEVAR LIBRO DE COMPRAS Y VENTAS", { negrita: true }); ws.getRow(f).height = 28; }
+  f++;
+  for (const [k, v] of [["PERÍODO", d.periodo], ["RUT", e.rut || ""], ["NOMBRE/RAZÓN SOCIAL", e.razon_social || ""]]) { f++; caja(f, 1, f, 2, k, { negrita: true, relleno: true, borde: true }); caja(f, 3, f, Math.max(ncol, 4), v, { borde: true }); }
+  f++;
+  const fila = (valores, tipos, o = {}) => { f++; valores.forEach((v, j) => { const t = tipos[j]; celda(f, j + 1, t === "f" && v ? fechaXl(v) : v === "" ? null : v, { borde: true, negrita: !!o.negrita, derecha: t === "$" || t === "n", fmt: t === "f" ? "DD/MM/YYYY" : t === "$" ? pesos : undefined }); }); };
+  const totales = (resumen) => {
+    const pref = resumen ? "TOTAL MONTO RESUMEN " : "TOTAL MONTO ", cods = resumen ? ["C5", "C6", "C7", "C8", "C9", "C10"] : ["C10", "C11", "C12", "C13", "C14", "C15"];
+    f += 2; caja(f, 1, f, 7, "SALDOS Y TOTALES LIBRO DE CAJA", { negrita: true });
+    f++; celda(f, 1, null, cab); caja(f, 2, f, 4, "FLUJO DE INGRESOS Y EGRESOS", cab); caja(f, 5, f, 7, "MONTOS QUE AFECTAN LA BASE IMPONIBLE", cab);
+    f++; ["PERÍODO", `${pref}FLUJO DE INGRESOS${resumen ? " DEL PERÍODO" : ""}`, `${pref}FLUJO DE EGRESOS${resumen ? " DEL PERÍODO" : ""}`, "SALDO FLUJO DE CAJA", resumen ? "TOTAL RESUMEN DE INGRESOS" : "INGRESOS", resumen ? "TOTAL RESUMEN DE EGRESOS" : "EGRESOS", "RESULTADO NETO"].forEach((t, j) => celda(f, j + 1, t, { ...cab, tam: 8 }));
+    ws.getRow(f).height = 52;
+    f++; ["", ...cods].forEach((t, j) => celda(f, j + 1, t, cab));
+    for (const c of d.cierres) fila(c, ["t", "$", "$", "$", "$", "$", "$"], { negrita: /^TOTAL/.test(c[0]) });
+    f += 2; celda(f, 1, "Resultado neto según el Anexo 4: si los ingresos superan a los egresos, la diferencia se anota con signo negativo.", { tam: 8 }); unir(f, 1, f, 7);
+  };
+  if (d.tipo === "caja" || d.tipo === "caja_diario") {
+    const diario = d.tipo === "caja_diario";
+    f++; caja(f, 1, f, ncol - (diario ? 3 : 0), diario ? "REGISTRO RESUMEN DIARIO DE OPERACIONES" : "REGISTRO DE OPERACIONES", cab);
+    const titulos = diario ? ["FECHA", "TIPO OPERACIÓN (SALDO INICIAL = 0; FLUJO INGRESO = 1; FLUJO EGRESO = 2)", "RESUMEN MONTO TOTAL DIARIO FLUJO DE INGRESOS O EGRESOS", "RESUMEN DIARIO DEL MONTO QUE AFECTA LA BASE IMPONIBLE"]
+      : ["N° CORRELATIVO", "TIPO OPERACIÓN (SALDO INICIAL = 0; FLUJO INGRESO = 1; FLUJO EGRESO = 2)", "N° DE DOCUMENTO", "TIPO DOCUMENTO", "RUT EMISOR", "FECHA OPERACIÓN", "GLOSA DE OPERACIÓN", "MONTO TOTAL FLUJO DE INGRESO O EGRESO", "MONTO QUE AFECTA LA BASE IMPONIBLE"];
+    f++; titulos.forEach((t, j) => celda(f, j + 1, t, { ...cab, tam: 8 })); ws.getRow(f).height = 62;
+    f++; titulos.forEach((_, j) => celda(f, j + 1, `C${j + 1}`, cab));
+    for (const r of d.filas) fila(r, diario ? ["f", "n", "$", "$"] : ["n", "n", "t", "t", "t", "f", "t", "$", "$"]);
+    totales(diario);
+  } else {
+    const diario = d.tipo === "ie_diario";
+    [["A", "SECCIÓN A INGRESOS", "RUT RECEPTOR", "INGRESOS $", "PERCIBIDOS", "DEVENGADOS", "Total Ingresos del Mes", "Total resumen diario de ingresos del mes", 0], ["B", "SECCIÓN B EGRESOS", "RUT EMISOR", "EGRESOS $", "PAGADOS", "ADEUDADOS", "Total de Egresos del Mes", "Total resumen diario de egresos del mes", diario ? 4 : 0]].forEach(([sec, titulo, rut, monto, c1, c2, totalEtiqueta, totalDiario, offset]) => {
+      f++; caja(f, 1, f, ncol, titulo, { negrita: true }); f++;
+      const S2 = d[sec], rel = "Operaciones con Entidades Relacionadas", cod = (n) => `C${n + offset}`;
+      if (!diario) {
+        f++; const r0 = f;
+        caja(r0, 1, r0 + 2, 1, "N° CORRELATIVO", cab); caja(r0, 2, r0, 8, "REGISTRO DE OPERACIONES", cab); caja(r0, 9, r0 + 2, 9, rel, cab);
+        caja(r0 + 1, 2, r0 + 2, 2, "N° DE DOCUMENTO", cab); caja(r0 + 1, 3, r0 + 2, 3, "TIPO DOCUMENTO", cab); caja(r0 + 1, 4, r0 + 2, 4, rut, cab); caja(r0 + 1, 5, r0 + 2, 5, "FECHA OPERACIÓN", cab);
+        caja(r0 + 1, 6, r0 + 1, 7, monto, cab); celda(r0 + 2, 6, c1, cab); celda(r0 + 2, 7, c2, cab); caja(r0 + 1, 8, r0 + 2, 8, "GLOSA DE OPERACIÓN", cab);
+        f = r0 + 3; [1, 2, 3, 4, 5, 6].forEach((n, j) => celda(f, j + 1, `C${n}`, cab)); celda(f, 7, null, cab); unir(f, 6, f, 7); celda(f, 8, "C7", cab); celda(f, 9, "C8", cab);
+        for (const r of S2.filas) fila(r, ["n", "t", "t", "t", "f", "$", "$", "t", "t"]);
+        f++;
+        for (const t of S2.totales) { f++; caja(f, 1, f, 5, `${totalEtiqueta} · ${t[0].toUpperCase()}`, { negrita: true, borde: true }); celda(f, 6, t[1], { negrita: true, borde: true, fmt: pesos }); celda(f, 7, t[2], { negrita: true, borde: true, fmt: pesos }); }
+        f++; caja(f, 1, f, 5, `${totalEtiqueta.replace(" del Mes", "").replace(" Mes", "")} DEL AÑO`.toUpperCase(), { negrita: true, borde: true, relleno: true }); celda(f, 6, S2.total?.[0] ?? 0, { negrita: true, borde: true, relleno: true, fmt: pesos }); celda(f, 7, S2.total?.[1] ?? 0, { negrita: true, borde: true, relleno: true, fmt: pesos });
+      } else {
+        f++; const r0 = f;
+        caja(r0, 1, r0 + 2, 1, "FECHA", cab); caja(r0, 2, r0, 3, monto, cab); caja(r0, 4, r0 + 2, 4, rel, cab); celda(r0 + 1, 2, c1, cab); celda(r0 + 1, 3, c2, cab);
+        unir(r0 + 1, 2, r0 + 2, 2); unir(r0 + 1, 3, r0 + 2, 3);
+        f = r0 + 3; [1, 2, 3, 4].forEach((n, j) => celda(f, j + 1, cod(n), cab));
+        for (const r of S2.filas) fila(r, ["f", "$", "$", "$"]);
+        f++;
+        for (const t of S2.totales) { f++; celda(f, 1, `${totalDiario} · ${t[0].toUpperCase()}`, { negrita: true, borde: true }); celda(f, 2, t[1], { negrita: true, borde: true, fmt: pesos }); celda(f, 3, t[2], { negrita: true, borde: true, fmt: pesos }); celda(f, 4, t[3], { negrita: true, borde: true, fmt: pesos }); ws.getRow(f).height = 26; }
+      }
+      f++;
+    });
+  }
+  ws.pageSetup = { paperSize: 1, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 } };
+  ws.headerFooter = { oddFooter: `&L&7${NOMBRE_PROGRAMA}&R&7PÁGINA &P DE &N` };
+  return new Blob([await wb.xlsx.writeBuffer()], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
 async function aExcel(inf) {
+  if (inf.sii) return excelSii(inf);
   await cargarScript("exceljs");
   const wb = new window.ExcelJS.Workbook();
   const e = empresa();
@@ -5755,13 +5840,19 @@ function informeLibroCaja(anio, mes, diario) {
     inf.agregar([null, null, "TOTAL DEL PERÍODO: INGRESOS CON SALDO INICIAL (C5) · C8", totalPeriodo.c10, totalPeriodo.c13], { estilo: "subtotal", derecha: true });
     inf.agregar([null, null, "TOTAL DEL PERÍODO: EGRESOS (C6) · C9", totalPeriodo.c11, totalPeriodo.c14], { estilo: "subtotal", derecha: true });
     inf.agregar([null, null, "TOTAL DEL PERÍODO: SALDO DE CAJA (C7) · RESULTADO NETO (C10)", totalPeriodo.c12, totalPeriodo.c15], { estilo: "total", derecha: true });
+    inf.sii = { tipo: "caja_diario", hoja: "Libro Caja", periodo: mes ? `${nombreMes({ mes })} ${anio}` : `AÑO COMERCIAL ${anio}`,
+      filas: [[desde, 0, L.inicial, 0], ...[...dias.values()].sort((a, b) => (a.f < b.f ? -1 : a.f > b.f ? 1 : a.t - b.t)).map((x) => [x.f, x.t, x.monto, x.base])],
+      cierres: [...cierres.map((c) => [nombreMes(c), c.c10, c.c11, c.c12, c.c13, c.c14, c.c15]), ...(mes ? [] : [["TOTAL DEL PERÍODO", totalPeriodo.c10, totalPeriodo.c11, totalPeriodo.c12, totalPeriodo.c13, totalPeriodo.c14, totalPeriodo.c15]])] };
     inf.notas.push("Resumen diario voluntario (Res. Ex. SII N° 31 de 2021, Anexos 3.1 y 4.1): un registro por día y tipo de operación (0 saldo inicial, 1 ingreso, 2 egreso). El resultado neto es negativo cuando los ingresos superan a los egresos. Se debe mantener el respaldo y detalle de las operaciones.");
     return inf;
   }
   /* Anexos 3 y 4 de la Res. Ex. SII N° 14: C1 correlativo (el saldo inicial es el primer registro), C2 tipo de operación, C3 N° documento, C4 tipo, C5 RUT emisor, C6 fecha, C7 glosa, C8 monto total, C9 afecta la base */
-  const inf = new Informe("LIBRO DE CAJA", periodoTexto(desde, hasta), [col("N° (C1)", 6, "numero"), col("Op. (C2)", 6), col("Fecha (C6)", 10, "fecha"), col("Tipo de documento (C4)", 14), col("N° doc. (C3)", 9), col("RUT emisor (C5)", 12), col("Glosa (C7)", 27), col("Monto total (C8)", 14, "monto"), col("Afecta base (C9)", 14, "monto")], `libro_caja_${nombre}`);
-  inf.agregar([1, "0", desde, null, null, null, "SALDO INICIAL", L.inicial, null]);
-  L.filas.forEach((m, i) => inf.agregar([i + 2, String(m.tipo), m.fecha, m.doc_tipo || null, m.doc_num || null, rutEmisorCaja(m) || null, (m.glosa || "").toUpperCase(), m.monto, m.base]));
+  const inf = new Informe("LIBRO DE CAJA", periodoTexto(desde, hasta), [col("N° (C1)", 6, "numero"), col("Op. (C2)", 6), col("N° doc. (C3)", 9), col("Tipo de documento (C4)", 14), col("RUT emisor (C5)", 12), col("Fecha (C6)", 10, "fecha"), col("Glosa (C7)", 27), col("Monto total (C8)", 14, "monto"), col("Afecta base (C9)", 14, "monto")], `libro_caja_${nombre}`);
+  inf.agregar([1, "0", null, null, null, desde, "SALDO INICIAL", L.inicial, null]);
+  L.filas.forEach((m, i) => inf.agregar([i + 2, String(m.tipo), m.doc_num || null, m.doc_tipo || null, rutEmisorCaja(m) || null, m.fecha, (m.glosa || "").toUpperCase(), m.monto, m.base]));
+  const filasSii = [[1, 0, "", "", empresa().rut || "", desde, "SALDO INICIAL DE CAJA", L.inicial, 0], ...L.filas.map((m, i) => [i + 2, m.tipo, m.doc_num || "", m.doc_tipo || "", rutEmisorCaja(m), m.fecha, (m.glosa || "").toUpperCase(), m.monto, m.base])];
+  const cierresSii = [...cierres.map((c) => [nombreMes(c), c.c10, c.c11, c.c12, c.c13, c.c14, c.c15]), ...(mes ? [] : [["TOTAL DEL PERÍODO", totalPeriodo.c10, totalPeriodo.c11, totalPeriodo.c12, totalPeriodo.c13, totalPeriodo.c14, totalPeriodo.c15]])];
+  inf.sii = { tipo: "caja", hoja: "Libro Caja", periodo: mes ? `${nombreMes({ mes })} ${anio}` : `AÑO COMERCIAL ${anio}`, filas: filasSii, cierres: cierresSii };
   inf.agregar([null, null, null, null, null, null, "TOTAL INGRESOS CON SALDO INICIAL (C10) · INGRESOS QUE AFECTAN LA BASE (C13)", totalPeriodo.c10, totalPeriodo.c13], { estilo: "subtotal", derecha: true });
   inf.agregar([null, null, null, null, null, null, "TOTAL EGRESOS (C11) · EGRESOS QUE AFECTAN LA BASE (C14)", totalPeriodo.c11, totalPeriodo.c14], { estilo: "subtotal", derecha: true });
   inf.agregar([null, null, null, null, null, null, "SALDO DE CAJA (C12) · RESULTADO NETO (C15)", totalPeriodo.c12, totalPeriodo.c15], { estilo: "total", derecha: true });
@@ -5794,23 +5885,27 @@ function informeIngresosEgresos(anio, diario = false) {
     ? [col("Fecha (C1)", 14, "fecha"), col("Percibido / pagado", 16, "monto"), col("Devengado / adeudado", 16, "monto"), col("De entidades relacionadas", 16, "monto")]
     : [col("N° (C1)", 6, "numero"), col("N° doc. (C2)", 10), col("Tipo de documento (C3)", 14), col("RUT (C4)", 12), col("Fecha (C5)", 10, "fecha"), col("Percibido / pagado (C6)", 14, "monto"), col("Devengado / adeudado (C6)", 14, "monto"), col("Glosa (C7)", 26), col("Rel. (C8)", 6)];
   const inf = new Informe(diario ? "LIBRO DE INGRESOS Y EGRESOS · RESUMEN DIARIO" : "LIBRO DE INGRESOS Y EGRESOS", periodoTexto(`${anio}-01-01`, `${anio}-12-31`), cab, `libro_ingresos_egresos${sufijo}`);
+  const sii = { tipo: diario ? "ie_diario" : "ie", hoja: "Anverso", periodo: `AÑO COMERCIAL ${anio}`, A: { filas: [], totales: [], total: null }, B: { filas: [], totales: [], total: null } };
   for (const [sec, titulo, p, d] of [["A", "SECCIÓN A · INGRESOS PERCIBIDOS O DEVENGADOS", "ip", "id"], ["B", "SECCIÓN B · EGRESOS PAGADOS O ADEUDADOS", "ep", "ea"]]) {
     const L = f.filter((x) => x.sec === sec);
     inf.agregar([titulo], { estilo: "seccion", abarca: 0 });
     const meses = [...new Set(L.map((x) => x.fecha.slice(5, 7)))].sort(); let n = 0;
     for (const mes of meses) {
       const delMes = L.filter((x) => x.fecha.slice(5, 7) === mes), suma = (k, c = () => true) => delMes.filter(c).reduce((t, x) => t + x[k], 0);
-      if (!diario) delMes.forEach((x) => inf.agregar([++n, x.num || null, x.tipo_doc || null, x.rut || null, x.fecha, sinCeros(x[p]), sinCeros(x[d]), (x.desc || "").toUpperCase(), x.rel ? "X" : null]));
+      if (!diario) delMes.forEach((x) => { inf.agregar([++n, x.num || null, x.tipo_doc || null, x.rut || null, x.fecha, sinCeros(x[p]), sinCeros(x[d]), (x.desc || "").toUpperCase(), x.rel ? "X" : null]); sii[sec].filas.push([n, x.num || "", x.tipo_doc || "", x.rut || "", x.fecha, x[p], x[d], (x.desc || "").toUpperCase(), x.rel ? "X" : ""]); });
       else {
         const dias = new Map(); for (const x of delMes) { const y = dias.get(x.fecha) || { p: 0, d: 0, r: 0 }; y.p += x[p]; y.d += x[d]; if (x.rel) y.r += x[p] + x[d]; dias.set(x.fecha, y); }
-        for (const [fecha, y] of [...dias].sort((a, b) => (a[0] < b[0] ? -1 : 1))) inf.agregar([fecha, sinCeros(y.p), sinCeros(y.d), sinCeros(y.r)]);
+        for (const [fecha, y] of [...dias].sort((a, b) => (a[0] < b[0] ? -1 : 1))) { inf.agregar([fecha, sinCeros(y.p), sinCeros(y.d), sinCeros(y.r)]); sii[sec].filas.push([fecha, y.p, y.d, y.r]); }
       }
       const rel = delMes.filter((x) => x.rel).reduce((t, x) => t + x[p] + x[d], 0), etiqueta = `TOTAL ${MESES[+mes - 1].toUpperCase()}`;
+      sii[sec].totales.push([MESES[+mes - 1], suma(p), suma(d), rel]);
       inf.agregar(diario ? [etiqueta, suma(p), suma(d), rel] : [null, null, null, null, null, suma(p), suma(d), etiqueta, null], { estilo: "subtotal", derecha: true });
     }
     const tp = L.reduce((t, x) => t + x[p], 0), td = L.reduce((t, x) => t + x[d], 0), tr = L.filter((x) => x.rel).reduce((t, x) => t + x[p] + x[d], 0), eti = sec === "A" ? "TOTAL INGRESOS" : "TOTAL EGRESOS";
     inf.agregar(diario ? [eti, tp, td, tr] : [null, null, null, null, null, tp, td, eti, null], { estilo: "total", derecha: true });
+    sii[sec].total = [tp, td, tr];
   }
+  inf.sii = sii;
   inf.notas.push("Percibido y pagado: ya se cobró o pagó (Libro de caja). Devengado y adeudado: documentos del RCV aún sin cobrar ni pagar. Un documento cobrado o pagado después de su fecha aparece dos veces: devengado (fecha del documento) y percibido o pagado (fecha del cobro o pago). Los préstamos, aportes, retiros e impuestos van solo al libro de caja. C4: RUT del receptor en ingresos y del emisor en egresos. C8: X en operaciones con entidades relacionadas. Es el libro que exige el SII a quien no lleva el Registro de Compras y Ventas (Res. Ex. SII N° 14, Anexos 1 y 2; resumen diario: Res. 31, Anexos 1.1 y 2.1).");
   return inf;
 }

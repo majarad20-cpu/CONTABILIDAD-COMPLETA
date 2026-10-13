@@ -348,7 +348,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     };
   });
   igual("libro de caja: el saldo inicial es el registro 1 con tipo de operación 0 y los demás siguen", [an.correlativo, an.op[0], an.op[1]], [[1, "0", 2, 3], "0", "1"]);
-  ok("libro de caja: columnas C1 a C9 con los nombres del Anexo 4", /C1/.test(an.cabecera[0]) && /C2/.test(an.cabecera[1]) && /C6/.test(an.cabecera[2]) && /C5/.test(an.cabecera[5]), JSON.stringify(an.cabecera));
+  ok("libro de caja: columnas C1 a C9 con los nombres del Anexo 4", /C1/.test(an.cabecera[0]) && /C2/.test(an.cabecera[1]) && /C3/.test(an.cabecera[2]) && /C4/.test(an.cabecera[3]) && /C5/.test(an.cabecera[4]) && /C6/.test(an.cabecera[5]), JSON.stringify(an.cabecera));
   ok("libro de caja: el resultado neto C15 es negativo cuando los ingresos superan a los egresos", an.c15[1] < 0 && an.c15[0] > 0, JSON.stringify(an.c15));
   ok("resumen diario de caja: una fila por día y tipo de operación (0, 1 y 2)", an.diario && an.tiposDia.join(",") === "0,1,2", JSON.stringify(an.tiposDia));
   igual("libro de ingresos y egresos: sección A de ingresos y sección B de egresos", an.secciones, ["SECCIÓN A · INGRESOS PERCIBIDOS O DEVENGADOS", "SECCIÓN B · EGRESOS PAGADOS O ADEUDADOS"]);
@@ -356,6 +356,34 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el retiro de socios va al libro de caja y no al de ingresos y egresos", an.sinRetiro && an.conRetiroEnCaja);
   ok("las operaciones con entidades relacionadas se marcan con X", an.relacionada.length === 1 && /RELACIONADA/.test(an.relacionada[0]), JSON.stringify(an.relacionada));
   ok("el libro de ingresos y egresos trae sumatoria mensual y resumen diario", an.totalesMes && an.diarioIE && an.mesVista);
+  console.log("Excel con la disposición de las plantillas del SII (Anexos 1, 3, 1.1 y 3.1)");
+  const xl = await page.evaluate(async () => {
+    await cargarScript("exceljs");
+    const leer = async (inf) => { const wb = new window.ExcelJS.Workbook(); await wb.xlsx.load(await (await aExcel(inf)).arrayBuffer()); const ws = wb.worksheets[0]; const filas = []; ws.eachRow({ includeEmpty: false }, (row) => { const v = []; row.eachCell({ includeEmpty: true }, (c, j) => { v[j - 1] = c.value instanceof Date ? "FECHA" : c.value; }); filas.push(v); }); return { hoja: ws.name, filas }; };
+    const texto = (r) => r.filas.map((f) => f.map((x) => (x == null ? "" : String(x))).join("|"));
+    const caja = await leer(informeLibroCaja(2026, "", false)), cd = await leer(informeLibroCaja(2026, "", true)), ie = await leer(informeIngresosEgresos(2026)), id = await leer(informeIngresosEgresos(2026, true));
+    const codigos = (r) => r.filas.filter((f) => f.filter(Boolean).every((x) => /^C\d+$/.test(String(x))) && f.filter(Boolean).length > 1).map((f) => f.filter(Boolean).filter((x, i, a) => x !== a[i - 1]).join(","));
+    const tc = texto(caja), tcd = texto(cd), tie = texto(ie), tid = texto(id);
+    return {
+      cajaHoja: caja.hoja, cajaTitulo: tc[0].slice(0, 34), cajaDatos: tc.some((t) => /^PERÍODO\|/.test(t)) && tc.some((t) => /^RUT\|/.test(t)) && tc.some((t) => /^NOMBRE\/RAZÓN SOCIAL\|/.test(t)),
+      cajaCab: tc.find((t) => /^N° CORRELATIVO\|TIPO OPERACIÓN/.test(t)) && true, cajaCod: codigos(caja), cajaPrimera: caja.filas.find((f) => f[0] === 1 && f[1] === 0)?.slice(0, 9).map((x) => (x == null ? "" : x)),
+      cajaTotales: tc.some((t) => /SALDOS Y TOTALES LIBRO DE CAJA/.test(t)), cajaMeses: tc.filter((t) => /^SEPTIEMBRE\|/.test(t)).length === 1 && tc.some((t) => /^TOTAL DEL PERÍODO\|/.test(t)),
+      cdCod: codigos(cd), cdTot: tcd.some((t) => /RESUMEN MONTO TOTAL DIARIO/.test(t)) && tcd.some((t) => /TOTAL MONTO RESUMEN FLUJO DE INGRESOS DEL PERÍODO/.test(t)),
+      ieHoja: ie.hoja, ieSecciones: tie.filter((t) => /^SECCIÓN [AB] (INGRESOS|EGRESOS)/.test(t)).length, ieRut: [tie.some((t) => /RUT RECEPTOR/.test(t)), tie.some((t) => /RUT EMISOR/.test(t))],
+      ieSub: ["PERCIBIDOS", "DEVENGADOS", "PAGADOS", "ADEUDADOS"].map((w) => tie.some((t) => t.includes(w))), ieCod: codigos(ie), ieTot: tie.some((t) => /^Total Ingresos del Mes · /.test(t)) && tie.some((t) => /^Total de Egresos del Mes · /.test(t)),
+      idCod: codigos(id), idTot: tid.some((t) => /^Total resumen diario de ingresos del mes · /.test(t)) && tid.some((t) => /^Total resumen diario de egresos del mes · /.test(t)),
+    };
+  });
+  ok("la planilla del libro de caja trae título del Anexo 3, período, RUT, razón social y el registro de operaciones", xl.cajaHoja === "Libro Caja" && /^ANEXO 3\. LIBRO DE CAJA/.test(xl.cajaTitulo) && xl.cajaDatos && xl.cajaCab, JSON.stringify([xl.cajaHoja, xl.cajaTitulo]));
+  igual("la fila de códigos del libro de caja va de C1 a C9 y luego C10 a C15", xl.cajaCod, ["C1,C2,C3,C4,C5,C6,C7,C8,C9", "C10,C11,C12,C13,C14,C15"]);
+  igual("el saldo inicial es el registro 1, tipo 0, con el RUT de la empresa", xl.cajaPrimera.slice(0, 2).concat(xl.cajaPrimera[6]), [1, 0, "SALDO INICIAL DE CAJA"]);
+  ok("la planilla trae saldos y totales con un cierre por mes y el total del período", xl.cajaTotales && xl.cajaMeses);
+  igual("el resumen diario de caja usa C1 a C4 y los totales C5 a C10 (Anexo 3.1)", [xl.cdCod, xl.cdTot], [["C1,C2,C3,C4", "C5,C6,C7,C8,C9,C10"], true]);
+  ok("el libro de ingresos y egresos tiene sección A (RUT receptor) y B (RUT emisor) con percibidos, devengados, pagados y adeudados", xl.ieHoja === "Anverso" && xl.ieSecciones === 2 && xl.ieRut.every(Boolean) && xl.ieSub.every(Boolean), JSON.stringify([xl.ieSecciones, xl.ieRut, xl.ieSub]));
+  igual("los códigos de ingresos y egresos son C1 a C8 en cada sección", xl.ieCod, ["C1,C2,C3,C4,C5,C6,C7,C8", "C1,C2,C3,C4,C5,C6,C7,C8"]);
+  ok("hay totales mensuales de ingresos y de egresos", xl.ieTot);
+  igual("el resumen diario de ingresos y egresos usa C1 a C4 en la sección A y C5 a C8 en la B (Anexo 1.1)", xl.idCod, ["C1,C2,C3,C4", "C5,C6,C7,C8"]);
+  ok("el resumen diario trae el total del mes por sección", xl.idTot);
   await page.evaluate(async () => { cambiarEmpresa("e1"); await new Promise((r) => setTimeout(r, 120)); await BD.deleteEmpresa("e9"); await new Promise((r) => setTimeout(r, 120)); ir("inicio"); });
 
   console.log("Revisor de datos y panel de clientes");
