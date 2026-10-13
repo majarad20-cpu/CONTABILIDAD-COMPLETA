@@ -151,6 +151,23 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("finiquito 161-1: 6 años y 7 meses computan 7, indemnización y aviso con base 1.080.000", fq2.a, [7, 7560000, 1080000, 1080000]);
   igual("recargo 30 %, imputación AFC y feriado sin colación ni movilización", fq2.b, [2268000, 100000, 14, 1000000]);
   igual("desahucio indemniza y renuncia no", [fq2.d, fq2.e], [[7560000, 1080000], [0, 0]]);
+  console.log("Previred y LRE (borradores)");
+  const pv = await page.evaluate(() => {
+    const ant = { t: S.trabajadores, l: S.liquidaciones, f: S.finiquitos, prev: S.prev, rc: empresa().rem_config, rut: empresa().rut };
+    S.utm = { ...(S.utm || {}), "2026-09": 71721 }; S.prev = { ...S.prev, uf: { ...(S.prev.uf || {}), "2026-09": 41057.2 } };
+    const base = (o) => ({ ...trabajadorVacio(), id: "t", nombre: "Ana Perez Soto", rut: "12345678-5", fecha_nac: "1990-05-10", fecha_ingreso: "2020-03-01", sueldo_base: 1000000, colacion: 50000, afp: "Habitat", afp_comision: 1.27, ...o });
+    const e = { dias: 30, horas_extra: 0, horas_extra_100: 0, festivos: 0, comisiones: 0, bonos: 0, vacaciones: 0, no_imponibles: 0, anticipos: 0, otros_desc: 0 };
+    const ts = [base({ id: "1" }), base({ id: "3", rut: "22222222-2", fecha_nac: "1955-01-01", pensionado: true, afp: "Uno", afp_comision: 0.46, sexo: "F" })];
+    S.trabajadores = ts; S.finiquitos = []; empresa().rem_config = { mutual_nombre: "ACHS", mutual_basica: 0.9, mutual_adicional: 0, sanna: 0.03, ccaf: "" }; empresa().rut = "76123456-0";
+    S.liquidaciones = ts.map((t) => ({ ...calcularLiquidacionTrabajador(t, "2026-09", e), id: "l" + t.id }));
+    const r = { pv: archivoPrevired("2026-09", S.liquidaciones).trim().split("\r\n"), lre: archivoLre("2026-09", S.liquidaciones).trim().split("\r\n"), rev: revisionArchivosRem(S.liquidaciones) };
+    S.trabajadores = ant.t; S.liquidaciones = ant.l; S.finiquitos = ant.f; S.prev = ant.prev; empresa().rem_config = ant.rc; empresa().rut = ant.rut;
+    return r;
+  });
+  igual("Previred: trabajador activo igual al programa de remuneraciones (105 campos)", pv.pv[0].toUpperCase(), "12345678;5;PEREZ;SOTO;ANA;M;0;01;092026;;AFP;0;30;00;0;;;C;0;0;0;0;0;0;N;05;1219115;138613;21700;0;0;0;0;0;;;;00,00;0;000;;0;0;0;000;;0;0;0;0;;;;;0;;;00;0;0;0;0000;00,00;1219115;0;0;0000;00,00;0;85338;0;0;0;0;07;;0;0;0;0;0;0;00;0;0;0;0;0;0;0;0;0;1;8778;10972;01;1219115;11338;0;1219115;7315;29259;0;;");
+  igual("Previred: pensionado igual al programa de remuneraciones", pv.pv[1].toUpperCase(), "22222222;2;PEREZ;SOTO;ANA;F;0;01;092026;;SIP;2;30;00;0;;;C;0;0;0;0;0;0;N;00;0;0;0;0;0;0;0;0;;;;00,00;0;000;;0;0;0;000;;0;0;0;0;;;;;0;;;00;0;0;0;0000;00,00;1219115;0;0;0000;00,00;0;85338;0;0;0;0;07;;0;0;0;0;0;0;00;0;0;0;0;0;0;0;0;0;1;0;0;01;1219115;11338;0;0;0;0;0;;");
+  ok("LRE: encabezado y dos filas con las mismas columnas", pv.lre.length === 3 && pv.lre.every((x) => x.replace(/^\uFEFF/, "").split(";").length === 72), String(pv.lre.map((x) => x.split(";").length)));
+  ok("la revisión previa avisa lo que falta (sexo, región y comuna)", pv.rev.some((x) => /sexo/.test(x)) && pv.rev.some((x) => /región/.test(x)), JSON.stringify(pv.rev));
   igual("el tope de 11 años no rige para contratos anteriores a 1981-08-14", fq2.ant, 47);
 
   console.log("Renta");
