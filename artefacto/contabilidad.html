@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.16.0";
+const VERSION = "1.17.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -3820,12 +3820,13 @@ const TRABAJO_PESADO = { ninguno: ["No aplica", 0, 0], menos: ["Trabajo menos pe
 const ASIG_FAMILIAR_2026 = [{ hasta: 649039, monto: 22601 }, { hasta: 947990, monto: 13870 }, { hasta: 1478539, monto: 4382 }];
 /* Cada fila reemplaza solo los valores que trae, desde el mes indicado. Cotización adicional del empleador de la Ley 21.735 (reforma de pensiones):
    1 % desde agosto de 2025, 3,5 % desde agosto de 2026 y luego 4,25 %, 5 %, 5,7 %, 6,4 %, 7,1 %, 7,8 % y 8,5 % cada agosto hasta 2033.
-   Desde agosto de 2026 ese aporte ya incluye el financiamiento del SIS, que deja de cobrarse aparte. */
+   Desde agosto de 2026 ese aporte ya incluye el financiamiento del SIS (1,78 %), que deja de cobrarse aparte; a los mayores de 65 años no se les cobra la parte del SIS.
+   Con 11 años o más de servicio el trabajador deja de cotizar seguro de cesantía y el empleador aporta 0,8 % (Ley 19.728). Ingreso mínimo de menores de 18 y mayores de 65 años según la Dirección del Trabajo. */
 const PREVISIONAL_BASE = [
-  { desde: "2000-01", imm: 553553, tope_afp_uf: 90, tope_afc_uf: 135.2, sis: 1.5, reforma: 0, ces_trab: 0.6, ces_emp_indef: 2.4, ces_emp_fijo: 3.0, asig: ASIG_FAMILIAR_2026 },
+  { desde: "2000-01", imm: 553553, imm_menor_mayor: 412938, tope_afp_uf: 90, tope_afc_uf: 135.2, sis: 1.5, reforma: 0, ces_trab: 0.6, ces_emp_indef: 2.4, ces_emp_fijo: 3.0, ces_trab_11: 0, ces_emp_11: 0.8, asig: ASIG_FAMILIAR_2026 },
   { desde: "2025-08", reforma: 1.0 },
   { desde: "2026-04", sis: 1.62 },
-  { desde: "2026-08", sis: 0, reforma: 3.5 },
+  { desde: "2026-08", sis: 0, reforma: 3.5, sis_en_reforma: 1.78 },
   ...[["2027-08", 4.25], ["2028-08", 5.0], ["2029-08", 5.7], ["2030-08", 6.4], ["2031-08", 7.1], ["2032-08", 7.8], ["2033-08", 8.5]].map(([desde, reforma]) => ({ desde, reforma })),
 ];
 const COMPOSICION_REFORMA = { "2025-08": "0,1 % a la cuenta individual y 0,9 % al seguro social", "2026-08": "0,1 % a la cuenta individual, 2,5 % al seguro social (incluye el SIS y la compensación por expectativa de vida) y 0,9 % a la cotización con rentabilidad protegida", "2027-08": "la rentabilidad protegida sube a 1,5 %" };
@@ -3862,7 +3863,7 @@ function trabajadorVacio() {
     lugar: [e.direccion, e.comuna].filter(Boolean).join(", "), fecha_ingreso: hoy(), tipo: "indefinido", fecha_termino: "", obra: "",
     jornada: 42, distribucion: distribucionSugerida(42), sueldo_base: 0, gratificacion: "legal", gratificacion_monto: 0, colacion: 0, movilizacion: 0, semana_corrida: false,
     forma_pago: "Mensualmente, por período vencido, mediante transferencia electrónica a la cuenta bancaria que el trabajador indique",
-    afp: "Habitat", afp_comision: AFPS.Habitat, salud: "fonasa", isapre: "", plan_uf: 0, sin_cesantia: false, cargas: 0, trabajo_pesado: "ninguno", apv_monto: 0, apv_regimen: "B",
+    afp: "Habitat", afp_comision: AFPS.Habitat, salud: "fonasa", isapre: "", plan_uf: 0, sin_cesantia: false, pensionado: false, cargas: 0, trabajo_pesado: "ninguno", apv_monto: 0, apv_regimen: "B",
     haberes_fijos: [], descuentos_fijos: [], anios_previos: 0, vacaciones: [], activo: true, fecha_finiquito: "" };
 }
 const trabajadorPorId = (id) => S.trabajadores.find((t) => t.id === id);
@@ -3893,7 +3894,9 @@ function calcularLiquidacionTrabajador(t, periodo, e) {
   const r = Math.round, prop = (x) => r((x * e.dias) / 30);
   const sueldo = prop(t.sueldo_base);
   const valorHora = (t.sueldo_base * 7) / (30 * (t.jornada || 42));
-  const horasExtra = r(valorHora * 1.5 * (e.horas_extra || 0));
+  const horasExtra50 = r(valorHora * 1.5 * (e.horas_extra || 0)), horasExtra100 = r(valorHora * 2 * (e.horas_extra_100 || 0)), horasExtra = horasExtra50 + horasExtra100;
+  const edad = t.fecha_nac ? Math.floor(anosEntre(t.fecha_nac, ultimoDia(periodo))) : null, pensionado = !!t.pensionado, mayor65 = edad != null && edad >= 65;
+  const avisos = [];
   const comisiones = e.comisiones || 0, bonos = e.bonos || 0, vacaciones = e.vacaciones || 0;
   const descanso = domingosDelMes(periodo) + (e.festivos || 0);
   const semana = t.semana_corrida && comisiones > 0 ? r((comisiones / Math.max(diasCalendario(periodo) - descanso, 1)) * descanso) : 0;
@@ -3910,15 +3913,15 @@ function calcularLiquidacionTrabajador(t, periodo, e) {
   const asig = asignacionFamiliar(pr, imponible + noImponible, t.cargas || 0, e.dias);
   const topeAfp = uf ? r(pr.tope_afp_uf * uf) : Infinity, topeAfc = uf ? r(pr.tope_afc_uf * uf) : Infinity;
   const impAfp = Math.min(imponible, topeAfp), impAfc = Math.min(imponible, topeAfc);
-  const afp = r((impAfp * (TASA_AFP + (t.afp_comision || 0))) / 100);
+  const afp = pensionado ? 0 : r((impAfp * (TASA_AFP + (t.afp_comision || 0))) / 100);
   const saludLegal = r((impAfp * TASA_SALUD) / 100);
   let salud = saludLegal;
   if (t.salud === "isapre") {
     if (!uf) throw new ErrorRcv(`Falta el valor de la UF de ${nombrePeriodo(periodo)}: se necesita para el plan de isapre de ${t.nombre}.`);
     salud = Math.max(saludLegal, r((t.plan_uf || 0) * uf));
   }
-  const indefinido = t.tipo === "indefinido", cotizaCesantia = !t.sin_cesantia;
-  const cesantia = indefinido && cotizaCesantia ? r((impAfc * pr.ces_trab) / 100) : 0;
+  const indefinido = t.tipo === "indefinido", cotizaCesantia = !t.sin_cesantia && !pensionado, once = indefinido && anosEntre(t.fecha_ingreso, ultimoDia(periodo)) >= 11;
+  const cesantia = indefinido && cotizaCesantia ? r((impAfc * (once ? pr.ces_trab_11 ?? 0 : pr.ces_trab)) / 100) : 0;
   const [, tpEmp, tpTrab] = TRABAJO_PESADO[t.trabajo_pesado] || TRABAJO_PESADO.ninguno;
   const trabPesado = r((impAfp * tpTrab) / 100);
   const apv = t.apv_monto || 0, apvDeducible = t.apv_regimen === "B" ? Math.min(apv, uf ? r(TOPE_APV_B_UF * uf) : apv) : 0;
@@ -3933,10 +3936,16 @@ function calcularLiquidacionTrabajador(t, periodo, e) {
   const liquido = previo - descuentosFijos;
   if (liquido < 0) throw new ErrorRcv(`${t.nombre}: los descuentos superan los haberes del mes.`);
   const m = tasasMutual();
-  const empSis = r((impAfp * (pr.sis || 0)) / 100), empReforma = r((impAfp * (pr.reforma || 0)) / 100), empMutual = r((impAfp * (m.basica + m.adicional)) / 100), empSanna = r((impAfp * m.sanna) / 100);
-  const empCesantia = cotizaCesantia ? r((impAfc * (indefinido ? pr.ces_emp_indef : pr.ces_emp_fijo)) / 100) : 0, empTrabPesado = r((impAfp * tpEmp) / 100);
+  const empSis = pensionado || mayor65 ? 0 : r((impAfp * (pr.sis || 0)) / 100), empReforma = pensionado ? 0 : r((impAfp * Math.max((pr.reforma || 0) - (mayor65 ? pr.sis_en_reforma || 0 : 0), 0)) / 100), empMutual = r((impAfp * (m.basica + m.adicional)) / 100), empSanna = r((impAfp * m.sanna) / 100);
+  const empCesantia = cotizaCesantia ? r((impAfc * (indefinido ? (once ? pr.ces_emp_11 ?? 0.8 : pr.ces_emp_indef) : pr.ces_emp_fijo)) / 100) : 0, empTrabPesado = r((impAfp * tpEmp) / 100);
   const aportes = empSis + empReforma + empCesantia + empMutual + empSanna + empTrabPesado;
-  return { trabajador: t.id, periodo, dias: e.dias, festivos: e.festivos || 0, horas_extra: e.horas_extra || 0, sueldo, horas_extra_monto: horasExtra, comisiones, semana_corrida: semana, bonos, vacaciones_pago: vacaciones,
+  const imm = edad != null && (edad < 18 || edad > 65) ? pr.imm_menor_mayor ?? pr.imm : pr.imm, minimo = imm * Math.min(1, (t.jornada || 42) / 42);
+  if (t.sueldo_base && t.sueldo_base < minimo - 1) avisos.push(`Sueldo base bajo el ingreso mínimo proporcional a la jornada ($${clp(r(minimo))}).`);
+  const voluntarios = anticipos + otrosDesc + descuentosFijos;
+  if (voluntarios > 0.45 * (haberes - descuentosLegales)) avisos.push("Los descuentos voluntarios superan el 45 % de la remuneración (art. 58 del Código del Trabajo).");
+  if (pensionado) avisos.push("Pensionado: sin cotización de AFP, SIS ni seguro de cesantía."); else if (mayor65) avisos.push("Mayor de 65 años: el empleador no paga la parte del SIS.");
+  if (once && cotizaCesantia && indefinido) avisos.push("Con 11 años o más de servicio: el trabajador no cotiza cesantía y el empleador aporta 0,8 %.");
+  return { trabajador: t.id, periodo, dias: e.dias, festivos: e.festivos || 0, horas_extra: e.horas_extra || 0, horas_extra_100: e.horas_extra_100 || 0, sueldo, horas_extra_monto: horasExtra, horas_extra_100_monto: horasExtra100, avisos, edad, comisiones, semana_corrida: semana, bonos, vacaciones_pago: vacaciones,
     haberes_fijos_imp: fijosImp, gratificacion, imponible, colacion, movilizacion, no_imponibles: otrosNoImp, haberes_fijos_no_imp: fijosNoImp, no_imponible: noImponible,
     cargas: t.cargas || 0, asig_familiar: asig.monto, asig_tramo: asig.tramo, haberes, tope_aplicado: imponible > impAfp,
     afp, afp_tasa: TASA_AFP + (t.afp_comision || 0), salud, salud_legal: saludLegal, cesantia, trabajo_pesado: trabPesado, apv, apv_deducible: apvDeducible,
@@ -4031,7 +4040,8 @@ function formularioTrabajador(te) {
       <label>Trabajo pesado (cotización adicional)<select id="tb-trabajo_pesado">${Object.entries(TRABAJO_PESADO).map(([k, v]) => `<option value="${k}" ${te.trabajo_pesado === k ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
       ${m("apv_monto", "Ahorro previsional voluntario (APV) mensual", te.apv_monto)}
       <label>Régimen del APV<select id="tb-apv_regimen"><option value="B" ${te.apv_regimen !== "A" ? "selected" : ""}>B (rebaja la base del impuesto)</option><option value="A" ${te.apv_regimen === "A" ? "selected" : ""}>A (bonificación fiscal)</option></select></label>
-      <label class="check"><input type="checkbox" id="tb-sin_cesantia" ${te.sin_cesantia ? "checked" : ""}> No cotiza seguro de cesantía (pensionado u otro caso)</label>
+      <label class="check"><input type="checkbox" id="tb-pensionado" ${te.pensionado ? "checked" : ""}> Pensionado: no cotiza AFP, SIS ni seguro de cesantía (sí salud)</label>
+      <label class="check"><input type="checkbox" id="tb-sin_cesantia" ${te.sin_cesantia ? "checked" : ""}> No cotiza seguro de cesantía por otro motivo</label>
       <label>Años de trabajo con otros empleadores (feriado progresivo, máx. 10)<input id="tb-anios_previos" inputmode="numeric" value="${te.anios_previos || ""}" placeholder="0"></label></div>
     ${te.id ? `<div class="form"><label class="check"><input type="checkbox" id="tb-activo" ${te.activo !== false ? "checked" : ""}> Trabajador activo</label>
       <label>Fecha de término de la relación laboral<input type="date" id="tb-fecha_finiquito" value="${esc(te.fecha_finiquito)}"></label></div>` : ""}
@@ -4066,7 +4076,7 @@ function leerTrabajador() {
     lugar: v("lugar").trim(), fecha_ingreso: v("fecha_ingreso"), tipo: v("tipo"), fecha_termino: v("fecha_termino"), obra: v("obra").trim(), jornada: Number(v("jornada")), distribucion: v("distribucion").trim(),
     sueldo_base: parseMonto(v("sueldo_base") || "0"), gratificacion: v("gratificacion"), gratificacion_monto: parseMonto(v("gratificacion_monto") || "0"), colacion: parseMonto(v("colacion") || "0"), movilizacion: parseMonto(v("movilizacion") || "0"),
     semana_corrida: !!$("#tb-semana_corrida")?.checked, cargas: Number(v("cargas") || 0), forma_pago: v("forma_pago").trim(), afp: v("afp"), afp_comision: decimal(v("afp_comision")), salud: v("salud"), isapre: v("isapre").trim(), plan_uf: decimal(v("plan_uf")) || 0,
-    trabajo_pesado: v("trabajo_pesado") || "ninguno", apv_monto: parseMonto(v("apv_monto") || "0"), apv_regimen: v("apv_regimen") || "B", sin_cesantia: !!$("#tb-sin_cesantia")?.checked, anios_previos: Number(v("anios_previos") || 0),
+    trabajo_pesado: v("trabajo_pesado") || "ninguno", apv_monto: parseMonto(v("apv_monto") || "0"), apv_regimen: v("apv_regimen") || "B", sin_cesantia: !!$("#tb-sin_cesantia")?.checked, pensionado: !!$("#tb-pensionado")?.checked, anios_previos: Number(v("anios_previos") || 0),
     haberes_fijos: haberes, descuentos_fijos: descuentos, vacaciones: te.vacaciones || [], activo: te.id ? !!$("#tb-activo")?.checked : true, fecha_finiquito: te.id ? v("fecha_finiquito") : "" };
   return d;
 }
@@ -4189,10 +4199,11 @@ function vistaLiquidaciones() {
   const filas = vigentes.map((t) => {
     const l = liq.get(t.id), cerrada = l && contabilizado(l), a = cerrada ? S.lista.find((x) => x.id === l.asiento) : null;
     const celdas = cerrada || !S.puedeEscribir
-      ? `<td></td><td>${esc(t.nombre)}</td><td class="num">${l ? l.dias : ""}</td><td class="num">${l?.horas_extra || ""}</td><td class="num">${montoGuion(l?.comisiones)}</td><td class="num">${montoGuion(l?.bonos)}</td><td class="num">${montoGuion(l?.no_imponibles)}</td><td class="num">${montoGuion(l?.anticipos)}</td><td class="num">${montoGuion(l?.otros_desc)}</td>`
-      : `<td><input type="checkbox" id="lq-incluir-${esc(t.id)}" checked aria-label="Incluir a ${esc(t.nombre)}"></td><td>${esc(t.nombre)}${t.semana_corrida ? '<br><small class="ayuda">semana corrida</small>' : ""}</td>
+      ? `<td></td><td>${esc(t.nombre)}${l?.avisos?.length ? ` <span title="${esc(l.avisos.join(" "))}">⚠</span>` : ""}</td><td class="num">${l ? l.dias : ""}</td><td class="num">${l?.horas_extra || ""}</td><td class="num">${l?.horas_extra_100 || ""}</td><td class="num">${montoGuion(l?.comisiones)}</td><td class="num">${montoGuion(l?.bonos)}</td><td class="num">${montoGuion(l?.no_imponibles)}</td><td class="num">${montoGuion(l?.anticipos)}</td><td class="num">${montoGuion(l?.otros_desc)}</td>`
+      : `<td><input type="checkbox" id="lq-incluir-${esc(t.id)}" checked aria-label="Incluir a ${esc(t.nombre)}"></td><td>${esc(t.nombre)}${l?.avisos?.length ? ` <span title="${esc(l.avisos.join(" "))}">⚠</span>` : ""}${t.semana_corrida ? '<br><small class="ayuda">semana corrida</small>' : ""}</td>
          <td class="num"><input id="lq-dias-${esc(t.id)}" class="monto" style="width:4em" inputmode="numeric" value="${l ? l.dias : diasDelMes(t, periodo)}"></td>
          <td class="num"><input id="lq-he-${esc(t.id)}" class="monto" style="width:4.5em" inputmode="decimal" value="${l?.horas_extra ? comaDecimal(l.horas_extra) : ""}"></td>
+         <td class="num"><input id="lq-he100-${esc(t.id)}" class="monto" style="width:4.5em" inputmode="decimal" value="${l?.horas_extra_100 ? comaDecimal(l.horas_extra_100) : ""}"></td>
          <td class="num">${entrada("comis", t.id, l?.comisiones)}</td><td class="num">${entrada("bonos", t.id, l?.bonos)}</td><td class="num">${entrada("noimp", t.id, l?.no_imponibles)}</td><td class="num">${entrada("ant", t.id, l?.anticipos)}</td><td class="num">${entrada("otros", t.id, l?.otros_desc)}</td>`;
     return `<tr>${celdas}<td class="num">${l ? clp(l.imponible) : ""}</td><td class="num">${l ? clp(l.total_descuentos) : ""}</td><td class="num"><strong>${l ? clp(l.liquido) : ""}</strong></td>
       <td>${a ? `<button class="btn enlace" data-asiento="${esc(a.id)}">N° ${a.numero}</button>` : l ? '<span class="etiqueta cerrado">pendiente</span>' : '<span class="ayuda">sin calcular</span>'}</td>
@@ -4205,9 +4216,9 @@ function vistaLiquidaciones() {
     <label>UF (último día del mes anterior)<input id="lq-uf" inputmode="decimal" placeholder="41.057,20" value="${valorUf(periodo) ? comaDecimal(valorUf(periodo)).replace(/\B(?=(\d{3})+(?!\d))/g, ".") : ""}" ${S.puedeEscribir ? "" : "readonly"}></label>
     <label>Festivos del mes (semana corrida)<input id="lq-festivos" inputmode="numeric" style="width:6em" value="${esc(festivos)}" placeholder="0"></label></div>
   <p class="ayuda">Valores vigentes este mes: ingreso mínimo $${clp(imm)}; tope imponible ${comaDecimal(pr.tope_afp_uf)} UF (cesantía ${comaDecimal(pr.tope_afc_uf)} UF); aporte adicional del empleador (Ley 21.735) ${comaDecimal(pr.reforma ?? 0)} %${pr.sis ? `; SIS ${comaDecimal(pr.sis)} %` : "; el SIS ya va incluido en ese aporte"}. Sin UF no se aplica el tope.${pr.aproximado ? " <strong>Este mes es anterior a los parámetros cargados: revisa la pestaña «Parámetros».</strong>" : ""}</p>
-  ${vigentes.length ? `<div class="tabla"><table><thead><tr><th></th><th>Trabajador</th><th class="num">Días</th><th class="num">H. extra</th><th class="num">Comisiones</th><th class="num">Bonos imp.</th><th class="num">Haberes no imp.</th><th class="num">Anticipos</th><th class="num">Otros desc.</th><th class="num">Imponible</th><th class="num">Descuentos</th><th class="num">Líquido</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
+  ${vigentes.length ? `<div class="tabla"><table><thead><tr><th></th><th>Trabajador</th><th class="num">Días</th><th class="num">H. extra 50 %</th><th class="num">H. extra 100 %</th><th class="num">Comisiones</th><th class="num">Bonos imp.</th><th class="num">Haberes no imp.</th><th class="num">Anticipos</th><th class="num">Otros desc.</th><th class="num">Imponible</th><th class="num">Descuentos</th><th class="num">Líquido</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="liquidar-mes">Calcular y guardar liquidaciones</button>${hayPend && !esSimplificada() ? `<button class="btn" type="button" data-n="contabilizar-rem">Contabilizar remuneraciones del mes</button>` : ""}</div>`)}
-    <p class="ayuda">Sueldo proporcional a los días (base 30). Hora extra con 50 % de recargo (valor hora = sueldo × 7 ÷ 30 × jornada semanal). Gratificación legal: 25 % con tope de 4,75 ingresos mínimos al año. Semana corrida según el art. 45, con las comisiones del mes. La asignación familiar sale de las cargas de la ficha y del tramo de ingreso. Los haberes y descuentos fijos de cada ficha se aplican solos. Impuesto único sobre la renta imponible menos AFP, salud (7 %), cesantía, cotización de trabajo pesado y APV de régimen B.</p>`
+    <p class="ayuda">Sueldo proporcional a los días (base 30). Hora extra con 50 % o 100 % de recargo (valor hora = sueldo × 7 ÷ 30 ÷ jornada semanal). Gratificación legal: 25 % con tope de 4,75 ingresos mínimos al año. Semana corrida según el art. 45, con las comisiones del mes. La asignación familiar sale de las cargas de la ficha y del tramo de ingreso. Los haberes y descuentos fijos de cada ficha se aplican solos. Impuesto único sobre la renta imponible menos AFP, salud (7 %), cesantía, cotización de trabajo pesado y APV de régimen B.</p>`
     : `<div class="caja vacio"><p>No hay trabajadores vigentes en ${nombrePeriodo(periodo)}. Agrégalos en la pestaña «Trabajadores y contratos».</p></div>`}`;
 }
 async function liquidarMes() {
@@ -4228,10 +4239,10 @@ async function liquidarMes() {
       const leer = (campo, t) => { const x = $(`#lq-${campo}-${t.id}`)?.value.trim() || ""; return x ? parseMonto(x) : 0; };
       const calculadas = [];
       for (const t of elegidos) {
-        const dias = Number($(`#lq-dias-${t.id}`).value), he = decimal($(`#lq-he-${t.id}`).value) ?? 0;
+        const dias = Number($(`#lq-dias-${t.id}`).value), he = decimal($(`#lq-he-${t.id}`).value) ?? 0, he100 = decimal($(`#lq-he100-${t.id}`)?.value ?? "") ?? 0;
         if (!Number.isInteger(dias) || dias < 0 || dias > 30) throw new ErrorRcv(`${t.nombre}: los días trabajados van de 0 a 30.`);
-        if (Number.isNaN(he) || he < 0) throw new ErrorRcv(`${t.nombre}: las horas extra deben ser un número, por ejemplo 4 o 2,5.`);
-        const e = { dias, horas_extra: he, festivos, comisiones: leer("comis", t), bonos: leer("bonos", t), no_imponibles: leer("noimp", t), anticipos: leer("ant", t), otros_desc: leer("otros", t) };
+        if (Number.isNaN(he) || he < 0 || Number.isNaN(he100) || he100 < 0) throw new ErrorRcv(`${t.nombre}: las horas extra deben ser un número, por ejemplo 4 o 2,5.`);
+        const e = { dias, horas_extra: he, horas_extra_100: he100, festivos, comisiones: leer("comis", t), bonos: leer("bonos", t), no_imponibles: leer("noimp", t), anticipos: leer("ant", t), otros_desc: leer("otros", t) };
         for (const [n, x] of [["Comisiones", e.comisiones], ["Bonos", e.bonos], ["Haberes no imponibles", e.no_imponibles], ["Anticipos", e.anticipos], ["Otros descuentos", e.otros_desc]]) if (Number.isNaN(x) || x < 0) throw new ErrorRcv(`${t.nombre}: ${n}: ingresa un monto en pesos enteros, sin decimales.`);
         const actual = S.liquidaciones.find((l) => l.trabajador === t.id && l.periodo === periodo);
         if (actual && contabilizado(actual)) throw new ErrorRcv(`La liquidación de ${t.nombre} de ${nombrePeriodo(periodo)} ya está contabilizada; elimina primero su asiento para modificarla.`);
@@ -4250,7 +4261,7 @@ function informeLiquidacion(l) {
   const fila = (n, h, d, siempre = false) => { if (siempre || h || d) inf.agregar([n, sinCeros(h), sinCeros(d)]); };
   inf.agregar([`Cargo: ${t.cargo || ""} · Días trabajados: ${l.dias} · ${TIPOS_CONTRATO[t.tipo] || ""}`], { estilo: "nota", abarca: 0 });
   inf.agregar(["Haberes imponibles"], { estilo: "seccion", abarca: 0 });
-  fila("Sueldo base", l.sueldo, null, true); if (l.horas_extra_monto) fila(`Horas extra (${comaDecimal(l.horas_extra)} h)`, l.horas_extra_monto); fila("Comisiones", v0(l.comisiones)); fila("Semana corrida", v0(l.semana_corrida));
+  fila("Sueldo base", l.sueldo, null, true); if (l.horas_extra_monto) fila(`Horas extra (${l.horas_extra ? `${comaDecimal(l.horas_extra)} h al 50 %` : ""}${l.horas_extra && l.horas_extra_100 ? " y " : ""}${l.horas_extra_100 ? `${comaDecimal(l.horas_extra_100)} h al 100 %` : ""})`, l.horas_extra_monto); fila("Comisiones", v0(l.comisiones)); fila("Semana corrida", v0(l.semana_corrida));
   fila("Bonos", l.bonos); fila("Haberes fijos imponibles", v0(l.haberes_fijos_imp)); fila("Gratificación", l.gratificacion); fila("Pago de vacaciones", v0(l.vacaciones_pago));
   inf.agregar(["TOTAL IMPONIBLE", l.imponible, null], { estilo: "subtotal" });
   if (l.no_imponible || v0(l.asig_familiar)) {
@@ -4275,6 +4286,7 @@ function vistaLiquidacion(l) {
   const f = (n, v) => (v ? `<tr><td>${n}</td><td class="num">${clp(v)}</td></tr>` : "");
   return `${cabecera(`Liquidación de ${t.nombre}`, nombrePeriodo(l.periodo))}
   <div class="barra"><button class="btn sec" type="button" data-n="volver-liquidaciones">← Volver</button>${botonesExportar(false)}</div>
+  ${(l.avisos || []).map((a) => `<div class="aviso">${esc(a)}</div>`).join("")}
   <div class="caja"><dl class="ficha"><dt>RUT</dt><dd>${esc(t.rut)}</dd><dt>Días trabajados</dt><dd>${l.dias}</dd><dt>Renta imponible</dt><dd>$${clp(l.imponible)}</dd><dt>Base del impuesto</dt><dd>$${clp(l.base_tributable)}</dd>
     <dt>Costo total para la empresa</dt><dd>$${clp(v0(l.costo_empresa) || l.haberes + l.aportes_empleador)}</dd></dl></div>
   <div class="tabla"><table><thead><tr><th>Haberes</th><th class="num">Monto</th></tr></thead><tbody>${f("Sueldo base", l.sueldo)}${f("Horas extra", l.horas_extra_monto)}${f("Comisiones", v0(l.comisiones))}${f("Semana corrida", v0(l.semana_corrida))}${f("Bonos", l.bonos)}${f("Haberes fijos imponibles", v0(l.haberes_fijos_imp))}${f("Gratificación", l.gratificacion)}${f("Pago de vacaciones", v0(l.vacaciones_pago))}

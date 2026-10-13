@@ -465,6 +465,29 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("la pestaña Importar muestra la revisión", ic.vista);
   igual("importa los movimientos, respeta el saldo inicial ya registrado y no repite al importar de nuevo", [ic.tras, ic.ini, ic.segunda], [8, 300000, 0]);
   igual("los pagos del F29 quedan con su clase y período y el RUT emisor de la empresa", ic.f29, [["f29_ppm", "2025-12", true], ["f29_ret", "2025-12", true]]);
+  console.log("Remuneraciones: pensionados, edad, 11 años de servicio y horas extra al 100 %");
+  const rm = await page.evaluate(() => {
+    const utmAntes = S.utm, prevAntes = S.prev;
+    S.utm = { ...S.utm, "2026-09": 71721 }; S.prev = { ...S.prev, uf: { ...(S.prev?.uf || {}), "2026-09": 41057.2 }, parametros: [] };
+    const base = (o) => ({ id: "t", nombre: "X", rut: "1-9", nacionalidad: "Chilena", fecha_nac: "", fecha_ingreso: "2024-01-02", tipo: "indefinido", jornada: 42, sueldo_base: 0, gratificacion: "legal", gratificacion_monto: 0, colacion: 0, movilizacion: 0, semana_corrida: false, afp: "Habitat", afp_comision: 1.27, salud: "fonasa", isapre: "", plan_uf: 0,
+      sin_cesantia: false, pensionado: false, cargas: 0, trabajo_pesado: "ninguno", apv_monto: 0, apv_regimen: "B", haberes_fijos: [], descuentos_fijos: [], activo: true, ...o });
+    const e = (o) => ({ dias: 30, horas_extra: 0, horas_extra_100: 0, festivos: 0, comisiones: 0, bonos: 0, vacaciones: 0, no_imponibles: 0, anticipos: 0, otros_desc: 0, ...o });
+    const calc = (t, ee = {}) => { const l = calcularLiquidacionTrabajador(base(t), "2026-09", e(ee)); return [l.liquido, l.impuesto_unico, l.aportes_empleador, l.cesantia, l.emp_cesantia, l.emp_sis, l.afp]; };
+    const r = { normal: calc({ sueldo_base: 800000 }), once: calc({ sueldo_base: 1000000, fecha_ingreso: "2014-01-01" }), diez: calc({ sueldo_base: 1000000, fecha_ingreso: "2016-01-01" }), pensionado: calc({ sueldo_base: 1000000, fecha_ingreso: "2021-01-01", pensionado: true }),
+      mayor65: calc({ sueldo_base: 1000000, fecha_ingreso: "2021-01-01", fecha_nac: "1960-01-01" }), he: calc({ sueldo_base: 700000, fecha_ingreso: "2022-01-01" }, { horas_extra: 8, horas_extra_100: 4 }) };
+    const avisos = (t, ee = {}) => calcularLiquidacionTrabajador(base(t), "2026-09", e(ee)).avisos;
+    r.avisos = { minimo: avisos({ sueldo_base: 400000, fecha_nac: "2009-05-05" }), art58: avisos({ sueldo_base: 500000 }, { anticipos: 300000 }), ninguno: avisos({ sueldo_base: 800000 }) };
+    const l = calcularLiquidacionTrabajador(base({ sueldo_base: 700000, fecha_ingreso: "2022-01-01" }), "2026-09", e({ horas_extra: 8, horas_extra_100: 4 }));
+    r.he50 = [l.horas_extra, l.horas_extra_100, l.horas_extra_monto, l.horas_extra_100_monto];
+    S.utm = utmAntes; S.prev = prevAntes; return r;
+  });
+  igual("sin cambios para un trabajador común (líquido, impuesto, aportes, cesantía del trabajador y del empleador, SIS, AFP)", rm.normal, [811300, 0, 68300, 6000, 24000, 0, 112700]);
+  igual("con 11 años o más el trabajador no cotiza cesantía y el empleador aporta 0,8 %", [rm.once[3], rm.once[4], rm.once[0], rm.once[2]], [0, 9753, 995257, 63760]);
+  igual("con menos de 11 años sigue la regla general", [rm.diez[3], rm.diez[4]], [7315, 29259]);
+  igual("el pensionado no paga AFP, SIS ni cesantía", [rm.pensionado[0], rm.pensionado[1], rm.pensionado[2], rm.pensionado[3], rm.pensionado[6]], [1127155, 6622, 11338, 0, 0]);
+  igual("el mayor de 65 años no paga la parte del SIS", [rm.mayor65[0], rm.mayor65[1], rm.mayor65[2]], [988235, 833, 61566]);
+  igual("las horas extra al 50 % y al 100 % se suman al imponible", [rm.he[0], rm.he[2], rm.he50], [788764, 66403, [8, 4, 77778, 31111]]);
+  ok("avisa del ingreso mínimo (menor de 18 años) y del 45 % de descuentos, y no avisa sin motivo", /ingreso mínimo proporcional a la jornada \(\$412\.938\)/.test(rm.avisos.minimo[0]) && rm.avisos.art58.some((a) => /45 %/.test(a)) && rm.avisos.ninguno.length === 0, JSON.stringify(rm.avisos));
   console.log("Excel con la disposición de las plantillas del SII (Anexos 1, 3, 1.1 y 3.1)");
   const xl = await page.evaluate(async () => {
     await cargarScript("exceljs");
