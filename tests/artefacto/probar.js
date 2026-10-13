@@ -139,6 +139,19 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   await page.evaluate(() => guardarAsiento()); await espera(200);
   ok("contabilizar el finiquito marca el documento", await page.evaluate(() => S.finiquitos.every((x) => !!x.asiento)));
   ok("la DJ 1887 incluye el finiquito (remuneración del mes más indemnizaciones)", await page.evaluate(() => { const q = S.finiquitos[0], p = perceptores1887(2026).find((x) => x.rut === "12.345.678-5"); return !!p && p.meses === 2 && p.no_imponible >= q.indemnizacion + q.aviso; }));
+  const fq2 = await page.evaluate(() => {
+    const F = feriadosLegales(), t = { fecha_ingreso: "2020-03-10", sueldo_base: 1000000, gratificacion: "ninguna", colacion: 50000, movilizacion: 30000, haberes_fijos: [] };
+    const c = (extra) => calcularFiniquito({ ...S.trabajadores[0], ...t }, { fecha: "2026-10-15", causal: "necesidades", uf: 40000, base: null, dias_mes: 15, vac_dias: 0, anticipos: 0, otros: [], indemnizar: true, aviso_dado: false, ...extra });
+    const a = c({}), b = c({ recargo: 30, afc_imputable: 100000, vac_dias: 10 }), d = c({ causal: "desahucio" }), e = c({ causal: "renuncia", indemnizar: false });
+    const ant = anosServicio({ fecha_ingreso: "1980-01-01" }, "2026-10-15").computables;
+    return { co: [habilesACorridos("2026-10-14", 12.5, F), habilesACorridos("2026-12-24", 20, F), habilesACorridos("2026-04-01", 7.25, F), habilesACorridos("2027-03-20", 15, F)],
+      a: [a.anos.computables, a.indemnizacion, a.aviso, a.baseTope], b: [b.recargo, b.afc, b.corridos, b.baseFeriado], d: [d.indemnizacion, d.aviso], e: [e.indemnizacion, e.aviso], ant };
+  });
+  igual("días hábiles a corridos como el programa de remuneraciones", fq2.co, [16.5, 30, 10.25, 24]);
+  igual("finiquito 161-1: 6 años y 7 meses computan 7, indemnización y aviso con base 1.080.000", fq2.a, [7, 7560000, 1080000, 1080000]);
+  igual("recargo 30 %, imputación AFC y feriado sin colación ni movilización", fq2.b, [2268000, 100000, 14, 1000000]);
+  igual("desahucio indemniza y renuncia no", [fq2.d, fq2.e], [[7560000, 1080000], [0, 0]]);
+  igual("el tope de 11 años no rige para contratos anteriores a 1981-08-14", fq2.ant, 47);
 
   console.log("Renta");
   const renta = await page.evaluate(() => {
