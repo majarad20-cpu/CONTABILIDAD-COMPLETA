@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.18.0";
+const VERSION = "1.19.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -4015,7 +4015,7 @@ function formularioTrabajador(te) {
   const c = (id, rotulo, valor, extra = "") => `<label>${rotulo}<input id="tb-${id}" value="${esc(valor)}" ${extra}></label>`;
   const m = (id, rotulo, valor) => `<label>${rotulo}<input id="tb-${id}" inputmode="numeric" value="${valor ? clp(valor) : ""}"></label>`;
   return `<form class="caja" data-form="n-trabajador"><h2>${te.id ? "Editar trabajador" : "Nuevo trabajador"}</h2>
-    <h3>Datos personales</h3><div class="form">${c("nombre", "Nombre completo *", te.nombre)}${c("rut", "RUT *", te.rut)}${c("nacionalidad", "Nacionalidad", te.nacionalidad)}
+    <h3>Datos personales</h3><div class="form">${c("nombre", "Nombre completo *", te.nombre)}${c("rut", "RUT *", te.rut)}${c("nacionalidad", "Nacionalidad", te.nacionalidad)}<label>Sexo (para Previred)<select id="tb-sexo"><option value="">Sin indicar</option><option value="M" ${te.sexo === "M" ? "selected" : ""}>Masculino</option><option value="F" ${te.sexo === "F" ? "selected" : ""}>Femenino</option></select></label>
       <label>Fecha de nacimiento<input type="date" id="tb-fecha_nac" value="${esc(te.fecha_nac)}"></label>${c("domicilio", "Domicilio", te.domicilio)}${c("comuna", "Comuna", te.comuna)}</div>
     <h3>Cargo y contrato</h3><div class="form">${c("cargo", "Cargo *", te.cargo)}
       <label>Tipo de contrato<select id="tb-tipo">${Object.entries(TIPOS_CONTRATO).map(([k, v]) => `<option value="${k}" ${te.tipo === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
@@ -4076,7 +4076,7 @@ function leerTrabajador() {
     lugar: v("lugar").trim(), fecha_ingreso: v("fecha_ingreso"), tipo: v("tipo"), fecha_termino: v("fecha_termino"), obra: v("obra").trim(), jornada: Number(v("jornada")), distribucion: v("distribucion").trim(),
     sueldo_base: parseMonto(v("sueldo_base") || "0"), gratificacion: v("gratificacion"), gratificacion_monto: parseMonto(v("gratificacion_monto") || "0"), colacion: parseMonto(v("colacion") || "0"), movilizacion: parseMonto(v("movilizacion") || "0"),
     semana_corrida: !!$("#tb-semana_corrida")?.checked, cargas: Number(v("cargas") || 0), forma_pago: v("forma_pago").trim(), afp: v("afp"), afp_comision: decimal(v("afp_comision")), salud: v("salud"), isapre: v("isapre").trim(), plan_uf: decimal(v("plan_uf")) || 0,
-    trabajo_pesado: v("trabajo_pesado") || "ninguno", apv_monto: parseMonto(v("apv_monto") || "0"), apv_regimen: v("apv_regimen") || "B", sin_cesantia: !!$("#tb-sin_cesantia")?.checked, pensionado: !!$("#tb-pensionado")?.checked, anios_previos: Number(v("anios_previos") || 0),
+    trabajo_pesado: v("trabajo_pesado") || "ninguno", apv_monto: parseMonto(v("apv_monto") || "0"), apv_regimen: v("apv_regimen") || "B", sin_cesantia: !!$("#tb-sin_cesantia")?.checked, pensionado: !!$("#tb-pensionado")?.checked, sexo: v("sexo") || "", anios_previos: Number(v("anios_previos") || 0),
     haberes_fijos: haberes, descuentos_fijos: descuentos, vacaciones: te.vacaciones || [], activo: te.id ? !!$("#tb-activo")?.checked : true, fecha_finiquito: te.id ? v("fecha_finiquito") : "" };
   return d;
 }
@@ -4327,6 +4327,127 @@ const columnasPrevired = ["RUT", "Nombre", "Días trabajados", "Renta imponible"
 function filasPrevired(lista) {
   return lista.map((l) => { const t = trabajadorPorId(l.trabajador) || {}; return [t.rut || "", t.nombre || "", l.dias, l.imponible, l.afp_nombre, l.afp, v0(l.apv), l.salud, l.cesantia, l.emp_cesantia, l.emp_sis, l.emp_reforma, l.emp_mutual, v0(l.emp_sanna), v0(l.trabajo_pesado), v0(l.emp_trabajo_pesado), v0(l.asig_familiar), v0(l.cargas)]; });
 }
+/* ---------- archivos de Previred (largo variable, 105 campos) y LRE (Dirección del Trabajo): BORRADORES ---------- */
+/* Los formatos se tomaron del programa de remuneraciones del dueño (Previred v100 y manual LRE); no están validados contra los portales oficiales. */
+const CCAF_NOMBRES = { "": "Sin CCAF", losandes: "Los Andes", laaraucana: "La Araucana", losheroes: "Los Héroes", "18septiembre": "18 de Septiembre" };
+const CCAF_CODIGO = { "": 0, losandes: 1, laaraucana: 2, losheroes: 3, "18septiembre": 4 };
+const AFP_CODIGOS = { Capital: ["33", 31], Cuprum: ["03", 13], Habitat: ["05", 14], PlanVital: ["29", 11], Provida: ["08", 6], Modelo: ["34", 103], Uno: ["35", 19] };
+const SALUD_CODIGOS = [[/fonasa/i, "07", 102], [/banm[eé]dica/i, "01", 3], [/consalud/i, "02", 9], [/vida\s*tres/i, "03", 12], [/colmena/i, "04", 4], [/cruz\s*blanca/i, "05", 1], [/m[aá]s\s*vida/i, "10", 43], [/esencial/i, "28", 44]];
+const MUTUAL_CODIGOS = { ISL: ["00", 0], ACHS: ["01", 1], CCHC: ["02", 2], IST: ["03", 3] };
+const CAUSAL_LRE = { mutuo: 3, renuncia: 4, plazo: 6, obra: 7, fortuito: 8, conducta: 16, necesidades: 18, desahucio: 19, concursal: 20 };
+const textoPlano = (x) => sinTildes(x).replace(/;/g, " ");
+const mutualCodigo = () => { const n = (empresa().rem_config?.mutual_nombre || "").trim(); return /\bisl\b|instituto de seguridad laboral/i.test(n) ? "ISL" : /achs|asociaci[oó]n chilena/i.test(n) ? "ACHS" : /cchc|c[aá]mara chilena/i.test(n) ? "CCHC" : /\bist\b|instituto de seguridad del trabajo/i.test(n) ? "IST" : null; };
+/* El nombre completo se parte en nombres y apellidos: los dos últimos tokens son los apellidos. */
+function partirNombre(nombre) {
+  const w = String(nombre || "").trim().split(/\s+/).filter(Boolean);
+  if (w.length <= 1) return { nombres: w[0] || "", paterno: "", materno: "" };
+  if (w.length === 2) return { nombres: w[0], paterno: w[1], materno: "" };
+  return { nombres: w.slice(0, -2).join(" "), paterno: w.at(-2), materno: w.at(-1) };
+}
+/* Montos de una liquidación con los códigos de la DT (2xxx haberes, 3xxx descuentos, 4xxx aportes). */
+function montosLiquidacion(t, l) {
+  const pr = parametrosPrev(l.periodo), fin = S.finiquitos.find((q) => q.trabajador === t.id && q.fecha.startsWith(l.periodo));
+  const topeAfp = l.uf ? Math.round(pr.tope_afp_uf * l.uf) : l.imponible, topeAfc = l.uf ? Math.round(pr.tope_afc_uf * l.uf) : l.imponible;
+  const baseAfp = Math.min(l.imponible, topeAfp), baseAfc = Math.min(l.imponible, topeAfc);
+  /* Aporte de la reforma (Ley 21.735) abierto en sus destinos: cuenta individual, rentabilidad protegida y seguro social. */
+  const sisRef = l.periodo >= "2026-08" && pr.sis_en_reforma && (l.edad == null || l.edad < 65) ? Math.round((baseAfp * pr.sis_en_reforma) / 100) : 0;
+  const cuenta = l.emp_reforma ? Math.round(baseAfp * 0.001) : 0, rentab = l.emp_reforma && l.periodo >= "2026-08" ? Math.round((baseAfp * (l.periodo >= "2027-08" ? 1.5 : 0.9)) / 100) : 0;
+  const expect = l.emp_reforma && l.periodo >= "2026-08" && l.periodo < "2027-08" ? Math.round((baseAfp * (pr.reforma - (pr.sis_en_reforma || 0) - 1)) / 100) : Math.max(l.emp_reforma - sisRef - cuenta - rentab, 0);
+  const salud7 = Math.min(l.salud, Math.round((baseAfp * TASA_SALUD) / 100));
+  const hab = { 2101: l.sueldo + v0(l.vacaciones_pago), 2102: l.horas_extra_monto, 2103: v0(l.comisiones), 2104: v0(l.semana_corrida), 2106: l.gratificacion, 2111: v0(l.haberes_fijos_imp), 2113: l.bonos, 2204: l.no_imponibles + v0(l.haberes_fijos_no_imp), 2301: l.colacion, 2302: l.movilizacion, 2311: v0(l.asig_familiar) };
+  const des = { 3141: l.afp, 3143: salud7, 3144: l.salud - salud7, 3151: l.cesantia, 3154: v0(l.trabajo_pesado), [t.apv_regimen === "A" ? 3155 : 3156]: v0(l.apv), 3161: l.impuesto_unico, 3185: l.otros_desc + v0(l.descuentos_fijos_total), 3188: l.anticipos };
+  const apo = { 4151: l.emp_cesantia, 4152: l.emp_mutual + v0(l.emp_sanna), 4154: v0(l.emp_trabajo_pesado), 4155: l.emp_sis + sisRef, 4161: cuenta, 4162: rentab, 4163: expect };
+  return { hab, des, apo, baseAfp, baseAfc, fin };
+}
+const mm = (o, k) => o[k] || 0;
+/* Tramo de asignación familiar según el ingreso, aunque el trabajador no tenga cargas. */
+const tramoAsig = (t, l) => (asignacionFamiliar(parametrosPrev(l.periodo), l.imponible + l.no_imponible, 1, 30).tramo || "D").slice(0, 1);
+function revisionArchivosRem(lista) {
+  const prob = [], e = empresa(), rc = e.rem_config || {};
+  if (!e.rut) prob.push("Falta el RUT de la empresa.");
+  if (!mutualCodigo()) prob.push("No se reconoce la mutual (Parámetros → Seguro de accidentes): escribe ACHS, IST, ISL o CCHC; se asume ISL.");
+  if (!rc.region || !rc.comuna_codigo) prob.push("Falta la región y el código de comuna de la empresa (Parámetros → Seguro de accidentes): se asumen 13 y 13101.");
+  for (const l of lista) {
+    const t = trabajadorPorId(l.trabajador); if (!t) continue;
+    if (!rutValido(t.rut)) prob.push(`${t.nombre}: RUT inválido.`);
+    if (!t.sexo) prob.push(`${t.nombre}: falta el sexo; se asume masculino.`);
+    if (partirNombre(t.nombre).paterno === "") prob.push(`${t.nombre}: el nombre no tiene apellidos separables.`);
+    if (t.salud === "isapre" && !SALUD_CODIGOS.some(([re]) => re.test(t.isapre || ""))) prob.push(`${t.nombre}: no se reconoce la isapre «${t.isapre || ""}»; se asume Fonasa.`);
+    if (l.periodo >= "2027-08") prob.push(`${t.nombre}: desde agosto de 2027 la composición de la cotización adicional (Ley 21.735) debe revisarse a mano.`);
+  }
+  return [...new Set(prob)];
+}
+function archivoPrevired(periodo, lista) {
+  const [y, m] = periodo.split("-").map(Number), rc = empresa().rem_config || {}, ccaf = CCAF_CODIGO[rc.ccaf || ""] || 0, mut = mutualCodigo() || "ISL", pr = parametrosPrev(periodo), ini = `${periodo}-01`, fin = ultimoDia(periodo);
+  const dmy = (iso) => (iso ? iso.split("-").reverse().join("-") : "");
+  const num = (x) => String(Math.round(x || 0)), dec = (x, n) => x.toFixed(n).replace(".", ",");
+  const lineas = lista.map((l) => {
+    const t = trabajadorPorId(l.trabajador); if (!t) return null;
+    const { hab, des, apo, baseAfp, baseAfc, fin: fq } = montosLiquidacion(t, l), nom = partirNombre(t.nombre), rut = limpiarRut(t.rut), pensionado = !!t.pensionado, edad = l.edad;
+    const termino = fq ? fq.fecha : t.fecha_finiquito, termMes = termino && termino >= ini && termino <= fin;
+    let mov = 0, desde = "", hasta = "";
+    if (termMes) { mov = 2; hasta = dmy(termino); } else if (t.fecha_ingreso >= ini && t.fecha_ingreso <= fin) { mov = t.tipo === "indefinido" ? 1 : 7; desde = dmy(t.fecha_ingreso); }
+    const isapre = t.salud === "isapre", sc = isapre ? SALUD_CODIGOS.find(([re]) => re.test(t.isapre || "")) : SALUD_CODIGOS[0], fonasa = !isapre || !sc, salCod = fonasa ? "07" : sc[1];
+    const cot7 = mm(des, 3143);
+    const cotCcaf = fonasa && ccaf ? Math.round((baseAfp * 4.2) / 100) : 0, cotFonasa = fonasa ? cot7 - cotCcaf : 0;
+    const accidentes = mm(apo, 4152), tp = t.trabajo_pesado && t.trabajo_pesado !== "ninguno" ? TRABAJO_PESADO[t.trabajo_pesado] : null;
+    const afpC = AFP_CODIGOS[t.afp] ? AFP_CODIGOS[t.afp][0] : "00", apvi = mm(des, 3155) + mm(des, 3156), conAfp = !pensionado && afpC !== "00";
+    const f = new Array(106).fill("");
+    f[1] = rut.slice(0, -1); f[2] = rut.slice(-1); f[3] = textoPlano(nom.paterno).toUpperCase().slice(0, 30); f[4] = textoPlano(nom.materno).toUpperCase().slice(0, 30); f[5] = textoPlano(nom.nombres).toUpperCase().slice(0, 30);
+    f[6] = t.sexo === "F" ? "F" : "M"; f[7] = /^chil/i.test(t.nacionalidad || "Chilena") ? 0 : 1; f[8] = "01"; f[9] = `${String(m).padStart(2, "0")}${y}`; f[11] = conAfp ? "AFP" : "SIP";
+    f[12] = pensionado ? 2 : edad != null && edad >= 65 ? 3 : 0; f[13] = l.dias; f[14] = "00"; f[15] = mov; f[16] = desde; f[17] = hasta;
+    f[18] = tramoAsig(t, l); f[19] = t.cargas || 0; f[20] = 0; f[21] = 0; f[22] = mm(hab, 2311); f[23] = 0; f[24] = 0; f[25] = "N";
+    f[26] = conAfp ? afpC : "00"; f[27] = conAfp ? baseAfp : 0; f[28] = mm(des, 3141) + mm(apo, 4161); f[29] = mm(apo, 4155);
+    for (let i = 30; i <= 34; i++) f[i] = 0;
+    f[37] = tp ? textoPlano(t.cargo).slice(0, 40) : ""; f[38] = tp ? dec(tp[1] + tp[2], 2).padStart(5, "0") : "00,00"; f[39] = mm(des, 3154) + mm(apo, 4154);
+    f[40] = apvi && AFP_CODIGOS[t.afp] ? AFP_CODIGOS[t.afp][0].padStart(3, "0") : "000"; f[42] = apvi ? 2 : 0; f[43] = apvi; f[44] = 0; f[45] = "000";
+    for (const i of [47, 48, 49, 50, 55, 59, 60, 61, 65, 66, 69, 72, 73, 74]) f[i] = 0;
+    f[58] = "00"; f[62] = "0000"; f[63] = "00,00"; f[64] = baseAfp; f[67] = "0000"; f[68] = "00,00";
+    f[70] = cotFonasa; f[71] = mut === "ISL" ? accidentes : 0; f[75] = salCod; f[77] = fonasa ? 0 : baseAfp; f[78] = fonasa ? 0 : 2; f[79] = fonasa ? 0 : dec(t.plan_uf || 0, 4); f[80] = fonasa ? 0 : cot7; f[81] = fonasa ? 0 : mm(des, 3144); f[82] = 0;
+    f[83] = String(ccaf).padStart(2, "0"); f[84] = ccaf ? baseAfp : 0;
+    for (let i = 85; i <= 89; i++) f[i] = 0;
+    f[90] = cotCcaf; f[91] = 0; f[92] = 0; f[93] = (t.jornada || 42) <= 30 ? 2 : 1; f[94] = mm(apo, 4163); f[95] = mm(apo, 4162);
+    f[96] = mut === "ISL" ? "00" : MUTUAL_CODIGOS[mut][0]; f[97] = mut === "ISL" ? 0 : baseAfp; f[98] = mut === "ISL" ? 0 : accidentes; f[99] = 0;
+    const afc = mm(des, 3151) || mm(apo, 4151);
+    f[100] = afc ? baseAfc : 0; f[101] = mm(des, 3151); f[102] = mm(apo, 4151); f[103] = 0; f[104] = ""; f[105] = "";
+    return f.slice(1).map((x) => (typeof x === "number" ? num(x) : x)).join(";");
+  }).filter(Boolean);
+  return lineas.join("\r\n") + "\r\n";
+}
+const LRE_COLUMNAS = [[1101, "Rut trabajador"], [1102, "Fecha inicio contrato"], [1103, "Fecha de término de contrato"], [1104, "Causal de término del contrato"], [1105, "Región de prestación de los servicios"], [1106, "Comuna de prestación de los servicios"], [1170, "Tipo de impuesto a la renta"],
+  [1146, "Técnico extranjero exención de cotizaciones previsionales (ley 18.156)"], [1107, "Código tipo de jornada"], [1108, "Persona con discapacidad/pensionado por invalidez"], [1109, "Pensionado por vejez"], [1141, "AFP"], [1142, "IPS (ExINP)"], [1143, "FONASA / ISAPRE"], [1151, "AFC"], [1110, "CCAF"], [1152, "Org. administrador ley 16.744"],
+  [1111, "Número cargas familiares legales autorizadas"], [1112, "Número de cargas familiares maternales"], [1113, "Número de cargas familiares invalidez"], [1114, "Tramo asignación familiar"], [1115, "Número días trabajados en el mes"], [1116, "Número días de licencia médica en el mes"], [1117, "Número días de vacaciones en el mes"], [1118, "Subsidio trabajador joven"],
+  [1154, "Puesto trabajo pesado"], [1155, "Ahorro previsional voluntario individual"], [1157, "Ahorro previsional voluntario colectivo"], [1131, "Indemnización a todo evento (Art. 164)"], [1132, "Tasa indemnización a todo evento (Art. 164)"],
+  [2101, "Sueldo"], [2102, "Sobresueldo"], [2103, "Comisiones (mensual)"], [2104, "Semana corrida mensual (Art. 45)"], [2106, "Gratificación (mensual)"], [2111, "Bonos u otras remuneraciones fijas mensuales"], [2113, "Bonos u otras remuneraciones variables mensuales o superiores a un mes"], [2123, "Otras remuneraciones superiores a un mes"],
+  [2204, "Otros ingresos no constitutivos de renta (Art. 17 N°29 LIR)"], [2301, "Colación total mensual (Art. 41)"], [2302, "Movilización total mensual (Art. 41)"], [2303, "Viáticos total mensual (Art. 41)"], [2311, "Asignación familiar legal total mensual (Art. 41)"], [2313, "Indemnización por feriado legal"], [2314, "Indemnización años de servicio"], [2315, "Indemnización sustitutiva del aviso previo"],
+  [3141, "Cotización obligatoria previsional (AFP o IPS)"], [3143, "Cotización obligatoria salud 7%"], [3144, "Cotización voluntaria para salud"], [3151, "Cotización AFC - trabajador"], [3155, "Cotización ahorro previsional voluntario individual modalidad A"], [3156, "Cotización ahorro previsional voluntario individual modalidad B hasta UF 50"],
+  [3161, "Impuesto retenido por remuneraciones"], [3154, "Cotización adicional trabajo pesado - trabajador"], [3185, "Otros descuentos (Art. 58)"], [3188, "Descuentos por anticipos y préstamos"], [4151, "Aporte AFC - empleador"], [4152, "Aporte empleador seguro accidentes del trabajo y Ley SANNA (Ley 16.744)"], [4154, "Aporte adicional trabajo pesado - empleador"], [4155, "Aporte empleador seguro invalidez y sobrevivencia"],
+  [5201, "Total haberes"], [5210, "Total haberes imponibles y tributables"], [5220, "Total haberes imponibles no tributables"], [5230, "Total haberes no imponibles y no tributables"], [5240, "Total haberes no imponibles y tributables"], [5301, "Total descuentos"], [5361, "Total descuentos impuestos a las remuneraciones"], [5341, "Total descuentos por cotizaciones del trabajador"], [5302, "Total otros descuentos"], [5410, "Total aportes empleador"], [5501, "Total líquido"], [5564, "Total indemnizaciones tributables"]];
+/* Los aportes de la Ley 21.735 (4161 a 4163) no tienen columna propia en esta versión: se suman en «Total aportes empleador». */
+function archivoLre(periodo, lista) {
+  const rc = empresa().rem_config || {}, ccaf = CCAF_CODIGO[rc.ccaf || ""] || 0, mut = mutualCodigo() || "ISL", dmy = (iso) => (iso ? iso.split("-").reverse().join("/") : "");
+  const celda = (x) => { const s = String(x ?? ""); return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const filas = [LRE_COLUMNAS.map(([c, n]) => `${n}(${c})`)];
+  for (const l of lista) {
+    const t = trabajadorPorId(l.trabajador); if (!t) continue;
+    const { hab, des, apo, fin: fq } = montosLiquidacion(t, l), rut = limpiarRut(t.rut), termino = fq ? fq.fecha : t.fecha_finiquito, afc = mm(des, 3151) || mm(apo, 4151), apvi = mm(des, 3155) + mm(des, 3156);
+    const isapre = t.salud === "isapre", sc = isapre ? SALUD_CODIGOS.find(([re]) => re.test(t.isapre || "")) : null, tp = t.trabajo_pesado && t.trabajo_pesado !== "ninguno";
+    const v = { 1101: `${rut.slice(0, -1)}-${rut.slice(-1)}`, 1102: dmy(t.fecha_ingreso), 1103: dmy(termino), 1104: termino && fq ? CAUSAL_LRE[fq.causal] ?? "" : "", 1105: rc.region || 13, 1106: rc.comuna_codigo || 13101, 1170: 1, 1146: 0, 1107: (t.jornada || 42) <= 30 ? 201 : 101, 1108: 0, 1109: t.pensionado ? 1 : 0,
+      1141: !t.pensionado && AFP_CODIGOS[t.afp] ? AFP_CODIGOS[t.afp][1] : 100, 1142: 0, 1143: sc ? sc[2] : 102, 1151: afc ? 1 : 0, 1110: ccaf, 1152: MUTUAL_CODIGOS[mut][1], 1111: t.cargas || 0, 1112: 0, 1113: 0, 1114: tramoAsig(t, l), 1115: l.dias, 1116: 0, 1117: 0, 1118: 0, 1154: tp ? textoPlano(t.cargo).slice(0, 20) : "", 1155: apvi ? 1 : 0, 1157: 0, 1131: 0, 1132: "" };
+    for (const [c] of LRE_COLUMNAS) if (c >= 2000 && c < 3000) v[c] = mm(hab, c); else if (c >= 3000 && c < 4000) v[c] = mm(des, c); else if (c >= 4000 && c < 5000) v[c] = mm(apo, c);
+    if (fq) { v[2313] = fq.vacaciones ? 0 : 0; v[2314] = (fq.indemnizacion || 0) + (fq.recargo || 0) - (fq.afc || 0); v[2315] = fq.aviso || 0; }
+    const aportes = Object.values(apo).reduce((a, b) => a + b, 0), cotTrab = mm(des, 3141) + mm(des, 3143) + mm(des, 3144) + mm(des, 3151) + mm(des, 3154);
+    Object.assign(v, { 5201: l.haberes, 5210: l.imponible, 5220: 0, 5230: l.no_imponible + v0(l.asig_familiar), 5240: 0, 5301: l.total_descuentos, 5361: l.impuesto_unico, 5341: cotTrab, 5302: l.otros_desc + v0(l.descuentos_fijos_total) + l.anticipos, 5410: aportes, 5501: l.liquido, 5564: 0 });
+    filas.push(LRE_COLUMNAS.map(([c]) => v[c] ?? ""));
+  }
+  return "﻿" + filas.map((f) => f.map(celda).join(";")).join("\r\n") + "\r\n";
+}
+async function descargarArchivoRem(tipo) {
+  const periodo = periodoLiquidaciones(), lista = liquidacionesMesRrhh(periodo);
+  if (!lista.length || !S.descargas) return aviso(lista.length ? "La descarga de archivos no está disponible en esta vista." : "No hay liquidaciones en este mes.");
+  const previred = tipo === "previred";
+  try { await S.descargas.save({ filename: previred ? `previred_borrador_${slug()}_${periodo}.txt` : `lre_borrador_${slug()}_${periodo}.csv`, data: previred ? archivoPrevired(periodo, lista) : archivoLre(periodo, lista) }); aviso("Archivo borrador descargado: revísalo antes de subirlo."); } catch (e) { if (e?.code !== "declined") aviso("No se pudo descargar el archivo."); }
+}
 async function descargarPrevired() {
   const periodo = periodoLiquidaciones(), lista = liquidacionesMesRrhh(periodo);
   if (!lista.length || !S.descargas) return aviso(lista.length ? "La descarga de archivos no está disponible en esta vista." : "No hay liquidaciones en este mes.");
@@ -4342,7 +4463,8 @@ function vistaLibroRem() {
   const resumen = resumenCotizaciones(lista), costo = lista.reduce((s, l) => s + (l.costo_empresa ?? l.haberes + l.aportes_empleador), 0);
   const cel = (x) => `<td class="num">${x ? clp(x) : ""}</td>`;
   return `${cabecera("Libro de remuneraciones y Previred", nombrePeriodo(periodo))}
-  <div class="barra"><label>Mes<input type="month" id="lq-periodo" value="${periodo}"></label>${lista.length ? botonesExportar() : ""}${lista.length && S.descargas ? `<button class="btn sec" type="button" data-n="csv-previred">Planilla Previred (CSV)</button>` : ""}</div>
+  <div class="barra"><label>Mes<input type="month" id="lq-periodo" value="${periodo}"></label>${lista.length ? botonesExportar() : ""}${lista.length && S.descargas ? `<button class="btn sec" type="button" data-n="csv-previred">Planilla Previred (CSV)</button><button class="btn sec" type="button" data-n="txt-previred">Previred oficial (borrador)</button><button class="btn sec" type="button" data-n="csv-lre">LRE de la DT (borrador)</button>` : ""}</div>
+  ${lista.length ? (() => { const pr2 = revisionArchivosRem(lista); return `<div class="aviso">Los archivos «borrador» de Previred (105 campos) y del Libro de Remuneraciones Electrónico siguen los formatos del programa de remuneraciones del dueño, pero no están validados contra los portales: súbelos primero a la validación de Previred y de Mi DT.${pr2.length ? `<ul>${pr2.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}</div>`; })() : ""}
   ${lista.length ? `<div class="tabla"><table><thead><tr><th>Trabajador</th><th class="num">Días</th><th class="num">Sueldo</th><th class="num">H. extra</th><th class="num">Comis. y semana corrida</th><th class="num">Bonos y fijos</th><th class="num">Gratif.</th><th class="num">Imponible</th><th class="num">No imp.</th><th class="num">Asig. familiar</th><th class="num">AFP</th><th class="num">Salud</th><th class="num">Cesantía</th><th class="num">Imp. único</th><th class="num">Otros desc.</th><th class="num">Líquido</th></tr></thead>
     <tbody>${lista.map((l) => `<tr><td>${esc(trabajadorPorId(l.trabajador)?.nombre || "(eliminado)")}</td><td class="num">${l.dias}</td><td class="num">${clp(l.sueldo)}</td>${cel(l.horas_extra_monto)}${cel(v0(l.comisiones) + v0(l.semana_corrida))}${cel(l.bonos + v0(l.haberes_fijos_imp) + v0(l.vacaciones_pago))}${cel(l.gratificacion)}
       <td class="num">${clp(l.imponible)}</td>${cel(l.no_imponible)}${cel(v0(l.asig_familiar))}<td class="num">${clp(l.afp)}</td><td class="num">${clp(l.salud)}</td>${cel(l.cesantia)}${cel(l.impuesto_unico)}${cel(v0(l.apv) + v0(l.trabajo_pesado) + l.anticipos + l.otros_desc + v0(l.descuentos_fijos_total))}<td class="num"><strong>${clp(l.liquido)}</strong></td></tr>`).join("")}</tbody>
@@ -4578,7 +4700,9 @@ function vistaParametros() {
     <div class="acciones"><button class="btn" type="submit">Guardar valores</button></div></form>
     <form class="caja" data-form="n-mutual"><h2>Seguro de accidentes del trabajo de esta empresa</h2>
       <div class="form"><label>Mutual<input id="mu-nombre" value="${esc(rc.mutual_nombre || "")}" placeholder="ACHS, IST, Mutual de Seguridad"></label><label>Cotización básica (%)<input id="mu-basica" inputmode="decimal" value="${comaDecimal(m.basica)}"></label>
-        <label>Cotización adicional (%)<input id="mu-adicional" inputmode="decimal" value="${comaDecimal(m.adicional)}"></label><label>Ley SANNA (%)<input id="mu-sanna" inputmode="decimal" value="${comaDecimal(m.sanna)}"></label></div>
+        <label>Cotización adicional (%)<input id="mu-adicional" inputmode="decimal" value="${comaDecimal(m.adicional)}"></label><label>Ley SANNA (%)<input id="mu-sanna" inputmode="decimal" value="${comaDecimal(m.sanna)}"></label>
+        <label>Caja de compensación (CCAF)<select id="mu-ccaf">${Object.entries(CCAF_NOMBRES).map(([k, n]) => `<option value="${k}" ${(rc.ccaf || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+        <label>Región (número)<input id="mu-region" inputmode="numeric" value="${esc(rc.region ?? "")}" placeholder="13"></label><label>Código de comuna (DT)<input id="mu-comuna" inputmode="numeric" value="${esc(rc.comuna_codigo ?? "")}" placeholder="13101"></label></div>
       <p class="ayuda">La básica es 0,90 % y la Ley SANNA 0,03 %. La adicional la fija la mutual según el riesgo de la empresa: confírmala en tu certificado de cotizaciones.</p>
       <div class="acciones"><button class="btn" type="submit">Guardar</button></div></form>`)}
   ${propios.length ? `<h2>Valores registrados</h2><div class="tabla"><table><thead><tr><th>Desde</th><th>Valores</th><th></th></tr></thead><tbody>
@@ -4610,7 +4734,7 @@ async function guardarMutual() {
   const num = (id) => decimal($(id).value);
   const basica = num("#mu-basica"), adicional = num("#mu-adicional"), sanna = num("#mu-sanna");
   for (const [n, x] of [["Cotización básica", basica], ["Cotización adicional", adicional], ["Ley SANNA", sanna]]) if (x == null || !Number.isFinite(x) || x < 0 || x > 10) return aviso(`${n}: ingresa un porcentaje, por ejemplo 0,9.`);
-  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), rem_config: { mutual_nombre: $("#mu-nombre").value.trim(), mutual_basica: basica, mutual_adicional: adicional, sanna, mutual: basica + adicional + sanna } }); render(); aviso("Datos de la mutual guardados."); }, "No se pudo guardar la mutual");
+  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), rem_config: { ccaf: $("#mu-ccaf").value, region: Number($("#mu-region").value) || null, comuna_codigo: Number($("#mu-comuna").value) || null, mutual_nombre: $("#mu-nombre").value.trim(), mutual_basica: basica, mutual_adicional: adicional, sanna, mutual: basica + adicional + sanna } }); render(); aviso("Datos de la mutual guardados."); }, "No se pudo guardar la mutual");
 }
 
 /* ------------------------------------------------------------------ renta anual (F22), capital propio tributario y registros */
@@ -5326,6 +5450,8 @@ document.addEventListener("click", (ev) => {
     case "agregar-descuento-fijo": actualizarFormTrabajador((x) => x.descuentos_fijos = [...(x.descuentos_fijos || []), { concepto: "", tipo: "monto", valor: 0 }]); break;
     case "quitar-descuento-fijo": actualizarFormTrabajador((x) => x.descuentos_fijos = (x.descuentos_fijos || []).filter((_, i) => i !== +id)); break;
     case "csv-previred": descargarPrevired(); break;
+    case "txt-previred": descargarArchivoRem("previred"); break;
+    case "csv-lre": descargarArchivoRem("lre"); break;
     case "vac-elegir": S.vacTrab = id; render(); break;
     case "vac-quitar": { const tr = trabajadorPorId(S.vacTrab) || S.trabajadores.find((x) => x.activo !== false && !x.fecha_finiquito); if (tr) ocupado(async () => { await S.almacen.set(`empresas/${S.eid}/trabajadores/${tr.id}`, { ...tr, vacaciones: (tr.vacaciones || []).filter((_, i) => i !== +id) }); render(); aviso("Período quitado."); }, "No se pudo quitar el período"); break; }
     case "nuevo-finiquito": { const tid = $("#fq-trabajador")?.value; if (!tid) break; S.finiqEdit = { trabajador: tid, fecha: hoy(), causal: "necesidades", uf: valorUf(hoy().slice(0, 7)) || null, base: null, dias_mes: null, vac_dias: null, anticipos: 0, otros_monto: 0, otros: [], indemnizar: true, aviso_dado: false, recargo: 0, afc_imputable: 0 }; render(); break; }
