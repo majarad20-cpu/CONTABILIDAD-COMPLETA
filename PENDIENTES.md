@@ -173,6 +173,12 @@ Construido con los hallazgos de las 30 planillas. En la pantalla **RCV** hay una
 
 **Corrección a la migración del 12-10-2026:** 84 razones sociales quedaron con la codificación dañada (el script no trataba los caracteres de Windows-1252). Se corrigieron directamente en la base el mismo día. El importador nuevo ya no tiene ese defecto.
 
+## Ideas del programa de contabilidad simplificada del dueño (versión 1.12.0)
+
+Revisado el repositorio `contabilidad-simplificada` (programa Flask). Traído a la app en 1.12.0: cálculo de IVA, retención de honorarios, total y base por movimiento; categorías nuevas; PPM vigente sugerida; meses cerrados; aviso de registro atrasado; RUT emisor y cierres C10 a C15; doble registro en el libro de ingresos y egresos.
+Pendiente de traer: entidades relacionadas del art. 14 A (base devengada en renta y PPM), documentos pendientes de pago dentro del movimiento (hoy se manejan desde el RCV), libro de ingresos y egresos con secciones A y B y totales mensuales, resumen diario de ingresos y egresos, PPM sobre ingresos percibidos del libro de caja (hoy sale del RCV), Excel con la estructura exacta de las planillas del SII, respaldo descargable. Los formatos de la Res. 14 y 31 no se pudieron verificar en sii.cl.
+Pendiente de recibir: el programa de remuneraciones del dueño.
+
 ## Prioridad media (pospuesto por el dueño)
 
 Ideas evaluadas y aún no pedidas: conciliación bancaria por cartola, cuentas por cobrar y pagar con antigüedad y cobranza, flujo de caja proyectado, asistente de cierre mensual, asientos recurrentes y plantillas, centros de costo y presupuesto contra real, búsqueda global, inventario valorizado, papelera y deshacer.
