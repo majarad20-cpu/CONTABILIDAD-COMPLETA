@@ -489,13 +489,13 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const renta = calcularRenta(completarRenta(nuevaRenta(2026)));
     S.pestana.caja = "ingresos"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
     const pdf = await pdfResumen(rdo, "");
-    return { menu, guarda, n: S.caja.length, inicial: L.inicial, ing: L.ing, eg: L.eg, saldo: L.saldo, baseIng: L.baseIng, baseEg: L.baseEg, erRes: er.resultado, cobrar: dev.cobrar, iva: f29.codigos["89"], avisos: f29.alertas.length, tabla, filas: inf.filas.length, dia: infD.filas.length, ie: infIE.filas.length, caja: rdo.caja, ingRes: rdo.mes.ingresos, ingVentas: S.caja.filter((m) => m.tipo === 1 && m.categoria === "Ventas" && m.fecha.startsWith("2026-09")).reduce((a, m) => a + m.monto, 0), titular: rdo.titular, patrimonio: rdo.patrimonio, rli: renta.rli, pdf: pdf.size, ieTexto: /Documentos por cobrar/.test(document.querySelector("main").textContent) };
+    return { menu, guarda, n: S.caja.length, inicial: L.inicial, ing: L.ing, eg: L.eg, saldo: L.saldo, baseIng: L.baseIng, baseEg: L.baseEg, erRes: er.resultado, cobrar: dev.cobrar, iva: f29.codigos["89"], avisos: f29.alertas.length, tabla, filas: inf.filas.length, dia: infD.filas.length, ie: infIE.filas.length, caja: rdo.caja, ingRes: rdo.mes.ingresos, ingVentas: S.caja.filter((m) => m.tipo === 1 && m.categoria === "Ventas" && m.fecha.startsWith("2026-09")).reduce((a, m) => a + m.base, 0), titular: rdo.titular, patrimonio: rdo.patrimonio, rli: renta.rli, pdf: pdf.size, ieTexto: /Documentos por cobrar/.test(document.querySelector("main").textContent) };
   });
   ok("el menú de la empresa simplificada trae el libro de caja y oculta los asientos", sm.menu.includes("Libro de caja e ingresos y egresos") && !sm.menu.includes("Asientos") && !sm.menu.includes("Plan de cuentas") && sm.menu.includes("Resumen ejecutivo"), JSON.stringify(sm.menu));
   ok("una vista de contabilidad completa lleva al inicio simplificado", sm.guarda);
   igual("la importación del RCV registra las dos facturas del mes y el retiro", sm.n, 4);
   igual("el libro de caja: saldo inicial, ingresos y egresos", [sm.inicial, sm.ing, sm.eg, sm.saldo], [300000, 1785000, 676000, 1409000]);
-  igual("en simplificada los ingresos del resumen son lo percibido por ventas (con IVA)", sm.ingRes, sm.ingVentas);
+  igual("en simplificada los ingresos del resumen son lo percibido por ventas (sin IVA)", sm.ingRes, sm.ingVentas);
   igual("la base imponible excluye el IVA y los retiros", [sm.baseIng, sm.baseEg], [1500000, 400000]);
   igual("el resultado de caja es la base de ingresos menos egresos", sm.erRes, 1100000);
   ok("el IVA del F29 sale del RCV sin necesidad de asientos", sm.iva === 285000 - 76000 || sm.iva === 209000, String(sm.iva));
