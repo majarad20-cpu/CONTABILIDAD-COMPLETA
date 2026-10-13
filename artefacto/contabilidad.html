@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.23.0";
+const VERSION = "1.24.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5537,6 +5537,12 @@ document.addEventListener("click", (ev) => {
       ocupado(async () => { const mapa = { ...(e.f29_presentado || {}) }; if (mapa[p]) delete mapa[p]; else mapa[p] = hoy(); await BD.setEmpresa(id, { ...e, f29_presentado: mapa }); const f = S.cartera.filas.find((x) => x.id === id); if (f) f.f29Presentado = !!mapa[p]; render(); }, "No se pudo actualizar el estado"); break; }
     case "recordatorio-quitar": recordar("recordatorios", recuerdo("recordatorios", []).filter((r) => r.id !== id)); render(); break;
     case "ppm-vigente": $("#tr-ppm").value = t.dataset.v; break;
+    case "caja-panel": S.cajaPanel = S.cajaPanel === id || !id ? null : id; render(); break;
+    case "caja-editar": S.cajaEdit = id; render(); break;
+    case "caja-editar-cancelar": S.cajaEdit = null; render(); break;
+    case "caja-editar-guardar": guardarEdicionCaja(); break;
+    case "caja-linea": agregarLineaCaja(); break;
+    case "caja-mes-prev": case "caja-mes-sig": { const a = String(S.cajaAnio || empresa().ejercicio), cur = S.cajaMes ?? mesPorDefectoCaja(a), n = Math.min(12, Math.max(1, +cur + (t.dataset.n === "caja-mes-sig" ? 1 : -1))); S.cajaMes = String(n).padStart(2, "0"); S.cajaExpD = S.cajaExpH = null; S.cajaEdit = null; render(); break; }
     case "caja-eliminar": { const cerr = CAJA_CERRADO([S.caja.find((m) => m.id === id)?.fecha || ""]); if (cerr) { aviso(cerr); break; } } ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/caja/${id}`); render(); aviso("Movimiento eliminado."); }, "No se pudo eliminar el movimiento"); break;
     case "caja-importar-rcv": importarCaja("rcv"); break;
     case "caja-importar-rcvmes": importarCaja("rcvmes"); break;
@@ -5616,7 +5622,7 @@ document.addEventListener("submit", (ev) => {
     case "n-caja": ev.preventDefault(); guardarMovimientoCaja(); break;
     case "n-f29-pago": ev.preventDefault(); registrarPagoF29(); break;
     case "n-caja-inicial": ev.preventDefault(); { const v = parseMonto($("#caja-inicial").value || "0"), a = String(S.cajaAnio || empresa().ejercicio); if (!Number.isFinite(v) || v < 0) { aviso("El saldo inicial debe ser un monto en pesos, 0 o mayor."); break; }
-      ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), caja_inicial: { ...(empresa().caja_inicial || {}), [a]: v } }); render(); aviso("Saldo inicial guardado."); }, "No se pudo guardar el saldo inicial"); } break;
+      ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), caja_inicial: { ...(empresa().caja_inicial || {}), [a]: v } }); S.cajaPanel = null; render(); aviso("Saldo inicial guardado."); }, "No se pudo guardar el saldo inicial"); } break;
     case "n-feriado": ev.preventDefault(); agregarFeriado(); break;
     case "n-vacacion": ev.preventDefault(); registrarVacacion(); break;
     case "n-finiquito": ev.preventDefault(); leerFiniquito(); render(); break;
@@ -5786,6 +5792,7 @@ async function ocupado(fn, mensaje) {
 function cambiarEmpresa(id) {
   if (S.eid === id && S.desuscribirAsientos) return;
   S.eid = id; recordar("empresa", id);
+  S.cajaMes = undefined; S.cajaExpD = S.cajaExpH = null; S.cajaEdit = null; S.cajaPanel = null;
   S.desuscribirAsientos?.(); S.desuscribirAsientos = null;
   S.desuscribirCambios?.(); S.desuscribirCambios = null; S.cambios = [];
   S.desuscribirRcv?.(); S.desuscribirRcv = null; S.rcv = []; S.rcvSel.clear(); S.docEdit = null;
@@ -6087,9 +6094,9 @@ function estadoCaja(desde, hasta) {
   const ingresos = arb(g[1]), gastos = arb(g[2]);
   return { ingresos, gastos, resultado: ingresos.total - gastos.total };
 }
-function libroCaja(anio, mes = "") {
-  const todos = cajaDe(anio), previos = mes ? todos.filter((m) => m.fecha.slice(5, 7) < mes) : [];
-  const inicial = saldoInicialCaja(anio) + previos.reduce((x, m) => x + flujo(m), 0), filas = mes ? todos.filter((m) => m.fecha.slice(5, 7) === mes) : todos;
+function libroCaja(anio, mes = "", hasta = "") {
+  const todos = cajaDe(anio), previos = mes ? todos.filter((m) => m.fecha.slice(5, 7) < mes) : [], m2 = hasta && hasta >= mes ? hasta : mes;
+  const inicial = saldoInicialCaja(anio) + previos.reduce((x, m) => x + flujo(m), 0), filas = mes ? todos.filter((m) => { const x = m.fecha.slice(5, 7); return x >= mes && x <= m2; }) : todos;
   const t = { ing: 0, eg: 0, baseIng: 0, baseEg: 0 };
   for (const m of filas) { if (m.tipo === 1) { t.ing += m.monto; t.baseIng += m.base; } else { t.eg += m.monto; t.baseEg += m.base; } }
   return { inicial, filas, ...t, saldo: inicial + t.ing - t.eg };
@@ -6135,9 +6142,12 @@ function movimientosResumenRcv(periodo) {
 const idMov = (ref) => "m_" + ref.replace(/[^A-Za-z0-9_-]/g, "_");
 async function guardarMovimientos(lista) { for (const m of lista) await S.almacen.set(`empresas/${S.eid}/caja/${m.id || idMov(m.ref)}`, (({ id, ...r }) => r)(m)); }
 
-function informeLibroCaja(anio, mes, diario) {
-  const L = libroCaja(anio, mes), desde = `${anio}-${mes || "01"}-01`, hasta = mes ? ultimoDia(`${anio}-${mes}`) : `${anio}-12-31`, cierres = cierresCaja(anio).filter((c) => !mes || c.mes === mes);
-  const nombre = `${anio}${mes ? "_" + mes : ""}`, nombreMes = (c) => MESES[+c.mes - 1].toUpperCase();
+function informeLibroCaja(anio, mes, diario, hastaMes = "") {
+  /* Un mes, un rango de meses (mes a hastaMes) o todo el año (mes vacío). */
+  const m1 = mes || "01", m2 = mes ? (hastaMes && hastaMes >= mes ? hastaMes : mes) : "12", unico = !!mes && m1 === m2;
+  const L = libroCaja(anio, mes, m2), desde = `${anio}-${m1}-01`, hasta = ultimoDia(`${anio}-${m2}`), cierres = cierresCaja(anio).filter((c) => c.mes >= m1 && c.mes <= m2);
+  const nombre = `${anio}${mes ? (unico ? "_" + mes : `_${m1}-${m2}`) : ""}`, nombreMes = (c) => MESES[+c.mes - 1].toUpperCase();
+  const periodoSii = unico ? `${nombreMes({ mes })} ${anio}` : mes ? `${nombreMes({ mes: m1 })} A ${nombreMes({ mes: m2 })} ${anio}` : `AÑO COMERCIAL ${anio}`;
   const totalPeriodo = { c10: L.inicial + L.ing, c11: L.eg, c12: L.saldo, c13: L.baseIng, c14: L.baseEg, c15: L.baseEg - L.baseIng };
   if (diario) {
     /* Anexo 4.1 de la Res. Ex. SII N° 31: un registro por día y tipo de operación (C1 a C4) y los totales C5 a C10 */
@@ -6154,9 +6164,9 @@ function informeLibroCaja(anio, mes, diario) {
     inf.agregar([null, null, "TOTAL DEL PERÍODO: INGRESOS CON SALDO INICIAL (C5) · C8", totalPeriodo.c10, totalPeriodo.c13], { estilo: "subtotal", derecha: true });
     inf.agregar([null, null, "TOTAL DEL PERÍODO: EGRESOS (C6) · C9", totalPeriodo.c11, totalPeriodo.c14], { estilo: "subtotal", derecha: true });
     inf.agregar([null, null, "TOTAL DEL PERÍODO: SALDO DE CAJA (C7) · RESULTADO NETO (C10)", totalPeriodo.c12, totalPeriodo.c15], { estilo: "total", derecha: true });
-    inf.sii = { tipo: "caja_diario", hoja: "Libro Caja", periodo: mes ? `${nombreMes({ mes })} ${anio}` : `AÑO COMERCIAL ${anio}`,
+    inf.sii = { tipo: "caja_diario", hoja: "Libro Caja", periodo: periodoSii,
       filas: [[desde, 0, L.inicial, 0], ...[...dias.values()].sort((a, b) => (a.f < b.f ? -1 : a.f > b.f ? 1 : a.t - b.t)).map((x) => [x.f, x.t, x.monto, x.base])],
-      cierres: [...cierres.map((c) => [nombreMes(c), c.c10, c.c11, c.c12, c.c13, c.c14, c.c15]), ...(mes ? [] : [["TOTAL DEL PERÍODO", totalPeriodo.c10, totalPeriodo.c11, totalPeriodo.c12, totalPeriodo.c13, totalPeriodo.c14, totalPeriodo.c15]])] };
+      cierres: [...cierres.map((c) => [nombreMes(c), c.c10, c.c11, c.c12, c.c13, c.c14, c.c15]), ...(unico ? [] : [["TOTAL DEL PERÍODO", totalPeriodo.c10, totalPeriodo.c11, totalPeriodo.c12, totalPeriodo.c13, totalPeriodo.c14, totalPeriodo.c15]])] };
     inf.notas.push("Resumen diario voluntario (Res. Ex. SII N° 31 de 2021, Anexos 3.1 y 4.1): un registro por día y tipo de operación (0 saldo inicial, 1 ingreso, 2 egreso). El resultado neto es negativo cuando los ingresos superan a los egresos. Se debe mantener el respaldo y detalle de las operaciones.");
     return inf;
   }
@@ -6165,12 +6175,12 @@ function informeLibroCaja(anio, mes, diario) {
   inf.agregar([1, "0", null, null, null, desde, "SALDO INICIAL", L.inicial, null]);
   L.filas.forEach((m, i) => inf.agregar([i + 2, String(m.tipo), m.doc_num || null, m.doc_tipo || null, rutEmisorCaja(m) || null, m.fecha, (m.glosa || "").toUpperCase(), m.monto, m.base]));
   const filasSii = [[1, 0, "", "", empresa().rut || "", desde, "SALDO INICIAL DE CAJA", L.inicial, 0], ...L.filas.map((m, i) => [i + 2, m.tipo, m.doc_num || "", m.doc_tipo || "", rutEmisorCaja(m), m.fecha, (m.glosa || "").toUpperCase(), m.monto, m.base])];
-  const cierresSii = [...cierres.map((c) => [nombreMes(c), c.c10, c.c11, c.c12, c.c13, c.c14, c.c15]), ...(mes ? [] : [["TOTAL DEL PERÍODO", totalPeriodo.c10, totalPeriodo.c11, totalPeriodo.c12, totalPeriodo.c13, totalPeriodo.c14, totalPeriodo.c15]])];
-  inf.sii = { tipo: "caja", hoja: "Libro Caja", periodo: mes ? `${nombreMes({ mes })} ${anio}` : `AÑO COMERCIAL ${anio}`, filas: filasSii, cierres: cierresSii };
+  const cierresSii = [...cierres.map((c) => [nombreMes(c), c.c10, c.c11, c.c12, c.c13, c.c14, c.c15]), ...(unico ? [] : [["TOTAL DEL PERÍODO", totalPeriodo.c10, totalPeriodo.c11, totalPeriodo.c12, totalPeriodo.c13, totalPeriodo.c14, totalPeriodo.c15]])];
+  inf.sii = { tipo: "caja", hoja: "Libro Caja", periodo: periodoSii, filas: filasSii, cierres: cierresSii };
   inf.agregar([null, null, null, null, null, null, "TOTAL INGRESOS CON SALDO INICIAL (C10) · INGRESOS QUE AFECTAN LA BASE (C13)", totalPeriodo.c10, totalPeriodo.c13], { estilo: "subtotal", derecha: true });
   inf.agregar([null, null, null, null, null, null, "TOTAL EGRESOS (C11) · EGRESOS QUE AFECTAN LA BASE (C14)", totalPeriodo.c11, totalPeriodo.c14], { estilo: "subtotal", derecha: true });
   inf.agregar([null, null, null, null, null, null, "SALDO DE CAJA (C12) · RESULTADO NETO (C15)", totalPeriodo.c12, totalPeriodo.c15], { estilo: "total", derecha: true });
-  if (!mes) for (const c of cierres) {
+  if (!unico) for (const c of cierres) {
     inf.agregar([null, null, null, null, null, null, `CIERRE ${nombreMes(c)}: TOTAL INGRESOS CON SALDO INICIAL (C10) · AFECTA BASE (C13)`, c.c10, c.c13], { estilo: "subtotal", derecha: true });
     inf.agregar([null, null, null, null, null, null, `CIERRE ${nombreMes(c)}: TOTAL EGRESOS (C11) · AFECTA BASE (C14)`, c.c11, c.c14], { estilo: "subtotal", derecha: true });
     inf.agregar([null, null, null, null, null, null, `CIERRE ${nombreMes(c)}: SALDO DE CAJA (C12) · RESULTADO NETO (C15)`, c.c12, c.c15], { estilo: "subtotal", derecha: true });
@@ -6481,10 +6491,43 @@ function vistaInicioSimple() {
     : `<div class="caja vacio"><p>Todavía no hay movimientos en ${anio}. Registra el saldo inicial de caja y los ingresos y egresos, o impórtalos desde el RCV y las remuneraciones.</p></div>`}`;
 }
 
+const mesPorDefectoCaja = (anio) => { const h = hoy(); if (h.startsWith(String(anio))) return h.slice(5, 7); const ms = cajaDe(anio).map((m) => m.fecha.slice(5, 7)); return ms.length ? ms.at(-1) : "01"; };
+/* Línea de captura rápida al pie de la tabla: fecha, glosa, tipo y monto; el detalle (IVA, documento) va en «+ Nuevo movimiento». */
+function filaRapidaCaja(mes, anio) {
+  const fecha = S.cajaFecha && S.cajaFecha.startsWith(String(anio)) && (!mes || S.cajaFecha.slice(5, 7) === mes) ? S.cajaFecha : mes ? (hoy().startsWith(`${anio}-${mes}`) ? hoy() : `${anio}-${mes}-01`) : hoy().startsWith(String(anio)) ? hoy() : `${anio}-01-01`;
+  return `<tr class="rapida"><td><input type="date" id="ql-fecha" value="${fecha}" aria-label="Fecha"></td><td><input id="ql-glosa" placeholder="Nueva línea: glosa" style="width:100%" aria-label="Glosa"></td>
+    <td class="num" colspan="2"><select id="ql-tipo" aria-label="Tipo"><option value="1">Ingreso</option><option value="2">Egreso</option></select> <input id="ql-monto" inputmode="numeric" placeholder="Monto" style="width:8em" aria-label="Monto"></td>
+    <td></td><td class="num"><input id="ql-base" inputmode="numeric" placeholder="= monto" style="width:8em" aria-label="Afecta la base (vacío = todo el monto)"></td><td><button class="btn" type="button" data-n="caja-linea">Agregar</button></td></tr>`;
+}
+async function agregarLineaCaja() {
+  const fecha = $("#ql-fecha").value, glosa = $("#ql-glosa").value.trim(), tipo = +$("#ql-tipo").value, monto = parseMonto($("#ql-monto").value || ""), baseTxt = $("#ql-base").value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return aviso("Ingresa la fecha.");
+  if (!glosa) return aviso("Escribe la glosa.");
+  if (!Number.isFinite(monto) || monto <= 0) return aviso("Escribe un monto positivo en pesos enteros.");
+  const base = baseTxt ? parseMonto(baseTxt) : monto;
+  if (!Number.isFinite(base) || base < 0 || base > monto) return aviso("El monto que afecta la base no puede ser negativo ni mayor al total.");
+  const cerr = CAJA_CERRADO([fecha]); if (cerr) return aviso(cerr);
+  S.cajaFecha = fecha;
+  await ocupado(async () => { await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria: tipo === 1 ? "Ventas" : "Compras y gastos", doc_tipo: "", doc_num: "", rut: "", nombre: "", glosa, monto, base, origen: "manual", ref: "" }]); render(); aviso("Línea agregada."); }, "No se pudo agregar la línea");
+}
+async function guardarEdicionCaja() {
+  const m = S.caja.find((x) => x.id === S.cajaEdit); if (!m) { S.cajaEdit = null; return render(); }
+  const fecha = $("#ce-fecha").value, glosa = $("#ce-glosa").value.trim(), tipo = +$("#ce-tipo").value, monto = parseMonto($("#ce-monto").value || ""), base = parseMonto($("#ce-base").value || "0"), rut = $("#ce-rut").value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return aviso("Ingresa la fecha.");
+  if (!glosa) return aviso("Escribe la glosa.");
+  if (!Number.isFinite(monto) || monto <= 0) return aviso("Escribe un monto positivo en pesos enteros.");
+  if (!Number.isFinite(base) || base < 0 || base > monto) return aviso("El monto que afecta la base no puede ser negativo ni mayor al total.");
+  if (rut && !rutValido(rut)) return aviso("El RUT no es válido (revisa el dígito verificador).");
+  const cerr = CAJA_CERRADO([m.fecha, fecha]); if (cerr) return aviso(cerr);
+  const cambia = monto !== m.monto, desglose = cambia ? { neto: undefined, exento: undefined, iva: undefined, retencion: undefined } : {};
+  const nuevo = { ...m, fecha, glosa, tipo, monto, base, categoria: $("#ce-categoria").value, doc_tipo: $("#ce-doc").value.trim(), doc_num: $("#ce-num").value.trim(), rut: rut ? formatoRut(rut) : "", nombre: $("#ce-nombre").value.trim(), editado: true };
+  for (const k of Object.keys(desglose)) delete nuevo[k];
+  await ocupado(async () => { await guardarMovimientos([nuevo]); S.cajaEdit = null; render(); aviso("Línea actualizada."); }, "No se pudo guardar la línea");
+}
 function vistaCaja() {
   const anios = aniosDesde(S.caja.map((m) => m.fecha), S.rcv.map((d) => d.fecha), empresa().ejercicio);
   const anio = +(S.cajaAnio || empresa().ejercicio); if (!anios.includes(String(anio))) anios.unshift(String(anio));
-  const tab = pestanaActual("caja", "libro"), mes = S.cajaMes || "";
+  const tab = pestanaActual("caja", "libro"), mes = S.cajaMes ?? mesPorDefectoCaja(anio);
   const cab = `${pestanasDe("caja", [["libro", "Libro de caja"], ["ingresos", "Ingresos y egresos"], ["control", "Control anual"], ["importar", "Importar"]])}
     ${cabecera(tab === "ingresos" ? "Libro de ingresos y egresos" : tab === "importar" ? "Importar movimientos" : tab === "control" ? "Control anual" : "Libro de caja", `${empresa().razon_social} · ${anio}`)}`;
   if (tab === "importar") return cab + vistaImportarCaja(anio);
@@ -6501,21 +6544,33 @@ function vistaCaja() {
       <div class="barra"><label>Fecha de cobro o pago<input type="date" id="ie-fecha" value="${hoy()}"></label></div>
       <div class="tabla"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Documento</th><th>Cliente / proveedor</th><th class="num">Total</th><th></th></tr></thead><tbody>${pend.slice(0, 80).map((d) => `<tr><td>${fmtFecha(d.fecha)}</td><td>${d.registro === "VENTA" ? "Por cobrar" : "Por pagar"}</td><td>${esc(`${TIPOS_DOCUMENTO[+d.tipo_doc] || d.tipo_doc} ${d.folio}`)}</td><td>${esc(d.razon_social || "")}</td><td class="num">${clp(d.total)}</td><td><button class="btn enlace" type="button" data-n="caja-pagar" data-id="${esc(d.id)}">${d.registro === "VENTA" ? "Registrar cobro" : "Registrar pago"}</button></td></tr>`).join("")}</tbody></table></div>${pend.length > 80 ? `<p class="ayuda">Se muestran los primeros 80.</p>` : ""}</section>` : ""}`;
   }
-  const L = libroCaja(anio, mes); S.informe = () => informeLibroCaja(anio, mes, S.cajaDiario); S.csv = csvDeInforme(informeLibroCaja(anio, mes, S.cajaDiario));
+  /* La pantalla muestra un mes; el PDF, el Excel y el CSV salen por el rango de meses elegido (por defecto, el mes que se ve). */
+  const expD = S.cajaExpD || mes || "01", expH = S.cajaExpH && S.cajaExpH >= expD ? S.cajaExpH : mes ? (mes >= expD ? mes : expD) : "12";
+  const L = libroCaja(anio, mes); S.informe = () => informeLibroCaja(anio, expD, S.cajaDiario, expH); S.csv = csvDeInforme(informeLibroCaja(anio, expD, S.cajaDiario, expH));
+  const opMes = (sel, vacio) => `${vacio ? `<option value="">${vacio}</option>` : ""}${MESES.map((m, i) => { const v = String(i + 1).padStart(2, "0"); return `<option value="${v}" ${sel === v ? "selected" : ""}>${m}</option>`; }).join("")}`;
   const pend = documentosPendientesCaja(anio).length;
   let saldo = L.inicial;
   const lineas = S.cajaDiario ? [...L.filas.reduce((mp, m) => { const x = mp.get(m.fecha) || { n: 0, i: 0, e: 0, bi: 0, be: 0 }; x.n++; if (m.tipo === 1) { x.i += m.monto; x.bi += m.base; } else { x.e += m.monto; x.be += m.base; } return mp.set(m.fecha, x); }, new Map())]
       .map(([f, x]) => { saldo += x.i - x.e; return `<tr><td>${fmtFecha(f)}</td><td>${x.n} movimiento(s)</td><td class="num">${x.i ? clp(x.i) : ""}</td><td class="num">${x.e ? clp(x.e) : ""}</td><td class="num">${clp(saldo)}</td><td class="num">${clp(x.bi - x.be)}</td><td></td></tr>`; })
-    : L.filas.map((m) => { saldo += flujo(m); return `<tr><td>${fmtFecha(m.fecha)}</td><td>${esc(m.glosa)}${m.doc_tipo ? `<br><small class="ayuda">${esc([m.doc_tipo, m.doc_num, m.nombre].filter(Boolean).join(" · "))}</small>` : ""}</td><td class="num">${m.tipo === 1 ? clp(m.monto) : ""}</td><td class="num">${m.tipo === 2 ? clp(m.monto) : ""}</td><td class="num">${clp(saldo)}</td><td class="num ${m.base === 0 ? "cod" : ""}">${clp(m.base)}</td><td>${S.puedeEscribir ? `<button class="btn enlace" type="button" data-n="caja-eliminar" data-id="${esc(m.id)}">Eliminar</button>` : ""}</td></tr>`; });
+    : L.filas.map((m) => { saldo += flujo(m);
+      if (S.cajaEdit === m.id && S.puedeEscribir) return `<tr class="editando"><td><input type="date" id="ce-fecha" value="${esc(m.fecha)}"></td><td><input id="ce-glosa" value="${esc(m.glosa)}" style="width:100%"></td>
+        <td class="num" colspan="2"><select id="ce-tipo"><option value="1" ${m.tipo === 1 ? "selected" : ""}>Ingreso</option><option value="2" ${m.tipo === 2 ? "selected" : ""}>Egreso</option></select> <input id="ce-monto" inputmode="numeric" value="${clp(m.monto)}" style="width:8em" aria-label="Monto"></td>
+        <td class="num">${clp(saldo)}</td><td class="num"><input id="ce-base" inputmode="numeric" value="${clp(m.base)}" style="width:8em" aria-label="Afecta la base"></td>
+        <td><button class="btn" type="button" data-n="caja-editar-guardar">Guardar</button> <button class="btn enlace" type="button" data-n="caja-editar-cancelar">Cancelar</button></td></tr>
+        <tr class="editando"><td></td><td colspan="6"><div class="form"><label>Categoría<select id="ce-categoria">${Object.keys(CATEGORIAS_CAJA).map((c) => `<option ${m.categoria === c ? "selected" : ""}>${esc(c)}</option>`).join("")}${CATEGORIAS_CAJA[m.categoria] ? "" : `<option selected>${esc(m.categoria || "")}</option>`}</select></label>
+          <label>Tipo de documento<input id="ce-doc" value="${esc(m.doc_tipo || "")}"></label><label>N° documento<input id="ce-num" value="${esc(m.doc_num || "")}"></label><label>RUT<input id="ce-rut" value="${esc(m.rut || "")}"></label><label>Cliente o proveedor<input id="ce-nombre" value="${esc(m.nombre || "")}"></label></div></td></tr>`;
+      return `<tr><td>${fmtFecha(m.fecha)}</td><td>${esc(m.glosa)}${m.doc_tipo ? `<br><small class="ayuda">${esc([m.doc_tipo, m.doc_num, m.nombre].filter(Boolean).join(" · "))}</small>` : ""}</td><td class="num">${m.tipo === 1 ? clp(m.monto) : ""}</td><td class="num">${m.tipo === 2 ? clp(m.monto) : ""}</td><td class="num">${clp(saldo)}</td><td class="num ${m.base === 0 ? "cod" : ""}">${clp(m.base)}</td><td>${S.puedeEscribir ? `<button class="btn enlace" type="button" data-n="caja-editar" data-id="${esc(m.id)}">Editar</button> <button class="btn enlace" type="button" data-n="caja-eliminar" data-id="${esc(m.id)}">Eliminar</button>` : ""}</td></tr>`; });
   const e = empresa();
   return `${cab}<div class="barra"><label>Año<select id="caja-anio">${opcionesAnio(anios, anio)}</select></label>
-      <label>Mes<select id="caja-mes"><option value="">Todo el año</option>${MESES.map((m, i) => `<option value="${String(i + 1).padStart(2, "0")}" ${mes === String(i + 1).padStart(2, "0") ? "selected" : ""}>${m}</option>`).join("")}</select></label>
-      <label class="check"><input type="checkbox" id="caja-diario" ${S.cajaDiario ? "checked" : ""}> Resumen diario</label>${botonesExportar()}</div>
+      ${mes ? `<button class="btn sec" type="button" data-n="caja-mes-prev" ${mes === "01" ? "disabled" : ""} aria-label="Mes anterior">◀</button>` : ""}<label>Mes<select id="caja-mes">${opMes(mes, "Todo el año")}</select></label>${mes ? `<button class="btn sec" type="button" data-n="caja-mes-sig" ${mes === "12" ? "disabled" : ""} aria-label="Mes siguiente">▶</button>` : ""}
+      <label class="check"><input type="checkbox" id="caja-diario" ${S.cajaDiario ? "checked" : ""}> Resumen diario</label></div>
+    <div class="barra"><span class="ayuda">Exportar el libro (PDF, Excel, CSV) de</span><label>Mes inicial<select id="caja-exp-desde">${opMes(expD)}</select></label><label>Mes final<select id="caja-exp-hasta">${opMes(expH)}</select></label>${botonesExportar()}</div>
     ${pend ? `<div class="aviso">Hay ${pend} documento(s) del RCV de ${anio} sin cobrar ni pagar en el Libro de caja. Regístralos en «Ingresos y egresos» o impórtalos en la pestaña «Importar».</div>` : ""}
     <div class="tarjetas"><div class="tarjeta"><span>Saldo inicial</span><strong>$${clp(L.inicial)}</strong></div><div class="tarjeta"><span>Ingresos</span><strong>$${clp(L.ing)}</strong></div>
       <div class="tarjeta"><span>Egresos</span><strong>$${clp(L.eg)}</strong></div><div class="tarjeta ${L.saldo < 0 ? "neg" : ""}"><span>Saldo de caja</span><strong>$${clp(L.saldo)}</strong></div>
       <div class="tarjeta"><span>Afecta la base imponible</span><strong>$${clp(L.baseIng - L.baseEg)}</strong></div></div>
-    ${puedeEditar(`<form class="caja" data-form="n-caja"><h2>Nuevo movimiento</h2><div class="form">
+    ${puedeEditar(`<div class="acciones"><button class="btn ${S.cajaPanel === "mov" ? "" : "sec"}" type="button" data-n="caja-panel" data-id="mov">+ Nuevo movimiento</button><button class="btn ${S.cajaPanel === "f29" ? "" : "sec"}" type="button" data-n="caja-panel" data-id="f29">Pago de F29</button><button class="btn ${S.cajaPanel === "ini" ? "" : "sec"}" type="button" data-n="caja-panel" data-id="ini">Saldo inicial</button></div>`)}
+    ${puedeEditar(S.cajaPanel === "mov" ? `<form class="caja" data-form="n-caja"><h2>Nuevo movimiento</h2><div class="form">
       <label>Fecha *<input type="date" id="cj-fecha" value="${S.cajaFecha || hoy()}"></label>
       <label>Categoría<select id="cj-categoria">${Object.keys(CATEGORIAS_CAJA).map((c) => `<option>${esc(c)}</option>`).join("")}</select></label>
       <label>Tipo<select id="cj-tipo"><option value="1">Ingreso</option><option value="2">Egreso</option></select></label>
@@ -6531,8 +6586,8 @@ function vistaCaja() {
       <label>Tipo de documento<select id="cj-doc">${TIPOS_DOC_CAJA.map((t) => `<option>${esc(t)}</option>`).join("")}</select></label>
       <label>N° de documento<input id="cj-num"></label><label>RUT<input id="cj-rut" placeholder="12.345.678-5"></label>
       <label>Nombre del cliente o proveedor<input id="cj-nombre"></label><label class="campo-largo">Glosa *<input id="cj-glosa" placeholder="Describe la operación"></label></div>
-      <div class="acciones"><button class="btn" type="submit">Registrar movimiento</button></div></form>
-      <form class="caja" data-form="n-f29-pago"><h2>Pago de F29</h2><div class="form">
+      <div class="acciones"><button class="btn" type="submit">Registrar movimiento</button><button class="btn sec" type="button" data-n="caja-panel" data-id="">Cerrar</button></div></form>` : "")}
+    ${puedeEditar(S.cajaPanel === "f29" ? `<form class="caja" data-form="n-f29-pago"><h2>Pago de F29</h2><div class="form">
         <label>Período del F29<input type="month" id="f29p-periodo" value="${periodoAnterior(hoy().slice(0, 7))}"></label>
         <label>Fecha de pago<input type="date" id="f29p-fecha" value="${hoy()}"></label>
         <label>Folio del F29<input id="f29p-folio" placeholder="Opcional"></label>
@@ -6541,10 +6596,10 @@ function vistaCaja() {
         <label>Retención de honorarios, 2ª categoría ($)<input id="f29p-ret" inputmode="numeric" placeholder="0"></label>
         <label>Impuesto único de trabajadores ($)<input id="f29p-iusc" inputmode="numeric" placeholder="0"></label></div>
         <p class="ayuda">Crea una línea de egreso por cada concepto, como se anota en el libro. Solo la retención de honorarios afecta la base imponible (se descuenta al pagarla; las boletas se registran por su líquido). El IVA y el PPM no la afectan, y el impuesto único se descuenta al importar las remuneraciones. No registres la retención aquí si importaste las boletas de honorarios por su monto bruto.</p>
-        <div class="acciones"><button class="btn sec" type="button" data-n="f29p-rellenar">Usar el borrador del F29</button><button class="btn" type="submit">Registrar el pago</button></div></form>
-      <form class="barra" data-form="n-caja-inicial"><label>Saldo inicial de caja ${anio} ($)<input id="caja-inicial" inputmode="numeric" value="${saldoInicialCaja(anio) ? clp(saldoInicialCaja(anio)) : ""}" placeholder="0"></label><button class="btn sec" type="submit">Guardar saldo inicial</button></form>`)}
+        <div class="acciones"><button class="btn sec" type="button" data-n="f29p-rellenar">Usar el borrador del F29</button><button class="btn" type="submit">Registrar el pago</button></div></form>` : "")}
+    ${puedeEditar(S.cajaPanel === "ini" ? `<form class="barra" data-form="n-caja-inicial"><label>Saldo inicial de caja ${anio} ($)<input id="caja-inicial" inputmode="numeric" value="${saldoInicialCaja(anio) ? clp(saldoInicialCaja(anio)) : ""}" placeholder="0"></label><button class="btn sec" type="submit">Guardar saldo inicial</button></form>` : "")}
     ${L.filas.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Ingreso</th><th class="num">Egreso</th><th class="num">Saldo</th><th class="num">${S.cajaDiario ? "Base del día" : "Afecta base"}</th><th></th></tr></thead>
-      <tbody><tr class="sub"><td></td><td>Saldo inicial</td><td class="num"></td><td class="num"></td><td class="num">${clp(L.inicial)}</td><td></td><td></td></tr>${lineas.join("")}</tbody></table></div>` : `<div class="caja vacio"><p>No hay movimientos ${mes ? "en el mes elegido" : `en ${anio}`}.</p></div>`}
+      <tbody><tr class="sub"><td></td><td>Saldo inicial</td><td class="num"></td><td class="num"></td><td class="num">${clp(L.inicial)}</td><td></td><td></td></tr>${lineas.join("")}${S.puedeEscribir && !S.cajaDiario ? filaRapidaCaja(mes, anio) : ""}</tbody></table></div>` : `<div class="caja vacio"><p>No hay movimientos ${mes ? "en el mes elegido" : `en ${anio}`}.</p></div>${S.puedeEscribir && !S.cajaDiario ? `<div class="tabla"><table><tbody>${filaRapidaCaja(mes, anio)}</tbody></table></div>` : ""}`}
     <p class="ayuda">Libro de caja según la Resolución Ex. SII N° 14 de 2021 (Anexos 3 y 4 tras la corrección de la Res. 31): lo llevan los Pro Pyme del 14 D N° 3 con contabilidad simplificada y todos los del 14 D N° 8. Debe llevarse cronológico y al día, puede ser computacional, y el SII puede exigir que esté autorizado (llevarlo atrasado o en otra forma se sanciona según el art. 97 N° 7 del Código Tributario). El formato de columnas (Anexos) hay que confirmarlo en sii.cl antes de presentarlo.</p>`;
 }
 function vistaImportarCaja(anio) {
@@ -6604,7 +6659,7 @@ async function guardarMovimientoCaja() {
   const atrasado = (Date.parse(hoy()) - Date.parse(fechaDoc || fecha)) / 864e5 > DIAS_REGISTRO_ATRASADO;
   await ocupado(async () => {
     await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria, doc_tipo: docTipo, doc_num: num, rut: rut ? formatoRut(rut) : "", nombre: $("#cj-nombre").value.trim(), glosa, monto, base, ...extra, ...(fechaDoc ? { fecha_doc: fechaDoc } : {}), ...($("#cj-rel")?.checked ? { relacionada: true } : {}), origen: "manual", ref: "" }]);
-    render(); aviso(atrasado ? `Movimiento registrado con más de ${DIAS_REGISTRO_ATRASADO} días de atraso: el art. 17 del Código Tributario exige anotar las operaciones al día (art. 97 N° 7).` : "Movimiento registrado.");
+    S.cajaPanel = null; render(); aviso(atrasado ? `Movimiento registrado con más de ${DIAS_REGISTRO_ATRASADO} días de atraso: el art. 17 del Código Tributario exige anotar las operaciones al día (art. 97 N° 7).` : "Movimiento registrado.");
   }, "No se pudo registrar el movimiento");
 }
 const CONCEPTOS_F29_PAGO = [["iva", "IVA determinado.", "f29p-iva", "89", false], ["ppm", "PPM.", "f29p-ppm", "62", false], ["ret", "Retención 2da Categoría.", "f29p-ret", "151", true], ["iusc", "Impuesto único de segunda categoría (trabajadores).", "f29p-iusc", "48", false]];
@@ -7226,12 +7281,18 @@ async function pdfResumen(d, notas) {
   return doc.output("blob");
 }
 function presentar(si) { S.presentando = si; document.body.classList.toggle("presentando", si); if (si) window.scrollTo(0, 0); }
-document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && S.presentando) presentar(false); });
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && S.presentando) presentar(false);
+  if (ev.key === "Enter" && ev.target.id?.startsWith("ql-")) { ev.preventDefault(); agregarLineaCaja(); }
+  if (ev.key === "Enter" && ev.target.id?.startsWith("ce-") && ev.target.tagName === "INPUT") { ev.preventDefault(); guardarEdicionCaja(); }
+});
 document.addEventListener("change", (ev) => {
   const cid = ev.target.id;
   if (ev.target.dataset?.afc) { const v = CATEGORIAS_ACTIVO[+ev.target.value]?.[1]; $(`#afc-vida-${ev.target.dataset.afc}`).value = v || ""; return; }
-  if (cid === "caja-anio") { S.cajaAnio = ev.target.value; render(); return; }
-  if (cid === "caja-mes") { S.cajaMes = ev.target.value; render(); return; }
+  if (cid === "caja-anio") { S.cajaAnio = ev.target.value; S.cajaMes = undefined; S.cajaExpD = S.cajaExpH = null; S.cajaEdit = null; render(); return; }
+  if (cid === "caja-mes") { S.cajaMes = ev.target.value; S.cajaExpD = S.cajaExpH = null; S.cajaEdit = null; render(); return; }
+  if (cid === "caja-exp-desde") { S.cajaExpD = ev.target.value; if (S.cajaExpH && S.cajaExpH < S.cajaExpD) S.cajaExpH = S.cajaExpD; render(); return; }
+  if (cid === "caja-exp-hasta") { S.cajaExpH = ev.target.value; if (S.cajaExpD && S.cajaExpD > S.cajaExpH) S.cajaExpD = S.cajaExpH; render(); return; }
   if (cid === "cx-corregir") { S.migraCaja.corregir = ev.target.checked; render(); return; }
   if (cid === "caja-control") { S.cajaControl = ev.target.value; render(); return; }
   if (cid === "caja-diario") { S.cajaDiario = ev.target.checked; render(); return; }
