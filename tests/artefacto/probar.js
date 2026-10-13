@@ -183,6 +183,32 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("agregar un feriado adicional lo suma al calendario", await page.evaluate(() => feriadosLegales().has("2030-05-01") && (S.prev.feriados || []).includes("2030-05-01")));
   await page.click('[data-n="feriado-quitar"]'); await espera(200);
   ok("quitar el feriado adicional", await page.evaluate(() => !feriadosLegales().has("2030-05-01")));
+  console.log("Libro de caja: mes en curso, edición por línea y exportación por rango");
+  const lc = await page.evaluate(async () => {
+    const r = {}, ant = { mes: S.cajaMes, anio: S.cajaAnio };
+    S.cajaAnio = "2026"; S.cajaMes = undefined; S.cajaPanel = null; S.cajaEdit = null; S.pestana.caja = "libro"; ir("caja"); await new Promise((x) => setTimeout(x, 60));
+    r.mesDefecto = document.getElementById("caja-mes")?.value === mesPorDefectoCaja(2026) && mesPorDefectoCaja(2026) === hoy().slice(5, 7);
+    r.sinForm = !document.getElementById("cj-fecha") && !!document.querySelector('[data-n="caja-panel"][data-id="mov"]');
+    document.querySelector('[data-n="caja-panel"][data-id="mov"]').click(); r.conForm = !!document.getElementById("cj-fecha");
+    document.querySelector('[data-n="caja-panel"][data-id="mov"]').click(); r.cierra = !document.getElementById("cj-fecha");
+    S.cajaMes = "09"; render(); r.filaRapida = !!document.getElementById("ql-glosa");
+    const n0 = S.caja.length; document.getElementById("ql-fecha").value = "2026-09-28"; document.getElementById("ql-glosa").value = "Línea rápida"; document.getElementById("ql-tipo").value = "1"; document.getElementById("ql-monto").value = "119.000"; document.getElementById("ql-base").value = "100.000";
+    await agregarLineaCaja(); await new Promise((x) => setTimeout(x, 100));
+    const nueva = S.caja.find((m) => m.glosa === "Línea rápida"); r.agregada = S.caja.length === n0 + 1 && nueva && nueva.monto === 119000 && nueva.base === 100000 && nueva.tipo === 1;
+    S.cajaEdit = nueva.id; render(); r.editando = !!document.getElementById("ce-glosa");
+    document.getElementById("ce-glosa").value = "Línea editada"; document.getElementById("ce-monto").value = "238.000"; document.getElementById("ce-base").value = "200.000"; document.getElementById("ce-tipo").value = "2";
+    await guardarEdicionCaja(); await new Promise((x) => setTimeout(x, 100));
+    const ed = S.caja.find((m) => m.id === nueva.id); r.editada = [ed.glosa, ed.monto, ed.base, ed.tipo, S.cajaEdit];
+    r.rango = [informeLibroCaja(2026, "01", false, "03").filas.length, informeLibroCaja(2026, "01", false, "01").filas.length, informeLibroCaja(2026, "09", false, "09").filas.length, informeLibroCaja(2026, "", false).filas.length];
+    const inf = informeLibroCaja(2026, "08", false, "09"); r.periodo = [inf.sii.periodo, inf.sii.cierres.length, inf.sii.cierres.at(-1)[0]];
+    await S.almacen.del(`empresas/${S.eid}/caja/${nueva.id}`); S.cajaMes = ant.mes; S.cajaAnio = ant.anio; return r;
+  });
+  ok("el libro abre en el mes en curso", lc.mesDefecto);
+  ok("el formulario de nuevo movimiento se despliega y se cierra con su botón", lc.sinForm && lc.conForm && lc.cierra);
+  ok("se agrega una línea rápida al pie de la tabla", lc.filaRapida && lc.agregada);
+  igual("una línea se edita en su lugar y sale del modo de edición", lc.editada, ["Línea editada", 238000, 200000, 2, null]);
+  ok("el rango de meses del libro suma los meses elegidos", lc.rango[0] >= lc.rango[1] && lc.rango[3] >= lc.rango[0] && lc.rango[2] >= 1, JSON.stringify(lc.rango));
+  ok("el período del informe por rango lleva los meses y su total", /AGOSTO A SEPTIEMBRE 2026/.test(lc.periodo[0]) && lc.periodo[2] === "TOTAL DEL PERÍODO", JSON.stringify(lc.periodo));
   console.log("Meses sin movimiento, IVA como gasto y F29 compacto");
   const mv = await page.evaluate(() => {
     const e = empresa(), ant = { m: e.rcv_meses, rcv: S.rcv }, per = "2031-03", r = {};
@@ -340,8 +366,8 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     await guardarMovimientos([{ id: "mx1", fecha: "2026-09-25", tipo: 2, categoria: "Retiros de socios", glosa: "Retiro del dueño", monto: 200000, base: 0, doc_tipo: "", doc_num: "", rut: "", nombre: "", origen: "manual", ref: "" }]); await new Promise((r) => setTimeout(r, 120));
     const L = libroCaja(2026), er = estadoCaja("2026-01-01", "2026-12-31"), dev = devengadosHasta("2026-09-30");
     const f29 = calcularF29("2026-09", 0, null, null);
-    S.cajaAnio = "2026"; S.pestana.caja = "libro"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
-    const tabla = document.querySelectorAll("main tbody tr").length;
+    S.cajaAnio = "2026"; S.cajaMes = ""; S.pestana.caja = "libro"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
+    const tabla = document.querySelectorAll("main tbody tr").length; S.cajaMes = undefined;
     const inf = informeLibroCaja(2026, "", false), infD = informeLibroCaja(2026, "", true), infIE = informeIngresosEgresos(2026);
     const rdo = datosResumen("2026-09"); ir("resumen"); await new Promise((r) => setTimeout(r, 60));
     const renta = calcularRenta(completarRenta(nuevaRenta(2026)));
@@ -381,7 +407,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const emisores = [rutEmisorCaja(imp), rutEmisorCaja(egr)];
     S.pestana.caja = "libro"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
     const poner = (id, v) => { const el = document.getElementById(id); el.value = v; return el; };
-    const llenar = (extra) => { for (const [k, v] of Object.entries({ "cj-fecha": hoy(), "cj-categoria": "Compras y gastos", "cj-tipo": "2", "cj-doc": "Factura", "cj-num": "9", "cj-rut": "76.543.210-3", "cj-nombre": "Prov", "cj-glosa": "Compra de prueba", "cj-neto": "200000", "cj-exento": "", "cj-iva": "", "cj-monto": "", "cj-base": "", "cj-fechadoc": "", ...extra })) poner(k, v); };
+    const llenar = (extra) => { if (!document.getElementById("cj-fecha")) { S.cajaPanel = "mov"; render(); } for (const [k, v] of Object.entries({ "cj-fecha": hoy(), "cj-categoria": "Compras y gastos", "cj-tipo": "2", "cj-doc": "Factura", "cj-num": "9", "cj-rut": "76.543.210-3", "cj-nombre": "Prov", "cj-glosa": "Compra de prueba", "cj-neto": "200000", "cj-exento": "", "cj-iva": "", "cj-monto": "", "cj-base": "", "cj-fechadoc": "", ...extra })) poner(k, v); };
     const n0 = S.caja.length;
     llenar({ "cj-num": "" }); await guardarMovimientoCaja(); await new Promise((r) => setTimeout(r, 80));
     const sinFolio = S.caja.length === n0;
@@ -467,7 +493,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const pend = documentosPendientesCaja(2026).filter((d) => d.periodo === "2026-07").length;
     const ie = filasIngresosEgresos(2026).filter((x) => x.fecha === "2026-07-31").length;
     S.pestana.caja = "libro"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
-    const poner = (id, v) => { document.getElementById(id).value = v; };
+    const poner = (id, v) => { if (!document.getElementById(id)) { S.cajaPanel = "f29"; render(); } document.getElementById(id).value = v; };
     poner("f29p-periodo", "2026-06"); poner("f29p-fecha", "2026-07-12"); poner("f29p-folio", "8700001"); poner("f29p-iva", "100.000"); poner("f29p-ppm", "12.000"); poner("f29p-ret", "3.000"); poner("f29p-iusc", "");
     await registrarPagoF29(); await new Promise((r) => setTimeout(r, 150));
     const f29 = S.caja.filter((m) => m.origen === "f29").map((m) => [m.clase, m.monto, m.base, m.doc_tipo, m.doc_num, rutEmisorCaja(m) === empresa().rut]).sort();
