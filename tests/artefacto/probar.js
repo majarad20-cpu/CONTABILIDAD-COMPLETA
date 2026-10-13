@@ -452,10 +452,10 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el PDF del resumen se genera", rs.pdf > 3000, String(rs.pdf));
   const rs2 = await page.evaluate(async () => {
     const d = datosResumen(resumenPeriodo()), sin = svgSerie(d.serie, false), con = svgSerie(d.serie, true);
-    recordar("resumen-valores", true); const b1 = (await pdfResumen(d, "")).size; recordar("resumen-valores", false);
-    return { sinValores: !/font-size="8.5"/.test(sin), conValores: /font-size="8.5"/.test(con), etiqueta: etiquetaMes("2026-09"), venc: vencimientoF29("2026-12"), abre: [abreviarPesos(1700000), abreviarPesos(-250000), abreviarPesos(900)], neg: pesosTexto(-11439836), pdfValores: b1 > 3000, switchApagado: resumenValores() === false, ordenado: d.puntos.every((p, i, a) => !i || ({ mal: 0, aviso: 1, ok: 2 })[a[i - 1][0]] <= ({ mal: 0, aviso: 1, ok: 2 })[p[0]]) };
+    const encendido = resumenValores(); const b1 = (await pdfResumen(d, "")).size; recordar("resumen-valores", false); const apagado = resumenValores() === false; recordar("resumen-valores", true);
+    return { sinValores: !/font-size="8.5"/.test(sin), conValores: /font-size="8.5"/.test(con), etiqueta: etiquetaMes("2026-09"), venc: vencimientoF29("2026-12"), abre: [abreviarPesos(1700000), abreviarPesos(-250000), abreviarPesos(900)], neg: pesosTexto(-11439836), pdfValores: b1 > 3000, switchApagado: encendido && apagado, ordenado: d.puntos.every((p, i, a) => !i || ({ mal: 0, aviso: 1, ok: 2 })[a[i - 1][0]] <= ({ mal: 0, aviso: 1, ok: 2 })[p[0]]) };
   });
-  ok("los valores del gráfico solo aparecen si se activa el interruptor, que parte apagado", rs2.sinValores && rs2.conValores && rs2.switchApagado && rs2.pdfValores, JSON.stringify(rs2));
+  ok("los valores del gráfico aparecen por defecto y se pueden apagar con el interruptor", rs2.sinValores && rs2.conValores && rs2.switchApagado && rs2.pdfValores, JSON.stringify(rs2));
   igual("etiquetas con año, vencimiento del F29, montos abreviados y negativos", [rs2.etiqueta, rs2.venc, rs2.abre, rs2.neg], ["Sep 26", "enero de 2027", ["$1,7 M", "-$250 mil", "$900"], "-$11.439.836"]);
   ok("los puntos de atención van ordenados de lo más grave a lo menos", rs2.ordenado);
   await page.evaluate(() => { presentar(true); });
