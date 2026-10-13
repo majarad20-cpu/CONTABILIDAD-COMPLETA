@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.21.0";
+const VERSION = "1.22.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -1032,6 +1032,8 @@ function formularioEmpresa(e, nueva) {
       <small>La contabilidad simplificada la pueden llevar los contribuyentes Pro Pyme (14 D N° 3 o N° 8) que cumplan los requisitos del SII.</small></label>
     <label>Año contable con el que trabajarás *<input id="e-ejercicio" type="number" min="1900" max="2100" required value="${esc(e?.ejercicio || new Date().getFullYear())}" ${S.puedeEscribir ? "" : "readonly"}>
       <small>Es el año (enero a diciembre) con el que se abren el inicio, los informes, la renta y el libro de caja. Puedes cambiarlo después y ver otros años desde cada pantalla.</small></label>
+    <label>Tasa de PPM (%)<input id="e-tasa_ppm" inputmode="decimal" placeholder="1" value="${esc(String(e?.tasa_ppm || "").replace(".", ","))}" ${S.puedeEscribir ? "" : "readonly"}>
+      <small>Pago provisional mensual que se aplica a los ingresos del mes en el F29 (código 115). Usa la tasa que figura en tu F29 (muchas empresas pagan 1 %). También puedes cambiarla por mes en el borrador del F29.</small></label>
     ${nueva ? "" : `<label>Último folio utilizado<input id="e-ultimo_folio" type="number" min="0" value="${esc(e?.ultimo_folio || 0)}" ${S.puedeEscribir ? "" : "readonly"}>
       <small>Cada página de los PDF de libros e informes (Diario, Mayor, Balances y Estado de Resultados) usa el folio siguiente. El próximo PDF comenzará en el folio ${(e?.ultimo_folio || 0) + 1}.</small></label>`}
   </div>${nueva ? `<p class="ayuda">La empresa se crea con el plan de cuentas base, que luego puedes modificar.</p>` : ""}`;
@@ -1044,6 +1046,11 @@ function leerEmpresa() {
   if ($("#e-ultimo_folio")) {
     d.ultimo_folio = Number($("#e-ultimo_folio").value || 0);
     if (!Number.isInteger(d.ultimo_folio) || d.ultimo_folio < 0) return "El último folio debe ser un número entero, 0 o mayor.";
+  }
+  if ($("#e-tasa_ppm")) {
+    const t = Number(String($("#e-tasa_ppm").value || "0").replace(",", "."));
+    if (!Number.isFinite(t) || t < 0 || t > 100) return "La tasa de PPM debe ser un número entre 0 y 100, por ejemplo 1 o 0,25.";
+    d.tasa_ppm = t;
   }
   if (!d.razon_social) return "La razón social es obligatoria.";
   if (d.rut && !rutValido(d.rut)) return "El RUT no es válido (revisa el dígito verificador).";
@@ -2155,7 +2162,7 @@ function borradorF29(periodo) { return S.f29Borradores.find((b) => b.id === peri
 
 function valoresInicialesF29(periodo) {
   const propio = borradorF29(periodo);
-  if (propio) return { remanente_anterior: propio.entradas.remanente_anterior, utm_anterior: propio.entradas.utm_anterior, utm_actual: propio.entradas.utm_actual,
+  if (propio) return { remanente_anterior: propio.entradas.remanente_anterior, utm_anterior: propio.entradas.utm_anterior, utm_actual: propio.entradas.utm_actual, tasa_ppm: propio.entradas.tasa_ppm ?? null,
     origen_remanente: propio.entradas.origen_remanente || "borrador guardado" };
   const anterior = periodoAnterior(periodo);
   const previo = borradorF29(anterior);
@@ -2189,8 +2196,8 @@ const LINEAS_F29 = [
   ["total", "91", "TOTAL A PAGAR"],
 ];
 
-function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActual = null) {
-  const tasa = +(empresa().tasa_ppm || 0);
+function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActual = null, tasaPpm = null) {
+  const tasa = tasaPpm != null ? tasaPpm : +(empresa().tasa_ppm || 0);
   const docs = docsPeriodo(periodo);
   const ventas = docs.filter((d) => d.registro === "VENTA"), compras = docs.filter((d) => d.registro === "COMPRA");
   const suma = (lista, tipos, cond = () => true) => {
@@ -2225,6 +2232,9 @@ function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActu
   c["89"] = Math.max(c["538"] - c["537"], 0);
   c["77"] = Math.max(c["537"] - c["538"], 0);
   c["563"] = ventas.reduce((s, d) => s + signoDoc(d.tipo_doc) * (d.neto + d.exento), 0);
+  /* Contabilidad simplificada sin RCV: la base del PPM son los ingresos del mes del libro de caja (netos de IVA). */
+  const baseCaja = esSimplificada() && !ventas.length ? Math.round(S.caja.filter((m) => m.tipo === 1 && m.fecha.slice(0, 7) === periodo).reduce((s, m) => s + m.base, 0)) : 0;
+  if (baseCaja) c["563"] = baseCaja;
   c["115"] = tasa;
   c["62"] = Math.max(redondearPar(c["563"] * tasa / 100), 0);
   const ct = cuentasTributarias();
@@ -2235,7 +2245,8 @@ function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActu
   const alertas = [];
   const pendientes = esSimplificada() ? [] : docs.filter(pendiente);
   if (pendientes.length) alertas.push(`Hay ${pendientes.length} documento(s) del RCV sin centralizar en ${nombrePeriodo(periodo)}.`);
-  if (!docs.length) alertas.push(`No hay documentos del RCV importados para ${nombrePeriodo(periodo)}.`);
+  if (baseCaja) alertas.push(`Base del PPM tomada de los ingresos del libro de caja de ${nombrePeriodo(periodo)} ($${clp(baseCaja)}); el IVA y las demás líneas se llenan solo con el RCV.`);
+  else if (!docs.length) alertas.push(`No hay documentos del RCV importados para ${nombrePeriodo(periodo)}.`);
   const cuentasIva = new Set(["iva_debito", "iva_credito", "remanente_iva"].map((k) => ct[k]).filter(Boolean));
   const comparacion = [];
   if (ct.iva_debito) { const [d, h] = movimientoMes(ct.iva_debito, periodo, cuentasIva); comparacion.push(["IVA débito fiscal", c["538"], h - d]); }
@@ -2247,7 +2258,7 @@ function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActu
   for (const [concepto, rcv, cont] of comparacion)
     if (rcv !== cont) alertas.push(`${concepto}: el RCV indica $${clp(rcv)} y la contabilidad $${clp(cont)} (diferencia $${clp(rcv - cont)}).`);
   for (const k of ["iva_debito", "iva_credito"]) if (!ct[k] && !esSimplificada()) alertas.push(`Falta configurar la cuenta «${CONCEPTOS[k][0]}» para comparar con la contabilidad.`);
-  if (!tasa) { const g = sugerenciaPpm(); alertas.push(`La tasa de PPM es 0 %. Configúrala en Tributario → Cuentas tributarias${g ? ` (vigente para tu régimen: ${textoTasa(g.tasa)} %)` : ""}.`); }
+  if (!tasa) { const g = sugerenciaPpm(); alertas.push(`La tasa de PPM es 0 %. Ingrésala en el campo «Tasa PPM» de este borrador${g ? ` (vigente para tu régimen: ${textoTasa(g.tasa)} %; usa la que figura en tu F29)` : ""}.`); }
   if (remanente && !(utmAnterior && utmActual)) alertas.push("Ingresa la UTM del mes en que se presentó el F29 anterior y la del mes en que se presenta este F29, para reajustar el remanente.");
   return { periodo, codigos: c, alertas, comparacion, reajuste, remanenteUtm, documentos: docs.length, pendientes: pendientes.length,
     entradas: { remanente_anterior: remanente, utm_anterior: utmAnterior, utm_actual: utmActual, tasa_ppm: tasa } };
@@ -2273,7 +2284,7 @@ function resultadoF29() {
   const ini = valoresInicialesF29(p.periodo);
   const m = p.manual || {};
   const remanente = m.remanente_anterior ?? (ini.remanente_anterior || 0);
-  const r = calcularF29(p.periodo, remanente, m.utm_anterior ?? ini.utm_anterior, m.utm_actual ?? ini.utm_actual);
+  const r = calcularF29(p.periodo, remanente, m.utm_anterior ?? ini.utm_anterior, m.utm_actual ?? ini.utm_actual, m.tasa_ppm !== undefined ? m.tasa_ppm : ini.tasa_ppm ?? null);
   r.entradas.origen_remanente = remanente !== (ini.remanente_anterior || 0) ? "ingresado manualmente" : ini.origen_remanente;
   return r;
 }
@@ -2299,8 +2310,10 @@ function vistaF29Mes() {
     <label>Remanente F29 anterior (cód. 77) $<input id="f29-remanente" inputmode="numeric" value="${clp(f.entradas.remanente_anterior)}"></label>
     <label title="Mes en que se presentó el F29 del período anterior">UTM de ${nombrePeriodo(p.periodo)}<input id="f29-utm-anterior" inputmode="decimal" placeholder="Ej. 71.721" value="${utmTxt(f.entradas.utm_anterior)}"></label>
     <label title="Mes en que se presenta este F29">UTM de ${nombrePeriodo(presentacion)}<input id="f29-utm-actual" inputmode="decimal" placeholder="Ej. 72.151" value="${utmTxt(f.entradas.utm_actual)}"></label>
+    <label title="Porcentaje del PPM de este mes (código 115). Usa el que figura en tu F29.">Tasa PPM (%)<input id="f29-ppm" inputmode="decimal" style="width:6em" placeholder="1" value="${esc(String(f.entradas.tasa_ppm || "").replace(".", ","))}"></label>
     <button class="btn sec" type="submit">Calcular</button>
     ${puedeEditar(`<button class="btn" type="button" data-accion="guardar-f29">Guardar borrador</button>`)}
+    ${puedeEditar(`<button class="btn sec" type="button" data-accion="ppm-empresa" title="Usar esta tasa como tasa habitual de la empresa">Guardar tasa en la empresa</button>`)}
     ${botonesExportar()}
   </form>
   <p class="ayuda">Remanente anterior tomado de: ${esc(f.entradas.origen_remanente)}.
@@ -2315,14 +2328,16 @@ function vistaF29Mes() {
     <thead><tr><th>Concepto</th><th class="num">Según RCV</th><th class="num">Según contabilidad</th><th class="num">Diferencia</th></tr></thead>
     <tbody>${f.comparacion.map(([con, r, k]) => `<tr><td>${esc(con)}</td><td class="num">$${clp(r)}</td><td class="num">$${clp(k)}</td><td class="num ${r !== k ? "neg" : ""}">${r === k ? "✔ cuadra" : "$" + clp(r - k)}</td></tr>`).join("")}</tbody></table></div>
     <p class="ayuda">La contabilidad considera los movimientos del mes en las cuentas de IVA, sin los asientos que solo traspasan IVA entre cuentas de IVA (ajustes de remanente).</p>` : ""}
-  <p class="ayuda">Borrador referencial: los códigos corresponden a las líneas habituales del Formulario 29. Verifica los valores con la propuesta del SII antes de declarar. Las retenciones (códigos 151 y 48) se toman de los abonos del mes a las cuentas configuradas en Cuentas tributarias.</p>`;
+  <p class="ayuda">Borrador referencial: los códigos corresponden a las líneas habituales del Formulario 29. Verifica los valores con la propuesta del SII antes de declarar. Las retenciones (códigos 151 y 48) se toman de los abonos del mes a las cuentas configuradas en Cuentas tributarias${esSimplificada() ? " (en contabilidad simplificada, de las boletas de honorarios y los sueldos registrados)" : ""}.</p>`;
 }
 
 function leerEntradasF29() {
   const p = parametrosF29();
   const rem = numeroF29($("#f29-remanente").value), ua = numeroF29($("#f29-utm-anterior").value, true), uc = numeroF29($("#f29-utm-actual").value, true);
   for (const [v, id] of [[rem, "#f29-remanente"], [ua, "#f29-utm-anterior"], [uc, "#f29-utm-actual"]]) if (Number.isNaN(v)) { aviso(`Valor inválido: «${$(id).value}».`); return false; }
-  p.manual = { remanente_anterior: rem ?? 0, utm_anterior: ua, utm_actual: uc };
+  const tp = decimal($("#f29-ppm")?.value ?? "");
+  if (Number.isNaN(tp) || (tp != null && (tp < 0 || tp > 100))) { aviso("La tasa de PPM debe ser un número entre 0 y 100, por ejemplo 1 o 0,25."); return false; }
+  p.manual = { remanente_anterior: rem ?? 0, utm_anterior: ua, utm_actual: uc, tasa_ppm: tp == null ? null : tp };
   return true;
 }
 
@@ -5812,6 +5827,7 @@ document.addEventListener("click", (ev) => {
     case "pedir-eliminar-marcados": S.confirmar = "docs"; render(); break;
     case "eliminar-marcados": eliminarDocs([...S.rcvSel]); break;
     case "guardar-f29": guardarF29(); break;
+    case "ppm-empresa": { if (!leerEntradasF29()) break; const tp = parametrosF29().manual.tasa_ppm; if (tp == null) { aviso("Escribe la tasa de PPM."); break; } ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), tasa_ppm: tp }); render(); aviso(`Tasa de PPM de la empresa: ${textoTasa(tp)} %.`); }, "No se pudo guardar la tasa"); break; }
     case "volver-historial-f29": S.f29Ver = null; S.pestana.f29 = "historial"; S.confirmar = null; render(); break;
     case "editar-f29": { const b = borradorF29(t.dataset.periodo); const p = parametrosF29(); p.periodo = t.dataset.periodo;
       p.manual = { remanente_anterior: b.entradas.remanente_anterior || 0, utm_anterior: b.entradas.utm_anterior ?? null, utm_actual: b.entradas.utm_actual ?? null };
@@ -6593,8 +6609,8 @@ function revisarDatos() {
   if (!e.rut || !rutValido(e.rut)) add("aviso", "Empresa", e.rut ? "El RUT de la empresa no es válido." : "Falta el RUT de la empresa: aparecerá en blanco en los informes.", [], "empresa");
   if (!S.contador.nombre) add("info", "Empresa", "No hay contador configurado: los informes saldrán sin nombre en la firma.", [], "contador");
   const sugPpm = sugerenciaPpm();
-  if (!+e.tasa_ppm) add("aviso", "Empresa", `La tasa de PPM es 0 %: el borrador del F29 no calculará el pago provisional mensual.${sugPpm ? ` La tasa vigente para tu régimen es ${textoTasa(sugPpm.tasa)} % (en Cuentas tributarias puedes aplicarla).` : ""}`, [], "tributarias");
-  else if (sugPpm && ![sugPpm.tasa, sugPpm.alta, 1].some((t) => Math.abs(t - +e.tasa_ppm) < 1e-9)) add("info", "Empresa", `La tasa de PPM (${textoTasa(+e.tasa_ppm)} %) no coincide con la legal para ${sugPpm.regimen === "d8" ? "Pro Pyme transparente" : "Pro Pyme general"} (${textoTasa(sugPpm.tasa)} %, o ${textoTasa(sugPpm.alta)} % si superas 50.000 UF) ni con la tasa inicial de 1 %. Usa la que figura en tu F29.`, [], "tributarias");
+  if (!+e.tasa_ppm) add("aviso", "Empresa", `La tasa de PPM es 0 %: el borrador del F29 no calculará el pago provisional mensual.${sugPpm ? ` La tasa vigente para tu régimen es ${textoTasa(sugPpm.tasa)} % (puedes ingresarla en Datos de la empresa o en el borrador del F29).` : ""}`, [], "empresa");
+  else if (sugPpm && ![sugPpm.tasa, sugPpm.alta, 1].some((t) => Math.abs(t - +e.tasa_ppm) < 1e-9)) add("info", "Empresa", `La tasa de PPM (${textoTasa(+e.tasa_ppm)} %) no coincide con la legal para ${sugPpm.regimen === "d8" ? "Pro Pyme transparente" : "Pro Pyme general"} (${textoTasa(sugPpm.tasa)} %, o ${textoTasa(sugPpm.alta)} % si superas 50.000 UF) ni con la tasa inicial de 1 %. Usa la que figura en tu F29.`, [], "empresa");
   if (!simp) {
     const ct = cuentasTributarias(), faltan = ["iva_debito", "iva_credito", "ventas_neto", "compras_neto", "clientes", "proveedores"].filter((k) => !ct[k]);
     if (faltan.length) add("aviso", "Empresa", "Faltan cuentas tributarias por configurar (sin ellas no se pueden centralizar las compras y ventas).", faltan.map((k) => CONCEPTOS[k][0]), "tributarias");
