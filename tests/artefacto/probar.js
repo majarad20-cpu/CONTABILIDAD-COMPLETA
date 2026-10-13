@@ -183,6 +183,22 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("agregar un feriado adicional lo suma al calendario", await page.evaluate(() => feriadosLegales().has("2030-05-01") && (S.prev.feriados || []).includes("2030-05-01")));
   await page.click('[data-n="feriado-quitar"]'); await espera(200);
   ok("quitar el feriado adicional", await page.evaluate(() => !feriadosLegales().has("2030-05-01")));
+  console.log("F29: tasa de PPM en el borrador y base desde el libro de caja");
+  const pp = await page.evaluate(async () => {
+    const e = empresa(), ant = { tipo: e.tipo_contabilidad, tasa: e.tasa_ppm, caja: S.caja, f29: S.f29, rcv: S.rcv };
+    e.tipo_contabilidad = "simplificada"; e.tasa_ppm = 0; S.rcv = [];
+    S.caja = [{ id: "z1", fecha: "2026-08-10", tipo: 1, monto: 119000, base: 100000 }, { id: "z2", fecha: "2026-08-20", tipo: 1, monto: 59500, base: 50000 }, { id: "z3", fecha: "2026-08-21", tipo: 2, monto: 20000, base: 20000 }];
+    S.f29 = null; ir("f29"); parametrosF29().periodo = "2026-08"; render();
+    const campo = !!document.querySelector("#f29-ppm"), sin = resultadoF29();
+    $("#f29-ppm").value = "1,5"; leerEntradasF29(); const con = resultadoF29();
+    $("#f29-ppm").value = ""; leerEntradasF29(); const vacio = resultadoF29();
+    $("#f29-ppm").value = "abc"; const malo = leerEntradasF29();
+    e.tipo_contabilidad = ant.tipo; e.tasa_ppm = ant.tasa; S.caja = ant.caja; S.f29 = ant.f29; S.rcv = ant.rcv;
+    return { campo, aviso0: sin.alertas.some((a) => /Tasa PPM/.test(a)), base: con.codigos["563"], ppm: con.codigos["62"], tasa: con.entradas.tasa_ppm, vacio: vacio.entradas.tasa_ppm, malo };
+  });
+  ok("el borrador del F29 tiene su propio campo de tasa de PPM", pp.campo && pp.aviso0);
+  igual("con 1,5 % sobre los ingresos del libro de caja (150.000) el PPM es 2.250", [pp.base, pp.ppm, pp.tasa], [150000, 2250, 1.5]);
+  ok("sin tasa en el borrador se usa la de la empresa, y un valor inválido se rechaza", pp.vacio === 0 && pp.malo === false);
   console.log("Topes prorrateados por días trabajados");
   const tp = await page.evaluate(() => {
     S.utm = { ...(S.utm || {}), "2026-09": 71721 }; const ufAnt = S.prev.uf; S.prev = { ...S.prev, uf: { ...(S.prev.uf || {}), "2026-09": 41057.2 } };
