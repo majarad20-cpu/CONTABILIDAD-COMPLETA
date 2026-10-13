@@ -183,6 +183,17 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("agregar un feriado adicional lo suma al calendario", await page.evaluate(() => feriadosLegales().has("2030-05-01") && (S.prev.feriados || []).includes("2030-05-01")));
   await page.click('[data-n="feriado-quitar"]'); await espera(200);
   ok("quitar el feriado adicional", await page.evaluate(() => !feriadosLegales().has("2030-05-01")));
+  console.log("Topes prorrateados por días trabajados");
+  const tp = await page.evaluate(() => {
+    S.utm = { ...(S.utm || {}), "2026-09": 71721 }; const ufAnt = S.prev.uf; S.prev = { ...S.prev, uf: { ...(S.prev.uf || {}), "2026-09": 41057.2 } };
+    const t = { ...trabajadorVacio(), id: "x", nombre: "Luis Pedro Perez Soto", rut: "11111111-1", fecha_nac: "1990-05-10", fecha_ingreso: "2026-09-16", sueldo_base: 5000000, colacion: 50000, afp: "Cuprum", afp_comision: 1.44 };
+    const e = { horas_extra: 0, horas_extra_100: 0, festivos: 0, comisiones: 0, bonos: 0, vacaciones: 0, no_imponibles: 0, anticipos: 0, otros_desc: 0 };
+    const a = calcularLiquidacionTrabajador(t, "2026-09", { ...e, dias: 15 }), b = calcularLiquidacionTrabajador(t, "2026-09", { ...e, dias: 30 });
+    S.prev = { ...S.prev, uf: ufAnt };
+    return { a: [a.afp, a.tope_aplicado], b: [b.afp, b.tope_aplicado] };
+  });
+  igual("con 15 días el tope de AFP es la mitad (igual al programa de remuneraciones)", tp.a, [211362, true]);
+  ok("con 30 días rige el tope completo de 90 UF", tp.b[0] === Math.round(90 * 41057.2 * 0.1144) && tp.b[1], JSON.stringify(tp.b));
 
   console.log("Renta");
   const renta = await page.evaluate(() => {
