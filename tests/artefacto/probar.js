@@ -327,6 +327,35 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("un mes cerrado no admite movimientos nuevos", sr.bloqueado);
   igual("el documento cobrado después se anota devengado y percibido", sr.filas888, [["2026-08-10", 0, 119000], ["2026-10-02", 119000, 0]]);
   ok("el libro de caja explica los cierres mensuales", /C10 a C15/.test(sr.notas));
+  console.log("Simplificada: formato de los Anexos 1 a 4 y 1.1 a 4.1 de las Res. 14 y 31");
+  const an = await page.evaluate(async () => {
+    await guardarMovimientos([{ id: "mrel", fecha: "2026-09-26", tipo: 2, categoria: "Compras y gastos", doc_tipo: "Factura", doc_num: "77", rut: "76.222.222-2", nombre: "Relacionada", glosa: "Compra a relacionada", monto: 119000, base: 100000, relacionada: true, origen: "manual", ref: "" }]);
+    await new Promise((r) => setTimeout(r, 120));
+    const caja = informeLibroCaja(2026, "", false), dia = informeLibroCaja(2026, "", true), ie = informeIngresosEgresos(2026), ieDia = informeIngresosEgresos(2026, true), mes = informeLibroCaja(2026, "09", false);
+    const v = (inf) => inf.filas.map((f) => f.valores);
+    const cajaV = v(caja), diaV = v(dia), ieV = v(ie), ieDiaV = v(ieDia);
+    const seccionB = ieV.findIndex((x) => /SECCIÓN B/.test(String(x[0]))), totalFlujo = cajaV.find((x) => /SALDO DE CAJA \(C12\)/.test(String(x[6])));
+    return {
+      correlativo: [cajaV[0][0], cajaV[0][1], cajaV[1][0], cajaV[2][0]], op: cajaV.slice(0, 4).map((x) => x[1]),
+      c15: [totalFlujo[7], totalFlujo[8]], cabecera: caja.columnas.map((c) => c.titulo).slice(0, 6),
+      diario: diaV.filter((x) => x[1] === "1" || x[1] === "2").every((x) => /^2026-/.test(x[0])) && diaV.filter((x) => x[1] === "1").length >= 2, tiposDia: [...new Set(diaV.map((x) => x[1]).filter(Boolean))].sort(),
+      secciones: ie.filas.filter((f) => f.estilo === "seccion").map((f) => f.valores[0]),
+      corrB: ieV.slice(seccionB + 1).filter((x) => typeof x[0] === "number").map((x) => x[0]),
+      sinRetiro: !ieV.some((x) => /RETIRO DEL DUEÑO/.test(String(x[7]))), conRetiroEnCaja: cajaV.some((x) => /RETIRO DEL DUEÑO/.test(String(x[6]))),
+      relacionada: ieV.filter((x) => x[8] === "X").map((x) => x[7]),
+      totalesMes: ieV.filter((x) => /^TOTAL (SEPTIEMBRE|AGOSTO|OCTUBRE)$/.test(String(x[7]))).length >= 2,
+      diarioIE: ieDiaV.some((x) => /^TOTAL SEPTIEMBRE$/.test(String(x[0]))), mesVista: mes.filas.length >= 4,
+    };
+  });
+  igual("libro de caja: el saldo inicial es el registro 1 con tipo de operación 0 y los demás siguen", [an.correlativo, an.op[0], an.op[1]], [[1, "0", 2, 3], "0", "1"]);
+  ok("libro de caja: columnas C1 a C9 con los nombres del Anexo 4", /C1/.test(an.cabecera[0]) && /C2/.test(an.cabecera[1]) && /C6/.test(an.cabecera[2]) && /C5/.test(an.cabecera[5]), JSON.stringify(an.cabecera));
+  ok("libro de caja: el resultado neto C15 es negativo cuando los ingresos superan a los egresos", an.c15[1] < 0 && an.c15[0] > 0, JSON.stringify(an.c15));
+  ok("resumen diario de caja: una fila por día y tipo de operación (0, 1 y 2)", an.diario && an.tiposDia.join(",") === "0,1,2", JSON.stringify(an.tiposDia));
+  igual("libro de ingresos y egresos: sección A de ingresos y sección B de egresos", an.secciones, ["SECCIÓN A · INGRESOS PERCIBIDOS O DEVENGADOS", "SECCIÓN B · EGRESOS PAGADOS O ADEUDADOS"]);
+  ok("el correlativo de egresos parte en 1", an.corrB[0] === 1 && an.corrB.every((n, i) => n === i + 1), JSON.stringify(an.corrB));
+  ok("el retiro de socios va al libro de caja y no al de ingresos y egresos", an.sinRetiro && an.conRetiroEnCaja);
+  ok("las operaciones con entidades relacionadas se marcan con X", an.relacionada.length === 1 && /RELACIONADA/.test(an.relacionada[0]), JSON.stringify(an.relacionada));
+  ok("el libro de ingresos y egresos trae sumatoria mensual y resumen diario", an.totalesMes && an.diarioIE && an.mesVista);
   await page.evaluate(async () => { cambiarEmpresa("e1"); await new Promise((r) => setTimeout(r, 120)); await BD.deleteEmpresa("e9"); await new Promise((r) => setTimeout(r, 120)); ir("inicio"); });
 
   console.log("Revisor de datos y panel de clientes");
