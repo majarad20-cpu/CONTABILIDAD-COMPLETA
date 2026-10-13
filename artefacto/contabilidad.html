@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.14.0";
+const VERSION = "1.15.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5741,7 +5741,7 @@ const CATEGORIAS_CAJA = { "Ventas": [1, true], "Otros ingresos": [1, true], "Pr�
   "Compras y gastos": [2, true], "Remuneraciones": [2, true], "Honorarios": [2, true], "Arriendo": [2, true], "Servicios básicos": [2, true], "Patentes y contribuciones": [2, true],
   "Compra de activo fijo": [2, true], "Pago de impuestos (IVA, PPM, F29)": [2, false], "Pago de préstamo": [2, false], "Retiros de socios": [2, false], "Otros egresos": [2, true],
   "Venta de activo fijo": [1, true], "Devolución de impuestos": [1, false], "Ingreso no constitutivo de renta": [1, false], "Compra de existencias": [2, true],
-  "Leyes sociales y cotizaciones": [2, true], "Intereses y gastos financieros": [2, true], "Gasto rechazado (art. 21 LIR)": [2, false, "rechazado"] };
+  "Leyes sociales y cotizaciones": [2, true], "Intereses y gastos financieros": [2, true], "Gasto rechazado (art. 21 LIR)": [2, false, "rechazado"], "Multas (fiscales, municipales, laborales)": [2, false, "rechazado"] };
 const TIPOS_DOC_CAJA = ["", "Factura", "Factura exenta", "Boleta", "Boleta de honorarios", "Nota de crédito", "Nota de débito", "Declaración de ingreso (DIN)", "Boleta exenta", "Comprobante de pago electrónico", "Formulario 29", "Registro de Compras SII", "Registro de Ventas SII", "Contrato u otro"];
 /* Reglas del programa de contabilidad simplificada del dueño (Res. Ex. SII N° 14 y 31 de 2021, art. 14 D N° 3 y N° 8 LIR). Sin documento o con documento exento, de honorarios o contrato no hay IVA;
    solo la factura, la nota de crédito o débito y la DIN dan crédito fiscal (cuando el gasto no es rechazado): sin crédito, el IVA es parte del gasto y afecta la base. */
@@ -5940,6 +5940,117 @@ function informeIngresosEgresos(anio, diario = false) {
   return inf;
 }
 
+/* ---- informes de control anual (como las hojas de control del libro del contador): resultados tributarios, flujo de caja y PPM pagados ---- */
+const MESES_CTRL = MESES.map((m) => m.toUpperCase());
+const POR_DOC_VENTA = { "Factura": "factura", "Nota de débito": "factura", "Factura exenta": "factura_exenta", "Boleta": "boleta", "Boleta exenta": "boleta_exenta", "Comprobante de pago electrónico": "comprobante" };
+const POR_CATEGORIA_EGRESO = { "Compras y gastos": "compra_afecta", "Compra de existencias": "compra_afecta", "Compra de activo fijo": "activo_fijo", "Remuneraciones": "remuneraciones", "Leyes sociales y cotizaciones": "leyes", "Honorarios": "honorarios",
+  "Arriendo": "arriendos", "Patentes y contribuciones": "patente", "Servicios básicos": "servicios", "Intereses y gastos financieros": "intereses", "Retiros de socios": "retiros", "Gasto rechazado (art. 21 LIR)": "rechazados", "Multas (fiscales, municipales, laborales)": "rechazados" };
+function claseControl(m) {
+  if (m.tipo === 1) return m.clase && VENTAS_RESUMEN[m.clase] ? m.clase : m.categoria === "Ventas" ? POR_DOC_VENTA[m.doc_tipo] || "otros_ing" : "otros_ing";
+  if (m.clase?.startsWith("f29_")) return m.clase;
+  if (m.clase === "compra_exenta" || m.clase === "compra_afecta" || m.clase === "compra_activo_fijo") return m.clase === "compra_activo_fijo" ? "activo_fijo" : m.clase;
+  if ((m.categoria === "Compras y gastos" || m.categoria === "Compra de existencias") && ["Factura exenta", "Boleta exenta"].includes(m.doc_tipo)) return "compra_exenta";
+  if (m.categoria === "Pago de impuestos (IVA, PPM, F29)") return "otros_imp";
+  return POR_CATEGORIA_EGRESO[m.categoria] || "otros_egr";
+}
+const cerosMes = () => Array(12).fill(0);
+function matrizControl(anio, valor) {
+  const m = new Map();
+  for (const x of cajaDe(anio)) { const c = claseControl(x), v = valor(x, c); if (!v) continue; const a = m.get(c) || cerosMes(); a[+x.fecha.slice(5, 7) - 1] += v; m.set(c, a); }
+  return m;
+}
+const sumaFilas = (m, claves) => claves.reduce((t, k) => t.map((v, i) => v + (m.get(k)?.[i] || 0)), cerosMes());
+const totalAnio = (a) => a.reduce((t, v) => t + v, 0);
+function columnasControl() { return [col("Detalle", 46), ...MESES_CTRL.map((n) => col(n.slice(0, 3), 11, "monto")), col("TOTAL AÑO", 13, "monto", true)]; }
+const filaControl = (nombre, a) => [nombre, ...a.map((v) => sinCeros(v)), sinCeros(totalAnio(a))];
+
+const INGRESOS_CTRL = [["factura", "(+) Factura electrónica afecta a IVA"], ["boleta", "(+) Boleta electrónica afecta a IVA"], ["comprobante", "(+) Comprobantes de pago electrónico"], ["factura_exenta", "(+) Factura electrónica exenta de IVA"], ["boleta_exenta", "(+) Boleta electrónica exenta de IVA"], ["otros_ing", "(+) Otros ingresos tributables"]];
+const EGRESOS_CTRL = [["compra_afecta", "(−) Compra con factura afecta a IVA (con impuestos no recuperables)"], ["activo_fijo", "(−) Compra de activo fijo"], ["compra_exenta", "(−) Compra con factura exenta de IVA"], ["remuneraciones", "(−) Remuneraciones"], ["leyes", "(−) Leyes sociales"],
+  ["honorarios", "(−) Honorarios (líquido y retención pagada en el F29)"], ["arriendos", "(−) Arriendos pagados"], ["patente", "(−) Patente municipal y contribuciones"], ["servicios", "(−) Servicios básicos"], ["intereses", "(−) Intereses y gastos financieros"]];
+function datosControlResultados(anio) {
+  const base = matrizControl(anio, (m) => (m.base ? (m.tipo === 1 ? m.base : -m.base) : 0));
+  const ing = INGRESOS_CTRL.map(([k, n]) => [n, base.get(k) || cerosMes(), k]);
+  const claves = new Set([...INGRESOS_CTRL, ...EGRESOS_CTRL].map(([k]) => k));
+  const egr = EGRESOS_CTRL.map(([k, n]) => [n, k === "honorarios" ? sumaFilas(base, ["honorarios", "f29_ret"]) : base.get(k) || cerosMes(), k]);
+  claves.add("f29_ret");
+  const otros = [...base.entries()].filter(([k]) => !claves.has(k)).reduce((t, [, a]) => t.map((v, i) => v + a[i]), cerosMes());
+  egr.push(["(−) Otros egresos", otros, "otros_egr"]);
+  const tIng = ing.reduce((t, [, a]) => t.map((v, i) => v + a[i]), cerosMes()), tEgr = egr.reduce((t, [, a]) => t.map((v, i) => v + a[i]), cerosMes());
+  return { ing, egr, tIng, tEgr, resultado: tIng.map((v, i) => v + tEgr[i]) };
+}
+function informeControlResultados(anio) {
+  const d = datosControlResultados(anio), e = empresa(), inf = new Informe("CONTROL DE RESULTADOS TRIBUTARIOS", `${e.razon_social} · AÑO COMERCIAL ${anio}`, columnasControl(), `control_resultados_tributarios_${anio}`, { horizontal: true });
+  inf.agregar(["(+) INGRESOS PERCIBIDOS"], { estilo: "seccion", abarca: 0 });
+  d.ing.forEach(([n, a]) => inf.agregar(filaControl(n, a)));
+  inf.agregar(filaControl("TOTAL INGRESOS", d.tIng), { estilo: "subtotal" });
+  inf.agregar(["(−) EGRESOS (GASTOS PAGADOS)"], { estilo: "seccion", abarca: 0 });
+  d.egr.forEach(([n, a]) => inf.agregar(filaControl(n, a)));
+  inf.agregar(filaControl("TOTAL EGRESOS", d.tEgr), { estilo: "subtotal" });
+  inf.agregar(filaControl("TOTAL RESULTADOS TRIBUTARIOS", d.resultado), { estilo: "total" });
+  /* resumen para el F22, capital propio y DJ 1947 */
+  const fila = (t, v) => inf.agregar([t, ...Array(12).fill(null), v], { derecha: false });
+  const g = (k) => totalAnio(d.egr.find((x) => x[2] === k)[1]);
+  const ficha = S.renta.find((x) => x.id === String(anio)), perdida = +(ficha?.perdida_anterior ?? (typeof rentaPrevia === "function" ? rentaPrevia(anio)?.perdida_siguiente : 0) ?? 0) || 0;
+  const ingresosGiro = totalAnio(d.tIng) - totalAnio(d.ing.find((x) => x[2] === "otros_ing")[1]), otrosIng = totalAnio(d.ing.find((x) => x[2] === "otros_ing")[1]);
+  const base = totalAnio(d.resultado) - perdida, retiros = cajaDe(anio).filter((m) => m.categoria === "Retiros de socios").reduce((t, m) => t + m.monto, 0), cpIni = +(ficha?.cpt?.inicial ?? rentaPrevia(anio)?.cpt_final ?? 0) || 0;
+  const ppmPagado = totalAnio(matrizControl(anio, (m, c) => (c === "f29_ppm" ? m.monto : 0)).get("f29_ppm") || cerosMes()) || ppmDelAnio(anio).total;
+  inf.agregar(["RESULTADOS PARA EL FORMULARIO 22 DE LA EMPRESA"], { estilo: "seccion", abarca: 0 });
+  [["(+) Ingresos del giro", ingresosGiro], ["(+) Otros ingresos", otrosIng], ["(−) Existencias y servicios pagados", g("compra_afecta") + g("compra_exenta") + g("servicios") + g("intereses")], ["(−) Compra de activo fijo", g("activo_fijo")], ["(−) Remuneraciones pagadas", g("remuneraciones") + g("leyes")],
+    ["(−) Honorarios pagados", g("honorarios")], ["(−) Arriendos pagados", g("arriendos")], ["(−) Patente municipal", g("patente")], ["(−) Otros egresos", g("otros_egr")], ["(−) Pérdida tributaria del ejercicio anterior", -perdida]].forEach(([t, v]) => fila(t, v));
+  inf.agregar(["Base imponible o pérdida tributaria del ejercicio", ...Array(12).fill(null), base], { estilo: "total" });
+  inf.agregar(["CAPITAL PROPIO TRIBUTARIO SIMPLIFICADO"], { estilo: "seccion", abarca: 0 });
+  [["Capital propio tributario positivo inicial (ficha de renta anual)", cpIni], ["(−) Retiros efectuados (valor nominal)", -retiros], ["(+) Base imponible determinada", base]].forEach(([t, v]) => fila(t, v));
+  inf.agregar(["Capital propio tributario simplificado", ...Array(12).fill(null), cpIni - retiros + base], { estilo: "total" });
+  if (regimenSugerido() === "d8") {
+    inf.agregar(["DATOS PARA LA DECLARACIÓN JURADA 1947 (PRO PYME TRANSPARENTE)"], { estilo: "seccion", abarca: 0 });
+    fila("PPM pagado acumulado (no actualizado)", ppmPagado); fila("Resultado tributario a traspasar a los propietarios", base);
+  }
+  inf.notas.push("Es la misma base que usa el libro de caja (columna «Afecta base»): ingresos percibidos menos egresos pagados. Los egresos van con signo negativo. Los gastos rechazados, retiros, préstamos y pagos de IVA y PPM no afectan la base. La retención de honorarios pagada en el F29 se suma a la fila de honorarios. El capital propio inicial y la pérdida anterior salen de la ficha de renta anual; los retiros y el PPM, del libro de caja y de los borradores de F29.");
+  return inf;
+}
+const FILAS_FLUJO = [["+", "boleta", "(+) Ingreso por ventas con boleta electrónica"], ["+", "comprobante", "(+) Ingreso por ventas con comprobantes de pago electrónico"], ["+", "factura", "(+) Ingreso por ventas con factura electrónica"], ["+", "boleta_exenta", "(+) Ingreso por ventas con boleta exenta"], ["+", "factura_exenta", "(+) Ingreso por ventas con factura exenta"],
+  ["+", "otros_ing", "(+) Otros ingresos (préstamos, aportes, devoluciones y otros)"],
+  ["-", "f29_iva", "(−) Pago de IVA del mes anterior en el F29"], ["-", "f29_ppm", "(−) Pago de PPM del mes anterior en el F29"], ["-", "f29_iusc", "(−) Pago de impuesto único del mes anterior en el F29"], ["-", "f29_ret", "(−) Pago de retención de 2ª categoría del mes anterior en el F29"], ["-", "otros_imp", "(−) Otros pagos de impuestos"],
+  ["-", "compra_afecta", "(−) Pago de compras de bienes y servicios"], ["-", "compra_exenta", "(−) Pago de compras con facturas exentas de IVA"], ["-", "activo_fijo", "(−) Pago de compras de activo fijo"], ["-", "remuneraciones", "(−) Pago de remuneraciones líquidas"], ["-", "leyes", "(−) Pago de leyes sociales"], ["-", "honorarios", "(−) Pago de honorarios"],
+  ["-", "arriendos", "(−) Pago de arriendos"], ["-", "patente", "(−) Pago de patente municipal y contribuciones"], ["-", "servicios", "(−) Pago de servicios básicos"], ["-", "intereses", "(−) Intereses y gastos financieros pagados"], ["-", "retiros", "(−) Retiros personales de los propietarios"], ["-", "rechazados", "(−) Multas y gastos rechazados"], ["-", "otros_egr", "(−) Otros egresos (amortización de préstamos y otros)"]];
+function datosControlFlujo(anio) {
+  const flujo = matrizControl(anio, (m) => (m.tipo === 1 ? m.monto : -m.monto)), filas = FILAS_FLUJO.map(([, k, n]) => [n, flujo.get(k) || cerosMes()]);
+  const neto = filas.reduce((t, [, a]) => t.map((v, i) => v + a[i]), cerosMes()), inicial = [], final = [];
+  let saldo = saldoInicialCaja(anio); neto.forEach((v, i) => { inicial.push(saldo); saldo += v; final.push(saldo); });
+  return { filas, inicial, final, neto };
+}
+function informeControlFlujo(anio) {
+  const d = datosControlFlujo(anio), e = empresa(), inf = new Informe("CONTROL DE FLUJO DE CAJA", `${e.razon_social} · AÑO COMERCIAL ${anio}`, columnasControl().slice(0, 13).concat([col("TOTAL AÑO", 13, "monto", true)]), `control_flujo_caja_${anio}`, { horizontal: true });
+  inf.agregar(["SALDO INICIAL", ...d.inicial.map((v) => v), d.inicial[0]], { estilo: "subtotal" });
+  d.filas.forEach(([n, a]) => inf.agregar(filaControl(n, a)));
+  inf.agregar(["SALDO FINAL", ...d.final, d.final[11]], { estilo: "total" });
+  inf.notas.push("Cada fila suma los movimientos del libro de caja según su categoría y tipo de documento: el saldo final de cada mes coincide con el saldo de caja del libro. Los pagos del F29 salen de las líneas registradas con «Pago de F29». El total del año muestra el saldo inicial en la primera fila y el saldo final al cierre en la última.");
+  return inf;
+}
+function informeControlPpm(anio) {
+  const e = empresa(), inf = new Informe("CONTROL DE PPM PAGADOS", `${e.razon_social} · AÑO COMERCIAL ${anio}`, [col("Mes del F29", 18), col("PPM pagado (libro de caja)", 20, "monto"), col("PPM del borrador del F29", 20, "monto"), col("Diferencia", 16, "monto")], `control_ppm_${anio}`);
+  const pagado = cerosMes(), declarado = cerosMes();
+  for (const m of S.caja.filter((x) => x.clase === "f29_ppm" && String(x.f29_periodo || "").startsWith(String(anio)))) pagado[+m.f29_periodo.slice(5, 7) - 1] += m.monto;
+  for (const b of S.f29Borradores.filter((x) => x.id.startsWith(String(anio)))) declarado[+b.id.slice(5, 7) - 1] += b.codigos?.["62"] || 0;
+  MESES.forEach((mes, i) => { if (pagado[i] || declarado[i]) inf.agregar([mes, pagado[i], declarado[i], pagado[i] - declarado[i]]); });
+  inf.agregar(["TOTAL", totalAnio(pagado), totalAnio(declarado), totalAnio(pagado) - totalAnio(declarado)], { estilo: "total" });
+  inf.notas.push("Los PPM pagados corresponden a los F29 del año comercial (el PPM de diciembre se paga en enero y pertenece al año anterior). Es el dato para la declaración jurada 1947 del régimen transparente, sin actualizar por corrección monetaria.");
+  return inf;
+}
+function tablaDeInforme(inf) {
+  const celda = (c, v) => (v == null ? "" : c.tipo === "monto" || c.tipo === "numero" ? (typeof v === "number" ? clp(v) : esc(v)) : c.tipo === "fecha" ? fmtFecha(v) : esc(v));
+  return `<div class="tabla"><table><thead><tr>${inf.columnas.map((c) => `<th class="${c.tipo === "monto" ? "num" : ""}">${esc(c.titulo)}</th>`).join("")}</tr></thead><tbody>${inf.filas.map((f) => f.estilo === "seccion"
+    ? `<tr class="sub"><td colspan="${inf.columnas.length}"><strong>${esc(f.valores[0])}</strong></td></tr>`
+    : `<tr class="${f.estilo === "total" ? "total" : f.estilo === "subtotal" ? "sub" : ""}">${inf.columnas.map((c, j) => `<td class="${c.tipo === "monto" ? "num" : ""}">${celda(c, f.valores[j])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>${inf.notas.map((t) => `<p class="ayuda">${esc(t)}</p>`).join("")}`;
+}
+function vistaControlCaja(anio, anios) {
+  const sel = S.cajaControl || "resultados", fn = { resultados: informeControlResultados, flujo: informeControlFlujo, ppm: informeControlPpm }[sel];
+  const inf = fn(anio); S.informe = () => fn(anio); S.csv = csvDeInforme(inf);
+  return `<div class="barra"><label>Año<select id="caja-anio">${opcionesAnio(anios, anio)}</select></label>
+    <label>Informe<select id="caja-control"><option value="resultados" ${sel === "resultados" ? "selected" : ""}>Resultados tributarios</option><option value="flujo" ${sel === "flujo" ? "selected" : ""}>Flujo de caja por categoría</option><option value="ppm" ${sel === "ppm" ? "selected" : ""}>PPM pagados</option></select></label>${botonesExportar()}</div>
+    <p class="ayuda">Informes de control anual del libro de caja, calculados con los movimientos registrados. Sirven para preparar el F22 y la declaración jurada 1947 y para revisar que el libro cuadre.</p>${tablaDeInforme(inf)}`;
+}
+
 function vistaInicioSimple() {
   const e = empresa(), anio = String(e.ejercicio), er = estadoCaja(`${anio}-01-01`, `${anio}-12-31`), caja = saldoCaja(`${anio}-12-31`), ult = cajaDe(anio).slice(-8).reverse();
   return `${cabecera(`Resumen del ejercicio ${anio}`, `${e.razon_social} · Contabilidad simplificada`)}${avisoRevisor()}
@@ -5958,9 +6069,10 @@ function vistaCaja() {
   const anios = aniosDesde(S.caja.map((m) => m.fecha), S.rcv.map((d) => d.fecha), empresa().ejercicio);
   const anio = +(S.cajaAnio || empresa().ejercicio); if (!anios.includes(String(anio))) anios.unshift(String(anio));
   const tab = pestanaActual("caja", "libro"), mes = S.cajaMes || "";
-  const cab = `${pestanasDe("caja", [["libro", "Libro de caja"], ["ingresos", "Ingresos y egresos"], ["importar", "Importar"]])}
-    ${cabecera(tab === "ingresos" ? "Libro de ingresos y egresos" : tab === "importar" ? "Importar movimientos" : "Libro de caja", `${empresa().razon_social} · ${anio}`)}`;
+  const cab = `${pestanasDe("caja", [["libro", "Libro de caja"], ["ingresos", "Ingresos y egresos"], ["control", "Control anual"], ["importar", "Importar"]])}
+    ${cabecera(tab === "ingresos" ? "Libro de ingresos y egresos" : tab === "importar" ? "Importar movimientos" : tab === "control" ? "Control anual" : "Libro de caja", `${empresa().razon_social} · ${anio}`)}`;
   if (tab === "importar") return cab + vistaImportarCaja(anio);
+  if (tab === "control") return cab + vistaControlCaja(anio, anios);
   if (tab === "ingresos") {
     const f = filasIngresosEgresos(anio), tot = (k) => f.reduce((x, y) => x + y[k], 0);
     S.informe = () => informeIngresosEgresos(anio, S.cajaDiario); S.csv = csvDeInforme(informeIngresosEgresos(anio, S.cajaDiario));
@@ -6704,6 +6816,7 @@ document.addEventListener("change", (ev) => {
   if (ev.target.dataset?.afc) { const v = CATEGORIAS_ACTIVO[+ev.target.value]?.[1]; $(`#afc-vida-${ev.target.dataset.afc}`).value = v || ""; return; }
   if (cid === "caja-anio") { S.cajaAnio = ev.target.value; render(); return; }
   if (cid === "caja-mes") { S.cajaMes = ev.target.value; render(); return; }
+  if (cid === "caja-control") { S.cajaControl = ev.target.value; render(); return; }
   if (cid === "caja-diario") { S.cajaDiario = ev.target.checked; render(); return; }
   if (cid === "caja-imp-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.cajaImp = ev.target.value; render(); return; }
   if (cid === "cj-categoria") { const [t, b] = CATEGORIAS_CAJA[ev.target.value] || [1, true]; $("#cj-tipo").value = String(t); $("#cj-afecta").checked = b; actualizarCalculoCaja(); return; }

@@ -397,6 +397,31 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el mismo pago no se registra dos veces y la fecha debe ser posterior al período", f2.sinRepetir && f2.fechaAnterior);
   ok("el revisor no marca la retención del F29 como inconsistente", !f2.revisor);
   ok("las boletas de honorarios se importan por su líquido", f2.bhe);
+  console.log("Simplificada: informes de control anual");
+  const ct = await page.evaluate(async () => {
+    const er = estadoCaja("2026-01-01", "2026-12-31"), res = datosControlResultados(2026), fl = datosControlFlujo(2026), L = libroCaja(2026);
+    const suma = (a) => a.reduce((x, y) => x + y, 0);
+    const fila = (d, nombre) => d.find(([n]) => n.includes(nombre))?.[1];
+    const ret = suma(fila(res.egr, "Honorarios")), ppmFlujo = suma(fila(fl.filas, "PPM")), retFlujo = suma(fila(fl.filas, "retención de 2ª"));
+    const inf = informeControlResultados(2026), infF = informeControlFlujo(2026), infP = informeControlPpm(2026);
+    const filasR = inf.filas.map((f) => f.valores[0]);
+    S.pestana.caja = "control"; S.cajaAnio = "2026"; S.cajaControl = "flujo"; ir("caja"); await new Promise((r) => setTimeout(r, 60));
+    const tabla = document.querySelectorAll("main table tbody tr").length, titulo = document.querySelector("main").textContent.includes("Control anual");
+    S.cajaControl = "resultados"; ir("caja"); await new Promise((r) => setTimeout(r, 60)); const tablaR = document.querySelectorAll("main table tbody tr").length;
+    const junio = infP.filas.find((f) => f.valores[0] === "Junio")?.valores;
+    return { base: [suma(res.resultado), er.resultado], saldo: [fl.final[11], L.saldo], sep: [fl.final[8], saldoCaja("2026-09-30")], ret, ppmFlujo, retFlujo, resumen: filasR.includes("Base imponible o pérdida tributaria del ejercicio") && filasR.includes("CAPITAL PROPIO TRIBUTARIO SIMPLIFICADO"),
+      flujoFilas: infF.filas.length, tabla, tablaR, titulo, junio, cols: [inf.columnas.length, infF.columnas.length] };
+  });
+  igual("el resultado tributario del control coincide con el resultado de caja del año", ct.base[0], ct.base[1]);
+  igual("el flujo de caja por categoría termina en el mismo saldo que el libro", [ct.saldo[0], ct.sep[0]], [ct.saldo[1], ct.sep[1]]);
+  igual("el PPM y la retención del F29 salen en sus filas y la retención se suma a honorarios", [ct.ppmFlujo, ct.retFlujo, ct.ret], [-12000, -3000, ct.ret]);
+  ok("el control de resultados trae el resumen para el F22 y el capital propio simplificado", ct.resumen);
+  ok("la pestaña Control anual dibuja las tablas", ct.titulo && ct.tabla > 10 && ct.tablaR > 10 && ct.cols[0] === 14 && ct.cols[1] === 14, JSON.stringify([ct.tabla, ct.tablaR, ct.cols]));
+  igual("el control de PPM muestra el PPM pagado del F29 de junio", ct.junio, ["Junio", 12000, 0, 12000]);
+  if (hayLibs) {
+    const exc = await page.evaluate(async () => { const r = []; for (const f of [informeControlResultados, informeControlFlujo, informeControlPpm]) { try { r.push([(await aExcel(f(2026))).size > 1000, (await aPdf(f(2026))).blob.size > 1000]); } catch (e) { r.push("ERR " + e.message); } } return r; });
+    ok("los informes de control se exportan a Excel y a PDF", JSON.stringify(exc) === JSON.stringify([[true, true], [true, true], [true, true]]), JSON.stringify(exc));
+  }
   console.log("Excel con la disposición de las plantillas del SII (Anexos 1, 3, 1.1 y 3.1)");
   const xl = await page.evaluate(async () => {
     await cargarScript("exceljs");
