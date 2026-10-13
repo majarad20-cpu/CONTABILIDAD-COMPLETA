@@ -209,6 +209,26 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("una línea se edita en su lugar y sale del modo de edición", lc.editada, ["Línea editada", 238000, 200000, 2, null]);
   ok("el rango de meses del libro suma los meses elegidos", lc.rango[0] >= lc.rango[1] && lc.rango[3] >= lc.rango[0] && lc.rango[2] >= 1, JSON.stringify(lc.rango));
   ok("el período del informe por rango lleva los meses y su total", /AGOSTO A SEPTIEMBRE 2026/.test(lc.periodo[0]) && lc.periodo[2] === "TOTAL DEL PERÍODO", JSON.stringify(lc.periodo));
+  console.log("Meses antes del inicio de actividades");
+  const ia = await page.evaluate(async () => {
+    const r = {}, e = empresa(), ant = { ini: e.inicio_actividades, caja: S.caja, lista: S.lista };
+    e.inicio_actividades = "2026-04-23";
+    S.caja = [{ id: "i1", fecha: "2026-02-10", tipo: 1, categoria: "Ventas", glosa: "Antes", monto: 1000, base: 1000, origen: "manual", ref: "" }, { id: "i2", fecha: "2026-04-30", tipo: 1, categoria: "Ventas", glosa: "Abril", monto: 2000, base: 2000, origen: "manual", ref: "" }];
+    r.reglas = [antesDelInicio("2026-03-31"), antesDelInicio("2026-04-01"), antesDelInicio("2025-12-15")];
+    r.cajaDe = cajaDe(2026).map((m) => m.id); r.cerrado = /anterior al inicio de actividades/.test(CAJA_CERRADO(["2026-03-05"]) || "") ; r.abierto = CAJA_CERRADO(["2026-04-05"]) || "";
+    S.edit = { fecha: "2026-01-05", glosa: "x", lineas: [], apertura: false, cierre: false }; const antes = S.lista.length; await guardarAsiento(); r.asiento = S.lista.length === antes;
+    S.cajaAnio = "2026"; S.cajaMes = "02"; S.pestana.caja = "libro"; ir("caja"); await new Promise((x) => setTimeout(x, 60));
+    r.mesAjustado = document.getElementById("caja-mes")?.value; r.opciones = [...document.querySelectorAll("#caja-mes option")].map((o) => o.value).filter(Boolean).length;
+    const x = await aPdfLibroCaja({ anio: 2026, m1: "01", m2: "06" }, 1); r.hojas = Object.keys(x.folios);
+    S.cajaAnio = "2025"; S.cajaMes = undefined; ir("caja"); await new Promise((x2) => setTimeout(x2, 60)); r.anioAnterior = /anterior al inicio de actividades/.test(document.querySelector("main").textContent);
+    e.inicio_actividades = ant.ini; if (ant.ini === undefined) delete e.inicio_actividades; S.caja = ant.caja; S.lista = ant.lista; S.cajaAnio = null; S.cajaMes = undefined; S.edit = null;
+    return r;
+  });
+  igual("antes del inicio de actividades solo cuentan los meses anteriores", ia.reglas, [true, false, true]);
+  ok("los movimientos anteriores al inicio no cuentan en el libro y no se pueden registrar", JSON.stringify(ia.cajaDe) === '["i2"]' && ia.cerrado && ia.abierto === "", JSON.stringify([ia.cajaDe, ia.cerrado, ia.abierto]));
+  ok("un asiento anterior al inicio de actividades se rechaza", ia.asiento);
+  ok("el libro de caja no ofrece meses anteriores al inicio y el PDF no los incluye", ia.mesAjustado === "04" && ia.opciones === 9 && JSON.stringify(ia.hojas) === '["2026-04","2026-05","2026-06"]', JSON.stringify([ia.mesAjustado, ia.opciones, ia.hojas]));
+  ok("un año anterior al inicio muestra el aviso", ia.anioAnterior);
   console.log("Contabilidad al día: inicio de actividades y meses sin movimientos");
   const ca = await page.evaluate(async () => {
     const r = {}, e = empresa(), ant = { ini: e.inicio_actividades, desde: e.contab_desde, sm: e.meses_sin_mov, lista: S.lista };
