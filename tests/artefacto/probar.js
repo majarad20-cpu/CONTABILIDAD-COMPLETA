@@ -209,6 +209,19 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("una línea se edita en su lugar y sale del modo de edición", lc.editada, ["Línea editada", 238000, 200000, 2, null]);
   ok("el rango de meses del libro suma los meses elegidos", lc.rango[0] >= lc.rango[1] && lc.rango[3] >= lc.rango[0] && lc.rango[2] >= 1, JSON.stringify(lc.rango));
   ok("el período del informe por rango lleva los meses y su total", /AGOSTO A SEPTIEMBRE 2026/.test(lc.periodo[0]) && lc.periodo[2] === "TOTAL DEL PERÍODO", JSON.stringify(lc.periodo));
+  const sa = await page.evaluate(async () => {
+    const ant = { mes: S.cajaMes, anio: S.cajaAnio, sal: S.cajaSaldos }, tarjetas = () => [...document.querySelectorAll(".tarjetas .tarjeta strong")].map((x) => x.textContent.replace(/[$.]/g, ""));
+    S.cajaAnio = "2026"; S.cajaMes = "09"; S.cajaSaldos = "mes"; S.pestana.caja = "libro"; ir("caja"); await new Promise((x) => setTimeout(x, 60));
+    const pregunta = !!document.getElementById("caja-saldos"), t1 = tarjetas(), M = libroCaja(2026, "09"), A = libroCaja(2026, "01", "09");
+    S.cajaSaldos = "acum"; render(); const t2 = tarjetas();
+    S.cajaMes = ""; render(); const sinMes = !document.getElementById("caja-saldos");
+    S.cajaMes = ant.mes; S.cajaAnio = ant.anio; S.cajaSaldos = ant.sal;
+    return { pregunta, sinMes, mes: [t1[0], t1[1], t1[2], t1[3]].map(Number), ref1: [M.inicial, M.ing, M.eg, M.saldo], acum: t2.slice(0, 4).map(Number), ref2: [A.inicial, A.ing, A.eg, A.saldo] };
+  });
+  ok("el panel pregunta si los saldos son del mes o acumulados (solo al consultar un mes)", sa.pregunta && sa.sinMes);
+  igual("saldos solo del mes consultado", sa.mes, sa.ref1);
+  igual("saldos acumulados de enero al mes consultado", sa.acum, sa.ref2);
+  ok("el saldo final es el mismo en ambas vistas", sa.ref1[3] === sa.ref2[3]);
   console.log("Meses sin movimiento, IVA como gasto y F29 compacto");
   const mv = await page.evaluate(() => {
     const e = empresa(), ant = { m: e.rcv_meses, rcv: S.rcv }, per = "2031-03", r = {};
