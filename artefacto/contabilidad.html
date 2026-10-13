@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.13.2";
+const VERSION = "1.14.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5266,6 +5266,8 @@ document.addEventListener("click", (ev) => {
     case "ppm-vigente": $("#tr-ppm").value = t.dataset.v; break;
     case "caja-eliminar": { const cerr = CAJA_CERRADO([S.caja.find((m) => m.id === id)?.fecha || ""]); if (cerr) { aviso(cerr); break; } } ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/caja/${id}`); render(); aviso("Movimiento eliminado."); }, "No se pudo eliminar el movimiento"); break;
     case "caja-importar-rcv": importarCaja("rcv"); break;
+    case "caja-importar-rcvmes": importarCaja("rcvmes"); break;
+    case "f29p-rellenar": rellenarPagoF29(); break;
     case "caja-importar-rem": importarCaja("rem"); break;
     case "caja-importar-bhe": importarCaja("bhe"); break;
     case "caja-pagar": registrarPagoDoc(id); break;
@@ -5334,6 +5336,7 @@ document.addEventListener("submit", (ev) => {
     case "n-recordatorio": { ev.preventDefault(); const texto = $("#rec-texto").value.trim(), fecha = $("#rec-fecha").value; if (!texto || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) { aviso("Escribe el recordatorio y su fecha."); break; }
       recordar("recordatorios", [...recuerdo("recordatorios", []), { id: nuevoId(), texto, fecha }]); render(); aviso("Recordatorio agregado."); break; }
     case "n-caja": ev.preventDefault(); guardarMovimientoCaja(); break;
+    case "n-f29-pago": ev.preventDefault(); registrarPagoF29(); break;
     case "n-caja-inicial": ev.preventDefault(); { const v = parseMonto($("#caja-inicial").value || "0"), a = String(S.cajaAnio || empresa().ejercicio); if (!Number.isFinite(v) || v < 0) { aviso("El saldo inicial debe ser un monto en pesos, 0 o mayor."); break; }
       ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), caja_inicial: { ...(empresa().caja_inicial || {}), [a]: v } }); render(); aviso("Saldo inicial guardado."); }, "No se pudo guardar el saldo inicial"); } break;
     case "n-vacacion": ev.preventDefault(); registrarVacacion(); break;
@@ -5739,10 +5742,12 @@ const CATEGORIAS_CAJA = { "Ventas": [1, true], "Otros ingresos": [1, true], "Pr�
   "Compra de activo fijo": [2, true], "Pago de impuestos (IVA, PPM, F29)": [2, false], "Pago de préstamo": [2, false], "Retiros de socios": [2, false], "Otros egresos": [2, true],
   "Venta de activo fijo": [1, true], "Devolución de impuestos": [1, false], "Ingreso no constitutivo de renta": [1, false], "Compra de existencias": [2, true],
   "Leyes sociales y cotizaciones": [2, true], "Intereses y gastos financieros": [2, true], "Gasto rechazado (art. 21 LIR)": [2, false, "rechazado"] };
-const TIPOS_DOC_CAJA = ["", "Factura", "Factura exenta", "Boleta", "Boleta de honorarios", "Nota de crédito", "Nota de débito", "Declaración de ingreso (DIN)", "Contrato u otro"];
+const TIPOS_DOC_CAJA = ["", "Factura", "Factura exenta", "Boleta", "Boleta de honorarios", "Nota de crédito", "Nota de débito", "Declaración de ingreso (DIN)", "Boleta exenta", "Comprobante de pago electrónico", "Formulario 29", "Registro de Compras SII", "Registro de Ventas SII", "Contrato u otro"];
 /* Reglas del programa de contabilidad simplificada del dueño (Res. Ex. SII N° 14 y 31 de 2021, art. 14 D N° 3 y N° 8 LIR). Sin documento o con documento exento, de honorarios o contrato no hay IVA;
    solo la factura, la nota de crédito o débito y la DIN dan crédito fiscal (cuando el gasto no es rechazado): sin crédito, el IVA es parte del gasto y afecta la base. */
-const DOCS_SIN_IVA_CAJA = new Set(["", "Factura exenta", "Boleta de honorarios", "Contrato u otro"]);
+const DOCS_SIN_IVA_CAJA = new Set(["", "Factura exenta", "Boleta exenta", "Boleta de honorarios", "Formulario 29", "Contrato u otro"]);
+/* Documentos que la empresa misma emite en el libro (Formulario 29 y los resúmenes mensuales del Registro de Compras y Ventas): el RUT emisor es el de la empresa. */
+const DOCS_PROPIOS_CAJA = new Set(["Formulario 29", "Registro de Compras SII", "Registro de Ventas SII"]);
 const DOCS_CON_CREDITO_CAJA = new Set(["Factura", "Nota de débito", "Nota de crédito", "Declaración de ingreso (DIN)"]);
 const DOCS_TRIBUTARIOS_CAJA = new Set(["Factura", "Factura exenta", "Boleta", "Boleta de honorarios", "Nota de crédito", "Nota de débito", "Declaración de ingreso (DIN)"]);
 const DIAS_REGISTRO_ATRASADO = 31;
@@ -5775,7 +5780,7 @@ function sugerenciaPpm() {
   return t == null ? null : { tasa: t, alta, regimen: reg };
 }
 const CAJA_CERRADO = (fechas) => { const c = [...new Set(fechas.filter(mesCerrado).map((f) => f.slice(0, 7)))].sort(); return c.length ? `${c.map(nombrePeriodo).join(", ")} ${c.length === 1 ? "está cerrado" : "están cerrados"}: reábrelo en el cierre de meses para registrar o cambiar movimientos.` : ""; };
-const rutEmisorCaja = (m) => ((m.emisor_propio ?? ((m.tipo === 1 && !!m.doc_tipo && m.doc_tipo !== "Contrato u otro") || m.origen === "remuneraciones")) ? (empresa().rut || "") : (m.rut || ""));
+const rutEmisorCaja = (m) => ((m.emisor_propio ?? ((m.tipo === 1 && !!m.doc_tipo && m.doc_tipo !== "Contrato u otro") || m.origen === "remuneraciones" || DOCS_PROPIOS_CAJA.has(m.doc_tipo))) ? (empresa().rut || "") : (m.rut || ""));
 function cierresCaja(anio) {
   const out = []; let saldo = saldoInicialCaja(anio);
   for (let n = 1; n <= 12; n++) {
@@ -5808,8 +5813,8 @@ function libroCaja(anio, mes = "") {
 /* Documentos del RCV todavía no cobrados ni pagados (devengados / adeudados). */
 const refRcv = (d) => "rcv:" + d.id;
 function documentosPendientesCaja(anio, hasta = `${anio}-12-31`) {
-  const pagados = new Set(S.caja.map((m) => m.ref).filter(Boolean));
-  return S.rcv.filter((d) => d.fecha.startsWith(String(anio)) && d.fecha <= hasta && signoDoc(d.tipo_doc) > 0 && !pagados.has(refRcv(d))).sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+  const pagados = new Set(S.caja.map((m) => m.ref).filter(Boolean)), conResumen = new Set(S.caja.map((m) => m.ref?.match(/^rcvmes:(\d{4}-\d{2}):/)?.[1]).filter(Boolean));
+  return S.rcv.filter((d) => d.fecha.startsWith(String(anio)) && d.fecha <= hasta && signoDoc(d.tipo_doc) > 0 && !pagados.has(refRcv(d)) && !conResumen.has(d.periodo)).sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
 }
 function devengadosHasta(hasta) {
   const l = documentosPendientesCaja(hasta.slice(0, 4), hasta);
@@ -5817,7 +5822,32 @@ function devengadosHasta(hasta) {
 }
 const movimientoDesdeDoc = (d, fecha) => { const v = d.registro === "VENTA";
   return { fecha, tipo: v ? 1 : 2, doc_tipo: TIPOS_DOCUMENTO[+d.tipo_doc] || String(d.tipo_doc), doc_num: String(d.folio), rut: d.rut || "", nombre: d.razon_social || "", glosa: `${v ? "Venta" : "Compra"} ${TIPOS_DOCUMENTO[+d.tipo_doc] || ""} ${d.folio}`.trim(),
-    monto: d.total, base: v ? d.neto + d.exento : d.neto + d.exento + (d.iva_no_recuperable || 0), categoria: v ? "Ventas" : "Compras y gastos", origen: "rcv", ref: refRcv(d) }; };
+    monto: d.total, base: v ? d.neto + d.exento : d.neto + d.exento + (d.iva_no_recuperable || 0) + (d.otros_impuestos || 0), categoria: v ? "Ventas" : "Compras y gastos", origen: "rcv", ref: refRcv(d) }; };
+
+/* ---- resumen mensual del RCV: una línea por tipo de documento, como lo lleva el contador (en vez de un movimiento por documento) ---- */
+const VENTAS_RESUMEN = { factura: "Ventas afectas a IVA, percibidas, factura electrónica", factura_exenta: "Ventas exentas de IVA, percibidas, factura exenta", boleta: "Ventas afectas a IVA, percibidas, boleta electrónica", boleta_exenta: "Ventas exentas de IVA, percibidas, boleta exenta", comprobante: "Ventas afectas a IVA, percibidas, comprobante de pago electrónico" };
+const COMPRAS_RESUMEN = { compra_afecta: "Compras afectas a IVA, pagadas.", compra_activo_fijo: "Compras de activo fijo afectas a IVA, pagadas.", compra_exenta: "Compras exentas de IVA, pagadas." };
+const claseVentaRcv = (t) => ([34].includes(+t) ? "factura_exenta" : [39, 35].includes(+t) ? "boleta" : [41, 38].includes(+t) ? "boleta_exenta" : +t === 48 ? "comprobante" : "factura");
+function resumenRcvMes(periodo) {
+  const g = new Map(), sumar = (clave, tipo, categoria, glosa, monto, base) => { const x = g.get(clave) || { clave, tipo, categoria, glosa, monto: 0, base: 0, n: 0 }; x.monto += monto; x.base += base; x.n++; g.set(clave, x); };
+  for (const d of S.rcv.filter((x) => x.periodo === periodo)) {
+    const sg = signoDoc(d.tipo_doc);
+    if (d.registro === "VENTA") { const c = claseVentaRcv(d.tipo_doc); sumar(c, 1, "Ventas", VENTAS_RESUMEN[c], sg * d.total, sg * (d.neto + d.exento)); continue; }
+    const afecta = d.total - (d.exento || 0), c = d.activo_fijo ? "compra_activo_fijo" : "compra_afecta";
+    if (afecta) sumar(c, 2, d.activo_fijo ? "Compra de activo fijo" : "Compras y gastos", COMPRAS_RESUMEN[c], sg * afecta, sg * (d.neto + (d.iva_no_recuperable || 0) + (d.otros_impuestos || 0)));
+    if (d.exento) sumar("compra_exenta", 2, "Compras y gastos", COMPRAS_RESUMEN.compra_exenta, sg * d.exento, sg * d.exento);
+  }
+  const orden = [...Object.keys(VENTAS_RESUMEN), ...Object.keys(COMPRAS_RESUMEN)];
+  return [...g.values()].filter((x) => x.monto || x.base).sort((a, b) => orden.indexOf(a.clave) - orden.indexOf(b.clave));
+}
+const refResumen = (periodo, clave) => `rcvmes:${periodo}:${clave}`;
+const periodoConResumen = (periodo) => S.caja.some((m) => m.ref?.startsWith(`rcvmes:${periodo}:`));
+const periodoConDocumentos = (periodo) => S.caja.some((m) => m.ref?.startsWith("rcv:") && S.rcv.some((d) => d.periodo === periodo && refRcv(d) === m.ref));
+function movimientosResumenRcv(periodo) {
+  const fecha = ultimoDia(periodo);
+  return resumenRcvMes(periodo).map((x) => ({ id: idMov(refResumen(periodo, x.clave)), fecha, tipo: x.tipo, categoria: x.categoria, doc_tipo: x.tipo === 1 ? "Registro de Ventas SII" : "Registro de Compras SII", doc_num: "X", rut: "", nombre: "",
+    glosa: x.glosa, monto: x.monto, base: x.base, clase: x.clave, origen: "rcv_resumen", ref: refResumen(periodo, x.clave) }));
+}
 const idMov = (ref) => "m_" + ref.replace(/[^A-Za-z0-9_-]/g, "_");
 async function guardarMovimientos(lista) { for (const m of lista) await S.almacen.set(`empresas/${S.eid}/caja/${m.id || idMov(m.ref)}`, (({ id, ...r }) => r)(m)); }
 
@@ -5974,6 +6004,16 @@ function vistaCaja() {
       <label>N° de documento<input id="cj-num"></label><label>RUT<input id="cj-rut" placeholder="12.345.678-5"></label>
       <label>Nombre del cliente o proveedor<input id="cj-nombre"></label><label class="campo-largo">Glosa *<input id="cj-glosa" placeholder="Describe la operación"></label></div>
       <div class="acciones"><button class="btn" type="submit">Registrar movimiento</button></div></form>
+      <form class="caja" data-form="n-f29-pago"><h2>Pago de F29</h2><div class="form">
+        <label>Período del F29<input type="month" id="f29p-periodo" value="${periodoAnterior(hoy().slice(0, 7))}"></label>
+        <label>Fecha de pago<input type="date" id="f29p-fecha" value="${hoy()}"></label>
+        <label>Folio del F29<input id="f29p-folio" placeholder="Opcional"></label>
+        <label>IVA determinado ($)<input id="f29p-iva" inputmode="numeric" placeholder="0"></label>
+        <label>PPM ($)<input id="f29p-ppm" inputmode="numeric" placeholder="0"></label>
+        <label>Retención de honorarios, 2ª categoría ($)<input id="f29p-ret" inputmode="numeric" placeholder="0"></label>
+        <label>Impuesto único de trabajadores ($)<input id="f29p-iusc" inputmode="numeric" placeholder="0"></label></div>
+        <p class="ayuda">Crea una línea de egreso por cada concepto, como se anota en el libro. Solo la retención de honorarios afecta la base imponible (se descuenta al pagarla; las boletas se registran por su líquido). El IVA y el PPM no la afectan, y el impuesto único se descuenta al importar las remuneraciones. No registres la retención aquí si importaste las boletas de honorarios por su monto bruto.</p>
+        <div class="acciones"><button class="btn sec" type="button" data-n="f29p-rellenar">Usar el borrador del F29</button><button class="btn" type="submit">Registrar el pago</button></div></form>
       <form class="barra" data-form="n-caja-inicial"><label>Saldo inicial de caja ${anio} ($)<input id="caja-inicial" inputmode="numeric" value="${saldoInicialCaja(anio) ? clp(saldoInicialCaja(anio)) : ""}" placeholder="0"></label><button class="btn sec" type="submit">Guardar saldo inicial</button></form>`)}
     ${L.filas.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Ingreso</th><th class="num">Egreso</th><th class="num">Saldo</th><th class="num">${S.cajaDiario ? "Base del día" : "Afecta base"}</th><th></th></tr></thead>
       <tbody><tr class="sub"><td></td><td>Saldo inicial</td><td class="num"></td><td class="num"></td><td class="num">${clp(L.inicial)}</td><td></td><td></td></tr>${lineas.join("")}</tbody></table></div>` : `<div class="caja vacio"><p>No hay movimientos ${mes ? "en el mes elegido" : `en ${anio}`}.</p></div>`}
@@ -5987,9 +6027,12 @@ function vistaImportarCaja(anio) {
   return `<div class="barra"><label>Mes a importar<input type="month" id="caja-imp-periodo" value="${ph}"></label></div>
   <section class="caja"><h2>Compras y ventas del RCV</h2><p class="ayuda">Crea un movimiento por cada documento del mes, <strong>suponiendo que se cobró o pagó el mismo día del documento</strong>. Si algún documento se paga después, no lo importes: regístralo en «Ingresos y egresos» con su fecha real. Las notas de crédito (${nc}) no se importan: ingrésalas a mano. El monto que afecta la base es el neto (más el IVA no recuperable en las compras).</p>
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-rcv" ${pend ? "" : "disabled"}>Importar ${pend} documento(s)</button></div>`)}</section>
+  <section class="caja"><h2>Resumen mensual del RCV</h2><p class="ayuda">Crea una línea por tipo de documento (ventas por factura, boleta o comprobante de pago; compras afectas, de activo fijo y exentas), <strong>suponiendo que todo se cobró o pagó en el mes</strong>, a fin de mes. Es la forma en que se lleva el libro con muchos documentos. No se puede mezclar con la importación documento por documento del mismo mes.</p>
+    ${(() => { const r = resumenRcvMes(ph); return r.length ? `<div class="tabla"><table><thead><tr><th>Línea</th><th class="num">Documentos</th><th class="num">Monto total</th><th class="num">Afecta la base</th></tr></thead><tbody>${r.map((x) => `<tr><td>${esc(x.glosa)}</td><td class="num">${x.n}</td><td class="num">${clp(x.monto)}</td><td class="num">${clp(x.base)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="ayuda">No hay documentos del RCV en ${nombrePeriodo(ph)}.</p>`; })()}
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-rcvmes" ${resumenRcvMes(ph).length && !periodoConResumen(ph) && !periodoConDocumentos(ph) ? "" : "disabled"}>Importar el resumen del mes</button></div>`)}${periodoConResumen(ph) ? `<p class="ayuda">${nombrePeriodo(ph)} ya tiene su resumen importado.</p>` : periodoConDocumentos(ph) ? `<p class="ayuda">${nombrePeriodo(ph)} ya tiene documentos importados uno a uno.</p>` : ""}</section>
   <section class="caja"><h2>Remuneraciones</h2><p class="ayuda">Registra dos egresos del mes: las remuneraciones líquidas y las cotizaciones previsionales, aportes del empleador e impuesto único retenido. Es una aproximación: ajústala si el pago real fue distinto.</p>
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-rem" ${liq ? "" : "disabled"}>Importar ${liq} liquidación(es)</button></div>`)}</section>
-  <section class="caja"><h2>Boletas de honorarios</h2><p class="ayuda">Registra un egreso por cada boleta de honorarios recibida en el mes, por su monto bruto.</p>
+  <section class="caja"><h2>Boletas de honorarios</h2><p class="ayuda">Registra un egreso por cada boleta de honorarios recibida en el mes, por su monto líquido: la retención se descuenta de la base cuando pagas el F29 (usa «Pago de F29» en el libro de caja).</p>
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-bhe" ${bhe ? "" : "disabled"}>Importar ${bhe} boleta(s)</button></div>`)}</section>`;
 }
 /* Calcula lo que se guardaría con los datos del formulario; null si no hay neto ni exento. */
@@ -6036,11 +6079,44 @@ async function guardarMovimientoCaja() {
     render(); aviso(atrasado ? `Movimiento registrado con más de ${DIAS_REGISTRO_ATRASADO} días de atraso: el art. 17 del Código Tributario exige anotar las operaciones al día (art. 97 N° 7).` : "Movimiento registrado.");
   }, "No se pudo registrar el movimiento");
 }
+const CONCEPTOS_F29_PAGO = [["iva", "IVA determinado.", "f29p-iva", "89", false], ["ppm", "PPM.", "f29p-ppm", "62", false], ["ret", "Retención 2da Categoría.", "f29p-ret", "151", true], ["iusc", "Impuesto único de segunda categoría (trabajadores).", "f29p-iusc", "48", false]];
+function rellenarPagoF29() {
+  const per = $("#f29p-periodo")?.value, b = borradorF29(per);
+  if (!b) return aviso(`No hay un borrador de F29 guardado para ${per ? nombrePeriodo(per) : "ese período"}. Escribe los montos a mano.`);
+  for (const [, , id, codigo] of CONCEPTOS_F29_PAGO) $("#" + id).value = b.codigos?.[codigo] ? clp(b.codigos[codigo]) : "";
+  aviso("Montos tomados del borrador guardado.");
+}
+async function registrarPagoF29() {
+  const periodo = $("#f29p-periodo").value, fecha = $("#f29p-fecha").value, folio = $("#f29p-folio").value.trim();
+  if (!/^\d{4}-\d{2}$/.test(periodo)) return aviso("Elige el período del F29.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return aviso("Ingresa la fecha de pago.");
+  if (fecha.slice(0, 7) <= periodo) return aviso("La fecha de pago debe ser posterior al período del F29.");
+  const cerr = CAJA_CERRADO([fecha]); if (cerr) return aviso(cerr);
+  const lineas = [];
+  for (const [clave, texto, id, , afecta] of CONCEPTOS_F29_PAGO) {
+    const monto = parseMonto($("#" + id).value || "0");
+    if (!Number.isFinite(monto) || monto < 0) return aviso("Los montos deben ser números positivos en pesos enteros.");
+    if (monto > 0) lineas.push({ id: idMov(`f29:${periodo}:${clave}`), fecha, tipo: 2, categoria: "Pago de impuestos (IVA, PPM, F29)", doc_tipo: "Formulario 29", doc_num: folio, rut: "", nombre: "", glosa: `Pago F29 ${nombrePeriodo(periodo)}, ${texto}`, monto, base: afecta ? monto : 0, clase: `f29_${clave}`, f29_periodo: periodo, origen: "f29", ref: `f29:${periodo}:${clave}` });
+  }
+  if (!lineas.length) return aviso("Escribe al menos un monto.");
+  const repetidas = lineas.filter((l) => S.caja.some((m) => m.ref === l.ref));
+  if (repetidas.length) return aviso(`El pago de ${nombrePeriodo(periodo)} ya está registrado (${repetidas.map((l) => l.clase.replace("f29_", "")).join(", ")}). Elimina esas líneas si quieres volver a registrarlo.`);
+  const atrasado = (Date.parse(hoy()) - Date.parse(fecha)) / 864e5 > DIAS_REGISTRO_ATRASADO;
+  await ocupado(async () => { await guardarMovimientos(lineas); render(); aviso(`Pago del F29 de ${nombrePeriodo(periodo)} registrado en ${lineas.length} línea(s).${atrasado ? " Registro con más de 31 días de atraso." : ""}`); }, "No se pudo registrar el pago del F29");
+}
 async function importarCaja(origen) {
   const ph = S.cajaImp || `${S.cajaAnio || empresa().ejercicio}-${String(new Date().getMonth() + 1).padStart(2, "0")}`, nuevos = [];
-  if (origen === "rcv") for (const d of S.rcv.filter((x) => x.periodo === ph && signoDoc(x.tipo_doc) > 0 && !S.caja.some((m) => m.ref === refRcv(x)))) nuevos.push(movimientoDesdeDoc(d, d.fecha));
+  if (origen === "rcv") {
+    if (periodoConResumen(ph)) return aviso(`${nombrePeriodo(ph)} ya tiene el resumen mensual del RCV: importar los documentos uno a uno contaría todo dos veces.`);
+    for (const d of S.rcv.filter((x) => x.periodo === ph && signoDoc(x.tipo_doc) > 0 && !S.caja.some((m) => m.ref === refRcv(x)))) nuevos.push(movimientoDesdeDoc(d, d.fecha));
+  }
+  if (origen === "rcvmes") {
+    if (periodoConResumen(ph)) return aviso(`${nombrePeriodo(ph)} ya tiene el resumen mensual del RCV.`);
+    if (periodoConDocumentos(ph)) return aviso(`${nombrePeriodo(ph)} ya tiene documentos importados uno a uno: el resumen mensual los contaría dos veces.`);
+    nuevos.push(...movimientosResumenRcv(ph));
+  }
   if (origen === "bhe") for (const b of S.honorarios.filter((x) => x.tipo === "BHE" && x.periodo === ph && !S.caja.some((m) => m.ref === "bhe:" + x.id)))
-    nuevos.push({ fecha: b.fecha, tipo: 2, categoria: "Honorarios", doc_tipo: "Boleta de honorarios", doc_num: String(b.folio || b.numero || ""), rut: b.rut || "", nombre: b.nombre || "", glosa: `Honorarios ${b.nombre || ""}`.trim(), monto: b.bruto, base: b.bruto, origen: "honorarios", ref: "bhe:" + b.id });
+    nuevos.push({ fecha: b.fecha, tipo: 2, categoria: "Honorarios", doc_tipo: "Boleta de honorarios", doc_num: String(b.folio || b.numero || ""), rut: b.rut || "", nombre: b.nombre || "", glosa: `Pago de honorarios líquidos ${b.nombre || ""}`.trim(), monto: b.liquido ?? b.bruto - (b.retencion || 0), base: b.liquido ?? b.bruto - (b.retencion || 0), retencion: b.retencion || 0, origen: "honorarios", ref: "bhe:" + b.id });
   if (origen === "rem") {
     const liq = S.liquidaciones.filter((l) => l.periodo === ph), fecha = ultimoDia(ph), suma = (f) => liq.reduce((x, l) => x + f(l), 0);
     const add = (clave, glosa, monto) => { if (monto > 0 && !S.caja.some((m) => m.ref === `rem:${ph}:${clave}`)) nuevos.push({ fecha, tipo: 2, categoria: "Remuneraciones", doc_tipo: "", doc_num: "", rut: "", nombre: "", glosa, monto, base: monto, origen: "remuneraciones", ref: `rem:${ph}:${clave}` }); };
@@ -6049,11 +6125,12 @@ async function importarCaja(origen) {
   }
   if (!nuevos.length) return aviso("No hay movimientos nuevos para importar.");
   const cerr = CAJA_CERRADO(nuevos.map((m) => m.fecha)); if (cerr) return aviso(cerr);
-  await ocupado(async () => { await guardarMovimientos(nuevos.map((m) => ({ ...m, id: idMov(m.ref) }))); render(); aviso(`${nuevos.length} movimiento(s) importado(s) al Libro de caja.`); }, "No se pudieron importar los movimientos");
+  await ocupado(async () => { await guardarMovimientos(nuevos.map((m) => ({ ...m, id: m.id || idMov(m.ref) }))); render(); aviso(`${nuevos.length} movimiento(s) importado(s) al Libro de caja.`); }, "No se pudieron importar los movimientos");
 }
 async function registrarPagoDoc(idDoc) {
   const d = S.rcv.find((x) => x.id === idDoc), fecha = $("#ie-fecha")?.value;
   if (!d) return; if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || "")) return aviso("Ingresa la fecha de cobro o pago.");
+  if (periodoConResumen(d.periodo)) return aviso(`${nombrePeriodo(d.periodo)} ya está en el resumen mensual del RCV.`);
   const cerr = CAJA_CERRADO([fecha]); if (cerr) return aviso(cerr);
   await ocupado(async () => { await guardarMovimientos([{ ...movimientoDesdeDoc(d, fecha), id: idMov(refRcv(d)) }]); render(); aviso(d.registro === "VENTA" ? "Cobro registrado." : "Pago registrado."); }, "No se pudo registrar el movimiento");
 }
@@ -6110,7 +6187,7 @@ function revisarDatos() {
     if (L.length && !saldoInicialCaja(anio)) add("info", "Libro de caja", `No hay saldo inicial de caja para ${anio}.`, [], "caja");
     const rech = S.caja.filter((m) => /rechazado/i.test(m.categoria || ""));
     if (rech.length && regimenSugerido() === "d8") add("info", "Libro de caja", "Hay gastos marcados como rechazados (art. 21), pero el régimen Pro Pyme transparente (14 D N° 8) no está sujeto al art. 21 según la Res. Ex. SII N° 14, considerando 4°. Revisa si corresponde.", rech.map((m) => `${lugar(m)} · ${m.glosa}`), "caja");
-    const incons = S.caja.filter((m) => { const c = CATEGORIAS_CAJA[m.categoria]; return c && ((!c[1] && m.base > 0) || (c[1] && m.base === 0)); });
+    const incons = S.caja.filter((m) => { const c = CATEGORIAS_CAJA[m.categoria]; return c && m.clase !== "f29_ret" && ((!c[1] && m.base > 0) || (c[1] && m.base === 0)); });
     if (incons.length) add("aviso", "Libro de caja", "Movimientos cuya base imponible no coincide con su categoría (por ejemplo, retiros o préstamos que afectan la base, o ventas con base 0).", incons.map((m) => `${lugar(m)} · ${m.categoria} · ${m.glosa}`), "caja");
     const limite = new Date(Date.parse(hoyF) - 90 * 864e5).toISOString().slice(0, 10), viejos = documentosPendientesCaja(anio).filter((d) => d.fecha < limite);
     if (viejos.length) add("aviso", "Libro de caja", "Documentos del RCV con más de 90 días sin cobrar ni pagar.", viejos.map((d) => `${d.registro === "VENTA" ? "Por cobrar" : "Por pagar"} · ${TIPOS_DOCUMENTO[+d.tipo_doc] || d.tipo_doc} ${d.folio} · ${d.razon_social || ""} · $${clp(d.total)}`), "caja");
