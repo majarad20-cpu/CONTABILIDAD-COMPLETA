@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.17.0";
+const VERSION = "1.18.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -4397,29 +4397,56 @@ async function registrarVacacion() {
 }
 
 /* ---------- finiquitos ---------- */
-const CAUSALES = { necesidades: ["Necesidades de la empresa (art. 161)", true], mutuo: ["Mutuo acuerdo de las partes (art. 159 N° 1)", false], renuncia: ["Renuncia del trabajador (art. 159 N° 2)", false],
-  plazo: ["Vencimiento del plazo convenido (art. 159 N° 4)", false], obra: ["Conclusión del trabajo o servicio (art. 159 N° 5)", false], conducta: ["Conductas del trabajador (art. 160)", false] };
+/* [nombre, indemniza por años de servicio, con aviso previo (o su sustitutiva)] */
+const CAUSALES = { necesidades: ["Necesidades de la empresa (art. 161 inc. 1)", true, true], desahucio: ["Desahucio del empleador (art. 161 inc. 2)", true, true], concursal: ["Liquidación concursal del empleador (art. 163 bis)", true, true],
+  mutuo: ["Mutuo acuerdo de las partes (art. 159 N° 1)", false, false], renuncia: ["Renuncia del trabajador (art. 159 N° 2)", false, false],
+  plazo: ["Vencimiento del plazo convenido (art. 159 N° 4)", false, false], obra: ["Conclusión del trabajo o servicio (art. 159 N° 5)", false, false],
+  fortuito: ["Caso fortuito o fuerza mayor (art. 159 N° 6)", false, false], conducta: ["Conductas del trabajador (art. 160)", false, false] };
+const RECARGOS_168 = { 0: "Sin recargo", 30: "30 % (art. 161 injustificado)", 50: "50 % (art. 159 injustificado)", 80: "80 % (art. 160 injustificado)", 100: "100 % (art. 160 N° 1, 5 o 6 sin motivo plausible)" };
+const FERIADOS_SEMILLA = ["2025-01-01","2025-04-18","2025-04-19","2025-05-01","2025-05-21","2025-06-20","2025-06-29","2025-07-16","2025-08-15","2025-09-18","2025-09-19","2025-10-12","2025-10-31","2025-11-01","2025-11-16","2025-12-08","2025-12-14","2025-12-25",
+  "2026-01-01","2026-04-03","2026-04-04","2026-05-01","2026-05-21","2026-06-21","2026-06-29","2026-07-16","2026-08-15","2026-09-18","2026-09-19","2026-10-12","2026-10-31","2026-11-01","2026-12-08","2026-12-25",
+  "2027-01-01","2027-03-26","2027-03-27","2027-05-01","2027-05-21","2027-06-21","2027-06-28","2027-07-16","2027-08-15","2027-09-18","2027-09-19","2027-10-11","2027-10-31","2027-11-01","2027-12-08","2027-12-25"];
+const feriadosLegales = () => new Set([...FERIADOS_SEMILLA, ...((S.prev && S.prev.feriados) || [])]);
+/* Días hábiles pendientes → días corridos desde `desde` (art. 69: el sábado es inhábil); se suman sábados, domingos y festivos del período. */
+function habilesACorridos(desde, habiles, feriados) {
+  let enteros = Math.floor(habiles), corridos = 0, d = desde;
+  const fraccion = Math.round((habiles - enteros) * 10000) / 10000;
+  while (enteros > 0) { const dow = new Date(d + "T00:00:00Z").getUTCDay(); corridos++; if (dow !== 0 && dow !== 6 && !feriados.has(d)) enteros--; d = sumarDias(d, 1); }
+  return corridos + fraccion;
+}
 const finiquitoPorTrab = (id) => S.finiquitos.filter((f) => f.trabajador === id);
-/* Años de servicio para la indemnización: años completos y la fracción superior a 6 meses, con tope de 11. */
+/* Años de servicio para la indemnización: años completos más la fracción superior a 6 meses; el tope de 11 años rige para contratos desde el 14-08-1981. */
 function anosServicio(t, fecha) {
-  const a = anosEntre(t.fecha_ingreso, fecha), enteros = Math.floor(a), meses = (a - enteros) * 12;
-  return { exacto: a, computables: Math.min(enteros + (meses > 6 ? 1 : 0), 11) };
+  const a = anosEntre(t.fecha_ingreso, fecha), [ya, ma, da] = t.fecha_ingreso.split("-").map(Number), [yb, mb, db] = fecha.split("-").map(Number);
+  const meses = (yb - ya) * 12 + mb - ma - (db < da ? 1 : 0), enteros = Math.floor(meses / 12), resto = meses % 12;
+  const computables = enteros + (resto >= 6 && (resto > 6 || db >= da) ? 1 : 0);
+  return { exacto: a, enteros, computables: t.fecha_ingreso >= "1981-08-14" ? Math.min(computables, 11) : computables };
 }
 function calcularFiniquito(t, f) {
-  const periodo = f.fecha.slice(0, 7), pr = parametrosPrev(periodo), uf = f.uf || valorUf(periodo) || 0;
+  const periodo = f.fecha.slice(0, 7), pr = parametrosPrev(periodo), uf = f.uf || valorUf(periodo) || 0, avisos = [];
   if (!uf) throw new ErrorRcv("Ingresa el valor de la UF: se necesita para el tope de 90 UF de la indemnización.");
-  const base = f.base ?? remuneracionBase(t, periodo), tope = Math.round(90 * uf), baseTope = Math.min(base, tope);
-  const anos = anosServicio(t, f.fecha), indemnizaRazon = f.indemnizar && anos.exacto >= 1;
+  /* Base de la indemnización (art. 172): incluye colación y movilización; el feriado se paga sin ellas. */
+  const base = f.base ?? remuneracionBase(t, periodo), baseFeriado = f.base ?? base - (t.colacion || 0) - (t.movilizacion || 0), tope = Math.round(90 * uf), baseTope = Math.min(base, tope);
+  if (base > tope) avisos.push(`La base de $${clp(base)} supera el tope de 90 UF; se usa $${clp(tope)}.`);
+  const anos = anosServicio(t, f.fecha), indemnizaRazon = f.indemnizar && anos.enteros >= 1;
   const indemnizacion = indemnizaRazon ? anos.computables * baseTope : 0;
-  const aviso = f.causal === "necesidades" && !f.aviso_dado ? baseTope : 0;
+  if (f.indemnizar && !indemnizaRazon) avisos.push("Con menos de un año de antigüedad no hay indemnización por años de servicio.");
+  const aviso = CAUSALES[f.causal][2] && !f.aviso_dado ? baseTope : 0;
+  const recargoPct = indemnizacion ? +f.recargo || 0 : 0, recargo = Math.round((indemnizacion * recargoPct) / 100);
+  const afc = f.causal === "necesidades" && indemnizacion ? Math.min(Math.round(+f.afc_imputable || 0), indemnizacion) : 0;
   const s = saldoVacaciones(t, f.fecha), vacDias = f.vac_dias ?? Math.max(s.saldo, 0);
-  const vacaciones = Math.round((base / 30) * vacDias * FACTOR_DIAS_CORRIDOS);
+  const corridos = habilesACorridos(sumarDias(f.fecha, 1), vacDias, feriadosLegales());
+  if (+f.fecha.slice(0, 4) + 1 > 2027 && !((S.prev && S.prev.feriados) || []).length && vacDias) avisos.push("El calendario de feriados incluido llega hasta 2027: revisa los días corridos del feriado.");
+  const vacaciones = Math.round((baseFeriado / 30) * corridos);
+  if (s.saldo < 0 && f.vac_dias == null) avisos.push(`El trabajador usó ${comaDecimal(Math.abs(s.saldo))} días más de los devengados.`);
   const diasMes = f.dias_mes ?? Math.min(+f.fecha.slice(8, 10), 30);
   const liq = calcularLiquidacionTrabajador(t, periodo, { dias: diasMes, horas_extra: 0, festivos: 0, comisiones: 0, bonos: 0, vacaciones, no_imponibles: 0, anticipos: f.anticipos || 0, otros_desc: f.otros_desc || 0 });
   const otros = (f.otros || []).reduce((s2, x) => s2 + (x.monto || 0), 0);
-  const total = liq.liquido + indemnizacion + aviso + otros;
-  return { periodo, uf, base, tope, baseTope, anos, indemnizacion, aviso, vacDias, vacaciones, diasMes, liq, otros, total, saldoVac: s };
+  const total = liq.liquido + indemnizacion + aviso + recargo - afc + otros;
+  return { periodo, uf, base, baseFeriado, tope, baseTope, anos, indemnizacion, aviso, recargoPct, recargo, afc, vacDias, corridos, vacaciones, diasMes, liq, otros, total, saldoVac: s, avisos };
 }
+/* Pagos del finiquito que se suman a la liquidación del mes (no imponibles). */
+const extraFiniquito = (q) => (q.indemnizacion || 0) + (q.aviso || 0) + (q.recargo || 0) - (q.afc || 0) + (q.otros || 0);
 function vistaFiniquitos() {
   const vigentes = S.trabajadores.filter((t) => t.activo !== false && !t.fecha_finiquito).sort((a, b) => a.nombre.localeCompare(b.nombre));
   const f = S.finiqEdit, t = f && trabajadorPorId(f.trabajador);
@@ -4435,17 +4462,21 @@ function vistaFiniquitos() {
       <label>Días hábiles de vacaciones pendientes<input id="fq-vac" inputmode="decimal" placeholder="${comaDecimal(Math.max(saldoVacaciones(t, f.fecha).saldo, 0))}" value="${f.vac_dias == null ? "" : comaDecimal(f.vac_dias)}"></label>
       <label>Anticipos y descuentos pendientes ($)<input id="fq-ant" inputmode="numeric" value="${f.anticipos ? clp(f.anticipos) : ""}"></label>
       <label>Otros pagos ($, bonos o pactos)<input id="fq-otros" inputmode="numeric" value="${f.otros_monto ? clp(f.otros_monto) : ""}"></label>
+      <label>Recargo art. 168 sobre la indemnización<select id="fq-recargo">${Object.entries(RECARGOS_168).map(([k, n]) => `<option value="${k}" ${+f.recargo === +k ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
+      ${f.causal === "necesidades" ? `<label>Aporte del empleador al seguro de cesantía imputable ($)<input id="fq-afc" inputmode="numeric" value="${f.afc_imputable ? clp(f.afc_imputable) : ""}"></label>` : ""}
       <label class="check"><input type="checkbox" id="fq-indemn" ${f.indemnizar ? "checked" : ""}> Pagar indemnización por años de servicio</label>
       <label class="check"><input type="checkbox" id="fq-aviso" ${f.aviso_dado ? "checked" : ""}> Se avisó con 30 días de anticipación</label></div>
     ${error ? `<div class="aviso">${esc(error)}</div>` : res ? `<div class="tabla"><table><tbody>
-      <tr><td>Antigüedad</td><td class="num">${comaDecimal(res.anos.exacto.toFixed(2))} años · ${res.anos.computables} para la indemnización (máx. 11)</td></tr>
+      <tr><td>Antigüedad</td><td class="num">${comaDecimal(res.anos.exacto.toFixed(2))} años · ${res.anos.computables} para la indemnización${t.fecha_ingreso >= "1981-08-14" ? " (máx. 11)" : ""}</td></tr>
       <tr><td>Remuneración del mes (${res.diasMes} días) con descuentos legales, líquida</td><td class="num">${clp(res.liq.liquido - 0)}</td></tr>
-      <tr><td>Vacaciones proporcionales (${comaDecimal(res.vacDias)} días hábiles), incluidas en la línea anterior</td><td class="num">${clp(res.vacaciones)}</td></tr>
+      <tr><td>Feriado proporcional (${comaDecimal(res.vacDias)} días hábiles = ${comaDecimal(res.corridos)} corridos), incluido en la línea anterior</td><td class="num">${clp(res.vacaciones)}</td></tr>
       <tr><td>Indemnización por años de servicio (tope ${clp(res.baseTope)} por año; 90 UF = $${clp(res.tope)})</td><td class="num">${clp(res.indemnizacion)}</td></tr>
       <tr><td>Indemnización sustitutiva del aviso previo</td><td class="num">${clp(res.aviso)}</td></tr>
+      ${res.recargo ? `<tr><td>Recargo art. 168 (${res.recargoPct} %)</td><td class="num">${clp(res.recargo)}</td></tr>` : ""}
+      ${res.afc ? `<tr><td>Imputación del aporte del empleador al seguro de cesantía (art. 13 Ley 19.728)</td><td class="num">-${clp(res.afc)}</td></tr>` : ""}
       ${res.otros ? `<tr><td>Otros pagos</td><td class="num">${clp(res.otros)}</td></tr>` : ""}
       <tr class="pagar"><td>Total líquido a pagar</td><td class="num">${clp(res.total)}</td></tr></tbody></table></div>
-      <p class="ayuda">La indemnización por años de servicio y la sustitutiva del aviso previo no son imponibles ni tributables hasta el tope. Las vacaciones y la remuneración del mes llevan los descuentos legales y los aportes del empleador. Para cualquier causal con indemnización pactada, marca la casilla. El finiquito solo tiene mérito de pago si se firma ante un ministro de fe (art. 177).</p>` : ""}
+      ${res.avisos.length ? `<div class="aviso">${res.avisos.map(esc).join("<br>")}</div>` : ""}<p class="ayuda">La indemnización por años de servicio y la sustitutiva del aviso previo no son imponibles ni tributables hasta el tope. Las vacaciones y la remuneración del mes llevan los descuentos legales y los aportes del empleador. Para cualquier causal con indemnización pactada, marca la casilla. El finiquito solo tiene mérito de pago si se firma ante un ministro de fe (art. 177).</p>` : ""}
     <div class="acciones"><button class="btn" type="submit">Calcular</button>${res && S.puedeEscribir ? `<button class="btn" type="button" data-n="guardar-finiquito">Guardar finiquito y dar de baja al trabajador</button>` : ""}
       ${res && S.descargas ? `<button class="btn sec" type="button" data-n="pdf-finiquito-actual">PDF del finiquito</button><button class="btn sec" type="button" data-n="pdf-carta-actual">PDF de la carta de aviso</button>` : ""}
       <button class="btn sec" type="button" data-n="cancelar-finiquito">Cancelar</button></div></form>` : "";
@@ -4461,7 +4492,7 @@ function leerFiniquito() {
   const uf = decimal($("#fq-uf").value), base = $("#fq-base").value.trim(), dias = $("#fq-dias").value.trim(), vac = decimal($("#fq-vac").value);
   const causal = $("#fq-causal").value, cambioCausal = causal !== f.causal;
   Object.assign(f, { fecha: $("#fq-fecha").value || f.fecha, causal, uf: uf == null || Number.isNaN(uf) ? null : uf, base: base === "" ? null : parseMonto(base), dias_mes: dias === "" ? null : Number(dias), vac_dias: vac == null || Number.isNaN(vac) ? null : vac,
-    anticipos: parseMonto($("#fq-ant").value || "0") || 0, otros_monto: parseMonto($("#fq-otros").value || "0") || 0, indemnizar: $("#fq-indemn").checked, aviso_dado: $("#fq-aviso").checked });
+    anticipos: parseMonto($("#fq-ant").value || "0") || 0, otros_monto: parseMonto($("#fq-otros").value || "0") || 0, indemnizar: $("#fq-indemn").checked, aviso_dado: $("#fq-aviso").checked, recargo: +$("#fq-recargo").value || 0, afc_imputable: $("#fq-afc") ? parseMonto($("#fq-afc").value || "0") || 0 : f.afc_imputable || 0 });
   if (cambioCausal) f.indemnizar = CAUSALES[causal][1];
   f.otros = f.otros_monto ? [{ concepto: "Otros pagos", monto: f.otros_monto }] : [];
   return f;
@@ -4476,9 +4507,11 @@ function textoFiniquito(t, f, r) {
   b.push({ tipo: "cl", rotulo: "TERCERO:", texto: "El empleador paga al trabajador, y este declara recibir, los siguientes conceptos:" });
   const fila = (texto, valor, negrita = false) => b.push({ tipo: "fila", texto, valor: `$${clp(valor)}`, negrita });
   fila(`Remuneración del mes de término, ${r.diasMes} días, líquida`, r.liq.liquido - r.vacaciones + 0 >= 0 ? r.liq.liquido : r.liq.liquido);
-  if (r.vacaciones) fila(`Feriado proporcional, ${comaDecimal(r.vacDias)} días hábiles (incluido arriba)`, r.vacaciones);
+  if (r.vacaciones) fila(`Feriado proporcional, ${comaDecimal(r.vacDias)} días hábiles${r.corridos ? ` (${comaDecimal(r.corridos)} corridos)` : ""} (incluido arriba)`, r.vacaciones);
   if (r.indemnizacion) fila("Indemnización por años de servicio", r.indemnizacion);
   if (r.aviso) fila("Indemnización sustitutiva del aviso previo", r.aviso);
+  if (r.recargo) fila(`Recargo legal art. 168 (${r.recargoPct} %)`, r.recargo);
+  if (r.afc) fila("Menos: aporte del empleador al seguro de cesantía imputado (art. 13 Ley 19.728)", -r.afc);
   if (r.otros) fila("Otros pagos", r.otros);
   fila("TOTAL LÍQUIDO A PAGAR", r.total, true);
   b.push({ tipo: "cl", rotulo: "CUARTO:", texto: "El trabajador declara que, con el pago recibido, nada se le adeuda por remuneraciones, feriados, indemnizaciones ni otros conceptos derivados de la prestación de sus servicios y del término del contrato, sin perjuicio de las cotizaciones previsionales que el empleador deba enterar. El trabajador deja constancia de las reservas de derechos que desee formular a continuación: ______________________________." });
@@ -4491,7 +4524,7 @@ function textoCarta(t, f) {
   b.push({ tipo: "p", texto: `${e.comuna || "__________"}, ${fechaLarga(hoy())}.` });
   b.push({ tipo: "p", texto: `Señor(a) ${may(t.nombre)}, RUT ${t.rut}.` });
   b.push({ tipo: "p", texto: `Comunicamos a usted que se ha resuelto poner término a su contrato de trabajo a contar del ${fechaLarga(f.fecha)}, por la causal: ${CAUSALES[f.causal][0]}.` });
-  b.push({ tipo: "p", texto: f.causal === "necesidades" ? "Hechos en que se funda: ______________________________ (describir con precisión las necesidades de funcionamiento de la empresa que justifican el término)." : f.causal === "conducta" ? "Hechos en que se funda: ______________________________ (describir los hechos con fechas y circunstancias)." : "" });
+  b.push({ tipo: "p", texto: f.causal === "necesidades" || f.causal === "concursal" ? "Hechos en que se funda: ______________________________ (describir con precisión las necesidades de funcionamiento de la empresa que justifican el término)." : f.causal === "conducta" ? "Hechos en que se funda: ______________________________ (describir los hechos con fechas y circunstancias)." : "" });
   b.push({ tipo: "p", texto: "Informamos que sus cotizaciones previsionales y de salud se encuentran pagadas hasta el mes de ______________________________ . El finiquito y el pago de sus indemnizaciones se pondrán a su disposición dentro de los diez días hábiles siguientes a la separación." });
   return b;
 }
@@ -4502,7 +4535,7 @@ async function guardarFiniquito() {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(f.fecha) || f.fecha < t.fecha_ingreso) return aviso("La fecha de término debe ser posterior a la de ingreso.");
   await ocupado(async () => {
     const { id: _i, ...doc } = { trabajador: f.trabajador, fecha: f.fecha, causal: f.causal, uf: r.uf, base: r.base, indemnizar: !!f.indemnizar, aviso_dado: !!f.aviso_dado, anos: r.anos.computables, dias_mes: r.diasMes, vac_dias: r.vacDias, vacaciones: r.vacaciones,
-      indemnizacion: r.indemnizacion, aviso: r.aviso, otros: r.otros, liquidacion: r.liq, total: r.total, asiento: "", creado: new Date().toISOString() };
+      indemnizacion: r.indemnizacion, aviso: r.aviso, recargo: r.recargo, recargo_pct: r.recargoPct, afc: r.afc, corridos: r.corridos, otros: r.otros, liquidacion: r.liq, total: r.total, asiento: "", creado: new Date().toISOString() };
     await S.almacen.set(`empresas/${S.eid}/finiquitos/q${nuevoId()}`, doc);
     await S.almacen.set(`empresas/${S.eid}/trabajadores/${t.id}`, { ...t, activo: false, fecha_finiquito: f.fecha });
     S.finiqEdit = null; render(); aviso("Finiquito guardado y trabajador dado de baja.");
@@ -4511,7 +4544,7 @@ async function guardarFiniquito() {
 function propuestaFiniquito(q) {
   const ct = cuentasTributarias(), netos = new Map();
   netosLiquidacion(ct, netos, { ...q.liquidacion });
-  const extra = q.indemnizacion + q.aviso + q.otros;
+  const extra = extraFiniquito(q);
   if (extra) { netos.set(ct.rem_indemnizaciones || cuentaConcepto(ct, "rem_sueldos"), (netos.get(ct.rem_indemnizaciones || cuentaConcepto(ct, "rem_sueldos")) || 0) + extra); netos.set(cuentaConcepto(ct, "rem_liquido"), (netos.get(cuentaConcepto(ct, "rem_liquido")) || 0) - extra); }
   const t = trabajadorPorId(q.trabajador);
   return { lineas: lineasNetas(netos), fecha: q.fecha, glosa: `FINIQUITO ${String(t?.nombre || "").toUpperCase()}` };
@@ -5123,7 +5156,7 @@ function filas1887(anio) {
   }
   for (const q of S.finiquitos.filter((x) => x.fecha.startsWith(y))) {
     const t = trabajadorPorId(q.trabajador), l = q.liquidacion; if (!t || !l) continue;
-    const extra = (q.indemnizacion || 0) + (q.aviso || 0) + (q.otros || 0);
+    const extra = extraFiniquito(q);
     filas.push({ rut: t.rut, nombre: t.nombre, tipo: "Trabajador", periodo: q.fecha.slice(0, 7), imponible: l.imponible, no_imponible: l.no_imponible + extra, cotizaciones: l.afp + l.salud + l.cesantia, tributable: l.base_tributable, impuesto: l.impuesto_unico, liquido: l.liquido + extra });
   }
   for (const s of S.sueldos.filter((x) => x.periodo.startsWith(y))) {
@@ -5295,7 +5328,7 @@ document.addEventListener("click", (ev) => {
     case "csv-previred": descargarPrevired(); break;
     case "vac-elegir": S.vacTrab = id; render(); break;
     case "vac-quitar": { const tr = trabajadorPorId(S.vacTrab) || S.trabajadores.find((x) => x.activo !== false && !x.fecha_finiquito); if (tr) ocupado(async () => { await S.almacen.set(`empresas/${S.eid}/trabajadores/${tr.id}`, { ...tr, vacaciones: (tr.vacaciones || []).filter((_, i) => i !== +id) }); render(); aviso("Período quitado."); }, "No se pudo quitar el período"); break; }
-    case "nuevo-finiquito": { const tid = $("#fq-trabajador")?.value; if (!tid) break; S.finiqEdit = { trabajador: tid, fecha: hoy(), causal: "necesidades", uf: valorUf(hoy().slice(0, 7)) || null, base: null, dias_mes: null, vac_dias: null, anticipos: 0, otros_monto: 0, otros: [], indemnizar: true, aviso_dado: false }; render(); break; }
+    case "nuevo-finiquito": { const tid = $("#fq-trabajador")?.value; if (!tid) break; S.finiqEdit = { trabajador: tid, fecha: hoy(), causal: "necesidades", uf: valorUf(hoy().slice(0, 7)) || null, base: null, dias_mes: null, vac_dias: null, anticipos: 0, otros_monto: 0, otros: [], indemnizar: true, aviso_dado: false, recargo: 0, afc_imputable: 0 }; render(); break; }
     case "cancelar-finiquito": S.finiqEdit = null; render(); break;
     case "guardar-finiquito": guardarFiniquito(); break;
     case "pdf-finiquito-actual": case "pdf-carta-actual": {
@@ -5303,7 +5336,7 @@ document.addEventListener("click", (ev) => {
       try { const r = calcularFiniquito(tr, f); ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`${carta ? "carta_termino" : "finiquito"}_${nombreSeguro(tr.nombre)}.pdf`, await pdfDocumento(carta ? "Carta de término" : "Finiquito", carta ? textoCarta(tr, f) : textoFiniquito(tr, f, r), [[empresa().representante || "EMPLEADOR", `p.p. ${empresa().razon_social}`, "EMPLEADOR"], ...(carta ? [] : [[tr.nombre, `RUT ${tr.rut}`, "TRABAJADOR"]])]), "Documento descargado."); }, "No se pudo generar el documento"); }
       catch (e) { if (e instanceof ErrorRcv) aviso(e.message); else throw e; } break; }
     case "pdf-finiquito": { const q = S.finiquitos.find((x) => x.id === id), tr = q && trabajadorPorId(q.trabajador); if (!q || !tr) break;
-      const r = { diasMes: q.dias_mes, liq: q.liquidacion, vacaciones: q.vacaciones, vacDias: q.vac_dias, indemnizacion: q.indemnizacion, aviso: q.aviso, otros: q.otros, total: q.total };
+      const r = { diasMes: q.dias_mes, liq: q.liquidacion, vacaciones: q.vacaciones, vacDias: q.vac_dias, indemnizacion: q.indemnizacion, aviso: q.aviso, recargo: q.recargo || 0, recargoPct: q.recargo_pct || 0, afc: q.afc || 0, corridos: q.corridos, otros: q.otros, total: q.total };
       ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`finiquito_${nombreSeguro(tr.nombre)}.pdf`, await pdfDocumento("Finiquito", textoFiniquito(tr, q, r), [[empresa().representante || "EMPLEADOR", `p.p. ${empresa().razon_social}`, "EMPLEADOR"], [tr.nombre, `RUT ${tr.rut}`, "TRABAJADOR"]]), "Finiquito descargado."); }, "No se pudo generar el finiquito"); break; }
     case "contabilizar-finiquito": { const q = S.finiquitos.find((x) => x.id === id); if (!q) break;
       try { const p = propuestaFiniquito(q); abrirPropuesta(p.fecha, p.glosa, p.lineas, `Finiquito de ${trabajadorPorId(q.trabajador)?.nombre || ""}.`, { finiquitoIds: [q.id] }); }
