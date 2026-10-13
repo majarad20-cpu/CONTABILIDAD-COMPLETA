@@ -289,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.30.0";
+const VERSION = "1.30.1";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -826,6 +826,7 @@ async function guardarAsiento(confirmado = false) {
   const r = validarAsiento();
   if (typeof r === "string") { aviso(r); return; }
   const ed = S.edit;
+  if (antesDelInicio(ed.fecha)) { aviso(`${mesCap(ed.fecha.slice(0, 7))} es anterior al inicio de actividades (${mesCap(inicioContable())}): esos meses no se consideran para efectos contables.`); return; }
   if (ed.apertura && ed.cierre) { aviso("Un asiento no puede ser de apertura y de cierre a la vez."); return; }
   const afectados = mesesCerradosAfectados();
   if (afectados.length && !confirmado) { S.confirmar = "cerrado"; render(); $("#a-motivo")?.focus(); return; }
@@ -950,7 +951,7 @@ function vistaDiario() {
   filas.push(["", "", "", "TOTALES", "", td, th]);
   S.informe = () => informeDiario(p.desde, p.hasta);
   S.csv = { archivo: `libro_diario_${slug()}_${p.desde}_${p.hasta}.csv`, filas };
-  const vacios = mesesDelRango(p.desde, p.hasta).filter((m) => !S.lista.some((a) => !a.apertura && !a.cierre && a.fecha.slice(0, 7) === m) && m < hoy().slice(0, 7));
+  const vacios = mesesDelRango(p.desde, p.hasta).filter((m) => !antesDelInicio(`${m}-01`) && !S.lista.some((a) => !a.apertura && !a.cierre && a.fecha.slice(0, 7) === m) && m < hoy().slice(0, 7));
   const bloqueVacios = vacios.length ? `<div class="tabla"><table><thead><tr><th>Mes</th><th>Situación</th><th></th></tr></thead><tbody>${vacios.map((m) => `<tr><td>${esc(mesCap(m))}</td><td>${mesSinMovimientos(m) ? "<strong>Mes sin movimientos contables</strong>" : '<span class="neg">Sin contabilizar</span>'}</td><td>${puedeEditar(`<button class="btn enlace" type="button" data-n="diario-sin-mov" data-id="${m}">${mesSinMovimientos(m) ? "Quitar la marca" : "Marcar mes sin movimientos"}</button>`)}</td></tr>`).join("")}</tbody></table></div>` : "";
   return `${cabecera("Libro Diario", textoPeriodo(p.desde, p.hasta))}${barraPeriodo()}
   ${bloqueVacios}
@@ -1876,6 +1877,10 @@ function defectoDoc(d) {
   return d.registro === "COMPRA" ? (d.activo_fijo ? t.compras_activo_fijo : t.compras_neto) : (d.neto ? t.ventas_neto : t.ventas_exento);
 }
 
+/* Los meses anteriores al inicio de actividades no existen para efectos contables: no se registran, no se muestran y no se cuentan. */
+const inicioContable = () => (empresa()?.inicio_actividades || "").slice(0, 7);
+const antesDelInicio = (fecha) => { const i = inicioContable(); return !!i && !!fecha && String(fecha).slice(0, 7) < i; };
+const mesAntesDelInicio = (anio, mes) => antesDelInicio(`${anio}-${mes}-01`);
 /* Contabilidad al día: un mes cerrado (anterior al mes en curso) está contabilizado si tiene movimientos del libro de caja (simplificada) o asientos (completa),
    o si se marcó «sin movimientos». Se cuenta desde el año en curso o desde el inicio de actividades, según lo elegido, y nunca antes del inicio de actividades. */
 function mesesPendientesContables(e, movimientos, simple, hoyF = hoy()) {
@@ -3011,7 +3016,8 @@ async function aPdfLibroCaja(spec, folioInicial) {
   const monto = (v) => (v ? clp(v) : "-");
   const ancho = [48, 78, 54, 100, 66, 54, 184, 74, 74];
   const cab = [["N° CORRELATIVO", "TIPO OPERACIÓN\n(FLUJO INGRESO = 1;\nFLUJO EGRESO = 2\nSALDO INICIAL = 0)", "N° DE\nDOCUMENTO", "TIPO DOCUMENTO", "RUT EMISOR", "FECHA\nOPERACIÓN", "GLOSA DE OPERACIÓN", "MONTO TOTAL\nFLUJO DE\nINGRESO O\nEGRESO", "MONTO QUE\nAFECTA LA BASE\nIMPONIBLE"].map((t) => T(t.replace(/\\n/g, "\n")))];
-  const meses = []; for (let m = +spec.m1; m <= +spec.m2; m++) meses.push(String(m).padStart(2, "0"));
+  const meses = []; for (let m = +spec.m1; m <= +spec.m2; m++) if (!mesAntesDelInicio(spec.anio, String(m).padStart(2, "0"))) meses.push(String(m).padStart(2, "0"));
+  if (!meses.length) throw new Error("Los meses elegidos son anteriores al inicio de actividades.");
   let folio = folioInicial - 1, previa = folioInicial - 1; const folios = {};
   meses.forEach((mes, idx) => {
     const M = modeloLibroCaja(spec.anio, mes); if (idx > 0) M.ini.doc_num = previa;  else M.ini.doc_num = folioInicial - 1;
@@ -6271,7 +6277,7 @@ function sugerenciaPpm() {
   const t = tasaPpmVigente(anio, mes, reg), alta = tasaPpmVigente(anio, mes, reg, true);
   return t == null ? null : { tasa: t, alta, regimen: reg };
 }
-const CAJA_CERRADO = (fechas) => { const c = [...new Set(fechas.filter(mesCerrado).map((f) => f.slice(0, 7)))].sort(); return c.length ? `${c.map(nombrePeriodo).join(", ")} ${c.length === 1 ? "está cerrado" : "están cerrados"}: reábrelo en el cierre de meses para registrar o cambiar movimientos.` : ""; };
+const CAJA_CERRADO = (fechas) => { const antes = [...new Set(fechas.filter(antesDelInicio).map((f) => f.slice(0, 7)))].sort(); if (antes.length) return `${antes.map(nombrePeriodo).join(", ")} ${antes.length === 1 ? "es anterior" : "son anteriores"} al inicio de actividades (${mesCap(inicioContable())}): esos meses no se consideran para efectos contables.`; const c = [...new Set(fechas.filter(mesCerrado).map((f) => f.slice(0, 7)))].sort(); return c.length ? `${c.map(nombrePeriodo).join(", ")} ${c.length === 1 ? "está cerrado" : "están cerrados"}: reábrelo en el cierre de meses para registrar o cambiar movimientos.` : ""; };
 const rutEmisorCaja = (m) => ((m.emisor_propio ?? ((m.tipo === 1 && !!m.doc_tipo && m.doc_tipo !== "Contrato u otro") || m.origen === "remuneraciones" || DOCS_PROPIOS_CAJA.has(m.doc_tipo))) ? (empresa().rut || "") : (m.rut || ""));
 function cierresCaja(anio) {
   const out = []; let saldo = saldoInicialCaja(anio);
@@ -6285,7 +6291,7 @@ function cierresCaja(anio) {
   return out;
 }
 const saldoInicialCaja = (anio) => +((empresa()?.caja_inicial || {})[anio] || 0);
-const cajaDe = (anio) => S.caja.filter((m) => m.fecha.startsWith(String(anio))).sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : String(a.id).localeCompare(String(b.id))));
+const cajaDe = (anio) => S.caja.filter((m) => m.fecha.startsWith(String(anio)) && !antesDelInicio(m.fecha)).sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : String(a.id).localeCompare(String(b.id))));
 const flujo = (m) => (m.tipo === 1 ? m.monto : -m.monto);
 function saldoCaja(hasta) { const anio = hasta.slice(0, 4); return saldoInicialCaja(anio) + cajaDe(anio).filter((m) => m.fecha <= hasta).reduce((x, m) => x + flujo(m), 0); }
 function estadoCaja(desde, hasta) {
@@ -6806,9 +6812,10 @@ async function guardarEdicionCaja() {
 function vistaCaja() {
   const anios = aniosDesde(S.caja.map((m) => m.fecha), S.rcv.map((d) => d.fecha), empresa().ejercicio);
   const anio = +(S.cajaAnio || empresa().ejercicio); if (!anios.includes(String(anio))) anios.unshift(String(anio));
-  const tab = pestanaActual("caja", "libro"), mes = S.cajaMes ?? mesPorDefectoCaja(anio);
+  const tab = pestanaActual("caja", "libro"), mesElegido = S.cajaMes ?? mesPorDefectoCaja(anio), primerMesActivo = MESES.map((_, i) => String(i + 1).padStart(2, "0")).find((v) => !mesAntesDelInicio(anio, v)) || "12", mes = mesElegido && mesAntesDelInicio(anio, mesElegido) ? primerMesActivo : mesElegido;
   const cab = `${pestanasDe("caja", [["libro", "Libro de caja"], ["ingresos", "Ingresos y egresos"], ["control", "Control anual"], ["importar", "Importar"]])}
     ${cabecera(tab === "ingresos" ? "Libro de ingresos y egresos" : tab === "importar" ? "Importar movimientos" : tab === "control" ? "Control anual" : "Libro de caja", `${empresa().razon_social} · ${anio}`)}`;
+  if ((tab === "libro" || tab === "ingresos") && inicioContable() && String(anio) < inicioContable().slice(0, 4)) return `${cab}<div class="barra"><label>Año<select id="caja-anio">${opcionesAnio(anios, anio)}</select></label></div><div class="aviso">${anio} es anterior al inicio de actividades (${mesCap(inicioContable())}): esos meses no se consideran para efectos contables.</div>`;
   if (tab === "importar") return cab + vistaImportarCaja(anio);
   if (tab === "control") return cab + vistaControlCaja(anio, anios);
   if (tab === "ingresos") {
@@ -6824,9 +6831,10 @@ function vistaCaja() {
       <div class="tabla"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Documento</th><th>Cliente / proveedor</th><th class="num">Total</th><th></th></tr></thead><tbody>${pend.slice(0, 80).map((d) => `<tr><td>${fmtFecha(d.fecha)}</td><td>${d.registro === "VENTA" ? "Por cobrar" : "Por pagar"}</td><td>${esc(`${TIPOS_DOCUMENTO[+d.tipo_doc] || d.tipo_doc} ${d.folio}`)}</td><td>${esc(d.razon_social || "")}</td><td class="num">${clp(d.total)}</td><td><button class="btn enlace" type="button" data-n="caja-pagar" data-id="${esc(d.id)}">${d.registro === "VENTA" ? "Registrar cobro" : "Registrar pago"}</button></td></tr>`).join("")}</tbody></table></div>${pend.length > 80 ? `<p class="ayuda">Se muestran los primeros 80.</p>` : ""}</section>` : ""}`;
   }
   /* La pantalla muestra un mes; el PDF, el Excel y el CSV salen por el rango de meses elegido (por defecto, el mes que se ve). */
-  const expD = S.cajaExpD || mes || "01", expH = S.cajaExpH && S.cajaExpH >= expD ? S.cajaExpH : mes ? (mes >= expD ? mes : expD) : "12";
+  const primerMes = MESES.map((_, i) => String(i + 1).padStart(2, "0")).find((v) => !mesAntesDelInicio(anio, v)) || "12";
+  const expD = (S.cajaExpD && S.cajaExpD >= primerMes ? S.cajaExpD : mes && mes >= primerMes ? mes : primerMes), expH = S.cajaExpH && S.cajaExpH >= expD ? S.cajaExpH : mes ? (mes >= expD ? mes : expD) : "12";
   const acum = !!mes && S.cajaSaldos === "acum", L = acum ? libroCaja(anio, "01", mes) : libroCaja(anio, mes), Lmes = libroCaja(anio, mes); S.informe = () => informeLibroCaja(anio, expD, S.cajaDiario, expH); S.csv = csvDeInforme(informeLibroCaja(anio, expD, S.cajaDiario, expH));
-  const opMes = (sel, vacio) => `${vacio ? `<option value="">${vacio}</option>` : ""}${MESES.map((m, i) => { const v = String(i + 1).padStart(2, "0"); return `<option value="${v}" ${sel === v ? "selected" : ""}>${m}</option>`; }).join("")}`;
+  const opMes = (sel, vacio) => `${vacio ? `<option value="">${vacio}</option>` : ""}${MESES.map((m, i) => { const v = String(i + 1).padStart(2, "0"); return mesAntesDelInicio(anio, v) ? "" : `<option value="${v}" ${sel === v ? "selected" : ""}>${m}</option>`; }).join("")}`;
   const pend = documentosPendientesCaja(anio).length;
   let saldo = Lmes.inicial;
   const lineas = S.cajaDiario ? [...L.filas.reduce((mp, m) => { const x = mp.get(m.fecha) || { n: 0, i: 0, e: 0, bi: 0, be: 0 }; x.n++; if (m.tipo === 1) { x.i += m.monto; x.bi += m.base; } else { x.e += m.monto; x.be += m.base; } return mp.set(m.fecha, x); }, new Map())]
@@ -6834,7 +6842,7 @@ function vistaCaja() {
     : [];
   const e = empresa();
   return `${cab}<div class="barra"><label>Año<select id="caja-anio">${opcionesAnio(anios, anio)}</select></label>
-      ${mes ? `<button class="btn sec" type="button" data-n="caja-mes-prev" ${mes === "01" ? "disabled" : ""} aria-label="Mes anterior">◀</button>` : ""}<label>Mes<select id="caja-mes">${opMes(mes, "Todo el año")}</select></label>${mes ? `<button class="btn sec" type="button" data-n="caja-mes-sig" ${mes === "12" ? "disabled" : ""} aria-label="Mes siguiente">▶</button>` : ""}
+      ${mes ? `<button class="btn sec" type="button" data-n="caja-mes-prev" ${mes === "01" || mesAntesDelInicio(anio, String(+mes - 1).padStart(2, "0")) ? "disabled" : ""} aria-label="Mes anterior">◀</button>` : ""}<label>Mes<select id="caja-mes">${opMes(mes, "Todo el año")}</select></label>${mes ? `<button class="btn sec" type="button" data-n="caja-mes-sig" ${mes === "12" ? "disabled" : ""} aria-label="Mes siguiente">▶</button>` : ""}
       <label class="check"><input type="checkbox" id="caja-diario" ${S.cajaDiario ? "checked" : ""}> Resumen diario</label></div>
     <div class="barra"><span class="ayuda">Exportar el libro (PDF, Excel, CSV) de</span><label>Mes inicial<select id="caja-exp-desde">${opMes(expD)}</select></label><label>Mes final<select id="caja-exp-hasta">${opMes(expH)}</select></label>${botonesExportar()}</div>
     ${pend ? `<div class="aviso">Hay ${pend} documento(s) del RCV de ${anio} sin cobrar ni pagar en el Libro de caja. Regístralos en «Ingresos y egresos» o impórtalos en la pestaña «Importar».</div>` : ""}
@@ -7009,6 +7017,10 @@ function revisarDatos() {
   { const mp = mesesPendientesContables(e, simp ? S.caja : S.lista, simp, hoyF);
     if (mp.pendientes.length) add("aviso", simp ? "Libro de caja" : "Contabilidad", `Contabilidad sin hacer: ${mp.pendientes.length} mes(es) sin contabilizar desde ${mesCap(mp.desde)}. Si un mes no tuvo movimientos, márcalo como «sin movimientos».`, mp.pendientes.map((m) => mesCap(m)), simp ? "caja" : "diario");
     if (mp.sinInicio) add("info", "Empresa", "Falta el inicio de actividades: desde esa fecha parte la contabilidad y el aviso de meses sin contabilizar.", [], "empresa"); }
+  if (inicioContable()) {
+    const antes = [...S.caja.filter((m) => antesDelInicio(m.fecha)).map((m) => `Libro de caja · ${fmtFecha(m.fecha)} · ${m.glosa}`), ...S.lista.filter((a) => antesDelInicio(a.fecha)).map((a) => `Asiento N° ${a.numero} · ${fmtFecha(a.fecha)} · ${a.glosa}`), ...S.rcv.filter((d) => antesDelInicio(d.fecha)).map((d) => `RCV · ${fmtFecha(d.fecha)} · ${d.razon_social || d.folio}`)];
+    if (antes.length) add("info", "Empresa", `Hay ${antes.length} registro(s) anteriores al inicio de actividades (${mesCap(inicioContable())}): no se consideran para efectos contables.`, antes, "empresa");
+  }
   const sinPeriodoF29 = S.caja.filter((m) => String(m.clase || "").startsWith("f29_") && !m.f29_periodo);
   if (sinPeriodoF29.length) add("aviso", "Libro de caja", "Pagos de F29 sin período del F29: no entran al control de PPM ni a la DJ 1947. Asígnalos con «Editar» en el libro de caja.", sinPeriodoF29.map((m) => `${fmtFecha(m.fecha)} · ${m.glosa} · $${clp(m.monto)}`), "caja");
   const sugPpm = sugerenciaPpm();
