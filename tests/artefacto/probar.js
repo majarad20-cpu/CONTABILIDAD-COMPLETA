@@ -209,6 +209,19 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("una línea se edita en su lugar y sale del modo de edición", lc.editada, ["Línea editada", 238000, 200000, 2, null]);
   ok("el rango de meses del libro suma los meses elegidos", lc.rango[0] >= lc.rango[1] && lc.rango[3] >= lc.rango[0] && lc.rango[2] >= 1, JSON.stringify(lc.rango));
   ok("el período del informe por rango lleva los meses y su total", /AGOSTO A SEPTIEMBRE 2026/.test(lc.periodo[0]) && lc.periodo[2] === "TOTAL DEL PERÍODO", JSON.stringify(lc.periodo));
+  console.log("PPM por período del F29");
+  const pp2 = await page.evaluate(async () => {
+    const ant = S.caja, r = {}, mk = (id, fecha, monto, per, extra = {}) => ({ id, fecha, tipo: 2, categoria: "Pago de impuestos (IVA, PPM, F29)", doc_tipo: "Formulario 29", doc_num: "1", rut: "", nombre: "", glosa: "Pago F29 PPM", monto, base: 0, clase: "f29_ppm", ...(per ? { f29_periodo: per } : {}), origen: "manual", ref: "", ...extra });
+    S.caja = [mk("p1", "2026-01-12", 14899, "2025-12"), mk("p2", "2026-02-12", 19977, "2026-01"), mk("p3", "2026-04-20", 27737, "2026-02"), mk("p4", "2026-05-10", 5000, ""), mk("p5", "2027-01-12", 7000, "2026-12")];
+    const x = ppmPagadoPorPeriodo(2026); r.total = x.total; r.dic = x.porMes[11].monto; r.sinPeriodo = x.sinPeriodo.length;
+    const inf = informeControlPpm(2026); r.filas = inf.filas.map((f) => [f.valores[0], f.valores[1], f.valores[3]]); r.notas = inf.notas.some((n) => /no tienen período/.test(n));
+    r.revisor = revisarDatos().some((h) => /sin período del F29/.test(h.texto));
+    const res = informeControlResultados(2026); r.dj = (res.paneles.der.find((t) => /1947/.test(t.titulo)) || { filas: [[0, null]] }).filas[0][1];
+    S.caja = ant; return r;
+  });
+  igual("el PPM del año son los F29 de enero a diciembre (sin diciembre del año anterior), aunque se paguen después", [pp2.total, pp2.dic, pp2.sinPeriodo], [19977 + 27737 + 7000, 7000, 1]);
+  igual("el control marca el pago desfasado y el de diciembre pagado el año siguiente", pp2.filas, [["Enero", 19977, "Pagado al mes siguiente"], ["Febrero", 27737, "Pagado con desfase"], ["Diciembre", 7000, "Pagado al mes siguiente"], ["TOTAL", 54714, ""]]);
+  ok("los pagos de PPM sin período se avisan en el informe y en el revisor", pp2.notas && pp2.revisor);
   const pr = await page.evaluate(async () => {
     const inf = informeControlResultados(2026), r = {};
     r.paneles = [!!inf.paneles, inf.paneles?.izq.titulo, inf.paneles?.der.map((t) => t.titulo), inf.filas.length > inf.panelDesde];
@@ -584,7 +597,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("el PPM y la retención del F29 salen en sus filas y la retención se suma a honorarios", [ct.ppmFlujo, ct.retFlujo, ct.ret], [-12000, -3000, ct.ret]);
   ok("el control de resultados trae el resumen para el F22 y el capital propio simplificado", ct.resumen);
   ok("la pestaña Control anual dibuja las tablas", ct.titulo && ct.tabla > 10 && ct.tablaR > 10 && ct.cols[0] === 14 && ct.cols[1] === 14, JSON.stringify([ct.tabla, ct.tablaR, ct.cols]));
-  igual("el control de PPM muestra el PPM pagado del F29 de junio", ct.junio.slice(0, 4), ["Junio", 12000, 0, 12000]);
+  igual("el control de PPM muestra el PPM del F29 de junio, pagado en julio", ct.junio.slice(0, 4), ["Junio", 12000, "12/07/2026", "Pagado al mes siguiente"]);
   if (hayLibs) {
     const exc = await page.evaluate(async () => { const r = []; for (const f of [informeControlResultados, informeControlFlujo, informeControlPpm]) { try { r.push([(await aExcel(f(2026))).size > 1000, (await aPdf(f(2026))).blob.size > 1000]); } catch (e) { r.push("ERR " + e.message); } } return r; });
     ok("los informes de control se exportan a Excel y a PDF", JSON.stringify(exc) === JSON.stringify([[true, true], [true, true], [true, true]]), JSON.stringify(exc));
