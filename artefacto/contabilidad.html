@@ -238,7 +238,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.15.0";
+const VERSION = "1.16.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -529,7 +529,7 @@ const SECCIONES = [
 const SIN_EMPRESA = ["empresas", "contador", "apariencia", "panel"];
 function ir(vista) {
   if (vista === "nuevo") { abrirEditor(null); return; }
-  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.docEdit = null; S.rcvMensajes = null; S.migra = null; S.socioEdit = null; S.boletaEdit = null;
+  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.docEdit = null; S.rcvMensajes = null; S.migra = null; S.migraCaja = null; S.socioEdit = null; S.boletaEdit = null;
   S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null;
   if (vista !== "editor") recordar("vista", vista);
   render();
@@ -5267,6 +5267,8 @@ document.addEventListener("click", (ev) => {
     case "caja-eliminar": { const cerr = CAJA_CERRADO([S.caja.find((m) => m.id === id)?.fecha || ""]); if (cerr) { aviso(cerr); break; } } ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/caja/${id}`); render(); aviso("Movimiento eliminado."); }, "No se pudo eliminar el movimiento"); break;
     case "caja-importar-rcv": importarCaja("rcv"); break;
     case "caja-importar-rcvmes": importarCaja("rcvmes"); break;
+    case "cx-importar": importarLibroCaja(); break;
+    case "cx-cancelar": S.migraCaja = null; render(); break;
     case "f29p-rellenar": rellenarPagoF29(); break;
     case "caja-importar-rem": importarCaja("rem"); break;
     case "caja-importar-bhe": importarCaja("bhe"); break;
@@ -5708,6 +5710,7 @@ document.addEventListener("change", (ev) => {
   if (ev.target.id === "co-firma" && ev.target.files[0]) cargarFirma(ev.target.files[0]);
   if (ev.target.id === "rcv-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.rcvPeriodo = ev.target.value; S.rcvSel.clear(); S.docEdit = null; S.rcvMensajes = null; render(); }
   if (ev.target.id === "rcv-excel" && ev.target.files.length) prepararMigracionRcv([...ev.target.files]);
+  if (ev.target.id === "caja-excel" && ev.target.files.length) prepararLibroCaja(ev.target.files[0]);
   if (/^mg-per-\d+$/.test(ev.target.id) && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.migra.hojas[+ev.target.id.slice(7)].periodo = ev.target.value; render(); }
   if (ev.target.id === "rcv-archivos" && ev.target.files.length) importarArchivosRcv([...ev.target.files]);
   if (ev.target.dataset.cuentaDoc) cambiarCuentaDoc(ev.target.dataset.cuentaDoc, ev.target.value);
@@ -6051,6 +6054,138 @@ function vistaControlCaja(anio, anios) {
     <p class="ayuda">Informes de control anual del libro de caja, calculados con los movimientos registrados. Sirven para preparar el F22 y la declaración jurada 1947 y para revisar que el libro cuadre.</p>${tablaDeInforme(inf)}`;
 }
 
+/* ---- importador de libros de caja en Excel (una hoja por mes, como los lleva el contador) ---- */
+const NOMBRES_MES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+const sinTildes = (t) => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function periodoDeHojaCaja(titulo) { const m = sinTildes(titulo).toUpperCase().trim().match(/^([A-Z]+)\s+(\d{4})$/), i = m ? NOMBRES_MES.indexOf(m[1]) : -1; return i < 0 ? null : `${m[2]}-${String(i + 1).padStart(2, "0")}`; }
+const claseVentaGlosa = (g) => (/exent/.test(g) && /boleta/.test(g) ? "boleta_exenta" : /exent/.test(g) && /factura/.test(g) ? "factura_exenta" : /comprobante/.test(g) ? "comprobante" : /boleta/.test(g) ? "boleta" : "factura");
+/* Propone la categoría y la clase de un movimiento a partir del tipo de documento y la glosa (el contador las escribe a mano). */
+function clasificarMovimientoExcel(tipo, docTipo, glosa) {
+  const g = sinTildes(glosa).toLowerCase(), d = sinTildes(docTipo).toLowerCase(), r = {};
+  if (d === "formulario 29" || /\bf29\b/.test(g)) {
+    r.categoria = "Pago de impuestos (IVA, PPM, F29)";
+    r.clase = /\bppm\b/.test(g) ? "f29_ppm" : /retencion/.test(g) ? "f29_ret" : /impuesto unico|iusc/.test(g) ? "f29_iusc" : /\biva\b/.test(g) ? "f29_iva" : "";
+    const m = g.match(/f29\s+([a-z]+)\s+(\d{4})/), i = m ? NOMBRES_MES.indexOf(m[1].toUpperCase()) : -1; if (i >= 0) r.f29_periodo = `${m[2]}-${String(i + 1).padStart(2, "0")}`;
+    return r;
+  }
+  if (tipo === 1) {
+    if (/registro de ventas|ventas del mes|ventas afectas|ventas exentas/.test(d + " " + g)) { r.categoria = "Ventas"; r.clase = claseVentaGlosa(g); return r; }
+    if (/prestamo/.test(g)) { r.categoria = "Préstamo recibido"; return r; }
+    if (/aporte/.test(g)) { r.categoria = "Aporte de capital"; return r; }
+    if (/devolucion/.test(g)) { r.categoria = "Devolución de impuestos"; return r; }
+    r.categoria = /venta|servicio/.test(g) ? "Ventas" : "Otros ingresos"; if (r.categoria === "Ventas") r.clase = claseVentaGlosa(g); return r;
+  }
+  if (/anticipo de iva/.test(g)) { r.categoria = "Pago de impuestos (IVA, PPM, F29)"; return r; }
+  if (/registro de compras|compras afectas|compras exentas|facturas por compra/.test(d + " " + g)) { r.categoria = /activo fijo/.test(g) ? "Compra de activo fijo" : "Compras y gastos"; r.clase = /activo fijo/.test(g) ? "compra_activo_fijo" : /exent/.test(g) ? "compra_exenta" : "compra_afecta"; return r; }
+  r.categoria = /honorario/.test(g) || d === "boleta de honorarios" ? "Honorarios" : /patente|contribucion/.test(g) ? "Patentes y contribuciones" : /retiro/.test(g) ? "Retiros de socios" : /multa/.test(g) ? "Multas (fiscales, municipales, laborales)" : /arriendo/.test(g) ? "Arriendo"
+    : /leyes sociales|cotizaci|previred/.test(g) ? "Leyes sociales y cotizaciones" : /remuneracion|sueldo|liquidacion/.test(g) ? "Remuneraciones" : /prestamo|credito|cuota/.test(g) ? "Pago de préstamo" : /interes/.test(g) ? "Intereses y gastos financieros" : /luz|agua|internet|telefono|electric/.test(g) ? "Servicios básicos" : "Otros egresos";
+  return r;
+}
+const tipoDocCaja = (t) => TIPOS_DOC_CAJA.find((x) => x && sinTildes(x).toLowerCase() === sinTildes(t).toLowerCase()) || String(t ?? "").trim();
+/* Lee un libro con una hoja por mes y revisa que cuadre: totales de la hoja contra sus filas, saldo inicial contra el saldo final del mes anterior, signos y fechas. */
+async function analizarLibroCajaExcel(nombre, buffer) {
+  await cargarScript("exceljs");
+  const wb = new window.ExcelJS.Workbook(); await wb.xlsx.load(buffer);
+  const hojas = [], avisos = [];
+  for (const ws of wb.worksheets) {
+    const periodo = periodoDeHojaCaja(ws.name); if (!periodo) continue;
+    let fCab = 0, c0 = 0, fTot = 0, rutHoja = "";
+    ws.eachRow({ includeEmpty: false }, (row, n) => {
+      row.eachCell({ includeEmpty: false }, (c, j) => { const t = sinTildes(valorCelda(c.value)).toUpperCase(); if (!fCab && /N. CORRELATIVO/.test(t)) { fCab = n; c0 = j; } if (!fTot && /^TOTAL MONTO FLUJO DE INGRESOS/.test(t)) fTot = n; if (!rutHoja && t === "RUT") { const v = row.getCell(j + 1).value; rutHoja = String(valorCelda(v) ?? ""); } });
+    });
+    if (!fCab) { avisos.push(`La hoja «${ws.name}» no tiene la tabla del libro de caja y se omitió.`); continue; }
+    const cols = {}, enc = ws.getRow(fCab);
+    enc.eachCell({ includeEmpty: false }, (c, j) => { const t = sinTildes(valorCelda(c.value)).toUpperCase();
+      if (/TIPO OPERACION/.test(t)) cols.op = j; else if (/N. DE DOCUMENTO/.test(t)) cols.num = j; else if (/TIPO DOCUMENTO/.test(t)) cols.doc = j; else if (/RUT EMISOR/.test(t)) cols.rut = j; else if (/FECHA OPERACION/.test(t)) cols.fecha = j;
+      else if (/GLOSA/.test(t)) cols.glosa = j; else if (/MONTO TOTAL/.test(t)) cols.monto = j; else if (/MONTO QUE AFECTA/.test(t)) cols.base = j; });
+    const falta = ["op", "num", "doc", "rut", "fecha", "glosa", "monto", "base"].filter((k) => !cols[k]);
+    if (falta.length) { avisos.push(`La hoja «${ws.name}» no tiene las columnas ${falta.join(", ")} y se omitió.`); continue; }
+    const filas = [], problemas = [], fin = fTot || ws.rowCount + 1;
+    for (let r = fCab + 1; r < fin; r++) {
+      const row = ws.getRow(r), corr = valorCelda(row.getCell(c0).value), op = valorCelda(row.getCell(cols.op).value);
+      if (typeof corr !== "number" || ![0, 1, 2].includes(op)) continue;
+      const monto = valorCelda(row.getCell(cols.monto).value), base = valorCelda(row.getCell(cols.base).value), fecha = fechaRcv(row.getCell(cols.fecha).value);
+      if (typeof monto !== "number" || Number.isNaN(monto)) { problemas.push(`Fila ${r}: el monto no es un número.`); continue; }
+      const b = typeof base === "number" ? base : 0;
+      if (!fecha) problemas.push(`Fila ${r}: sin fecha válida.`); else if (fecha.slice(0, 7) !== periodo && op > 0) problemas.push(`Fila ${r}: la fecha ${fmtFecha(fecha)} es de otro mes; al importar se anota el ${fmtFecha(ultimoDia(periodo))}.`);
+      if ((op === 2 && monto > 0) || (op === 1 && monto < 0)) problemas.push(`Fila ${r}: el signo del monto no corresponde al tipo de operación.`);
+      filas.push({ fila: r, corr, op, fueraDeMes: !!fecha && fecha.slice(0, 7) !== periodo, num: String(valorCelda(row.getCell(cols.num).value) ?? "").trim(), doc: String(valorCelda(row.getCell(cols.doc).value) ?? "").trim(), rut: String(valorCelda(row.getCell(cols.rut).value) ?? "").trim(), fecha, glosa: String(valorCelda(row.getCell(cols.glosa).value) ?? "").trim(), monto, base: b });
+    }
+    const repetidos = [...new Set(filas.map((f) => f.corr).filter((c, i, a) => a.indexOf(c) !== i))], salteado = filas.some((f, i) => f.corr !== i + 1) && !repetidos.length;
+    if (repetidos.length) problemas.push(`El número correlativo ${repetidos.join(", ")} está repetido: el N° correlativo (C1) debe ser 1, 2, 3… sin repetirse.`); else if (salteado) problemas.push("El número correlativo (C1) no es una secuencia 1, 2, 3… sin saltos.");
+    const ing = filas.filter((f) => f.op <= 1).reduce((t, f) => t + f.monto, 0), eg = filas.filter((f) => f.op === 2).reduce((t, f) => t + f.monto, 0);
+    const bIng = filas.filter((f) => f.op === 1 || (f.op === 0 && f.base > 0)).reduce((t, f) => t + f.base, 0), bEg = filas.filter((f) => f.op === 2 || (f.op === 0 && f.base < 0)).reduce((t, f) => t + f.base, 0);
+    const calc = [ing, eg, ing + eg, bIng, bEg, bIng + bEg], declarados = fTot ? [3, 4, 5, 6, 7, 8].map((k) => valorCelda(ws.getRow(fTot + 1).getCell(c0 + k - 3).value)) : [];
+    const nombres = ["total de ingresos", "total de egresos", "saldo de caja", "base de ingresos", "base de egresos", "resultado neto"];
+    if (fTot) calc.forEach((v, i) => { const d = declarados[i]; if (typeof d === "number" && Math.abs(d - v) > 1) problemas.push(`El ${nombres[i]} de la hoja (${clp(d)}) no coincide con la suma de sus filas (${clp(v)}): diferencia de ${clp(d - v)}.`); });
+    const ini = filas.find((f) => f.op === 0);
+    hojas.push({ nombre: ws.name, periodo, filas, problemas, ini: ini ? ini.monto : null, ing, eg, final: ing + eg, rut: rutHoja });
+  }
+  hojas.sort((a, b) => (a.periodo < b.periodo ? -1 : 1));
+  let previo = null;
+  for (const h of hojas) {
+    if (previo && previo.periodo === periodoAnterior(h.periodo) && h.ini != null && Math.abs(h.ini - previo.final) > 1) h.problemas.unshift(`El saldo inicial (${clp(h.ini)}) no coincide con el saldo final de ${nombrePeriodo(previo.periodo)} según sus filas (${clp(previo.final)}): diferencia de ${clp(h.ini - previo.final)}.`);
+    if (previo && previo.periodo !== periodoAnterior(h.periodo)) h.problemas.unshift(`Falta la hoja de ${nombrePeriodo(periodoAnterior(h.periodo))}.`);
+    previo = h;
+  }
+  const r = { archivo: nombre, hojas, avisos, rut: hojas.find((h) => h.rut)?.rut || "", corregir: true };
+  for (const h of hojas) if (h.periodo.endsWith("-01") && h.ini != null) { const c = saldoInicialLibro(r, h); if (Math.abs(c - h.ini) > 1) h.problemas.unshift(`El saldo inicial (${clp(h.ini)}) no coincide con el saldo del año anterior calculado con todos sus movimientos (${clp(c)}): diferencia de ${clp(h.ini - c)}.`); }
+  r.corregir = hojas.some((h) => h.periodo.endsWith("-01") && saldoInicialLibro(r, h) !== h.ini);
+  return r;
+}
+/* Saldo inicial de enero: el que declara la hoja o, con `corregir` y el año anterior completo en el libro, el que resulta de sumar a su saldo inicial todos los movimientos de ese año. */
+function saldoInicialLibro(r, h) {
+  if (!r.corregir || !h.periodo.endsWith("-01") || h.ini == null) return h.ini;
+  const hs = r.hojas.filter((x) => x.periodo.startsWith(String(+h.periodo.slice(0, 4) - 1)));
+  if (hs.length !== 12) return h.ini;
+  return (saldoInicialLibro(r, hs[0]) ?? hs[0].ini ?? 0) + hs.reduce((t, x) => t + x.filas.filter((f) => f.op > 0).reduce((u, f) => u + f.monto, 0), 0);
+}
+function movimientosDeLibroCaja(h) {
+  return h.filas.filter((f) => f.op > 0).map((f) => {
+    const c = clasificarMovimientoExcel(f.op, f.doc, f.glosa), doc = tipoDocCaja(f.doc), propio = DOCS_PROPIOS_CAJA.has(doc) || limpiarRut(f.rut) === limpiarRut(empresa().rut);
+    return { id: "mx_" + h.periodo.replace("-", "") + "_" + f.fila, fecha: f.fueraDeMes || !f.fecha ? ultimoDia(h.periodo) : f.fecha, tipo: f.op, categoria: c.categoria, doc_tipo: doc, doc_num: f.num, rut: propio ? "" : f.rut ? (rutValido(f.rut) ? formatoRut(f.rut) : f.rut) : "", nombre: "", glosa: f.glosa, monto: Math.abs(f.monto), base: Math.abs(f.base),
+      ...(c.clase ? { clase: c.clase } : {}), ...(c.f29_periodo ? { f29_periodo: c.f29_periodo } : {}), origen: "excel", ref: `xl:${h.periodo}:${f.fila}` };
+  });
+}
+async function prepararLibroCaja(archivo) {
+  await ocupado(async () => {
+    const r = await analizarLibroCajaExcel(archivo.name, await archivo.arrayBuffer());
+    if (!r.hojas.length) { S.migraCaja = null; return aviso(r.avisos[0] || "No encontré hojas de meses (por ejemplo «ENERO 2026») con la tabla del libro de caja."); }
+    const rutEmp = limpiarRut(empresa().rut || ""), rutLib = limpiarRut(r.rut || "");
+    r.otraEmpresa = !!(rutLib && rutEmp && rutLib !== rutEmp);
+    S.migraCaja = r; render();
+  }, "No se pudo leer el libro de caja");
+}
+async function importarLibroCaja() {
+  const r = S.migraCaja; if (!r || r.otraEmpresa) return;
+  const nuevos = r.hojas.flatMap(movimientosDeLibroCaja).filter((m) => !S.caja.some((x) => x.ref === m.ref));
+  const cerr = CAJA_CERRADO(nuevos.map((m) => m.fecha)); if (cerr) return aviso(cerr);
+  const iniciales = { ...(empresa().caja_inicial || {}) }, cambios = [];
+  for (const h of r.hojas) { const ini = saldoInicialLibro(r, h); if (h.periodo.endsWith("-01") && ini != null && !+iniciales[h.periodo.slice(0, 4)]) { iniciales[h.periodo.slice(0, 4)] = ini; cambios.push(h.periodo.slice(0, 4)); } }
+  await ocupado(async () => {
+    await guardarMovimientos(nuevos);
+    if (cambios.length) await BD.setEmpresa(S.eid, { ...empresa(), caja_inicial: iniciales });
+    S.migraCaja = null; render(); aviso(`${nuevos.length} movimiento(s) importado(s)${cambios.length ? ` y saldo inicial de ${cambios.join(", ")}` : ""}.`);
+  }, "No se pudo importar el libro de caja");
+}
+function vistaLibroCajaExcel() {
+  const r = S.migraCaja;
+  if (!r) return `<section class="caja"><h2>Libro de caja en Excel (una hoja por mes)</h2><p class="ayuda">Para cargar un libro llevado en Excel, con hojas «ENERO 2026», «FEBRERO 2026»… y la tabla del Anexo 3. Antes de importar se revisa que cada hoja cuadre: sus totales contra sus filas y el saldo inicial contra el saldo final del mes anterior. Las categorías se proponen según el tipo de documento y la glosa.</p>
+    ${puedeEditar(`<div class="acciones"><input type="file" id="caja-excel" accept=".xlsx,.xlsm" aria-label="Libro de caja en Excel"></div>`)}</section>`;
+  const nuevos = r.hojas.flatMap(movimientosDeLibroCaja), porImportar = nuevos.filter((m) => !S.caja.some((x) => x.ref === m.ref)), cats = new Map();
+  for (const m of porImportar) cats.set(m.categoria, (cats.get(m.categoria) || 0) + 1);
+  const conProblemas = r.hojas.filter((h) => h.problemas.length).length;
+  return `<section class="caja"><h2>Libro de caja en Excel · ${esc(r.archivo)}</h2>
+    ${r.otraEmpresa ? `<div class="aviso">El libro es de otro RUT (${esc(r.rut)}) y la empresa activa tiene el ${esc(empresa().rut)}: no se puede importar.</div>` : ""}
+    ${r.avisos.map((a) => `<div class="aviso">${esc(a)}</div>`).join("")}
+    <p class="ayuda">${r.hojas.length} mes(es) leídos, ${nuevos.length} movimiento(s), ${porImportar.length} nuevo(s) por importar. ${conProblemas ? `<strong>${conProblemas} mes(es) con diferencias</strong>: se importan las filas tal como están; los totales de la hoja que no cuadran no se usan.` : "Todos los meses cuadran."}</p>
+    <div class="tabla"><table><thead><tr><th>Mes</th><th class="num">Movimientos</th><th class="num">Saldo inicial</th><th class="num">Ingresos</th><th class="num">Egresos</th><th class="num">Saldo final</th><th>Revisión</th></tr></thead><tbody>${r.hojas.map((h) => `<tr><td>${esc(h.nombre)}</td><td class="num">${h.filas.filter((f) => f.op > 0).length}</td><td class="num">${h.ini == null ? "" : clp(h.ini)}</td><td class="num">${clp(h.ing)}</td><td class="num">${clp(-h.eg)}</td><td class="num">${clp(h.final)}</td>
+      <td>${h.problemas.length ? `<span class="etiqueta cerrado">${h.problemas.length} aviso(s)</span><br>${h.problemas.map((t) => `<small class="ayuda">${esc(t)}</small>`).join("<br>")}` : '<span class="etiqueta">cuadra</span>'}</td></tr>`).join("")}</tbody></table></div>
+    <p class="ayuda"><strong>Categorías propuestas:</strong> ${[...cats].map(([c, n]) => `${esc(c)} (${n})`).join(" · ") || "ninguna nueva"}.</p>
+    ${r.hojas.some((h) => h.periodo.endsWith("-01") && saldoInicialLibro({ ...r, corregir: true }, h) !== h.ini) ? `<label class="check"><input type="checkbox" id="cx-corregir" ${r.corregir ? "checked" : ""}> Usar como saldo inicial de enero el calculado con todos los movimientos del año anterior (el que declara la hoja no coincide)</label>` : ""}
+    <div class="acciones">${puedeEditar(`<button class="btn" type="button" data-n="cx-importar" ${porImportar.length && !r.otraEmpresa ? "" : "disabled"}>Importar ${porImportar.length} movimiento(s)</button>`)}<button class="btn sec" type="button" data-n="cx-cancelar">Cancelar</button></div></section>`;
+}
+
 function vistaInicioSimple() {
   const e = empresa(), anio = String(e.ejercicio), er = estadoCaja(`${anio}-01-01`, `${anio}-12-31`), caja = saldoCaja(`${anio}-12-31`), ult = cajaDe(anio).slice(-8).reverse();
   return `${cabecera(`Resumen del ejercicio ${anio}`, `${e.razon_social} · Contabilidad simplificada`)}${avisoRevisor()}
@@ -6136,7 +6271,7 @@ function vistaImportarCaja(anio) {
   const pend = S.rcv.filter((d) => d.periodo === ph && signoDoc(d.tipo_doc) > 0 && !S.caja.some((m) => m.ref === refRcv(d))).length;
   const nc = S.rcv.filter((d) => d.periodo === ph && signoDoc(d.tipo_doc) < 0).length;
   const liq = S.liquidaciones.filter((l) => l.periodo === ph).length, bhe = S.honorarios.filter((b) => b.tipo === "BHE" && b.periodo === ph && !S.caja.some((m) => m.ref === "bhe:" + b.id)).length;
-  return `<div class="barra"><label>Mes a importar<input type="month" id="caja-imp-periodo" value="${ph}"></label></div>
+  return `${vistaLibroCajaExcel()}<div class="barra"><label>Mes a importar<input type="month" id="caja-imp-periodo" value="${ph}"></label></div>
   <section class="caja"><h2>Compras y ventas del RCV</h2><p class="ayuda">Crea un movimiento por cada documento del mes, <strong>suponiendo que se cobró o pagó el mismo día del documento</strong>. Si algún documento se paga después, no lo importes: regístralo en «Ingresos y egresos» con su fecha real. Las notas de crédito (${nc}) no se importan: ingrésalas a mano. El monto que afecta la base es el neto (más el IVA no recuperable en las compras).</p>
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-rcv" ${pend ? "" : "disabled"}>Importar ${pend} documento(s)</button></div>`)}</section>
   <section class="caja"><h2>Resumen mensual del RCV</h2><p class="ayuda">Crea una línea por tipo de documento (ventas por factura, boleta o comprobante de pago; compras afectas, de activo fijo y exentas), <strong>suponiendo que todo se cobró o pagó en el mes</strong>, a fin de mes. Es la forma en que se lleva el libro con muchos documentos. No se puede mezclar con la importación documento por documento del mismo mes.</p>
@@ -6816,6 +6951,7 @@ document.addEventListener("change", (ev) => {
   if (ev.target.dataset?.afc) { const v = CATEGORIAS_ACTIVO[+ev.target.value]?.[1]; $(`#afc-vida-${ev.target.dataset.afc}`).value = v || ""; return; }
   if (cid === "caja-anio") { S.cajaAnio = ev.target.value; render(); return; }
   if (cid === "caja-mes") { S.cajaMes = ev.target.value; render(); return; }
+  if (cid === "cx-corregir") { S.migraCaja.corregir = ev.target.checked; render(); return; }
   if (cid === "caja-control") { S.cajaControl = ev.target.value; render(); return; }
   if (cid === "caja-diario") { S.cajaDiario = ev.target.checked; render(); return; }
   if (cid === "caja-imp-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.cajaImp = ev.target.value; render(); return; }

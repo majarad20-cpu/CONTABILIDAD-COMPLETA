@@ -422,6 +422,49 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const exc = await page.evaluate(async () => { const r = []; for (const f of [informeControlResultados, informeControlFlujo, informeControlPpm]) { try { r.push([(await aExcel(f(2026))).size > 1000, (await aPdf(f(2026))).blob.size > 1000]); } catch (e) { r.push("ERR " + e.message); } } return r; });
     ok("los informes de control se exportan a Excel y a PDF", JSON.stringify(exc) === JSON.stringify([[true, true], [true, true], [true, true]]), JSON.stringify(exc));
   }
+  console.log("Simplificada: importador de libros de caja en Excel");
+  const ic = await page.evaluate(async () => {
+    await cargarScript("exceljs");
+    const wb = new window.ExcelJS.Workbook(), f = (a, m, d) => new Date(Date.UTC(a, m - 1, d)), RUT = "76.543.210-3";
+    const hoja = (nombre, filas, tot) => {
+      const ws = wb.addWorksheet(nombre); ws.getCell("C9").value = "RUT"; ws.getCell("D9").value = RUT; ws.getCell("C13").value = "REGISTRO DE OPERACIONES";
+      ["N° CORRELATIVO", "TIPO OPERACIÓN (FLUJO INGRESO = 1; FLUJO EGRESO = 2 SALDO INICIAL = 0)", "N° DE DOCUMENTO", "TIPO DOCUMENTO", "RUT EMISOR", "FECHA OPERACIÓN", "GLOSA DE OPERACIÓN"].forEach((v, i) => { ws.getCell(14, 3 + i).value = v; });
+      ws.getCell("K14").value = "MONTO TOTAL FLUJO DE INGRESO O EGRESO"; ws.getCell("L14").value = "MONTO QUE AFECTA LA BASE IMPONIBLE";
+      filas.forEach((r, i) => { const n = 15 + i; [r[0], r[1], r[2], r[3], r[4], r[5], r[6]].forEach((v, j) => { ws.getCell(n, 3 + j).value = v; }); ws.getCell(n, 11).value = { formula: "A1", result: r[7] }; ws.getCell(n, 12).value = r[8]; });
+      const n0 = 15 + filas.length + 2; ws.getCell(n0, 3).value = "TOTAL MONTO FLUJO DE INGRESOS"; tot.forEach((v, j) => { ws.getCell(n0 + 1, 3 + j).value = v; });
+    };
+    hoja("ENERO 2026", [[1, 0, 21, "Libro de Caja Diciembre 2025", RUT, f(2026, 1, 2), "Saldo Inicial Libro de Caja Diciembre de 2025", 100000, 0], [2, 2, 73, "Boleta de Honorarios", "17.992.401-3", f(2026, 1, 11), "Pago de Honorarios Líquidos Diciembre 2025, Contador", -20000, -20000],
+      [3, 2, 8700, "Formulario 29", RUT, f(2026, 1, 11), "Pago F29 Diciembre 2025, PPM.", -5000, 0], [4, 2, 8700, "Formulario 29", RUT, f(2026, 1, 11), "Pago F29 Diciembre 2025, Retención 2da Categoría.", -1000, -1000],
+      [5, 2, "xx", "Registro de Compras SII", RUT, f(2026, 1, 31), "Compras afectas a IVA, pagadas.", -119000, -100000], [6, 1, "xx", "Registro de Ventas SII", RUT, f(2026, 1, 31), "Ventas afectas a IVA, percibidas, boleta electrónica", 238000, 200000]],
+      [338000, -145000, 193000, 200000, -121000, 79000]);
+    hoja("FEBRERO 2026", [[1, 0, 22, "Libro de Caja Enero 2026", RUT, f(2026, 2, 1), "Saldo Inicial", 193000, 0], [2, 2, "xx", "Registro de Compras SII", RUT, f(2026, 2, 28), "Compras exentas de IVA, pagadas.", -10000, -10000], [2, 1, "xx", "Registro de Ventas SII", RUT, f(2026, 1, 31), "Ventas afectas a IVA, percibidas, factura electrónica", 119000, 100000]],
+      [312000, -5000, 307000, 100000, -10000, 90000]);
+    hoja("MARZO 2026", [[1, 0, 23, "Libro de Caja Febrero 2026", RUT, f(2026, 3, 1), "Saldo Inicial", 999999, 0], [2, 1, "xx", "Registro de Ventas SII", RUT, f(2026, 3, 31), "Ventas afectas a IVA, percibidas, comprobante de pago electrónico", 50000, 42000]],
+      [1049999, 0, 1049999, 42000, 0, 42000]);
+    wb.addWorksheet("CONTROL FLUJO DE CAJA");
+    const buf = await wb.xlsx.writeBuffer();
+    const r = await analizarLibroCajaExcel("libro.xlsx", buf);
+    const ene = r.hojas[0], feb = r.hojas[1], mar = r.hojas[2];
+    const cat = (h) => movimientosDeLibroCaja(h).map((m) => [m.categoria, m.clase || "", m.tipo, m.monto, m.base]);
+    const fechaFuera = movimientosDeLibroCaja(feb).find((m) => /factura electr/.test(m.glosa)).fecha;
+    const rutOtro = limpiarRut(r.rut) === limpiarRut(empresa().rut);
+    S.migraCaja = r; S.pestana.caja = "importar"; S.vista = "caja"; render(); await new Promise((x) => setTimeout(x, 60));
+    const vista = document.querySelector("main").textContent;
+    const antes = S.caja.length; await importarLibroCaja(); await new Promise((x) => setTimeout(x, 200));
+    const tras = S.caja.length - antes, ini = empresa().caja_inicial?.[2026];
+    S.migraCaja = r; await importarLibroCaja(); await new Promise((x) => setTimeout(x, 150)); const segunda = S.caja.length - antes - tras;
+    const f29 = S.caja.filter((m) => m.origen === "excel" && m.clase?.startsWith("f29_")).map((m) => [m.clase, m.f29_periodo, rutEmisorCaja(m) === empresa().rut]).sort();
+    return { n: r.hojas.length, avisos: r.avisos.length, problemas: [ene, feb, mar].map((h) => h.problemas), ene: cat(ene), fechaFuera, rutOtro, vista: /Libro de caja en Excel/.test(vista) && /cuadra/.test(vista), tras, ini, segunda, f29 };
+  });
+  igual("lee las tres hojas de meses y omite la hoja de control", [ic.n, ic.avisos], [3, 0]);
+  ok("enero cuadra; febrero trae correlativo repetido, fecha de otro mes, total de egresos y saldo de caja distintos; marzo, saldo inicial distinto",
+    ic.problemas[0].length === 0 && [/correlativo 2 está repetido/, /fecha 31\/01\/2026 es de otro mes/, /total de egresos de la hoja/, /saldo de caja de la hoja/].every((re) => ic.problemas[1].some((x) => re.test(x))) && ic.problemas[1].length === 4
+    && ic.problemas[2].length === 1 && /saldo inicial \(999\.999\)/.test(ic.problemas[2][0]), JSON.stringify(ic.problemas));
+  igual("propone categoría y clase según el documento y la glosa", ic.ene, [["Honorarios", "", 2, 20000, 20000], ["Pago de impuestos (IVA, PPM, F29)", "f29_ppm", 2, 5000, 0], ["Pago de impuestos (IVA, PPM, F29)", "f29_ret", 2, 1000, 1000], ["Compras y gastos", "compra_afecta", 2, 119000, 100000], ["Ventas", "boleta", 1, 238000, 200000]]);
+  ok("una fecha de otro mes se anota al último día del mes de la hoja", ic.fechaFuera === "2026-02-28", ic.fechaFuera);
+  ok("la pestaña Importar muestra la revisión", ic.vista);
+  igual("importa los movimientos, respeta el saldo inicial ya registrado y no repite al importar de nuevo", [ic.tras, ic.ini, ic.segunda], [8, 300000, 0]);
+  igual("los pagos del F29 quedan con su clase y período y el RUT emisor de la empresa", ic.f29, [["f29_ppm", "2025-12", true], ["f29_ret", "2025-12", true]]);
   console.log("Excel con la disposición de las plantillas del SII (Anexos 1, 3, 1.1 y 3.1)");
   const xl = await page.evaluate(async () => {
     await cargarScript("exceljs");
