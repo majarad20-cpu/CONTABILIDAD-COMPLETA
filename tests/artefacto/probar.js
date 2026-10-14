@@ -191,7 +191,8 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     r.sinForm = !document.getElementById("cj-fecha") && !!document.querySelector('[data-n="caja-panel"][data-id="mov"]');
     document.querySelector('[data-n="caja-panel"][data-id="mov"]').click(); r.conForm = !!document.getElementById("cj-fecha");
     document.querySelector('[data-n="caja-panel"][data-id="mov"]').click(); r.cierra = !document.getElementById("cj-fecha");
-    S.cajaMes = "09"; render(); r.filaRapida = !!document.getElementById("ql-glosa");
+    S.cajaMes = "09"; S.cajaNuevaLinea = null; render(); r.sinLineaAbierta = !document.getElementById("ql-glosa") && !!document.querySelector('[data-n="caja-linea-mostrar"]');
+    document.querySelector('[data-n="caja-linea-mostrar"]').click(); r.filaRapida = !!document.getElementById("ql-glosa");
     const n0 = S.caja.length; document.getElementById("ql-fecha").value = "2026-09-28"; document.getElementById("ql-glosa").value = "Línea rápida"; document.getElementById("ql-tipo").value = "1"; document.getElementById("ql-monto").value = "119.000"; document.getElementById("ql-base").value = "100.000";
     await agregarLineaCaja(); await new Promise((x) => setTimeout(x, 100));
     const nueva = S.caja.find((m) => m.glosa === "Línea rápida"); r.agregada = S.caja.length === n0 + 1 && nueva && nueva.monto === 119000 && nueva.base === 100000 && nueva.tipo === 1;
@@ -206,6 +207,12 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el libro abre en el mes en curso", lc.mesDefecto);
   ok("el formulario de nuevo movimiento se despliega y se cierra con su botón", lc.sinForm && lc.conForm && lc.cierra);
   ok("se agrega una línea rápida al pie de la tabla", lc.filaRapida && lc.agregada);
+  ok("la línea nueva del libro no se ve hasta pulsar el botón «+ Agregar línea»", lc.sinLineaAbierta);
+  const av = await page.evaluate(() => {
+    const e = { inicio_actividades: "2025-10-08", contab_desde: "inicio" }, h = "2025-12-15", pend = (x) => mesesPendientesContables({ ...e, ...x }, [], true, h).pendientes;
+    return { sin: pend({}), constitucion: pend({ caja_inicial: { 2025: 200000 } }), omitido: pend({ caja_inicial: { 2025: 200000 }, avisos_omitidos: { "sinmov:2025-11": true } }), clave: claveAviso({ area: "X", texto: "Hay 3 meses" }) === claveAviso({ area: "X", texto: "Hay 12 meses" }) };
+  });
+  igual("el mes de constitución con aporte no se avisa como sin contabilizar y un aviso se puede omitir", [av.sin, av.constitucion, av.omitido, av.clave], [["2025-10", "2025-11"], ["2025-11"], [], true]);
   igual("una línea se edita en su lugar y sale del modo de edición", lc.editada, ["Línea editada", 238000, 200000, 2, null]);
   ok("el rango de meses del libro suma los meses elegidos", lc.rango[0] >= lc.rango[1] && lc.rango[3] >= lc.rango[0] && lc.rango[2] >= 1, JSON.stringify(lc.rango));
   ok("el período del informe por rango lleva los meses y su total", /AGOSTO A SEPTIEMBRE 2026/.test(lc.periodo[0]) && lc.periodo[2] === "TOTAL DEL PERÍODO", JSON.stringify(lc.periodo));
