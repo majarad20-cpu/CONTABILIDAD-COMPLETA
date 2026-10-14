@@ -289,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.34.0";
+const VERSION = "1.35.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -1885,11 +1885,21 @@ const mesAntesDelInicio = (anio, mes) => antesDelInicio(`${anio}-${mes}-01`);
    o si se marcó «sin movimientos». Se cuenta desde el año en curso o desde el inicio de actividades, según lo elegido, y nunca antes del inicio de actividades. */
 function mesesPendientesContables(e, movimientos, simple, hoyF = hoy()) {
   const actual = hoyF.slice(0, 7), ini = (e.inicio_actividades || "").slice(0, 7), hechos = new Set((movimientos || []).filter((m) => !m.apertura && !m.cierre).map((m) => String(m.fecha).slice(0, 7)));
-  const marcados = e.meses_sin_mov || {}, enCurso = `${hoyF.slice(0, 4)}-01`;
+  const marcados = e.meses_sin_mov || {}, omitidos = e.avisos_omitidos || {}, enCurso = `${hoyF.slice(0, 4)}-01`;
+  /* El mes de constitución cuenta como contabilizado: parte con el aporte (saldo inicial de caja) o el asiento de apertura. */
+  if (ini && (((e.caja_inicial || {})[ini.slice(0, 4)] || 0) > 0 || (movimientos || []).some((m) => m.apertura && String(m.fecha).startsWith(ini)))) hechos.add(ini);
   let desde = e.contab_desde === "inicio" ? ini || enCurso : enCurso;
   if (ini && ini > desde) desde = ini;
   const meses = []; for (let m = desde; m < actual; m = periodoSiguiente(m)) meses.push(m);
-  return { desde, sinInicio: !ini, pendientes: meses.filter((m) => !hechos.has(m) && !marcados[m]), simple };
+  return { desde, sinInicio: !ini, pendientes: meses.filter((m) => !hechos.has(m) && !marcados[m] && !omitidos[`sinmov:${m}`]), simple };
+}
+/* Avisos que el contador decide omitir (por empresa): empresa.avisos_omitidos = { clave: true }. Los errores graves del revisor no se pueden omitir. */
+const avisoOmitido = (clave) => !!(empresa()?.avisos_omitidos || {})[clave];
+const claveAviso = (x) => `${x.area}|${x.texto}`.toLowerCase().replace(/\d+/g, "#");
+async function omitirAviso(clave, valor) {
+  const e = empresa(), o = { ...(e.avisos_omitidos || {}) };
+  if (valor) o[clave] = true; else delete o[clave];
+  await BD.setEmpresa(S.eid, { ...e, avisos_omitidos: o });
 }
 const mesSinMovimientos = (periodo) => !!(empresa()?.meses_sin_mov || {})[periodo];
 async function marcarMesSinMov(periodo, valor) {
@@ -5753,6 +5763,9 @@ document.addEventListener("click", (ev) => {
     case "caja-ini-auto": restaurarLineaInicial(); break;
     case "caja-ini-guardar": guardarSaldoInicialLinea(); break;
     case "caja-linea": agregarLineaCaja(); break;
+    case "caja-linea-mostrar": S.cajaNuevaLinea = id; render(); $("#ql-glosa")?.focus(); break;
+    case "caja-linea-ocultar": S.cajaNuevaLinea = null; render(); break;
+    case "aviso-omitir": case "aviso-restaurar": ocupado(async () => { await omitirAviso(id, t.dataset.n === "aviso-omitir"); render(); aviso(t.dataset.n === "aviso-omitir" ? "Aviso omitido: puedes restaurarlo desde el revisor de datos." : "Aviso restaurado."); }, "No se pudo guardar"); break;
     case "caja-mes-prev": case "caja-mes-sig": { const a = String(S.cajaAnio || empresa().ejercicio), cur = S.cajaMes ?? mesPorDefectoCaja(a), n = Math.min(12, Math.max(1, +cur + (t.dataset.n === "caja-mes-sig" ? 1 : -1))); S.cajaMes = String(n).padStart(2, "0"); S.cajaExpD = S.cajaExpH = null; S.cajaEdit = null; render(); break; }
     case "caja-eliminar": { const cerr = CAJA_CERRADO([S.caja.find((m) => m.id === id)?.fecha || ""]); if (cerr) { aviso(cerr); break; } } ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/caja/${id}`); render(); aviso("Movimiento eliminado."); }, "No se pudo eliminar el movimiento"); break;
     case "caja-importar-rcv": importarCaja("rcv"); break;
@@ -6774,10 +6787,11 @@ function bloqueMesCaja(anio, mes, unico) {
     return `<tr><td class="c">${f.n}</td><td class="c">${f.tipo}</td><td class="c">${esc(f.doc_num)}</td><td>${esc(f.doc_tipo)}</td><td>${esc(f.rut)}</td><td>${fmtFecha(f.fecha)}</td><td>${esc(f.glosa)}${m.nombre ? `<br><small class="ayuda">${esc(m.nombre)}</small>` : ""}</td><td class="num">${pesosCaja(f.monto)}</td><td class="num ${f.base === 0 ? "cod" : ""}">${pesosCaja(f.base)}</td>
       <td>${ed ? `<button class="btn enlace" type="button" data-n="caja-editar" data-id="${esc(m.id)}">Editar</button> <button class="btn enlace" type="button" data-n="caja-eliminar" data-id="${esc(m.id)}">Eliminar</button>` : ""}</td></tr>`;
   }).join("");
-  const rapida = ed && unico ? filaRapidaCaja(mes, anio, M.filas.length + 2) : "";
+  const abierta = S.cajaNuevaLinea === `${anio}-${mes}`, rapida = ed && unico && abierta ? filaRapidaCaja(mes, anio, M.filas.length + 2) : "";
+  const botonMas = ed && unico && !abierta ? `<p><button class="btn sec" type="button" data-n="caja-linea-mostrar" data-id="${anio}-${mes}" title="Agregar una línea al libro de ${MESES[+mes - 1]} ${anio}" aria-label="Agregar línea">+ Agregar línea</button></p>` : "";
   return `<section class="bloque-caja"><h2>${MESES[+mes - 1]} ${anio}${M.folio ? ` · Folio ${M.folio[0]}${M.folio[1] !== M.folio[0] ? ` al ${M.folio[1]}` : ""}` : ""}</h2>
     <div class="tabla"><table><thead><tr><th class="c" title="N° correlativo">N°</th><th class="c" title="Tipo de operación: flujo de ingreso = 1; flujo de egreso = 2; saldo inicial = 0">Tipo op.</th><th class="c" title="N° de documento">N° doc.</th><th>Tipo documento</th><th>RUT emisor</th><th title="Fecha de la operación">Fecha</th><th>Glosa de operación</th><th class="num" title="Monto total del flujo de ingreso o egreso">Monto flujo</th><th class="num" title="Monto que afecta la base imponible">Afecta base</th><th></th></tr></thead>
-      <tbody>${filaIni}${filas}${rapida}</tbody></table></div>
+      <tbody>${filaIni}${filas}${rapida}</tbody></table></div>${botonMas}
     <p class="ayuda">Tipo de operación: 1 flujo de ingreso · 2 flujo de egreso · 0 saldo inicial. Monto flujo: monto total del flujo de ingreso o egreso (los egresos en negativo). Afecta base: monto que afecta la base imponible.</p>
     <div class="tabla"><table class="totales"><thead><tr><th colspan="6" class="c">SALDOS Y TOTALES LIBRO DE CAJA</th></tr><tr><th colspan="3" class="c">Flujo de ingresos y egresos</th><th colspan="3" class="c">Montos que afectan la base imponible</th></tr>
       <tr><th class="num">Total monto flujo de ingresos</th><th class="num">Total monto flujo de egresos</th><th class="num">Saldo flujo de caja</th><th class="num">Ingresos</th><th class="num">Egresos</th><th class="num">Resultado neto</th></tr></thead>
@@ -6791,9 +6805,11 @@ function bloquesCaja(anio, mes) {
 function panelMesSinMovCaja(anio, mes, nMov) {
   const per = `${anio}-${mes}`, marcado = mesSinMovimientos(per);
   if (nMov) return "";
-  const futuro = per >= hoy().slice(0, 7);
+  if (per === inicioContable() && saldoInicialCaja(anio) > 0) return `<div class="aviso ok">${MESES[+mes - 1]} ${anio} es el mes de inicio de actividades: parte con el saldo inicial (aporte de capital) y no necesita otros movimientos.</div>`;
+  const futuro = per >= hoy().slice(0, 7), clave = `sinmov:${per}`, omitido = avisoOmitido(clave);
+  if (omitido && !marcado) return `<p class="ayuda">Aviso de mes sin movimientos omitido. ${puedeEditar(`<button class="btn enlace" type="button" data-n="aviso-restaurar" data-id="${clave}">Restaurar aviso</button>`)}</p>`;
   return `<div class="aviso ${marcado ? "ok" : ""}">${marcado ? `${MESES[+mes - 1]} ${anio} está marcado como mes sin movimientos: el saldo de cierre pasa al mes siguiente.` : `${MESES[+mes - 1]} ${anio} no tiene movimientos${futuro ? " (todavía no termina)" : ": está sin contabilizar"}. Si no hubo movimientos, márcalo y el saldo pasa al mes siguiente.`}
-    ${puedeEditar(`<button class="btn sec" type="button" data-n="caja-sin-mov" data-id="${per}">${marcado ? "Quitar la marca" : "Marcar mes sin movimientos"}</button>`)}</div>`;
+    ${puedeEditar(`<button class="btn sec" type="button" data-n="caja-sin-mov" data-id="${per}">${marcado ? "Quitar la marca" : "Marcar mes sin movimientos"}</button>${marcado ? "" : ` <button class="btn enlace" type="button" data-n="aviso-omitir" data-id="${clave}">Omitir este aviso</button>`}`)}</div>`;
 }
 const mesPorDefectoCaja = (anio) => { const h = hoy(); if (h.startsWith(String(anio))) return h.slice(5, 7); const ms = cajaDe(anio).map((m) => m.fecha.slice(5, 7)); return ms.length ? ms.at(-1) : "01"; };
 /* Línea de captura rápida al pie de la tabla: fecha, glosa, tipo y monto; el detalle (IVA, documento) va en «+ Nuevo movimiento». */
@@ -6802,7 +6818,7 @@ function filaRapidaCaja(mes, anio, n = "") {
   return `<tr class="rapida"><td class="c">${n}</td><td><select id="ql-tipo" aria-label="Tipo de operación"><option value="1">1 · Ingreso</option><option value="2">2 · Egreso</option></select></td><td><input id="ql-num" placeholder="N°" style="width:7em" aria-label="N° de documento"></td>
     <td><select id="ql-doc" aria-label="Tipo de documento">${TIPOS_DOC_CAJA.map((t) => `<option>${esc(t)}</option>`).join("")}</select></td><td><input id="ql-rut" placeholder="RUT" style="width:8em" aria-label="RUT emisor"></td>
     <td><input type="date" id="ql-fecha" value="${fecha}" aria-label="Fecha"></td><td><input id="ql-glosa" placeholder="Nueva línea: glosa" style="width:100%" aria-label="Glosa"></td>
-    <td class="num"><input id="ql-monto" inputmode="numeric" placeholder="Monto" style="width:7em" aria-label="Monto"></td><td class="num"><input id="ql-base" inputmode="numeric" placeholder="= monto" style="width:7em" aria-label="Afecta la base (vacío = todo el monto)"></td><td><button class="btn" type="button" data-n="caja-linea">Agregar</button></td></tr>`;
+    <td class="num"><input id="ql-monto" inputmode="numeric" placeholder="Monto" style="width:7em" aria-label="Monto"></td><td class="num"><input id="ql-base" inputmode="numeric" placeholder="= monto" style="width:7em" aria-label="Afecta la base (vacío = todo el monto)"></td><td><button class="btn" type="button" data-n="caja-linea">Agregar</button> <button class="btn enlace" type="button" data-n="caja-linea-ocultar" aria-label="Cerrar">×</button></td></tr>`;
 }
 async function agregarLineaCaja() {
   const fecha = $("#ql-fecha").value, glosa = $("#ql-glosa").value.trim(), tipo = +$("#ql-tipo").value, monto = parseMonto($("#ql-monto").value || ""), baseTxt = $("#ql-base").value.trim();
@@ -6816,7 +6832,7 @@ async function agregarLineaCaja() {
   if (rut && !rutValido(rut)) return aviso("El RUT no es válido (revisa el dígito verificador).");
   if (DOCS_TRIBUTARIOS_CAJA.has(docTipo) && !num) return aviso("Indica el número del documento: el libro lo exige para documentos tributarios.");
   S.cajaFecha = fecha;
-  await ocupado(async () => { await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria: tipo === 1 ? "Ventas" : "Compras y gastos", doc_tipo: docTipo, doc_num: num, rut: rut ? formatoRut(rut) : "", nombre: "", glosa, monto, base, origen: "manual", ref: "" }]); render(); aviso("Línea agregada."); }, "No se pudo agregar la línea");
+  await ocupado(async () => { await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria: tipo === 1 ? "Ventas" : "Compras y gastos", doc_tipo: docTipo, doc_num: num, rut: rut ? formatoRut(rut) : "", nombre: "", glosa, monto, base, origen: "manual", ref: "" }]); S.cajaNuevaLinea = null; render(); aviso("Línea agregada."); }, "No se pudo agregar la línea");
 }
 async function guardarSaldoInicialLinea() {
   const [a, mm] = (S.cajaIniEdit || "").split("-"); if (!a || !$("#cini-monto")) return;
@@ -7054,7 +7070,7 @@ async function registrarPagoDoc(idDoc) {
 
 /* ------------------------------------------------------------------ revisor de calidad de datos */
 const NIVELES_REV = { mal: "Error", aviso: "Aviso", info: "Información" };
-function revisarDatos() {
+function revisarDatos(todos = false) {
   const hall = [], e = empresa(), simp = esSimplificada(), hoyF = hoy(), ej = String(e.ejercicio), mesActual = hoyF.slice(0, 7);
   const add = (nivel, area, texto, detalle = [], ir = null) => hall.push({ nivel, area, texto, detalle: detalle.slice(0, 8), mas: Math.max(0, detalle.length - 8), cantidad: detalle.length, ir });
   const lugar = (x) => `${fmtFecha(x.fecha)}`;
@@ -7140,7 +7156,10 @@ function revisarDatos() {
   const af = S.activos.filter((a) => !(a.costo > 0) || !a.fecha_adq);
   if (af.length) add("aviso", "Activo fijo", "Fichas de activo fijo sin costo o sin fecha de adquisición.", af.map((a) => a.nombre), "activos");
   const ordenN = { mal: 0, aviso: 1, info: 2 };
-  return hall.sort((a, b) => ordenN[a.nivel] - ordenN[b.nivel]);
+  const om = empresa().avisos_omitidos || {};
+  for (const x of hall) { x.clave = claveAviso(x); x.omitido = x.nivel !== "mal" && !!om[x.clave]; }
+  const orden = hall.sort((a, b) => ordenN[a.nivel] - ordenN[b.nivel]);
+  return todos ? orden : orden.filter((x) => !x.omitido);
 }
 function avisoRevisor() {
   let h; try { h = revisarDatos(); } catch (_) { return ""; }
@@ -7154,15 +7173,16 @@ function informeRevisor(h) {
   return inf;
 }
 function vistaRevisor() {
-  const h = revisarDatos(), n = (t) => h.filter((x) => x.nivel === t).length;
+  const todos = revisarDatos(true), h = todos.filter((x) => !x.omitido), omitidos = todos.filter((x) => x.omitido), n = (t) => h.filter((x) => x.nivel === t).length;
   S.informe = () => informeRevisor(h); S.csv = csvDeInforme(informeRevisor(h));
   return `${cabecera("Revisor de datos", `${empresa().razon_social} · ${esSimplificada() ? "contabilidad simplificada" : "contabilidad completa"}`)}
   <div class="barra">${botonesExportar()}</div>
   <p class="ayuda">Revisa la contabilidad de esta empresa y señala errores comunes antes de cerrar un mes o presentar un F29. Son controles de apoyo: un aviso no siempre es un error, pero conviene mirarlo.</p>
   <div class="tarjetas"><div class="tarjeta ${n("mal") ? "neg" : ""}"><span>Errores</span><strong>${n("mal")}</strong></div><div class="tarjeta"><span>Avisos</span><strong>${n("aviso")}</strong></div><div class="tarjeta"><span>Información</span><strong>${n("info")}</strong></div></div>
   ${h.length ? h.map((x) => `<details class="caja rs-punto-${x.nivel}" ${x.nivel === "mal" ? "open" : ""}><summary><span class="etiqueta ${x.nivel === "mal" ? "cerrado" : ""}">${NIVELES_REV[x.nivel]}</span> <strong>${esc(x.area)}</strong> · ${esc(x.texto)}${x.cantidad ? ` <small class="ayuda">(${x.cantidad})</small>` : ""}</summary>
-      ${x.detalle.length ? `<ul>${x.detalle.map((d) => `<li>${esc(d)}</li>`).join("")}${x.mas ? `<li>… y ${x.mas} más</li>` : ""}</ul>` : ""}${x.ir ? `<div class="acciones"><button class="btn sec" type="button" data-ir="${x.ir}">Ir a ${esc((SECCIONES.concat(SECCIONES_SIMPLE).flatMap(([, it]) => it).find(([v]) => v === x.ir) || [0, x.ir])[1])}</button></div>` : ""}</details>`).join("")
-    : `<div class="caja vacio"><p><strong>Todo en orden.</strong> No se encontraron problemas en los datos de esta empresa.</p></div>`}`;
+      ${x.detalle.length ? `<ul>${x.detalle.map((d) => `<li>${esc(d)}</li>`).join("")}${x.mas ? `<li>… y ${x.mas} más</li>` : ""}</ul>` : ""}${(x.ir || x.nivel !== "mal") ? `<div class="acciones">${x.ir ? `<button class="btn sec" type="button" data-ir="${x.ir}">Ir a ${esc((SECCIONES.concat(SECCIONES_SIMPLE).flatMap(([, it]) => it).find(([v]) => v === x.ir) || [0, x.ir])[1])}</button>` : ""}${x.nivel !== "mal" ? puedeEditar(`<button class="btn enlace" type="button" data-n="aviso-omitir" data-id="${esc(x.clave)}">Omitir este aviso</button>`) : ""}</div>` : ""}</details>`).join("")
+    : `<div class="caja vacio"><p><strong>Todo en orden.</strong> No se encontraron problemas en los datos de esta empresa.</p></div>`}
+  ${omitidos.length ? `<details class="caja"><summary><strong>Avisos omitidos</strong> <small class="ayuda">(${omitidos.length})</small></summary><ul>${omitidos.map((x) => `<li>${esc(x.area)} · ${esc(x.texto)} ${puedeEditar(`<button class="btn enlace" type="button" data-n="aviso-restaurar" data-id="${esc(x.clave)}">Restaurar</button>`)}</li>`).join("")}</ul></details>` : ""}`;
 }
 
 /* ------------------------------------------------------------------ calendario tributario y panel de clientes */
