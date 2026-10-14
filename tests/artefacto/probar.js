@@ -503,12 +503,17 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     S.cajaAnio = a; S.cajaMes = "01"; S.cajaDiario = false; S.pestana.caja = "libro"; ir("caja"); await new Promise((r) => setTimeout(r, 60)); S.cajaIniEdit = `${a}-01`; render(); await new Promise((r) => setTimeout(r, 60));
     const campo = !!document.querySelector("#cini-monto"); if (campo) document.querySelector("#cini-monto").value = "777.000";
     await guardarSaldoInicialLinea(); await new Promise((r) => setTimeout(r, 120));
+    const despuesEne = saldoInicialCaja(a); const feb0 = modeloLibroCaja(a, "02").ini.monto; S.cajaMes = "02"; S.cajaIniEdit = `${a}-02`; render(); await new Promise((r) => setTimeout(r, 60));
+    if (document.querySelector("#cini-monto")) { document.querySelector("#cini-monto").value = clp(feb0 + 1000); await guardarSaldoInicialLinea(); await new Promise((r) => setTimeout(r, 120)); }
+    const febAjuste = modeloLibroCaja(a, "02").ini.monto - feb0, base = despuesEne;
+    await BD.setEmpresa(S.eid, { ...empresa(), caja_inicial: { ...(empresa().caja_inicial || {}), [a]: despuesEne } });
     const despues = saldoInicialCaja(a), libro = libroCaja(a, "01").inicial;
     await BD.setEmpresa(S.eid, { ...empresa(), caja_inicial: { ...(empresa().caja_inicial || {}), [a]: antes } });
-    return { boton: /caja-ini-editar/.test(sin), soloPrimer: !/caja-ini-editar/.test(otro), campoEdicion: /id="cini-monto"/.test(con), campo, despues, libro, restaurado: saldoInicialCaja(a) === antes };
+    return { febAjuste, boton: /caja-ini-editar/.test(sin), soloPrimer: /caja-ini-editar/.test(otro), campoEdicion: /id="cini-monto"/.test(con), campo, despues, libro, restaurado: saldoInicialCaja(a) === antes };
   });
-  ok("el saldo inicial de la primera línea del libro se edita solo en el primer mes", ini.boton && ini.soloPrimer && ini.campoEdicion && ini.campo, JSON.stringify(ini));
+  ok("el saldo inicial de la primera línea del libro tiene botón de edición en cualquier mes", ini.boton && ini.soloPrimer && ini.campoEdicion && ini.campo, JSON.stringify(ini));
   igual("guardar la línea de saldo inicial actualiza el saldo del libro", [ini.despues, ini.libro, ini.restaurado], [777000, 777000, true]);
+  igual("editar el saldo inicial de otro mes ajusta el saldo inicial del año para que ese mes parta con el monto indicado", ini.febAjuste, 1000);
   igual("la base imponible excluye el IVA y los retiros", [sm.baseIng, sm.baseEg], [1500000, 400000]);
   igual("el resultado de caja es la base de ingresos menos egresos", sm.erRes, 1100000);
   ok("el IVA del F29 sale del RCV sin necesidad de asientos", sm.iva === 285000 - 76000 || sm.iva === 209000, String(sm.iva));
