@@ -289,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.46.0";
+const VERSION = "1.47.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -1724,7 +1724,7 @@ function desgloseOtros(docs) {
     const s = signoDoc(d.tipo_doc), o = otrosDeDoc(d), ivaNr = d.iva_no_recuperable || 0;
     anticipo += s * o.anticipo; noRec += s * (o.noRec + ivaNr);
     if (d.otros_impuestos && !o.detallado) sinDetalle += s * d.otros_impuestos;
-    if (o.detallado) for (const x of d.otros_detalle) { const k = String(x.codigo || ""), a = porCodigo.get(k) || { codigo: k, monto: 0, n: 0, tasas: new Set() }; a.monto += s * (x.valor || 0); a.n++; if (x.tasa) a.tasas.add(x.tasa); porCodigo.set(k, a); }
+    if (o.detallado) for (const x of d.otros_detalle || []) { const k = String(x.codigo || ""), a = porCodigo.get(k) || { codigo: k, monto: 0, n: 0, tasas: new Set() }; a.monto += s * (x.valor || 0); a.n++; if (x.tasa) a.tasas.add(x.tasa); porCodigo.set(k, a); }
   }
   return { porCodigo: [...porCodigo.values()].sort((a, b) => (a.codigo < b.codigo ? -1 : 1)), anticipo, noRec, sinDetalle };
 }
@@ -1732,8 +1732,8 @@ function desgloseOtros(docs) {
 function otrosDeDoc(d) {
   const det = Array.isArray(d.otros_detalle) ? d.otros_detalle : null;
   if (!det || !det.length) {
-    /* Documentos sin detalle por código (planillas antiguas): la empresa puede decidir que sus otros impuestos son IVA anticipado (codigos_otros.sin_detalle). */
-    const t = typeof empresa === "function" && empresa()?.codigos_otros?.sin_detalle;
+    /* Documentos sin detalle por código (planillas antiguas): se puede decidir, mes a mes («sin_detalle:AAAA-MM») o para toda la empresa («sin_detalle»), que sus otros impuestos son IVA anticipado. */
+    const co = tratamientoTemporal || (typeof empresa === "function" && empresa()?.codigos_otros) || {}, t = co[`sin_detalle:${d.periodo}`] || co.sin_detalle;
     return t === "anticipo" && d.otros_impuestos > 0 ? { anticipo: d.otros_impuestos, noRec: 0, detallado: true } : { anticipo: 0, noRec: d.otros_impuestos || 0, detallado: false };
   }
   const anticipo = det.filter((x) => tratamientoOtro(x.codigo) === "anticipo").reduce((x, y) => x + (y.valor || 0), 0);
@@ -2014,6 +2014,7 @@ function resumenCargaRcv(periodo, registro = "COMPRA") {
   if (registro === "VENTA") { const fac = docs.filter((d) => !TIPOS_RESUMEN[d.tipo_doc]), bol = docs.filter((d) => TIPOS_RESUMEN[d.tipo_doc]); return { n: docs.length, total: tot(docs), neto: docs.reduce((x, d) => x + signoDoc(d.tipo_doc) * d.neto, 0), iva: docs.reduce((x, d) => x + signoDoc(d.tipo_doc) * d.iva, 0), facturas: { n: fac.length, total: tot(fac) }, boletas: { n: bol.reduce((x, d) => x + (d.cantidad || 1), 0), total: tot(bol) }, codigos: [] }; }
   const o = desgloseOtros(docs); return { n: docs.length, total: tot(docs), anticipo: o.anticipo, noRec: o.noRec, codigos: o.porCodigo.map((c) => c.codigo), sinDetalle: docs.some((d) => d.otros_impuestos > 0 && !(Array.isArray(d.otros_detalle) && d.otros_detalle.length)) };
 }
+const sinDetalleMes = (periodo) => { const co = empresa()?.codigos_otros || {}; return co[`sin_detalle:${periodo}`] || co.sin_detalle || "no_rec"; };
 const cargaAceptada = (periodo, registro = "COMPRA") => ((empresa()?.rcv_aceptado || {})[periodo] || {})[registro] || null;
 function panelAceptarCarga(registro = "COMPRA") {
   const per = S.rcvPeriodo, docs = docsPeriodo(per, registro), nombre = registro === "COMPRA" ? "compras" : "ventas", sinMov = !!mesRcv(per)[registro === "COMPRA" ? "sin_compras" : "sin_ventas"];
@@ -2026,16 +2027,17 @@ function panelAceptarCarga(registro = "COMPRA") {
     <p class="ayuda">${registro === "COMPRA" ? "Cuando revises que lo cargado coincide con el SII, acepta la carga del mes. Queda registrado lo cargado y el tratamiento de cada código de otros impuestos pasa a ser el de esta empresa: se aplica a las cargas de los meses siguientes." : "Cuando revises que las facturas y los resúmenes de boletas coinciden con el SII, acepta la carga de las ventas del mes. Queda registrado lo cargado y se avisa si cambia."}</p>
     <ul class="ayuda" style="list-style:none;padding:0;margin:.4em 0">${listaRevisionRcv(per, registro).map((x) => `<li>${x.ok ? (x.neutro ? "•" : "✓") : "✗"} ${esc(x.texto)}</li>`).join("")}</ul>
     ${listaRevisionRcv(per, registro).some((x) => !x.ok && x.bloquea) && S.puedeEscribir ? `<label class="check"><input type="checkbox" id="ca-forzar"> Acepto igualmente: ya revisé los puntos marcados con ✗</label>` : ""}
-    ${r.codigos.length || r.sinDetalle ? `<div class="tabla"><table><thead><tr><th>Código</th><th>Impuesto</th><th>Tratamiento para esta empresa</th></tr></thead><tbody>${r.codigos.map((c) => `<tr><td class="cod">${esc(c || "—")}</td><td>${esc(nombreOtroImpuesto(c))}</td><td>${sel(c)}</td></tr>`).join("")}${r.sinDetalle ? `<tr><td class="cod">—</td><td>Otros impuestos sin código ni tasa (planilla sin detalle)</td><td><select id="ca-cod-sin_detalle" ${S.puedeEscribir ? "" : "disabled"}><option value="no_rec" ${tratamientoOtro("sin_detalle") !== "anticipo" ? "selected" : ""}>No recuperable (parte del gasto)</option><option value="anticipo" ${tratamientoOtro("sin_detalle") === "anticipo" ? "selected" : ""}>Anticipo de IVA (no afecta la base)</option></select></td></tr>` : ""}</tbody></table></div>` : ""}
+    ${r.codigos.length || r.sinDetalle ? `<div class="tabla"><table><thead><tr><th>Código</th><th>Impuesto</th><th>Tratamiento para esta empresa</th></tr></thead><tbody>${r.codigos.map((c) => `<tr><td class="cod">${esc(c || "—")}</td><td>${esc(nombreOtroImpuesto(c))}</td><td>${sel(c)}</td></tr>`).join("")}${r.sinDetalle ? `<tr><td class="cod">—</td><td>Otros impuestos sin código ni tasa (planilla sin detalle)</td><td><select id="ca-cod-sin_detalle" ${S.puedeEscribir ? "" : "disabled"}><option value="no_rec" ${sinDetalleMes(per) !== "anticipo" ? "selected" : ""}>No recuperable (parte del gasto)</option><option value="anticipo" ${sinDetalleMes(per) === "anticipo" ? "selected" : ""}>Anticipo de IVA (no afecta la base)</option></select></td></tr>` : ""}</tbody></table></div>` : ""}
     <p>${docs.length ? detalle : `Mes sin ${nombre}.`}</p>
-    ${ac ? `<div class="aviso ${cambio ? "" : "ok"}">${cambio ? `Aceptada el ${fmtFecha(ac.fecha)}, pero lo cargado cambió desde entonces: revisa y vuelve a aceptar.` : `Carga aceptada el ${fmtFecha(ac.fecha)}.`}</div>` : ""}
+    ${ac ? `<div class="aviso ${cambio ? "" : "ok"}">${cambio ? `Aceptada el ${fmtFecha(ac.fecha)}, pero lo cargado cambió desde entonces: revisa y vuelve a aceptar.` : `Carga aceptada el ${fmtFecha(ac.fecha)}${ac.por_libro ? " por el sistema, al cuadrar con las líneas del libro de caja" : ""}.`}</div>` : ""}
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="rcv-aceptar" data-id="${registro}">${ac ? "Volver a aceptar la carga" : `Aceptar la carga de ${nombre}`}</button>${ac ? ` <button class="btn enlace" type="button" data-n="rcv-quitar-aceptacion" data-id="${registro}">Quitar la aceptación</button>` : ""}</div>`)}</section>`;
 }
 async function aceptarCargaRcv(registro = "COMPRA") {
   const per = S.rcvPeriodo, fallos = listaRevisionRcv(per, registro).filter((x) => !x.ok && x.bloquea);
   if (fallos.length && !$("#ca-forzar")?.checked) return aviso(`Antes de aceptar revisa: ${fallos.map((x) => x.texto).join("; ")}. Si ya lo revisaste, marca «Acepto igualmente».`);
   const e = empresa(), codigos = { ...(e.codigos_otros || {}) };
-  for (const c of [...resumenCargaRcv(per, registro).codigos, "sin_detalle"]) { const v = $(`#ca-cod-${c || "_"}`)?.value; if (v === "anticipo" || v === "no_rec") codigos[String(c)] = v; }
+  for (const c of resumenCargaRcv(per, registro).codigos) { const v = $(`#ca-cod-${c || "_"}`)?.value; if (v === "anticipo" || v === "no_rec") codigos[String(c)] = v; }
+  const vsd = $("#ca-cod-sin_detalle")?.value; if (vsd === "anticipo" || vsd === "no_rec") codigos[`sin_detalle:${per}`] = vsd;
   tratamientoTemporal = codigos; let r; try { r = resumenCargaRcv(per, registro); } finally { tratamientoTemporal = null; }
   const { codigos: _c, sinDetalle: _s, ...resumen } = r, previo = (e.rcv_aceptado || {})[per] || {};
   await ocupado(async () => { await BD.setEmpresa(S.eid, { ...e, codigos_otros: codigos, rcv_aceptado: { ...(e.rcv_aceptado || {}), [per]: { ...previo, [registro]: { ...resumen, fecha: hoy() } } } }); render(); aviso(`Carga de ${registro === "COMPRA" ? "compras" : "ventas"} de ${nombrePeriodo(per)} aceptada${registro === "COMPRA" ? ": el tratamiento de los códigos se usará en los meses siguientes" : ""}.`); }, "No se pudo guardar la aceptación");
@@ -2240,6 +2242,7 @@ function vistaRcvMes() {
   ${(S.rcvMensajes || []).map((m) => `<div class="aviso ok">${esc(m)}</div>`).join("")}
   ${panelMesRcv()}
   ${panelCargasRcv()}
+  ${panelAceptarPorLibro()}
   ${vistaMigracionRcv()}
   ${formularioDoc()}
   ${tablaRcv("COMPRA")}
@@ -5859,6 +5862,7 @@ document.addEventListener("click", (ev) => {
     case "mg-cancelar": S.migra = null; render(); break;
     case "rcv-hist-detalle": S.rcvHistDetalle = S.rcvHistDetalle === id ? null : id; render(); break;
     case "rcv-aceptar": aceptarCargaRcv(id || "COMPRA"); break;
+    case "rcv-aceptar-libro": aceptarCargasPorLibro(); break;
     case "rcv-quitar-aceptacion": quitarAceptacionRcv(id || "COMPRA"); break;
     case "mg-importar": importarMigracionRcv(); break;
     case "panel-actualizar": cargarCartera(); break;
@@ -7667,6 +7671,38 @@ async function importarMigracionRcv() {
     const ult = [...nuevos, ...resumenes].map((d) => d.periodo).sort().at(-1);
     S.rcvMensajes = [`Importación terminada: ${n} documento(s) nuevo(s)${sacar.length ? `, ${sacar.length} que ya no estaban en el archivo eliminado(s)` : ""}${nc ? `, ${nc} ya cargado(s) completado(s) con su detalle del SII` : ""}${nsm ? `, ${nsm} mes(es) marcado(s) sin movimiento` : ""} y ${nr} resumen(es) de ventas en ${new Set([...nuevos, ...resumenes].map((d) => d.periodo)).size} mes(es). Quedan pendientes de centralizar.`, ...avisosRes]; S.migra = null; if (ult) { S.rcvPeriodo = ult; S.rcvPeriodoEid = S.eid; } render();
   }, "No se pudo completar la importación");
+}
+/* Cargas sin aceptar que ya están en el libro de caja: si el RCV cuadra con las líneas del libro, la carga se puede aceptar sin traerla de nuevo (sería duplicar). */
+function cargasPorLibro() {
+  const out = [];
+  for (const per of [...new Set(S.rcv.map((d) => d.periodo))].sort()) {
+    const c = cuadreRcvLibro(per);
+    for (const [reg, nombre, lado] of [["COMPRA", "Compras", "Compras"], ["VENTA", "Ventas", "Ventas"]]) {
+      if (!docsPeriodo(per, reg).length || cargaAceptada(per, reg)) continue;
+      const l = c.lados.find((x) => x.nombre === lado), r = resumenCargaRcv(per, reg);
+      out.push({ periodo: per, registro: reg, nombre, n: r.n, total: r.total, libro: l?.libro || null, rcv: l?.rcv || null, estado: !c.hayLibro || !l || !l.libro.n ? "sin_libro" : l.coincide ? "cuadra" : "difiere" });
+    }
+  }
+  return out;
+}
+function panelAceptarPorLibro() {
+  const L = cargasPorLibro(); if (!L.length) return "";
+  const cuadran = L.filter((x) => x.estado === "cuadra"), txt = { cuadra: "Cuadra con el libro", difiere: "No cuadra con el libro", sin_libro: "El libro no tiene líneas de este mes" };
+  return `<section class="caja"><h2>Cargas por aceptar que ya están en el libro de caja</h2>
+    <p class="ayuda">Compara cada carga sin aceptar con las líneas del RCV que el libro de caja ya trae (monto total y monto que afecta la base). Si cuadran, puedes aceptarlas sin traerlas otra vez al libro: sería contarlas dos veces. Las que no cuadran o no están en el libro se aceptan una a una, revisándolas.</p>
+    <div class="tabla"><table><thead><tr><th>Mes</th><th>Registro</th><th class="num">Docs.</th><th class="num">Total RCV</th><th class="num">Total libro</th><th class="num">Base RCV</th><th class="num">Base libro</th><th>Estado</th></tr></thead><tbody>${L.map((x) => `<tr><td>${esc(mesCap(x.periodo))}</td><td>${x.nombre}</td><td class="num">${x.n}</td><td class="num">${clp(x.rcv?.monto ?? x.total)}</td><td class="num">${x.libro ? clp(x.libro.monto) : ""}</td><td class="num">${x.rcv ? clp(x.rcv.base) : ""}</td><td class="num">${x.libro ? clp(x.libro.base) : ""}</td><td><span class="etiqueta ${x.estado === "cuadra" ? "" : "cerrado"}">${txt[x.estado]}</span></td></tr>`).join("")}</tbody></table></div>
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="rcv-aceptar-libro" ${cuadran.length ? "" : "disabled"}>Aceptar las ${cuadran.length} carga(s) que cuadran</button></div>`)}</section>`;
+}
+async function aceptarCargasPorLibro() {
+  const L = cargasPorLibro().filter((x) => x.estado === "cuadra"); if (!L.length) return aviso("No hay cargas que cuadren con el libro de caja.");
+  const e = empresa(), acept = { ...(e.rcv_aceptado || {}) }, codigos = { ...(e.codigos_otros || {}) }, fecha = hoy();
+  for (const x of L) {
+    const r = resumenCargaRcv(x.periodo, x.registro);
+    for (const c of r.codigos) if (!codigos[String(c)]) codigos[String(c)] = tratamientoOtro(c);
+    const { codigos: _c, sinDetalle: _s, ...resumen } = r;
+    acept[x.periodo] = { ...(acept[x.periodo] || {}), [x.registro]: { ...resumen, fecha, por_libro: true } };
+  }
+  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...e, codigos_otros: codigos, rcv_aceptado: acept }); render(); aviso(`${L.length} carga(s) aceptada(s) por cuadrar con el libro de caja. No se trajeron al libro: ya estaban.`); }, "No se pudo guardar la aceptación");
 }
 /* Registro de cargas por mes: qué archivo se cargó, cuántos documentos trajo, cuántos eran nuevos y si cuadró con la planilla. */
 async function registrarCargasRcv(M, R, sacadas) {
