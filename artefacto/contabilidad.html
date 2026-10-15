@@ -289,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.42.1";
+const VERSION = "1.43.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -1969,8 +1969,8 @@ function panelMesRcv() {
 }
 
 /* Propuesta del asiento que centraliza los documentos pendientes del mes (no guarda nada). */
-function propuestaCentralizacion(periodo, registro) {
-  const docs = docsPeriodo(periodo, registro).filter(pendiente);
+function propuestaCentralizacion(periodo, registro, todos = false) {
+  const docs = docsPeriodo(periodo, registro).filter((d) => todos || pendiente(d));
   const nombreRegistro = registro === "COMPRA" ? "compras" : "ventas";
   if (!docs.length) throw new ErrorRcv(`No hay documentos de ${nombreRegistro} pendientes de centralizar en ${nombrePeriodo(periodo)}.`);
   const ct = cuentasTributarias();
@@ -1984,7 +1984,12 @@ function propuestaCentralizacion(periodo, registro) {
       const ig = ivaGastoDoc(d);
       sumar(propia(d) || cuenta(d.activo_fijo ? "compras_activo_fijo" : "compras_neto"), s * (d.neto + d.exento + (d.iva_no_recuperable || 0) + ig));
       if (d.iva && !ig) sumar(cuenta("iva_credito"), s * d.iva);
-      if (d.otros_impuestos) sumar(cuenta("compras_otros_impuestos"), s * d.otros_impuestos);
+      if (d.otros_impuestos) {
+        const o = otrosDeDoc(d);
+        /* Con el detalle del SII, el IVA anticipado va al crédito fiscal y los impuestos no recuperables a su cuenta (o a la de compras si no hay una). */
+        if (o.detallado && o.anticipo) sumar(cuenta("iva_credito"), s * o.anticipo);
+        if (o.noRec) sumar(ct.compras_otros_impuestos || (o.detallado ? propia(d) || cuenta(d.activo_fijo ? "compras_activo_fijo" : "compras_neto") : cuenta("compras_otros_impuestos")), s * o.noRec);
+      }
       sumar(cuenta("proveedores"), -s * d.total);
     } else {
       sumar(cuenta(TIPOS_RESUMEN[d.tipo_doc] ? "ventas_boletas" : "clientes"), s * d.total);
@@ -3696,34 +3701,63 @@ function resumenRcv(periodo) {
   return { periodo, compras, ventas, pendientes: compras.pendientes + ventas.pendientes, documentos: docs.length, asientos };
 }
 
+/* El historial del RCV es el registro auténtico por mes: solo aparecen los meses con la carga aceptada (o centralizada, en contabilidad completa). */
+function confirmacionRcv(periodo) {
+  const docs = docsPeriodo(periodo), ac = (empresa()?.rcv_aceptado || {})[periodo] || {}, por = (reg) => docs.filter((d) => d.registro === reg);
+  const lado = (reg) => { const l = por(reg); if (!l.length && !ac[reg]) return null; if (ac[reg]) return `aceptada el ${fmtFecha(ac[reg].fecha)}`; return l.every((d) => !pendiente(d)) ? "centralizada" : null; };
+  return { compras: lado("COMPRA"), ventas: lado("VENTA") };
+}
+function detalleHistorialRcv(periodo) {
+  const conf = confirmacionRcv(periodo), docs = docsPeriodo(periodo), regs = [["COMPRA", "Compras", conf.compras], ["VENTA", "Ventas", conf.ventas]].filter((r) => r[2]);
+  const resumen = resumenRcvMes(periodo).filter((x) => regs.some((r) => r[0] === (x.tipo === 2 ? "COMPRA" : "VENTA")));
+  const cuentaTxt = (id) => { const c = cuentaDe(id); return `${esc(c.codigo)} · ${esc(c.nombre)}`; };
+  const centr = regs.map(([reg, nombre]) => {
+    const dd = docs.filter((d) => d.registro === reg), asientos = [...new Set(dd.filter((d) => !pendiente(d)).map((d) => d.asiento))].map((id) => S.lista.find((a) => a.id === id)).filter(Boolean);
+    if (dd.length && asientos.length === new Set(dd.map((d) => d.asiento)).size && dd.every((d) => !pendiente(d))) return `<h4>Centralización de ${nombre.toLowerCase()}</h4><p>Centralizada en ${asientos.map((a) => `<button class="btn enlace" data-asiento="${esc(a.id)}">asiento N° ${a.numero}</button>`).join(", ")}.</p>`;
+    try {
+      const pr = propuestaCentralizacion(periodo, reg, true), td = pr.lineas.reduce((x, l) => x + l.debe, 0), th = pr.lineas.reduce((x, l) => x + l.haber, 0);
+      return `<h4>Centralización agrupada de ${nombre.toLowerCase()} (${pr.cantidad} documentos)</h4><div class="tabla"><table><thead><tr><th>Cuenta</th><th class="num">Debe</th><th class="num">Haber</th></tr></thead><tbody>${pr.lineas.map((l) => `<tr><td>${cuentaTxt(l.cuenta)}</td><td class="num">${l.debe ? clp(l.debe) : ""}</td><td class="num">${l.haber ? clp(l.haber) : ""}</td></tr>`).join("")}</tbody><tfoot><tr class="total"><td>Totales</td><td class="num">${clp(td)}</td><td class="num">${clp(th)}</td></tr></tfoot></table></div>`;
+    } catch (e) { return `<h4>Centralización agrupada de ${nombre.toLowerCase()}</h4><p class="ayuda">${esc(e.message)}</p>`; }
+  }).join("");
+  const filaMini = (d) => `<tr><td>${d.tipo_doc}</td><td>${esResumen(d) || (d.cantidad || 1) > 1 ? `Resumen (${d.cantidad} doc.)` : esc(d.folio)}</td><td>${fmtFecha(d.fecha)}</td><td class="cod">${esc(d.rut)}</td><td>${esc(d.razon_social)}</td><td class="num">${d.exento ? clp(d.exento) : ""}</td><td class="num">${d.neto ? clp(d.neto) : ""}</td><td class="num">${d.iva ? clp(d.iva) : ""}</td><td class="num">${clp(d.total)}</td></tr>`;
+  const tablaMini = (lista, titulo) => (lista.length ? `<h4>${titulo}</h4><div class="tabla"><table><thead><tr><th>Tipo</th><th>Folio</th><th>Fecha</th><th>RUT</th><th>Razón social</th><th class="num">Exento</th><th class="num">Neto</th><th class="num">IVA</th><th class="num">Total</th></tr></thead><tbody>${lista.map(filaMini).join("")}</tbody></table></div>` : "");
+  const por = (reg) => docs.filter((d) => d.registro === reg), esBol = (d) => !!TIPOS_RESUMEN[d.tipo_doc];
+  return `<section class="caja"><h2>Detalle de ${esc(mesCap(periodo))}</h2>
+    <h3>Resumen mensual del RCV</h3>
+    ${resumen.length ? `<div class="tabla"><table><thead><tr><th>Línea</th><th class="num">Documentos</th><th class="num">Monto total</th><th class="num">Afecta la base</th></tr></thead><tbody>${resumen.map((x) => `<tr><td>${esc(x.glosa)}</td><td class="num">${x.n}</td><td class="num">${clp(x.monto)}</td><td class="num">${clp(x.base)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="ayuda">Sin documentos en los registros confirmados.</p>`}
+    <h3>Centralización</h3>${centr || '<p class="ayuda">Sin registros confirmados.</p>'}
+    <h3>Documentos</h3>
+    ${regs.some((r) => r[0] === "COMPRA") ? tablaMini(por("COMPRA"), "Compras") : ""}
+    ${regs.some((r) => r[0] === "VENTA") ? `${tablaMini(por("VENTA").filter((d) => !esBol(d)), "Facturas de ventas")}${tablaMini(por("VENTA").filter(esBol), "Boletas, comprobantes de pago y otros ingresos")}` : ""}
+  </section>`;
+}
 function vistaRcvHistorial() {
   const anio = S.historialAnio.rcv ?? "";
-  const periodos = [...new Set(S.rcv.map((d) => d.periodo))].filter((p) => !anio || p.startsWith(anio)).sort().reverse();
-  const filas = periodos.map(resumenRcv);
+  const todos = [...new Set(S.rcv.map((d) => d.periodo))].filter((p) => !anio || p.startsWith(anio)).sort().reverse();
+  const confirmados = todos.filter((p) => { const c = confirmacionRcv(p); return c.compras || c.ventas; }), sinConfirmar = todos.filter((p) => !confirmados.includes(p));
+  const filas = confirmados.map((p) => { const f = resumenRcv(p), c = confirmacionRcv(p); if (!c.compras) f.compras = totalesRcv([]); if (!c.ventas) f.ventas = totalesRcv([]); f.conf = c; f.estado = [c.compras ? `compras ${c.compras}` : "", c.ventas ? `ventas ${c.ventas}` : ""].filter(Boolean).join(" · "); return f; });
   const suma = (reg, k) => filas.reduce((s, f) => s + f[reg][k], 0);
   S.informe = () => informeHistorialRcv(filas);
-  S.csv = { archivo: `historial_rcv_${slug()}${anio ? "_" + anio : ""}.csv`, filas: [["Período", "Compras (doc.)", "Compras neto", "Compras exento", "IVA crédito", "Compras total", "Ventas (doc.)", "Ventas neto", "Ventas exento", "IVA débito", "Ventas total", "Pendientes", "Asientos"],
-    ...filas.map((f) => [f.periodo, f.compras.cantidad, f.compras.neto, f.compras.exento, f.compras.iva, f.compras.total, f.ventas.cantidad, f.ventas.neto, f.ventas.exento, f.ventas.iva, f.ventas.total, f.pendientes, f.asientos.map((a) => a.numero).join(" ")])] };
-  const estado = (f) => !f.documentos ? "" : f.pendientes ? `<span class="etiqueta cerrado">${f.pendientes} pendiente${f.pendientes === 1 ? "" : "s"}</span>` : '<span class="etiqueta">centralizado</span>';
-  return `${cabecera("Historial del Registro de Compras y Ventas", `${filas.length} período${filas.length === 1 ? "" : "s"}`)}
+  S.csv = { archivo: `historial_rcv_${slug()}${anio ? "_" + anio : ""}.csv`, filas: [["Período", "Compras (doc.)", "Compras neto", "Compras exento", "IVA crédito", "Compras total", "Ventas (doc.)", "Ventas neto", "Ventas exento", "IVA débito", "Ventas total", "Estado"],
+    ...filas.map((f) => [f.periodo, f.compras.cantidad, f.compras.neto, f.compras.exento, f.compras.iva, f.compras.total, f.ventas.cantidad, f.ventas.neto, f.ventas.exento, f.ventas.iva, f.ventas.total, f.estado])] };
+  const celdas = (t, ok) => (ok ? `<td class="num">${t.cantidad || ""}</td><td class="num">${clp(t.neto + t.exento)}</td><td class="num">${clp(t.iva)}</td><td class="num">${clp(t.total)}</td>` : `<td colspan="4" class="ayuda">sin aceptar</td>`);
+  const abierto = S.rcvHistDetalle && confirmados.includes(S.rcvHistDetalle) ? S.rcvHistDetalle : null;
+  return `${cabecera("Historial del Registro de Compras y Ventas", `${filas.length} mes${filas.length === 1 ? "" : "es"} confirmado${filas.length === 1 ? "" : "s"}`)}
   <div class="barra">${filtroAnio("hist-rcv-anio", aniosDe(S.rcv), anio)}${botonesExportar()}</div>
+  <p class="ayuda">El historial es el RCV auténtico de cada mes: solo aparecen los meses cuya carga fue aceptada (o centralizada). Para ver cada mes con sus documentos, su resumen y su centralización usa «Ver detalle».</p>
   ${filas.length ? `<div class="tabla"><table>
-    <thead><tr><th rowspan="2">Período</th><th colspan="4" class="num">Compras</th><th colspan="4" class="num">Ventas</th><th rowspan="2">Estado</th><th rowspan="2">Asientos</th><th rowspan="2"></th></tr>
+    <thead><tr><th rowspan="2">Período</th><th colspan="4" class="num">Compras</th><th colspan="4" class="num">Ventas</th><th rowspan="2">Estado</th><th rowspan="2"></th></tr>
       <tr><th class="num">Doc.</th><th class="num">Neto + exento</th><th class="num">IVA crédito</th><th class="num">Total</th><th class="num">Doc.</th><th class="num">Neto + exento</th><th class="num">IVA débito</th><th class="num">Total</th></tr></thead>
-    <tbody>${filas.map((f) => `<tr><td>${mesCap(f.periodo)}</td>
-      <td class="num">${f.compras.cantidad || ""}</td><td class="num">${clp(f.compras.neto + f.compras.exento)}</td><td class="num">${clp(f.compras.iva)}</td><td class="num">${clp(f.compras.total)}</td>
-      <td class="num">${f.ventas.cantidad || ""}</td><td class="num">${clp(f.ventas.neto + f.ventas.exento)}</td><td class="num">${clp(f.ventas.iva)}</td><td class="num">${clp(f.ventas.total)}</td>
-      <td>${estado(f)}</td><td>${f.asientos.map((a) => `<button class="btn enlace" data-asiento="${esc(a.id)}">N° ${a.numero}</button>`).join(" ")}</td>
-      <td><button class="btn enlace" type="button" data-ir-rcv="${f.periodo}">${f.pendientes && S.puedeEscribir ? "Editar" : "Ver mes"}</button>
-        ${f.pendientes && S.puedeEscribir ? (S.confirmar === "rcvmes:" + f.periodo
-          ? `<span class="acciones"><span>¿Eliminar los ${f.pendientes} documento(s) pendiente(s) de ${nombrePeriodo(f.periodo)}?</span><button class="btn peligro" type="button" data-accion="eliminar-rcv-mes" data-periodo="${f.periodo}">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
-          : `<button class="btn enlace" type="button" data-accion="pedir-eliminar-rcv-mes" data-periodo="${f.periodo}">Eliminar pendientes</button>`) : ""}</td></tr>`).join("")}</tbody>
+    <tbody>${filas.map((f) => `<tr><td>${mesCap(f.periodo)}</td>${celdas(f.compras, f.conf.compras)}${celdas(f.ventas, f.conf.ventas)}
+      <td><small>${esc(f.estado)}</small></td>
+      <td><button class="btn enlace" type="button" data-n="rcv-hist-detalle" data-id="${f.periodo}">${abierto === f.periodo ? "Ocultar detalle" : "Ver detalle"}</button> <button class="btn enlace" type="button" data-ir-rcv="${f.periodo}">Ver mes</button></td></tr>`).join("")}</tbody>
     <tfoot><tr class="total"><td>Total ${anio || "general"}</td>
       <td class="num">${suma("compras", "cantidad")}</td><td class="num">${clp(suma("compras", "neto") + suma("compras", "exento"))}</td><td class="num">${clp(suma("compras", "iva"))}</td><td class="num">${clp(suma("compras", "total"))}</td>
-      <td class="num">${suma("ventas", "cantidad")}</td><td class="num">${clp(suma("ventas", "neto") + suma("ventas", "exento"))}</td><td class="num">${clp(suma("ventas", "iva"))}</td><td class="num">${clp(suma("ventas", "total"))}</td><td colspan="3"></td></tr></tfoot>
+      <td class="num">${suma("ventas", "cantidad")}</td><td class="num">${clp(suma("ventas", "neto") + suma("ventas", "exento"))}</td><td class="num">${clp(suma("ventas", "iva"))}</td><td class="num">${clp(suma("ventas", "total"))}</td><td colspan="2"></td></tr></tfoot>
   </table></div>
-  <p class="ayuda">Las notas de crédito restan. «Editar» abre el mes para agregar, corregir o centralizar documentos. «Eliminar pendientes» borra solo los documentos aún no centralizados; los centralizados se liberan eliminando su asiento.</p>`
-    : `<div class="caja vacio"><p>Todavía no hay documentos del RCV. Impórtalos desde el SII en la pestaña «Mes».</p></div>`}`;
+  <p class="ayuda">Las notas de crédito restan.</p>${abierto ? detalleHistorialRcv(abierto) : ""}`
+    : `<div class="caja vacio"><p>Todavía no hay meses confirmados. Carga el RCV en la pestaña «Mes» y acepta la carga para que aparezca aquí.</p></div>`}
+  ${sinConfirmar.length ? `<p class="ayuda">Cargados y sin aceptar (no aparecen en el historial): ${sinConfirmar.map((p) => `<button class="btn enlace" type="button" data-ir-rcv="${p}">${esc(mesCap(p))}</button>`).join(", ")}.</p>` : ""}`;
 }
 
 function informeHistorialRcv(filas) {
@@ -3732,7 +3766,7 @@ function informeHistorialRcv(filas) {
       col("Doc.", 6, "numero"), col("Ventas neto+exento", 13, "monto"), col("IVA débito", 11, "monto"), col("Ventas total", 13, "monto"), col("Estado", 11)],
     "historial_rcv", { horizontal: true, grupos: [["", 1], ["COMPRAS", 4], ["VENTAS", 4], ["", 1]] });
   for (const f of filas) inf.agregar([mesCap(f.periodo), f.compras.cantidad, f.compras.neto + f.compras.exento, f.compras.iva, f.compras.total,
-    f.ventas.cantidad, f.ventas.neto + f.ventas.exento, f.ventas.iva, f.ventas.total, f.pendientes ? `${f.pendientes} pendientes` : "Centralizado"]);
+    f.ventas.cantidad, f.ventas.neto + f.ventas.exento, f.ventas.iva, f.ventas.total, f.estado || ""]);
   const suma = (reg, k) => filas.reduce((s, f) => s + f[reg][k], 0);
   inf.agregar(["TOTAL", suma("compras", "cantidad"), suma("compras", "neto") + suma("compras", "exento"), suma("compras", "iva"), suma("compras", "total"),
     suma("ventas", "cantidad"), suma("ventas", "neto") + suma("ventas", "exento"), suma("ventas", "iva"), suma("ventas", "total"), null], { estilo: "total" });
@@ -5865,6 +5899,7 @@ document.addEventListener("click", (ev) => {
     case "mg-hoja": { const h = S.migra.hojas[+id]; h.incluir = t.checked; render(); break; }
     case "mg-criterio": S.migra.criterio = id; render(); break;
     case "mg-cancelar": S.migra = null; render(); break;
+    case "rcv-hist-detalle": S.rcvHistDetalle = S.rcvHistDetalle === id ? null : id; render(); break;
     case "rcv-aceptar": aceptarCargaRcv(id || "COMPRA"); break;
     case "rcv-quitar-aceptacion": quitarAceptacionRcv(id || "COMPRA"); break;
     case "mg-importar": importarMigracionRcv(); break;

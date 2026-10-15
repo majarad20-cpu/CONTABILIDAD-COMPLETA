@@ -937,6 +937,18 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("las ventas del RCV se separan en facturas y boletas, cada una con su detalle, y se pueden aceptar aparte de las compras", vt.secciones && vt.boton && JSON.stringify(vt.resumen) === "[2,35700,42,100000,135700]" && JSON.stringify(vt.ac) === "[2,42,135700]" && vt.sinCompras === null, JSON.stringify(vt));
   const es = await page.evaluate(() => { const d = { periodo: "2031-09", registro: "COMPRA", asiento: "" }, c = { ...d, asiento: "a1" }; return { cent: estadoDocRcv(c).texto, sin: estadoDocRcv(d).texto, simp: esSimplificada() }; });
   igual("el estado del documento del RCV dice centralizado, por centralizar o por aceptar, nunca «pendiente»", [es.cent, es.sin], ["Centralizado", es.simp ? "Por aceptar" : "Por centralizar"]);
+  const hi = await page.evaluate(async () => {
+    const sr = S.rcv, e0 = JSON.stringify(empresa().rcv_aceptado || null), mk = (id, per, reg, extra = {}) => ({ id, periodo: per, fecha: `${per}-10`, tipo_doc: 33, exento: 0, iva_no_recuperable: 0, otros_impuestos: 0, activo_fijo: false, asiento: "", registro: reg, rut: "76.111.111-1", razon_social: "X", folio: id, neto: 1000, iva: 190, total: 1190, cantidad: 1, ...extra });
+    S.rcv = [mk("a", "2031-09", "COMPRA"), mk("b", "2031-09", "VENTA"), mk("c", "2031-08", "COMPRA")];
+    await BD.setEmpresa(S.eid, { ...empresa(), rcv_aceptado: { "2031-09": { COMPRA: { fecha: "2031-10-01" } } } }); await new Promise((r) => setTimeout(r, 120));
+    S.historialAnio.rcv = ""; const html = vistaRcvHistorial(), c9 = confirmacionRcv("2031-09"), c8 = confirmacionRcv("2031-08");
+    S.rcvHistDetalle = "2031-09"; const conDetalle = vistaRcvHistorial(); S.rcvHistDetalle = null;
+    const ant = { ...mk("d", "2031-09", "COMPRA", { otros_impuestos: 120, otros_detalle: [{ codigo: "19", valor: 120, tasa: "12" }], total: 1310 }) };
+    S.rcv = [ant]; let lineas = null; try { lineas = propuestaCentralizacion("2031-09", "COMPRA", true).lineas.length; } catch (_) { lineas = -1; }
+    S.rcv = sr; await BD.setEmpresa(S.eid, { ...empresa(), rcv_aceptado: JSON.parse(e0) || undefined }); await new Promise((r) => setTimeout(r, 100));
+    return { solo9: /Septiembre/.test(html.replace(/Cargados y sin aceptar[\s\S]*/, "")) || /sep/i.test(html), sin8: /Cargados y sin aceptar \(no aparecen en el historial\)/.test(html), ventas: /sin aceptar/.test(html), c9: [!!c9.compras, c9.ventas], c8: [c8.compras, c8.ventas], detalle: /Detalle de/.test(conDetalle) && /Resumen mensual del RCV/.test(conDetalle) && /Documentos/.test(conDetalle), lineas };
+  });
+  ok("el historial del RCV solo muestra los meses con carga aceptada, con el detalle bajo un botón, y lo cargado sin aceptar queda aparte", hi.sin8 && hi.ventas && hi.c9[0] === true && hi.c9[1] === null && hi.c8[0] === null && hi.detalle, JSON.stringify(hi));
   igual("el CSV del SII guarda los otros impuestos por código, tasa y valor (también las líneas de continuación) y la recepción", [det.n, det.det, det.otros, det.rec, det.tipo, det.sin, det.acuse], [3, "27:332:10,271:1127:18,19:1186:12", 2645, "2031-09-13", "Del Giro", undefined, "2031-09-14"]);
   igual("los otros impuestos se desglosan por código, en anticipo de IVA y no recuperables, en el panel, la tabla y el informe del RCV", [det.des, det.panel, det.cols, det.informe], [[1186, 1459, "19:1186,27:332,271:1127"], true, true, true]);
   igual("el IVA anticipado (código 19) va como anticipo y el resto como impuesto no recuperable, en líneas separadas del resumen mensual", [det.o, det.res], [[1186, 1459, true], [["compra_afecta", 6e4 * 0 + 76856 - 2645 + 134756, 62362 + 113240], ["compra_inr", 1459, 1459], ["compra_anticipo_iva", 1186, 0], ["compra_exenta", 20000, 20000]]]);
