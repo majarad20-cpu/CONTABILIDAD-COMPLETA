@@ -1253,6 +1253,25 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("una línea que queda entre dos fechas toma la que mantiene el orden cronológico", /^a:05,c:(05|10),b:10$/.test(trasDnD), trasDnD);
   ok("los botones ▲▼ también mueven la línea y el orden queda guardado", trasBajar !== trasDnD && fin.every((x) => x[2] != null), trasBajar + " " + JSON.stringify(fin));
 
+  console.log("Revisión del libro de caja: pagos de F29");
+  const rvl = await page.evaluate(async () => {
+    const sc = S.caja, e0 = empresa(), r = {};
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "simplificada", ejercicio: 2039, inicio_actividades: "2039-01-01" });
+    const base = { tipo: 2, doc_tipo: "", doc_num: "", rut: "", nombre: "", monto: 5000, base: 0, origen: "manual", ref: "", categoria: "Compras y gastos" };
+    S.caja = [{ ...base, id: "f1", fecha: "2039-09-12", glosa: "Pago F29 AGOSTO 2039, PPM.-" }, { ...base, id: "f2", fecha: "2039-09-12", glosa: "Pago F29 AGOSTO 2039, IVA determinado.-" }, { ...base, id: "f3", fecha: "2039-09-13", glosa: "Compra de insumos" }];
+    r.sug = S.caja.map((m) => clasificacionSugeridaCaja(m)).map((c) => (c ? `${c.clase}:${c.f29_periodo}` : "-")).join();
+    r.antesPpm = ppmPagadoPorPeriodo(2039).total;
+    S.caja = S.caja.map((m) => ({ ...m, ...(clasificacionSugeridaCaja(m) || {}) }));
+    r.despuesPpm = ppmPagadoPorPeriodo(2039).total; r.nuevaSug = S.caja.map((m) => clasificacionSugeridaCaja(m)).filter(Boolean).length;
+    S.cajaAnio = "2039"; S.pestana.caja = "control"; ir("caja"); await new Promise((x) => setTimeout(x, 60));
+    r.panel = /Revisión del libro de caja/.test(document.querySelector("main").textContent) && /no hace falta cerrar el mes/.test(document.querySelector("main").textContent);
+    S.caja = sc; await BD.setEmpresa(S.eid, e0); S.pestana.caja = "libro"; ir("inicio");
+    return r;
+  });
+  ok("un pago de F29 sin clasificar se detecta por su glosa con concepto y período", rvl.sug === "f29_ppm:2039-08,f29_iva:2039-08,-", JSON.stringify(rvl));
+  ok("al clasificarlo, el PPM de agosto pagado en septiembre entra al control de PPM", rvl.antesPpm === 0 && rvl.despuesPpm === 5000 && rvl.nuevaSug === 0, JSON.stringify(rvl));
+  ok("la pestaña de control muestra la revisión del libro de caja", rvl.panel, JSON.stringify(rvl));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {

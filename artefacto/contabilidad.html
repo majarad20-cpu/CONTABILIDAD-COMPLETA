@@ -293,7 +293,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.50.0";
+const VERSION = "1.51.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5889,6 +5889,8 @@ document.addEventListener("click", (ev) => {
     case "caja-linea": agregarLineaCaja(); break;
     case "ql-dia": ponerDiaRapida(id); break;
     case "caja-subir": moverLineaPaso(id, -1); break;
+    case "caja-clasificar": clasificarCaja([id]); break;
+    case "caja-clasificar-todas": clasificarCaja(S.caja.filter((m) => clasificacionSugeridaCaja(m)).map((m) => m.id)); break;
     case "caja-bajar": moverLineaPaso(id, 1); break;
     case "caja-cerrar-mes": if (problemasCierreCaja(id).length) { S.confirmar = `cerrar-caja:${id}`; render(); } else cambiarMes(id, true); break;
     case "caja-cerrar-confirmar": cambiarMes(id, true); break;
@@ -6734,6 +6736,7 @@ function vistaControlCaja(anio, anios) {
   const inf = fn(anio); S.informe = () => fn(anio); S.csv = csvDeInforme(inf);
   return `<div class="barra"><label>Año<select id="caja-anio">${opcionesAnio(anios, anio)}</select></label>
     <label>Informe<select id="caja-control"><option value="resultados" ${sel === "resultados" ? "selected" : ""}>Resultados tributarios</option><option value="flujo" ${sel === "flujo" ? "selected" : ""}>Flujo de caja por categoría</option><option value="ppm" ${sel === "ppm" ? "selected" : ""}>PPM pagados</option></select></label>${botonesExportar()}</div>
+    ${panelRevisionLibroCaja(anio)}
     <p class="ayuda">Informes de control anual del libro de caja, calculados con los movimientos registrados. Sirven para preparar el F22 y la declaración jurada 1947 y para revisar que el libro cuadre.</p>${tablaDeInforme(inf)}`;
 }
 
@@ -7017,6 +7020,41 @@ function filaRapidaCaja(mes, anio, n = "") {
     <td><input type="date" id="ql-fecha" value="${fechaR}" min="${anio}-${mes}-01" max="${ultimoDia(`${anio}-${mes}`)}" aria-label="Fecha"><br><small>${dias}</small></td><td><input id="ql-glosa" value="${v("glosa")}" list="dl-glosa-ql" placeholder="Nueva línea: glosa" autocomplete="off" style="width:100%" aria-label="Glosa"></td>
     <td class="num"><input id="ql-monto" value="${v("monto")}" inputmode="numeric" placeholder="Monto" style="width:7em" aria-label="Monto"></td><td class="num"><input id="ql-base" value="${v("base")}" inputmode="numeric" placeholder="= monto" style="width:7em" aria-label="Afecta la base (vacío = todo el monto)"></td><td><button class="btn" type="button" data-n="caja-linea">Agregar</button> <button class="btn enlace" type="button" data-n="caja-linea-ocultar" aria-label="Cerrar">×</button></td></tr>`;
 }
+/* Revisión del libro de caja: movimientos que parecen pagos de F29 pero no están clasificados (no entran al flujo por categoría ni al control de PPM) y cotejo del F29 con lo pagado. */
+const CAT_F29 = "Pago de impuestos (IVA, PPM, F29)";
+function clasificacionSugeridaCaja(m) {
+  if (m.tipo !== 2) return null;
+  const r = clasificarMovimientoExcel(2, m.doc_tipo || "", m.glosa || "", m.fecha); if (r.categoria !== CAT_F29) return null;
+  const c = {}; if (m.categoria !== r.categoria) c.categoria = r.categoria; if (r.clase && m.clase !== r.clase) c.clase = r.clase; if (r.f29_periodo && m.f29_periodo !== r.f29_periodo) c.f29_periodo = r.f29_periodo;
+  return Object.keys(c).length ? c : null;
+}
+const TXT_CLASE_F29 = { f29_iva: "IVA", f29_ppm: "PPM", f29_ret: "Retención", f29_iusc: "Impuesto único" };
+function cotejoF29Caja(anio) {
+  const pagos = S.caja.filter((m) => String(m.clase || "").startsWith("f29_") && String(m.f29_periodo || "").startsWith(`${anio}-`)), pers = new Set(pagos.map((m) => m.f29_periodo));
+  for (const b of S.f29Borradores) if (b.id.startsWith(`${anio}-`)) pers.add(b.id);
+  return [...pers].sort().map((per) => {
+    const b = borradorF29(per), suma = (cl) => pagos.filter((m) => m.f29_periodo === per && m.clase === cl).reduce((x, m) => x + m.monto, 0);
+    const iva = b ? Math.max((b.codigos["89"] || 0) - (b.codigos["598"] || 0), 0) : null, ppm = b ? b.codigos["62"] || 0 : null, pi = suma("f29_iva"), pp = suma("f29_ppm");
+    const ok = (a, p) => a == null ? null : Math.abs(a - p) <= 1;
+    return { per, iva, ppm, pi, pp, estado: !b ? "Sin borrador del F29" : ok(iva, pi) && ok(ppm, pp) ? "Coincide" : "Difiere" };
+  });
+}
+function panelRevisionLibroCaja(anio) {
+  const por = S.caja.filter((m) => m.fecha.startsWith(String(anio))).map((m) => [m, clasificacionSugeridaCaja(m)]).filter(([, c]) => c), cot = cotejoF29Caja(anio);
+  const desc = (c) => [c.categoria && "categoría «Pago de impuestos»", c.clase && TXT_CLASE_F29[c.clase], c.f29_periodo && `período ${nombrePeriodo(c.f29_periodo)}`].filter(Boolean).join(" · ");
+  return `<section class="caja"><h2>Revisión del libro de caja</h2>
+    <p class="ayuda">Los informes de control leen el libro tal como está: <strong>no hace falta cerrar el mes</strong>. Lo que importa es que cada movimiento esté bien clasificado. Un pago de F29 debe tener la categoría «Pago de impuestos», su concepto (IVA, PPM, retención) y el período del F29 que paga; si no, no aparece en el flujo por categoría ni en el control de PPM.</p>
+    ${por.length ? `<h3>Movimientos que parecen pagos de F29 sin clasificar (${por.length})</h3><div class="tabla"><table><thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Monto</th><th>Hoy</th><th>Se propone</th><th></th></tr></thead><tbody>${por.map(([m, c]) => `<tr><td>${fmtFecha(m.fecha)}</td><td>${esc(m.glosa)}</td><td class="num">${clp(m.monto)}</td><td>${esc(m.categoria || "—")}${m.clase ? ` · ${esc(TXT_CLASE_F29[m.clase] || m.clase)}` : ""}${m.f29_periodo ? ` · ${esc(m.f29_periodo)}` : ""}</td><td>${esc(desc(c))}</td><td>${S.puedeEscribir ? `<button class="btn enlace" type="button" data-n="caja-clasificar" data-id="${esc(m.id)}">Aplicar</button>` : ""}</td></tr>`).join("")}</tbody></table></div>
+      ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-clasificar-todas">Aplicar las ${por.length} propuesta(s)</button></div>`)}` : `<div class="aviso ok">Todos los pagos de F29 reconocibles por su glosa están clasificados.</div>`}
+    <h3>F29 del año frente a lo pagado en el libro</h3>
+    ${cot.length ? `<div class="tabla"><table><thead><tr><th>Período del F29</th><th class="num">IVA a pagar (borrador)</th><th class="num">IVA pagado (libro)</th><th class="num">PPM (borrador)</th><th class="num">PPM pagado (libro)</th><th>Estado</th></tr></thead><tbody>${cot.map((x) => `<tr><td>${esc(mesCap(x.per))}</td><td class="num">${x.iva == null ? "—" : clp(x.iva)}</td><td class="num">${clp(x.pi)}</td><td class="num">${x.ppm == null ? "—" : clp(x.ppm)}</td><td class="num">${clp(x.pp)}</td><td><span class="etiqueta ${x.estado === "Difiere" ? "cerrado" : ""}">${x.estado}</span></td></tr>`).join("")}</tbody></table></div>` : `<p class="ayuda">Aún no hay F29 guardados ni pagos de F29 con período en ${anio}.</p>`}</section>`;
+}
+async function clasificarCaja(ids) {
+  const nuevos = ids.map((id) => S.caja.find((m) => m.id === id)).filter(Boolean).map((m) => ({ m, c: clasificacionSugeridaCaja(m) })).filter((x) => x.c).map(({ m, c }) => ({ ...m, ...c }));
+  if (!nuevos.length) return;
+  const cerr = CAJA_CERRADO(nuevos.map((m) => m.fecha)); if (cerr) return aviso(cerr);
+  await ocupado(async () => { await guardarMovimientos(nuevos); render(); aviso(`${nuevos.length} movimiento(s) clasificado(s) como pago de F29.`); }, "No se pudo clasificar");
+}
 /* Mover una línea del libro arriba o abajo (con el mouse o con ▲▼): el orden se guarda en «orden» y, si la línea queda entre días distintos, toma la fecha que mantiene el libro cronológico. */
 async function moverLineaCaja(id, destinoId, despues) {
   const m = S.caja.find((x) => x.id === id), d = S.caja.find((x) => x.id === destinoId); if (!m || !d || m === d) return;
@@ -7087,7 +7125,10 @@ async function agregarLineaCaja() {
   if (rut && !rutValido(rut)) return aviso("El RUT no es válido (revisa el dígito verificador).");
   if (DOCS_TRIBUTARIOS_CAJA.has(docTipo) && !num) return aviso("Indica el número del documento: el libro lo exige para documentos tributarios.");
   S.cajaFecha = fecha; S.cajaRapida = null;
-  await ocupado(async () => { await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria: tipo === 1 ? "Ventas" : "Compras y gastos", doc_tipo: docTipo, doc_num: num, rut: rut ? formatoRut(rut) : "", nombre: "", glosa, monto, base, origen: "manual", ref: "" }]); S.cajaNuevaLinea = null; render(); aviso("Línea agregada."); }, "No se pudo agregar la línea");
+  /* La categoría se deduce de la glosa y el documento, igual que al importar el libro del contador: un «Pago F29 agosto 2026, PPM» queda como pago de F29 con su concepto y período. */
+  const cl = clasificarMovimientoExcel(tipo, docTipo, glosa, fecha), esF29 = cl.categoria === CAT_F29;
+  const baseFinal = esF29 && !baseTxt ? 0 : base;
+  await ocupado(async () => { await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria: cl.categoria || (tipo === 1 ? "Ventas" : "Compras y gastos"), doc_tipo: docTipo, doc_num: num, rut: rut ? formatoRut(rut) : "", nombre: "", glosa, monto, base: baseFinal, ...(cl.clase ? { clase: cl.clase } : {}), ...(cl.f29_periodo ? { f29_periodo: cl.f29_periodo } : {}), origen: "manual", ref: "" }]); S.cajaNuevaLinea = null; render(); aviso(esF29 ? `Línea agregada como pago de F29${cl.clase ? ` (${{ f29_iva: "IVA", f29_ppm: "PPM", f29_ret: "retención", f29_iusc: "impuesto único" }[cl.clase]}` : " (sin concepto"}${cl.f29_periodo ? ` de ${nombrePeriodo(cl.f29_periodo)}` : ""}).` : "Línea agregada."); }, "No se pudo agregar la línea");
 }
 async function guardarSaldoInicialLinea() {
   const [a, mm] = (S.cajaIniEdit || "").split("-"); if (!a || !$("#cini-monto")) return;
