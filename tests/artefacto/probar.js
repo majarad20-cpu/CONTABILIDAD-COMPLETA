@@ -860,7 +860,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     for (const x of importados) await S.almacen.del(`empresas/e1/rcv/${x.id}`);
     await new Promise((r) => setTimeout(r, 150));
     return { hojas: hojas.map((h) => [h.hoja, h.incluir, h.periodo, h.docs.length]), nombre: d[501].razon_social, nc: [d[504].neto, d[504].total, d[504].nc_de, d[504].activo_fijo], comb: [d[502].total, d[502].revisar_total, d[502].total_rcv, d[502].dif_total],
-      cuRecalc: cu, cuRcv: c2, csv: [d[12]?.neto, d[12]?.total, d[12]?.fecha, cuCsv], notas: hojas[0].notas, nuevos: R.nuevos.length, importados: importados.length, tras: S.rcv.length - antes, segundaVez: R3.nuevos.length, vista: /Importar desde Excel o planillas/.test(html), rutFmt: d[501].rut, repararDoble: repararTexto("TRANSPORTES Y LOGÃƒï¿½STICA GUIDO") };
+      cuRecalc: cu, cuRcv: c2, csv: [d[12]?.neto, d[12]?.total, d[12]?.fecha, cuCsv], notas: hojas[0].notas, nuevos: R.nuevos.length, importados: importados.length, tras: S.rcv.length - antes, segundaVez: R3.nuevos.length, vista: /Importar el RCV/.test(html), rutFmt: d[501].rut, repararDoble: repararTexto("TRANSPORTES Y LOGÃƒï¿½STICA GUIDO") };
   });
   const sinT = await page.evaluate(async () => {
     await cargarScript("exceljs");
@@ -1106,6 +1106,33 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     }
     ok(`todas las pantallas se ven bien en ${nombre}`, !malas.length, malas.join(" "));
   }
+
+  console.log("Gestión de importación del RCV");
+  const gi = await page.evaluate(async () => {
+    const sr = S.rcv, em = empresa(), per = "2032-05", mk = (folio, total, extra = {}) => ({ id: "g" + folio, registro: "COMPRA", periodo: per, tipo_doc: 33, rut: "76.111.111-1", razon_social: "PROV", folio: String(folio), fecha: per + "-05", exento: 0, neto: Math.round(total / 1.19), iva: total - Math.round(total / 1.19), iva_no_recuperable: 0, otros_impuestos: 0, total, activo_fijo: false, cantidad: 1, cuenta: "", asiento: "", ...extra });
+    S.rcv = [mk(1, 119000), mk(2, 59500), mk(3, 11900, { asiento: S.lista[0].id })];
+    const csv = "Folio;Fecha;RUT;Razon;Neto;IVA;Total\r\n1;05-05-2032;76111111-1;PROV;100000;19000;119000\r\n9;06-05-2032;76111111-1;PROV;50000;9500;59500\r\n";
+    const hojas = await analizarArchivosRcv([{ nombre: "propio_05-2032.csv", buffer: new TextEncoder().encode(csv).buffer }]);
+    const mapeo = !!hojas[0].mapeo, sel = hojas[0].mapeo?.sel;
+    S.rcvPeriodo = per; S.rcvPeriodoEid = S.eid; ir("rcv"); S.migra = { hojas, criterio: "recalcular", eliminar: new Set() }; render(); await new Promise((r) => setTimeout(r, 50));
+    const hayFormulario = !!document.querySelector("#mg-map-0-folio");
+    const pp = document.querySelector("#mg-map-0-periodo"); if (pp) pp.value = per; aplicarMapeoRcv(0); await new Promise((r) => setTimeout(r, 50));
+    const h = S.migra.hojas[0], R = resumenMigracion();
+    const ausentes = R.ausentes.map((d) => d.folio).join(), nuevos = R.nuevos.map((d) => d.folio).join();
+    const lis = (() => { S.rcvPeriodo = per; S.rcvPeriodoEid = S.eid; return listaRevisionRcv(per, "COMPRA"); })();
+    S.migra.eliminar.add("g2"); S.migra.eliminar.add("g3");
+    const antes = S.rcv.length; S.rcv = S.rcv.filter(() => true);
+    const sacadas = R.ausentes.filter((d) => S.migra.eliminar.has(d.id) && pendiente(d)).map((d) => d.folio).join();
+    S.migra = null; S.rcv = sr;
+    return { mapeo, sel: [sel?.folio, sel?.total], hayFormulario, periodo: h.periodo, n: h.docs.length, ausentes, nuevos, sacadas, lis: lis.map((x) => [x.ok, x.bloquea]), antes };
+  });
+  ok("una planilla con otro formato propone las columnas y ofrece asignarlas", gi.mapeo && gi.sel.join() === "0,6" && gi.hayFormulario, JSON.stringify(gi));
+  ok("aplicadas las columnas, la planilla se lee y queda con su mes", gi.n === 2 && gi.periodo === "2032-05", JSON.stringify(gi));
+  ok("detecta el documento que ya no está en el archivo y el que es nuevo", gi.ausentes === "2,3" && gi.nuevos === "9", gi.ausentes + " / " + gi.nuevos);
+  ok("los documentos centralizados no se pueden quitar desde la importación", gi.sacadas === "2", gi.sacadas);
+  ok("la revisión del mes señala lo que falta", gi.lis.length >= 1 && gi.lis[0][0] === true, JSON.stringify(gi.lis));
+  const rev = await page.evaluate(() => { const sr = S.rcv; S.rcv = []; const a = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = [{ id: "q", registro: "COMPRA", periodo: "2032-06", revisar_total: true, tipo_doc: 33, total: 1, folio: "1", asiento: "" }]; const b = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = sr; return { vacio: a[0].ok, rt: b.some((x) => !x.ok && x.bloquea) }; });
+  ok("sin documentos ni marca de «sin compras» no se puede aceptar, y un total por revisar bloquea", rev.vacio === false && rev.rt === true, JSON.stringify(rev));
 
   console.log("Exportaciones");
   if (hayLibs) {
