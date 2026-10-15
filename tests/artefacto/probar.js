@@ -1157,6 +1157,34 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("se pueden editar montos y glosas antes de traer", pvr.editado[0] === 250000 && pvr.editado[1] === "Compras del mes corregidas" && pvr.panel, JSON.stringify(pvr));
   ok("al confirmar se guardan las líneas con la fecha de fin de mes y marcadas como editadas", pvr.mov >= 2 && pvr.marcado && pvr.fecha === "2033-03-31", JSON.stringify(pvr));
 
+  console.log("Aceptar cargas que cuadran con el libro de caja");
+  const pl = await page.evaluate(async () => {
+    const per = "2034-02", sr = S.rcv, sc = S.caja, e0 = empresa(), r = {};
+    const base = { periodo: per, fecha: per + "-10", tipo_doc: 33, exento: 0, cantidad: 1, iva_no_recuperable: 0, otros_impuestos: 0, activo_fijo: false, asiento: "", rut: "76.111.111-1", razon_social: "P" };
+    S.rcv = [{ ...base, id: "l1", registro: "COMPRA", folio: "1", neto: 100000, iva: 19000, total: 119000 }];
+    S.caja = [{ id: "lc", fecha: per + "-28", tipo: 2, categoria: "Compras y gastos", doc_tipo: "Registro de Compras SII", doc_num: "X", monto: 119000, base: 100000 }];
+    r.antes = cargasPorLibro().map((x) => x.estado).join();
+    S.caja[0].monto = 100000; r.difiere = cargasPorLibro().map((x) => x.estado).join(); S.caja[0].monto = 119000;
+    S.caja = []; r.sinLibro = cargasPorLibro().map((x) => x.estado).join();
+    S.caja = [{ id: "lc", fecha: per + "-28", tipo: 2, categoria: "Compras y gastos", doc_tipo: "Registro de Compras SII", doc_num: "X", monto: 119000, base: 100000 }];
+    r.panel = /Aceptar las 1 carga/.test(panelAceptarPorLibro());
+    await aceptarCargasPorLibro(); await new Promise((x) => setTimeout(x, 150));
+    const ac = cargaAceptada(per, "COMPRA"); r.ac = !!ac && ac.por_libro === true; r.libroIntacto = S.caja.length === 1; r.despues = cargasPorLibro().length;
+    await BD.setEmpresa(S.eid, e0); S.rcv = sr; S.caja = sc; await new Promise((x) => setTimeout(x, 100));
+    return r;
+  });
+  ok("una carga sin aceptar que cuadra con el libro se ofrece para aceptar", pl.antes === "cuadra" && pl.panel, JSON.stringify(pl));
+  ok("si el monto del libro difiere, o el libro no tiene el mes, no se acepta sola", pl.difiere === "difiere" && pl.sinLibro === "sin_libro", JSON.stringify(pl));
+  ok("al aceptarla por el libro queda registrada y no se agrega nada al libro", pl.ac && pl.libroIntacto && pl.despues === 0, JSON.stringify(pl));
+
+  const sd = await page.evaluate(async () => {
+    const e0 = empresa(); await BD.setEmpresa(S.eid, { ...e0, codigos_otros: { ...(e0.codigos_otros || {}), "sin_detalle:2035-03": "anticipo" } });
+    const d = { id: "sd", registro: "COMPRA", periodo: "2035-03", tipo_doc: 33, neto: 100000, iva: 19000, exento: 0, otros_impuestos: 2427, total: 121427, iva_no_recuperable: 0, activo_fijo: false, cantidad: 1, asiento: "", folio: "1", rut: "76.111.111-1", fecha: "2035-03-05" };
+    let r; try { const o = desgloseOtros([d]); const o2 = desgloseOtros([{ ...d, periodo: "2035-04" }]); r = [o.anticipo, o.noRec, o2.anticipo, o2.noRec]; } catch (e) { r = "ERR " + e.message; }
+    await BD.setEmpresa(S.eid, e0); return r;
+  });
+  ok("los otros impuestos sin detalle se tratan como anticipo de IVA solo en el mes elegido", JSON.stringify(sd) === "[2427,0,0,2427]", JSON.stringify(sd));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
