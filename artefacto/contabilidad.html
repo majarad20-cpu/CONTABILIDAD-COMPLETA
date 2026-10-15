@@ -289,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.44.0";
+const VERSION = "1.45.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -1859,58 +1859,6 @@ async function registrarResumen(periodo, tipo, cantidad, total, exento = 0, neto
   await guardarDoc(existente?.id || "d" + nuevoId(), { ...base, cantidad, exento, neto, iva, total, rut: rutEmisor() });
 }
 
-async function importarArchivoRcv(archivo, base) {
-  let periodo = base;
-  const nombre = datosNombreArchivo(archivo.name);
-  let aviso_periodo = "";
-  if (nombre) {
-    const rutEmpresa = limpiarRut(empresa().rut).slice(0, -1);
-    if (rutEmpresa && nombre.rut !== rutEmpresa)
-      throw new ErrorRcv(`${archivo.name}: es del RUT ${clp(+nombre.rut)} y la empresa activa es ${empresa().razon_social} (${empresa().rut}). No se importó: cambia a la empresa correcta en el selector del menú.`);
-    const p = nombre.periodo;
-    if (p !== periodo) { aviso_periodo = ` El archivo corresponde a ${nombrePeriodo(p)}; se importó en ese período.`; periodo = p; }
-  }
-  const { registro, documentos } = leerCsvRcv(textoArchivo(await archivo.arrayBuffer()), nombre?.tipo);
-  if (registro === "RESUMEN") {
-    const resumenes = documentos.filter((d) => TIPOS_RESUMEN[d.tipo_doc]);
-    for (const d of resumenes) {
-      const ex = S.rcv.find((x) => x.registro === "VENTA" && +x.tipo_doc === d.tipo_doc && x.folio === `RESUMEN ${periodo}`);
-      if (ex && !pendiente(ex)) throw new ErrorRcv(`El resumen de ${TIPOS_RESUMEN[d.tipo_doc].toLowerCase()} de ${nombrePeriodo(periodo)} ya está centralizado; elimina primero el asiento de centralización.`);
-    }
-    for (const d of resumenes) await registrarResumen(periodo, d.tipo_doc, d.cantidad, d.total, d.exento, d.neto, d.iva);
-    let texto = resumenes.length ? `Resumen de ventas de ${nombrePeriodo(periodo)}: ${resumenes.length} tipo(s) de boletas o comprobantes de pago registrados.`
-      : `El resumen de ventas de ${nombrePeriodo(periodo)} no trae boletas ni comprobantes de pago.`;
-    if (documentos.length - resumenes.length) texto += ` Se omitieron ${documentos.length - resumenes.length} línea(s) de facturas o notas, que se importan con el CSV de detalle.`;
-    return { periodo, texto: texto + aviso_periodo };
-  }
-  const habituales = empresa().cuentas_rut || {};
-  let nuevos = 0;
-  for (const d of documentos) {
-    if (buscarDoc(registro, d.tipo_doc, d.rut, d.folio)) continue;
-    const cuenta = habituales[`${registro}|${d.rut}`] || "";
-    const { otros_declarados: _od, ...limpio } = d;
-    await guardarDoc("d" + nuevoId(), { ...limpio, registro, periodo, cantidad: 1, cuenta: S.porId.has(cuenta) ? cuenta : "", asiento: "" });
-    nuevos++;
-  }
-  let texto = `${registro === "COMPRA" ? "Compras" : "Ventas"} de ${nombrePeriodo(periodo)}: ${nuevos} documento(s) importado(s).`;
-  if (documentos.length - nuevos) texto += ` ${documentos.length - nuevos} ya estaban registrados y se omitieron.`;
-  return { periodo, texto: texto + aviso_periodo };
-}
-
-async function importarArchivosRcv(archivos) {
-  if (S.ocupado) return;
-  S.ocupado = true;
-  const mensajes = [], base = S.rcvPeriodo;
-  let ultimo = base;
-  try {
-    for (const a of archivos) {
-      try { const r = await importarArchivoRcv(a, base); mensajes.push(r.texto); ultimo = r.periodo; }
-      catch (e) { mensajes.push(e instanceof ErrorRcv ? e.message : `${a.name}: no se pudo importar (${e?.code || e?.message || "error"}).`); }
-    }
-  } finally { S.ocupado = false; }
-  S.rcvPeriodo = ultimo; S.rcvMensajes = mensajes; render();
-}
-
 function defectoDoc(d) {
   const t = cuentasTributarias();
   return d.registro === "COMPRA" ? (d.activo_fijo ? t.compras_activo_fijo : t.compras_neto) : (d.neto ? t.ventas_neto : t.ventas_exento);
@@ -2076,13 +2024,17 @@ function panelAceptarCarga(registro = "COMPRA") {
     : `${r.facturas.n} factura(s) por $${clp(r.facturas.total)} y ${r.boletas.n} boleta(s) o comprobante(s) por $${clp(r.boletas.total)} · neto $${clp(r.neto)}, IVA $${clp(r.iva)}, total $${clp(r.total)}.`;
   return `<section class="caja"><h3>Aceptar la carga de ${nombre} de ${esc(nombrePeriodo(per))}</h3>
     <p class="ayuda">${registro === "COMPRA" ? "Cuando revises que lo cargado coincide con el SII, acepta la carga del mes. Queda registrado lo cargado y el tratamiento de cada código de otros impuestos pasa a ser el de esta empresa: se aplica a las cargas de los meses siguientes." : "Cuando revises que las facturas y los resúmenes de boletas coinciden con el SII, acepta la carga de las ventas del mes. Queda registrado lo cargado y se avisa si cambia."}</p>
+    <ul class="ayuda" style="list-style:none;padding:0;margin:.4em 0">${listaRevisionRcv(per, registro).map((x) => `<li>${x.ok ? (x.neutro ? "•" : "✓") : "✗"} ${esc(x.texto)}</li>`).join("")}</ul>
+    ${listaRevisionRcv(per, registro).some((x) => !x.ok && x.bloquea) && S.puedeEscribir ? `<label class="check"><input type="checkbox" id="ca-forzar"> Acepto igualmente: ya revisé los puntos marcados con ✗</label>` : ""}
     ${r.codigos.length || r.sinDetalle ? `<div class="tabla"><table><thead><tr><th>Código</th><th>Impuesto</th><th>Tratamiento para esta empresa</th></tr></thead><tbody>${r.codigos.map((c) => `<tr><td class="cod">${esc(c || "—")}</td><td>${esc(nombreOtroImpuesto(c))}</td><td>${sel(c)}</td></tr>`).join("")}${r.sinDetalle ? `<tr><td class="cod">—</td><td>Otros impuestos sin código ni tasa (planilla sin detalle)</td><td><select id="ca-cod-sin_detalle" ${S.puedeEscribir ? "" : "disabled"}><option value="no_rec" ${tratamientoOtro("sin_detalle") !== "anticipo" ? "selected" : ""}>No recuperable (parte del gasto)</option><option value="anticipo" ${tratamientoOtro("sin_detalle") === "anticipo" ? "selected" : ""}>Anticipo de IVA (no afecta la base)</option></select></td></tr>` : ""}</tbody></table></div>` : ""}
     <p>${docs.length ? detalle : `Mes sin ${nombre}.`}</p>
     ${ac ? `<div class="aviso ${cambio ? "" : "ok"}">${cambio ? `Aceptada el ${fmtFecha(ac.fecha)}, pero lo cargado cambió desde entonces: revisa y vuelve a aceptar.` : `Carga aceptada el ${fmtFecha(ac.fecha)}.`}</div>` : ""}
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="rcv-aceptar" data-id="${registro}">${ac ? "Volver a aceptar la carga" : `Aceptar la carga de ${nombre}`}</button>${ac ? ` <button class="btn enlace" type="button" data-n="rcv-quitar-aceptacion" data-id="${registro}">Quitar la aceptación</button>` : ""}</div>`)}</section>`;
 }
 async function aceptarCargaRcv(registro = "COMPRA") {
-  const per = S.rcvPeriodo, e = empresa(), codigos = { ...(e.codigos_otros || {}) };
+  const per = S.rcvPeriodo, fallos = listaRevisionRcv(per, registro).filter((x) => !x.ok && x.bloquea);
+  if (fallos.length && !$("#ca-forzar")?.checked) return aviso(`Antes de aceptar revisa: ${fallos.map((x) => x.texto).join("; ")}. Si ya lo revisaste, marca «Acepto igualmente».`);
+  const e = empresa(), codigos = { ...(e.codigos_otros || {}) };
   for (const c of [...resumenCargaRcv(per, registro).codigos, "sin_detalle"]) { const v = $(`#ca-cod-${c || "_"}`)?.value; if (v === "anticipo" || v === "no_rec") codigos[String(c)] = v; }
   tratamientoTemporal = codigos; let r; try { r = resumenCargaRcv(per, registro); } finally { tratamientoTemporal = null; }
   const { codigos: _c, sinDetalle: _s, ...resumen } = r, previo = (e.rcv_aceptado || {})[per] || {};
@@ -2286,10 +2238,8 @@ function vistaRcvMes() {
     ${botonesExportar()}
   </div>
   ${(S.rcvMensajes || []).map((m) => `<div class="aviso ok">${esc(m)}</div>`).join("")}
-  ${puedeEditar(`<section class="caja"><h2>Importar desde el SII</h2>
-    <p class="ayuda">En el SII entra a <em>Registro de Compras y Ventas</em>, elige el período y descarga en CSV el <strong>detalle</strong> de compras, el <strong>detalle</strong> de ventas y el <strong>resumen</strong> de ventas (este último trae las boletas y los comprobantes de pago electrónico). Puedes elegir los tres archivos a la vez. El programa reconoce cada archivo, toma el período del nombre del archivo y no importa archivos de otro RUT. Si cargas un archivo dos veces no se duplica.</p>
-    <div class="acciones"><input type="file" id="rcv-archivos" accept=".csv,text/csv" multiple aria-label="Archivos CSV del SII"></div></section>`)}
   ${panelMesRcv()}
+  ${panelCargasRcv()}
   ${vistaMigracionRcv()}
   ${formularioDoc()}
   ${tablaRcv("COMPRA")}
@@ -5903,6 +5853,9 @@ document.addEventListener("click", (ev) => {
     case "afc-crear-todas": crearFichasDesdeCompras(comprasActivoSinFicha().map((d) => d.id)); break;
     case "mg-hoja": { const h = S.migra.hojas[+id]; h.incluir = t.checked; render(); break; }
     case "mg-criterio": S.migra.criterio = id; render(); break;
+    case "mg-ausente": { const E = S.migra.eliminar ||= new Set(); if (t.checked) E.add(id); else E.delete(id); render(); break; }
+    case "mg-ausentes-todos": { const E = S.migra.eliminar ||= new Set(); for (const d of resumenMigracion().ausentes) if (pendiente(d)) E.add(d.id); render(); break; }
+    case "mg-mapear": aplicarMapeoRcv(+id); break;
     case "mg-cancelar": S.migra = null; render(); break;
     case "rcv-hist-detalle": S.rcvHistDetalle = S.rcvHistDetalle === id ? null : id; render(); break;
     case "rcv-aceptar": aceptarCargaRcv(id || "COMPRA"); break;
@@ -6386,7 +6339,6 @@ document.addEventListener("change", (ev) => {
   if (ev.target.id === "rcv-excel" && ev.target.files.length) prepararMigracionRcv([...ev.target.files]);
   if (ev.target.id === "caja-excel" && ev.target.files.length) prepararLibroCaja(ev.target.files[0]);
   if (/^mg-per-\d+$/.test(ev.target.id) && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.migra.hojas[+ev.target.id.slice(7)].periodo = ev.target.value; render(); }
-  if (ev.target.id === "rcv-archivos" && ev.target.files.length) importarArchivosRcv([...ev.target.files]);
   if (ev.target.dataset.cuentaDoc) cambiarCuentaDoc(ev.target.dataset.cuentaDoc, ev.target.value);
   if (ev.target.dataset.selDoc) { if (ev.target.checked) S.rcvSel.add(ev.target.dataset.selDoc); else S.rcvSel.delete(ev.target.dataset.selDoc); S.confirmar = null; render(); }
   if (ev.target.id === "doc-tipo_doc") { leerFormularioDoc(); render(); }
@@ -7586,9 +7538,10 @@ async function analizarArchivosRcv(archivos) {
     const delArchivo = [];
     for (const h of hojas) {
       if (HOJA_DESCARTADA.test(h.nombre)) { delArchivo.push({ archivo: nombre, hoja: h.nombre, descartada: "Versión descartada (marcada como mala o errónea en el nombre de la hoja)", incluir: false, docs: [], notas: [], esperado: {}, registros: [] }); continue; }
-      if (h.nombre === "(texto)" && !h.filas.some((f) => String(valorCelda(f?.[0]) ?? "").trim() === "Nro")) { delArchivo.push(analizarCsvSii(nombre, buffer)); continue; }
+      if (h.nombre === "(texto)" && !h.filas.some((f) => String(valorCelda(f?.[0]) ?? "").trim() === "Nro")) { const r = analizarCsvSii(nombre, buffer), mp = r.error ? detectarCabeceraRcv(h) : null; delArchivo.push(mp ? { archivo: nombre, hoja: h.nombre, incluir: false, docs: [], notas: [], esperado: {}, registros: [], mapeo: mp, aviso: "Formato propio: asigna las columnas." } : r); continue; }
       if (!h.filas.some((f) => String(valorCelda(f?.[0]) ?? "").trim() === "Nro")) {
         if (h.filas.some((f) => (f || []).some((c) => /sin movimientos?/i.test(String(valorCelda(c) ?? ""))))) { delArchivo.push({ archivo: nombre, hoja: h.nombre, sinMovimiento: true, incluir: false, docs: [], notas: [], esperado: {}, registros: [] }); continue; }
+        const mp = detectarCabeceraRcv(h); if (mp) { delArchivo.push({ archivo: nombre, hoja: h.nombre, incluir: false, docs: [], notas: [], esperado: {}, registros: [], mapeo: mp, aviso: "Formato propio: asigna las columnas." }); continue; }
         if (h.filas.length) delArchivo.push({ archivo: nombre, hoja: h.nombre, descartada: "Sin tabla de documentos", incluir: false, docs: [], notas: [], esperado: {}, registros: [] }); continue; }
       const a = analizarHojaRcv(nombre, h); delArchivo.push({ archivo: nombre, hoja: h.nombre, incluir: true, ...a });
     }
@@ -7636,48 +7589,126 @@ function resumenMigracion() {
   const cuadre = (h) => { const r = {}; for (const [reg, et] of [["COMPRA", "PROVEEDORES"], ["VENTA", "CLIENTES"]]) if (h.esperado[et] != null && h.registros.includes(reg)) { const calc = docs.filter((d) => d._hoja === h && d.registro === reg).reduce((x, d) => x + (d.tipo_doc >= 60 && [60, 61, 112].includes(d.tipo_doc) ? -1 : 1) * d.total, 0); r[et] = { esperado: h.esperado[et], calc }; } return r; };
   const resumenes = M.hojas.filter((h) => h.incluir && h.resumenes?.length).flatMap((h) => h.resumenes.map((r) => ({ ...r, periodo: h.periodo, _hoja: h })));
   const aceptados = empresa().codigos_otros || {}, vistos = new Set(docs.flatMap((d) => (d.otros_detalle || []).map((x) => String(x.codigo || "")))), porAceptar = [...vistos].filter((c) => !aceptados[c]).sort(), desconocidos = porAceptar.filter((c) => !OTROS_IMPUESTOS_SII[+c]);
-  return { docs, nuevos, completables, repetidos, cuadre, existentes: docs.length - nuevos.length, resumenes, porAceptar, desconocidos };
+  /* Documentos ya registrados en un mes que este archivo sí trae, pero que el archivo nuevo ya no incluye (anulados, reclasificados o dados de baja en el SII). */
+  const claveDoc = (d) => `${d.registro}|${+d.tipo_doc}|${d.rut}|${d.folio}`, cubiertos = new Set(M.hojas.filter((x) => x.incluir && x.docs?.length).flatMap((h) => h.registros.map((r) => `${h.periodo}|${r}`))), claves = new Set(docs.map(claveDoc));
+  const ausentes = S.rcv.filter((d) => cubiertos.has(`${d.periodo}|${d.registro}`) && !TIPOS_RESUMEN[d.tipo_doc] && !claves.has(claveDoc(d))).sort((a, b) => (a.periodo < b.periodo ? -1 : a.periodo > b.periodo ? 1 : 0) || a.registro.localeCompare(b.registro) || String(a.folio).localeCompare(String(b.folio)));
+  return { docs, nuevos, completables, repetidos, cuadre, existentes: docs.length - nuevos.length, resumenes, porAceptar, desconocidos, ausentes };
 }
 async function prepararMigracionRcv(archivos) {
   await ocupado(async () => {
     const lista = []; for (const f of archivos) lista.push({ nombre: f.name, buffer: await f.arrayBuffer() });
     const hojas = await analizarArchivosRcv(lista), rut = limpiarRut(empresa().rut).slice(0, -1);
     for (const h of hojas) if (h.rutArchivo && rut && h.rutArchivo !== rut) { h.incluir = false; h.aviso = `Es del RUT ${clp(+h.rutArchivo)} y la empresa activa tiene otro RUT: no se importará.`; h.bloqueada = true; }
-    S.migra = { hojas, criterio: "recalcular", guardando: false }; render();
+    S.migra = { hojas, criterio: "recalcular", guardando: false, eliminar: new Set() }; render();
   }, "No se pudieron leer los archivos");
 }
 async function importarMigracionRcv() {
-  const M = S.migra, { nuevos, resumenes, completables } = resumenMigracion(), habituales = empresa().cuentas_rut || {};
-  if (!nuevos.length && !resumenes.length && !completables.length && !M.hojas.some((h) => h.marcarSin)) return aviso("No hay documentos nuevos para importar.");
+  const M = S.migra, R0 = resumenMigracion(), { nuevos, resumenes, completables } = R0, habituales = empresa().cuentas_rut || {};
+  const sacar = R0.ausentes.filter((d) => M.eliminar?.has(d.id) && pendiente(d));
+  if (!nuevos.length && !resumenes.length && !completables.length && !sacar.length && !M.hojas.some((h) => h.marcarSin)) return aviso("No hay documentos nuevos para importar.");
   await ocupado(async () => {
     let n = 0; M.guardando = true;
     for (const { _hoja, ...d } of nuevos) {
       const cuenta = habituales[`${d.registro}|${d.rut}`] || "";
       await guardarDoc("d" + nuevoId(), { ...d, cantidad: 1, cuenta: S.porId.has(cuenta) ? cuenta : "", asiento: "", origen: "importación Excel" }); n++;
     }
+    for (const d of sacar) await S.almacen.del(`empresas/${S.eid}/rcv/${d.id}`);
     let nsm = 0;
     for (const h of M.hojas.filter((x) => x.marcarSin && x.periodo)) { await guardarMesRcv(h.periodo, h.marcarSin === "COMPRA" ? { sin_compras: true } : { sin_ventas: true }); nsm++; }
     let nc = 0;
     for (const { d, e } of completables) { const x = {}; for (const k of ["otros_detalle", "recepcion", "acuse", "tipo_compra"]) if (d[k] && (!Array.isArray(d[k]) || d[k].length)) x[k] = d[k]; await guardarDoc(e.id, { ...e, ...x }); nc++; }
     const avisosRes = []; let nr = 0;
     for (const r of resumenes) { try { await registrarResumen(r.periodo, r.tipo_doc, r.cantidad, r.total, r.exento, r.neto, r.iva); nr++; } catch (e) { if (e instanceof ErrorRcv) avisosRes.push(e.message); else throw e; } }
+    await registrarCargasRcv(M, R0, sacar);
     const ult = [...nuevos, ...resumenes].map((d) => d.periodo).sort().at(-1);
-    S.rcvMensajes = [`Importación terminada: ${n} documento(s) nuevo(s)${nc ? `, ${nc} ya cargado(s) completado(s) con su detalle del SII` : ""}${nsm ? `, ${nsm} mes(es) marcado(s) sin movimiento` : ""} y ${nr} resumen(es) de ventas en ${new Set([...nuevos, ...resumenes].map((d) => d.periodo)).size} mes(es). Quedan pendientes de centralizar.`, ...avisosRes]; S.migra = null; if (ult) { S.rcvPeriodo = ult; S.rcvPeriodoEid = S.eid; } render();
+    S.rcvMensajes = [`Importación terminada: ${n} documento(s) nuevo(s)${sacar.length ? `, ${sacar.length} que ya no estaban en el archivo eliminado(s)` : ""}${nc ? `, ${nc} ya cargado(s) completado(s) con su detalle del SII` : ""}${nsm ? `, ${nsm} mes(es) marcado(s) sin movimiento` : ""} y ${nr} resumen(es) de ventas en ${new Set([...nuevos, ...resumenes].map((d) => d.periodo)).size} mes(es). Quedan pendientes de centralizar.`, ...avisosRes]; S.migra = null; if (ult) { S.rcvPeriodo = ult; S.rcvPeriodoEid = S.eid; } render();
   }, "No se pudo completar la importación");
+}
+/* Registro de cargas por mes: qué archivo se cargó, cuántos documentos trajo, cuántos eran nuevos y si cuadró con la planilla. */
+async function registrarCargasRcv(M, R, sacadas) {
+  const e = empresa(), log = { ...(e.rcv_cargas || {}) }, fecha = hoy(), signo = (d) => signoDoc(d.tipo_doc);
+  const agregar = (periodo, x) => { log[periodo] = [...(log[periodo] || []), x].slice(-20); };
+  for (const h of M.hojas.filter((x) => x.incluir && x.periodo)) {
+    const c = R.cuadre(h), cuadre = Object.keys(c).length ? Object.values(c).every((v) => Math.abs(v.esperado - v.calc) <= 1) : null;
+    for (const reg of h.registros) {
+      if (h.resumenes?.length && !h.docs?.length) { agregar(h.periodo, { fecha, archivo: h.archivo, hoja: h.hoja, registro: reg, tipo: "resumen", n: h.resumenes.length, total: h.resumenes.reduce((x, r) => x + r.total, 0), nuevos: h.resumenes.length, cuadre: null }); continue; }
+      const dd = R.docs.filter((d) => d._hoja === h && d.registro === reg);
+      agregar(h.periodo, { fecha, archivo: h.archivo, hoja: h.hoja, registro: reg, tipo: "detalle", n: dd.length, total: dd.reduce((x, d) => x + signo(d) * d.total, 0), nuevos: R.nuevos.filter((d) => d._hoja === h && d.registro === reg).length, eliminados: sacadas.filter((d) => d.periodo === h.periodo && d.registro === reg).length, cuadre });
+    }
+  }
+  for (const h of M.hojas.filter((x) => x.marcarSin && x.periodo)) agregar(h.periodo, { fecha, archivo: h.archivo, hoja: h.hoja, registro: h.marcarSin, tipo: "sin movimiento", n: 0, total: 0, nuevos: 0, cuadre: null });
+  await BD.setEmpresa(S.eid, { ...empresa(), rcv_cargas: log });
+}
+/* Revisión del mes antes de aceptar la carga: cada punto dice si está en orden; los que bloquean exigen marcar «Acepto igualmente». */
+function listaRevisionRcv(periodo, registro) {
+  const e = empresa(), docs = docsPeriodo(periodo, registro), nombre = registro === "COMPRA" ? "compras" : "ventas", sin = !!mesRcv(periodo)[registro === "COMPRA" ? "sin_compras" : "sin_ventas"];
+  const cargas = ((e.rcv_cargas || {})[periodo] || []).filter((c) => c.registro === registro && c.tipo !== "sin movimiento"), ult = cargas.at(-1), items = [];
+  items.push({ ok: docs.length > 0 || sin, bloquea: true, texto: docs.length ? `${docs.length} documento(s) de ${nombre} cargado(s)` : sin ? `Mes marcado sin ${nombre}` : `No hay ${nombre} cargadas` });
+  if (ult) items.push({ ok: ult.cuadre !== false, bloquea: true, texto: ult.cuadre === false ? "La última carga no cuadra con la planilla del archivo" : ult.cuadre ? "Cuadra con la planilla del archivo" : `Última carga ${fmtFecha(ult.fecha)} (${ult.archivo}), sin planilla para comparar`, neutro: ult.cuadre == null });
+  else if (docs.length) items.push({ ok: true, bloquea: false, neutro: true, texto: "Sin registro de carga: se cargó antes de la gestión de importación" });
+  const rt = docs.filter((d) => d.revisar_total).length; if (rt) items.push({ ok: false, bloquea: true, texto: `${rt} documento(s) con total distinto del RCV, por revisar` });
+  return items;
+}
+function panelCargasRcv() {
+  const per = S.rcvPeriodo, e = empresa(), cargas = (e.rcv_cargas || {})[per] || [], fila = (c) => `<tr><td>${fmtFecha(c.fecha)}</td><td>${esc(c.archivo)}${c.hoja && c.hoja !== "(texto)" ? `<br><small class="ayuda">${esc(c.hoja)}</small>` : ""}</td><td>${c.registro === "COMPRA" ? "Compras" : "Ventas"} · ${esc(c.tipo)}</td><td class="num">${c.n}</td><td class="num">${clp(c.total)}</td><td class="num">${c.nuevos}</td><td class="num">${c.eliminados || ""}</td><td>${c.cuadre === true ? "Cuadra" : c.cuadre === false ? "No cuadra" : "—"}</td></tr>`;
+  const estado = (reg, nombre) => { const ac = cargaAceptada(per, reg), n = docsPeriodo(per, reg).length, sin = !!mesRcv(per)[reg === "COMPRA" ? "sin_compras" : "sin_ventas"]; return `<div class="tarjeta"><span>${nombre}</span><strong>${ac ? "Aceptadas" : n ? `${n} por aceptar` : sin ? "Sin movimiento" : "Falta cargar"}</strong></div>`; };
+  return `<section class="caja"><h2>Estado de la carga de ${esc(nombrePeriodo(per))}</h2>
+    <div class="tarjetas">${estado("COMPRA", "Compras")}${estado("VENTA", "Ventas")}</div>
+    ${cargas.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Archivo</th><th>Qué trajo</th><th class="num">Docs.</th><th class="num">Total</th><th class="num">Nuevos</th><th class="num">Quitados</th><th>Planilla</th></tr></thead><tbody>${cargas.map(fila).join("")}</tbody></table></div>` : `<p class="ayuda">Todavía no hay cargas registradas para este mes.</p>`}</section>`;
+}
+/* Planillas con otro formato: se detecta la fila de cabeceras por sus nombres y se deja asignar cada columna. */
+const CAMPOS_MAPEO = [["tipo", "Tipo de documento (opcional)", /^tipo/], ["folio", "Folio", /folio|^n[°ºo.]? ?(doc|fact)|^numero|^n°/], ["rut", "RUT del proveedor o cliente", /rut/], ["razon", "Razón social", /raz[oó]n|nombre|proveedor|cliente/], ["fecha", "Fecha del documento", /fecha/], ["exento", "Monto exento", /exent/], ["neto", "Monto neto", /neto/], ["iva", "IVA", /iva|i\.v\.a/], ["otros", "Otros impuestos", /otros?|impuesto esp|imp\. ?esp/], ["total", "Monto total", /total/]];
+function detectarCabeceraRcv(hoja) {
+  for (let i = 0; i < Math.min(hoja.filas.length, 40); i++) {
+    const f = hoja.filas[i] || [], rot = f.map((c) => normEtiqueta(valorCelda(c) ?? "").toLowerCase()), usados = new Set(), sel = {};
+    for (const [c, , re] of CAMPOS_MAPEO) { const j = rot.findIndex((t, k) => t && !usados.has(k) && re.test(t)); sel[c] = j; if (j >= 0) usados.add(j); }
+    if (["folio", "rut", "fecha", "neto", "iva", "total"].filter((c) => sel[c] >= 0).length < 3 || sel.folio < 0) continue;
+    const texto = hoja.filas.slice(0, 5).flat().map((c) => normEtiqueta(valorCelda(c) ?? "")).join(" ");
+    return { cab: i, filas: hoja.filas, columnas: rot.map((t, k) => String(valorCelda(f[k]) ?? "").trim() || `Columna ${k + 1}`), sel, registro: /VENTA|CLIENTE/.test(texto) && !/COMPRA|PROVEEDOR/.test(texto) ? "VENTA" : "COMPRA" };
+  }
+  return null;
+}
+function aplicarMapeoRcv(i) {
+  const M = S.migra, h = M.hojas[i], mp = h.mapeo, sel = {};
+  for (const [c] of CAMPOS_MAPEO) { const v = $(`#mg-map-${i}-${c}`)?.value; sel[c] = v === "" || v == null ? -1 : +v; }
+  const reg = $(`#mg-map-${i}-registro`)?.value === "VENTA" ? "VENTA" : "COMPRA";
+  if (sel.folio < 0 || sel.total < 0) return aviso("Indica al menos las columnas del folio y del monto total.");
+  const tipoDe = (v) => { v = valorCelda(v); if (v == null || v === "") return 33; if (/^\d+$/.test(String(v).trim())) return +String(v).trim(); const t = normEtiqueta(v); return /NOTA.*CREDITO/.test(t) ? 61 : /NOTA.*DEBITO/.test(t) ? 56 : /EXENTA/.test(t) ? 34 : 33; };
+  const fechaDe = (v) => { v = valorCelda(v); return typeof v === "number" && v > 20000 && v < 80000 ? new Date(Math.round((v - 25569) * 86400000)) : v; };
+  const cab = ["Nro", "Tipo Doc", reg === "COMPRA" ? "RUT Proveedor" : "Rut cliente", "Razon Social", "Folio", "Fecha Docto", "Monto Exento", "Monto Neto", reg === "COMPRA" ? "Monto IVA Recuperable" : "Monto IVA", "Monto Total", "Valor Otro Impuesto"], filas = [cab];
+  for (const f of mp.filas.slice(mp.cab + 1)) {
+    const g = (c) => (sel[c] >= 0 ? f?.[sel[c]] : null), folio = String(valorCelda(g("folio")) ?? "").trim();
+    if (!folio || !/\d/.test(folio) || numeroRcv(g("total")) === 0) continue;
+    filas.push([filas.length, sel.tipo >= 0 ? tipoDe(g("tipo")) : 33, g("rut"), g("razon"), g("folio"), fechaDe(g("fecha")), g("exento"), g("neto"), g("iva"), g("total"), g("otros")]);
+  }
+  if (filas.length === 1) return aviso("No se encontraron filas de documentos con esas columnas.");
+  const a = analizarHojaRcv(h.archivo, { nombre: h.hoja, filas }), manual = $(`#mg-map-${i}-periodo`)?.value;
+  const cont = {}; for (const d of a.docs) if (d.fecha) cont[d.fecha.slice(0, 7)] = (cont[d.fecha.slice(0, 7)] || 0) + 1;
+  const periodo = /^\d{4}-\d{2}$/.test(manual || "") ? manual : a.periodo || Object.entries(cont).sort((x, y) => y[1] - x[1])[0]?.[0] || "";
+  M.hojas[i] = { archivo: h.archivo, hoja: h.hoja, incluir: true, ...a, periodo, aviso: `Columnas asignadas a mano: revisa la vista previa.` };
+  render();
+}
+function filaMapeoRcv(h, i) {
+  const mp = h.mapeo, opts = (sel) => `<option value="">— ninguna —</option>${mp.columnas.map((t, k) => `<option value="${k}" ${k === sel ? "selected" : ""}>${esc(t)}</option>`).join("")}`;
+  return `<tr><td></td><td colspan="6"><strong>Formato propio</strong>: no es el formato del SII. Indica qué columna es cada dato (ya propuse las que reconocí).
+    <div class="form">${CAMPOS_MAPEO.map(([c, t]) => `<label>${t}<select id="mg-map-${i}-${c}">${opts(mp.sel[c])}</select></label>`).join("")}
+      <label>Registro<select id="mg-map-${i}-registro"><option value="COMPRA" ${mp.registro === "COMPRA" ? "selected" : ""}>Compras</option><option value="VENTA" ${mp.registro === "VENTA" ? "selected" : ""}>Ventas</option></select></label>
+      <label>Período (si no se deduce de las fechas)<input type="month" id="mg-map-${i}-periodo"></label></div>
+    <div class="acciones"><button class="btn" type="button" data-n="mg-mapear" data-id="${i}">Aplicar estas columnas</button></div></td></tr>`;
 }
 function vistaMigracionRcv() {
   const M = S.migra;
-  const tarjeta = `<section class="caja"><h2>Importar desde Excel o planillas (varios meses)</h2>
-    <p class="ayuda">Para libros de Excel con una hoja por mes, o archivos de texto con montos como «$1.260.000». Reconoce las cabeceras por su nombre, repara los textos dañados, pasa las notas de crédito a positivo y compara cada mes con las filas de centralización de la planilla. Primero verás una vista previa: no se guarda nada hasta que lo confirmes.</p>
-    <div class="acciones"><input type="file" id="rcv-excel" accept=".xlsx,.xlsm,.csv,.txt" multiple aria-label="Libros de Excel o planillas de texto con el RCV"></div></section>`;
+  const tarjeta = `<section class="caja"><h2>Importar el RCV</h2>
+    <p class="ayuda">Una sola entrada para todo: los CSV del SII (detalle de compras, detalle de ventas y resumen de ventas con las boletas) y los libros de Excel o planillas de texto, de uno o de varios meses. El programa reconoce cada archivo o cada hoja por su contenido, toma el mes y el RUT, repara los textos dañados, pasa las notas de crédito a positivo y compara cada mes con las filas de centralización de la planilla cuando las trae. Si una planilla tiene otro formato, te deja indicar qué columna es cada dato. Primero verás una vista previa: no se guarda nada hasta que lo confirmes, y puedes volver a cargar un mes sin duplicar.</p>
+    <div class="acciones"><input type="file" id="rcv-excel" accept=".csv,.txt,.xlsx,.xlsm,text/csv" multiple aria-label="Archivos del RCV: CSV del SII, Excel o planillas de texto"></div></section>`;
   if (!M) return puedeEditar(tarjeta);
   const R = resumenMigracion(), conDif = R.docs.filter((d) => d.revisar_total), ncs = R.docs.filter((d) => d.nc_de).length;
   const filas = M.hojas.map((h, i) => {
     const c = h.descartada || h.error ? null : R.cuadre(h), tipo = h.registros.map((r) => (r === "COMPRA" ? "Compras" : "Ventas")).join(" y ") || "—";
     const cuad = c ? Object.entries(c).map(([et, v]) => (v.esperado === v.calc ? `<span class="etiqueta" style="background:var(--ok-bg);color:var(--ok-fg)">${et.toLowerCase()} cuadra</span>` : `<span class="etiqueta cerrado">${et.toLowerCase()}: planilla ${clp(v.esperado)} · calculado ${clp(v.calc)}</span>`)).join(" ") : "";
     const n = R.nuevos.filter((d) => d._hoja === h).length;
-    return `<tr><td><input type="checkbox" data-n="mg-hoja" data-id="${i}" ${h.incluir ? "checked" : ""} ${h.descartada || h.error || h.bloqueada ? "disabled" : ""} aria-label="Incluir"></td><td>${esc(h.archivo)}<br><small class="ayuda">${esc(h.hoja)}</small></td>
-      <td>${h.descartada || h.error ? "—" : `<input type="month" id="mg-per-${i}" value="${esc(h.periodo)}" style="width:9.5em">`}</td><td>${esc(tipo)}</td><td class="num">${h.docs.length || (h.resumenes?.length ? `${h.resumenes.length} resumen(es)` : 0)}</td><td class="num">${h.incluir ? n || (h.resumenes?.length ? h.resumenes.length : "") : ""}</td>
+    return `${h.mapeo ? filaMapeoRcv(h, i) : ""}<tr><td><input type="checkbox" data-n="mg-hoja" data-id="${i}" ${h.incluir ? "checked" : ""} ${h.descartada || h.error || h.bloqueada || h.mapeo ? "disabled" : ""} aria-label="Incluir"></td><td>${esc(h.archivo)}<br><small class="ayuda">${esc(h.hoja)}</small></td>
+      <td>${h.descartada || h.error || h.mapeo ? "—" : `<input type="month" id="mg-per-${i}" value="${esc(h.periodo)}" style="width:9.5em">`}</td><td>${esc(tipo)}</td><td class="num">${h.docs.length || (h.resumenes?.length ? `${h.resumenes.length} resumen(es)` : 0)}</td><td class="num">${h.incluir ? n || (h.resumenes?.length ? h.resumenes.length : "") : ""}</td>
       <td>${cuad}${h.descartada ? `<small class="ayuda">${esc(h.descartada)}</small>` : ""}${h.error ? `<span class="neg">${esc(h.error)}</span>` : ""}${h.aviso ? `<small class="ayuda">${esc(h.aviso)}</small>` : ""}</td></tr>`; }).join("");
   const notas = M.hojas.filter((h) => h.notas?.length).flatMap((h) => h.notas.map((t) => `${nombrePeriodo(h.periodo)}: ${t}`));
   return `${tarjeta}<section class="caja"><h2>Vista previa de la importación</h2>
@@ -7688,9 +7719,13 @@ function vistaMigracionRcv() {
     <h3>Facturas cuyo total del RCV es menor que neto + IVA + otros impuestos (${conDif.length})</h3>
     <p class="ayuda">Suele ocurrir en combustibles con impuesto específico no informado. Elige con qué monto se registran; en ambos casos el documento queda marcado y el revisor de datos lo lista, con el total del RCV guardado.</p>
     <div class="ap-grupo"><button type="button" data-n="mg-criterio" data-id="recalcular" aria-pressed="${M.criterio === "recalcular"}">Neto + IVA + otros impuestos (como las planillas)</button><button type="button" data-n="mg-criterio" data-id="rcv" aria-pressed="${M.criterio === "rcv"}">Total del RCV</button></div>
+    ${R.ausentes.length ? `<h3>Ya no están en el archivo nuevo (${R.ausentes.length})</h3>
+    <p class="ayuda">Estos documentos están registrados en un mes que este archivo sí trae, pero el archivo ya no los incluye: el proveedor pudo anularlos, el SII reclasificarlos o haberlos cargado por error. No se borra nada solo: marca los que quieras eliminar. Los ya centralizados no se pueden eliminar desde aquí.</p>
+    <div class="tabla"><table><thead><tr><th>Eliminar</th><th>Mes</th><th>Registro</th><th>Tipo</th><th>Folio</th><th>Proveedor o cliente</th><th class="num">Total</th><th>Origen</th></tr></thead><tbody>${R.ausentes.map((d) => `<tr><td><input type="checkbox" data-n="mg-ausente" data-id="${esc(d.id)}" ${S.migra.eliminar?.has(d.id) ? "checked" : ""} ${pendiente(d) ? "" : "disabled"} aria-label="Eliminar"></td><td>${esc(nombrePeriodo(d.periodo))}</td><td>${d.registro === "COMPRA" ? "Compra" : "Venta"}</td><td>${d.tipo_doc}</td><td>${esc(d.folio)}</td><td>${esc(d.razon_social)}</td><td class="num">${clp(d.total)}</td><td>${pendiente(d) ? esc(d.origen || "—") : "centralizado"}</td></tr>`).join("")}</tbody></table></div>
+    <div class="acciones"><button class="btn sec" type="button" data-n="mg-ausentes-todos">Marcar todos los que se pueden eliminar</button></div>` : ""}
     ${R.repetidos.length ? `<div class="aviso">Documentos repetidos entre hojas (se importa uno solo): ${esc(R.repetidos.slice(0, 6).join("; "))}${R.repetidos.length > 6 ? "…" : ""}</div>` : ""}
     ${notas.length ? `<h3>Notas escritas en las planillas</h3>${notas.map((t) => `<div class="aviso">${esc(t)}</div>`).join("")}` : ""}
-    <div class="acciones"><button class="btn" type="button" data-n="mg-importar" ${R.nuevos.length || R.resumenes.length || R.completables.length || S.migra.hojas.some((h) => h.marcarSin) ? "" : "disabled"}>Importar ${R.nuevos.length} documento(s)${R.resumenes.length ? ` y ${R.resumenes.length} resumen(es)` : ""}${R.completables.length ? `, completar ${R.completables.length}` : ""}</button><button class="btn sec" type="button" data-n="mg-cancelar">Cancelar</button></div></section>`;
+    <div class="acciones"><button class="btn" type="button" data-n="mg-importar" ${R.nuevos.length || R.resumenes.length || R.completables.length || (S.migra.eliminar?.size && R.ausentes.length) || S.migra.hojas.some((h) => h.marcarSin) ? "" : "disabled"}>Importar ${R.nuevos.length} documento(s)${R.resumenes.length ? ` y ${R.resumenes.length} resumen(es)` : ""}${R.completables.length ? `, completar ${R.completables.length}` : ""}</button><button class="btn sec" type="button" data-n="mg-cancelar">Cancelar</button></div></section>`;
 }
 
 /* ------------------------------------------------------------------ resumen ejecutivo para el dueño de la empresa */
