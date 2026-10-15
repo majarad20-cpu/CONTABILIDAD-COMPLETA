@@ -1185,6 +1185,24 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   ok("los otros impuestos sin detalle se tratan como anticipo de IVA solo en el mes elegido", JSON.stringify(sd) === "[2427,0,0,2427]", JSON.stringify(sd));
 
+  const ll = await page.evaluate(async () => {
+    const per = "2036-09", sr = S.rcv, sc = S.caja, e0 = empresa(), r = {};
+    const base = { periodo: per, fecha: per + "-10", tipo_doc: 33, exento: 0, cantidad: 1, iva_no_recuperable: 0, otros_impuestos: 0, activo_fijo: false, asiento: "", rut: "76.111.111-1", razon_social: "P" };
+    S.rcv = [{ ...base, id: "w1", registro: "COMPRA", folio: "1", neto: 100000, iva: 19000, total: 119000 }]; S.caja = [];
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "simplificada" });
+    S.rcvPeriodo = per; S.rcvPeriodoEid = S.eid; ir("rcv"); await new Promise((x) => setTimeout(x, 50));
+    r.bloqueado = !!document.querySelector('[data-n="rcv-llevar-libro"][disabled]');
+    await BD.setEmpresa(S.eid, { ...empresa(), tipo_contabilidad: "simplificada", rcv_aceptado: { [per]: { COMPRA: { fecha: "2036-10-01", n: 1, total: 119000 } } } });
+    render(); await new Promise((x) => setTimeout(x, 50));
+    const b = document.querySelector('[data-n="rcv-llevar-libro"]'); r.habilitado = !!b && !b.disabled;
+    b.click(); await new Promise((x) => setTimeout(x, 100));
+    r.prev = !!document.querySelector("#cp-panel") && S.cajaPrev?.periodo === per; r.vista = S.pestana.caja;
+    S.cajaPrev = null; await BD.setEmpresa(S.eid, e0); S.rcv = sr; S.caja = sc; S.pestana.caja = "libro"; ir("inicio");
+    return r;
+  });
+  ok("en el RCV el botón de llevar al libro está bloqueado hasta aceptar la carga", ll.bloqueado, JSON.stringify(ll));
+  ok("con la carga aceptada el botón abre la vista previa en el libro de caja", ll.habilitado && ll.prev && ll.vista === "importar", JSON.stringify(ll));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
