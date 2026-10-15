@@ -870,12 +870,14 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const sr = S.rcv, sc = S.caja; S.rcv = docs.map((d, i) => ({ ...d, id: "t" + i, periodo: "2031-11" }));
     S.caja = [{ id: "a", fecha: "2031-11-30", tipo: 2, categoria: "Compras y gastos", doc_tipo: "Registro de Compras SII", doc_num: "X", monto: 25052, base: 21052 }, { id: "b", fecha: "2031-11-30", tipo: 2, categoria: "Compras y gastos", doc_tipo: "Registro de Compras SII", doc_num: "X", monto: 440, base: 440 }];
     const bien = cuadreRcvLibro("2031-11"), pend = documentosPendientesCaja("2031").length, con = periodoConResumen("2031-11");
+    S.caja.push({ id: "v", fecha: "2031-11-30", tipo: 1, categoria: "Ventas", doc_tipo: "REGISTRO DE VENTAS", doc_num: "X", monto: 1000, base: 840 }); const sinV = cuadreRcvLibro("2031-11"); S.caja.pop();
     S.caja[0].monto = 25000; const mal = cuadreRcvLibro("2031-11");
     S.rcv = sr; S.caja = sc;
-    return { n: hojas[0].docs.length, reg: hojas[0].registros.join(), tipos: docs.map((d) => d.tipo_doc).join(), otros: docs.map((d) => d.otros_impuestos).join(), periodo: hojas[0].periodo, bien: [bien.ok, bien.lados[0].rcv.monto, bien.lados[0].rcv.base], pend, con, mal: [mal.ok, mal.lados[0].rcv.monto - mal.lados[0].libro.monto] };
+    return { sinV: [sinV.ok, sinV.lados.find((l) => l.nombre === "Ventas").sinRcv], n: hojas[0].docs.length, reg: hojas[0].registros.join(), tipos: docs.map((d) => d.tipo_doc).join(), otros: docs.map((d) => d.otros_impuestos).join(), periodo: hojas[0].periodo, bien: [bien.ok, bien.lados[0].rcv.monto, bien.lados[0].rcv.base], pend, con, mal: [mal.ok, mal.lados[0].rcv.monto - mal.lados[0].libro.monto] };
   });
   igual("el RCV de Excel sin columna «Tipo Doc» se lee como facturas de compra", [sinT.n, sinT.reg, sinT.tipos, sinT.otros, sinT.periodo], [2, "COMPRA", "33,33", "440,0", "2031-11"]);
   igual("el RCV se compara con las líneas centralizadas del libro, no queda por pagar y avisa si no coincide", [sinT.bien, sinT.pend, sinT.con, sinT.mal], [[true, 25492, 21492], 0, true, [false, 52]]);
+  igual("un lado sin RCV cargado no cuenta como diferencia", sinT.sinV, [true, true]);
   igual("el libro tiene la hoja buena, la mala descartada y el texto", im.hojas, [["RCV 03-2031", true, "2031-03", 5], ["RCV 03-2031 MALO", false, null, 0], ["(texto)", true, "2031-04", 1]]);
   ok("repara los textos con la codificación dañada", im.nombre === "COMPAÑÍA AGROPECUARIA COPEVAL S.A." && im.repararDoble === "TRANSPORTES Y LOGÍSTICA GUIDO", im.nombre + " | " + im.repararDoble);
   igual("las notas de crédito pasan a positivo, se enlazan y heredan el activo fijo", im.nc, [8403361, 10000000, "33-503", true]);
