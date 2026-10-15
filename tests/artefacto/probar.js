@@ -513,7 +513,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     S.cajaMes = "01"; S.cajaIniEdit = `${a}-01`; render(); await new Promise((r) => setTimeout(r, 60));
     const A0 = modeloLibroCaja(a, "01", true).ini; document.querySelector("#cini-num").value = "99"; document.querySelector("#cini-glosa").value = "Saldo inicial corregido"; document.querySelector("#cini-base").value = "-21.492"; document.querySelector("#cini-monto").value = String(A0.monto);
     await guardarSaldoInicialLinea(); await new Promise((r) => setTimeout(r, 120));
-    const Mc = modeloLibroCaja(a, "01"), Mfeb = modeloLibroCaja(a, "02"), completa = { num: Mc.ini.doc_num, glosa: Mc.ini.glosa, base: Mc.ini.base, netoCambia: Mc.totales.neto === modeloLibroCaja(a, "01", true).totales.neto - A0.base - 21492, arrastra: Mfeb.ini.base === Mc.totales.neto, guardado: Object.keys(empresa().ini_caja?.[`${a}-01`] || {}).sort().join(",") };
+    const Mc = modeloLibroCaja(a, "01"), Mfeb = modeloLibroCaja(a, "02"), completa = { num: Mc.ini.doc_num, glosa: Mc.ini.glosa, base: Mc.ini.base, netoCambia: Mc.totales.neto === modeloLibroCaja(a, "01", true).totales.neto - A0.base - 21492, arrastra: Mfeb.ini.base === Mc.totales.neto, negativa: Mc.totales.bEgr === modeloLibroCaja(a, "01", true).totales.bEgr + 21492 && Mc.totales.bIng === modeloLibroCaja(a, "01", true).totales.bIng - Math.max(A0.base, 0), guardado: Object.keys(empresa().ini_caja?.[`${a}-01`] || {}).sort().join(",") };
     S.cajaIniEdit = `${a}-01`; await restaurarLineaInicial(); await new Promise((r) => setTimeout(r, 120));
     completa.restaurado = !empresa().ini_caja?.[`${a}-01`] && modeloLibroCaja(a, "01").ini.glosa === A0.glosa;
     S.cajaMes = "01"; S.cajaIniEdit = `${a}-01`; render(); await new Promise((r) => setTimeout(r, 60));
@@ -528,6 +528,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el saldo inicial de la primera línea del libro tiene botón de edición en cualquier mes", ini.boton && ini.soloPrimer && ini.campoEdicion && ini.campo, JSON.stringify(ini));
   igual("guardar la línea de saldo inicial actualiza el saldo del libro", [ini.despues, ini.libro, ini.restaurado], [777000, 777000, true]);
   igual("la edición de la primera línea guarda solo lo que cambió (N°, glosa y base) y la base se arrastra al mes siguiente", [ini.completa.num, ini.completa.glosa, ini.completa.base, ini.completa.guardado, ini.completa.arrastra, ini.completa.restaurado], ["99", "Saldo inicial corregido", -21492, "base,doc_num,glosa", true, true]);
+  ok("una base inicial negativa suma a los egresos de la base y una positiva a los ingresos, sin cambiar el resultado neto", ini.completa.negativa);
   igual("editar el saldo inicial de otro mes ajusta el saldo inicial del año para que ese mes parta con el monto indicado", ini.febAjuste, 1000);
   igual("la base imponible excluye el IVA y los retiros", [sm.baseIng, sm.baseEg], [1500000, 400000]);
   igual("el resultado de caja es la base de ingresos menos egresos", sm.erRes, 1100000);
