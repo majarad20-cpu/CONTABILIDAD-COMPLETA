@@ -880,6 +880,20 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     S.rcv = sr; S.caja = sc;
     return { sinV: [sinV.ok, sinV.lados.find((l) => l.nombre === "Ventas").sinRcv], n: hojas[0].docs.length, reg: hojas[0].registros.join(), tipos: docs.map((d) => d.tipo_doc).join(), otros: docs.map((d) => d.otros_impuestos).join(), periodo: hojas[0].periodo, bien: [bien.ok, bien.lados[0].rcv.monto, bien.lados[0].rcv.base], pend, con, mal: [mal.ok, mal.lados[0].rcv.monto - mal.lados[0].libro.monto] };
   });
+  const det = await page.evaluate(async () => {
+    const cab = "Nro;Tipo Doc;Tipo Compra;RUT Proveedor;Razon Social;Folio;Fecha Docto;Fecha Recepcion;Fecha Acuse;Monto Exento;Monto Neto;Monto IVA Recuperable;Monto Iva No Recuperable;Codigo IVA No Rec.;Monto Total;Monto Neto Activo Fijo;IVA Activo Fijo;IVA uso Comun;Impto. Sin Derecho a Credito;IVA No Retenido;Tabacos Puros;Tabacos Cigarrillos;Tabacos Elaborados;NCE o NDE sobre Fact. de Compra;Codigo Otro Impuesto;Valor Otro Impuesto;Tasa Otro Impuesto";
+    const csv = [cab, "9;33;Del Giro;81537600-5;RENDIC HERMANOS S.A.;45183980;13/09/2031;13/09/2031 11:32:45;;0;62362;11849;;;76856;;;;;0;;;;0;27;332;10;", ";33;Del Giro;81537600-5;RENDIC HERMANOS S.A.;45183980;13/09/2031;;;;;;;;;;;;;;;;;;271;1127;18;", ";33;Del Giro;81537600-5;RENDIC HERMANOS S.A.;45183980;13/09/2031;;;;;;;;;;;;;;;;;;19;1186;12;",
+      "10;33;Del Giro;91004000-6;PRODUCTOS FERNANDEZ S.A.;41584553;14/09/2031;14/09/2031 08:12:46;;0;113240;21516;;;134756;;;;;0;;;;0;;;;", "11;34;Del Giro;78304787-K;SERVICIOS CONTABLES;49;01/09/2031;01/09/2031 19:11:44;;20000;0;0;;;20000;;;;;0;;;;0;;;;"].join("\r\n") + "\r\n";
+    const hojas = await analizarArchivosRcv([{ nombre: "RCV_COMPRA_REGISTRO_78268099_203109.csv", buffer: new TextEncoder().encode(csv).buffer }]);
+    S.migra = { hojas, criterio: "recalcular" };
+    const R = resumenMigracion(), d = Object.fromEntries(R.docs.map((y) => [y.folio, y]));
+    const sr = S.rcv; S.rcv = R.docs.map((y, i) => ({ ...y, id: "z" + i, periodo: "2031-09" }));
+    const res = resumenRcvMes("2031-09").map((y) => [y.clave, y.monto, y.base]), o = otrosDeDoc(S.rcv.find((y) => y.folio === "45183980"));
+    S.rcv = sr; S.migra = null;
+    return { n: R.docs.length, det: d["45183980"].otros_detalle.map((y) => `${y.codigo}:${y.valor}:${y.tasa}`).join(","), otros: d["45183980"].otros_impuestos, rec: d["45183980"].recepcion, tipo: d["45183980"].tipo_compra, sin: d["41584553"].otros_detalle, res, o: [o.anticipo, o.noRec, o.detallado] };
+  });
+  igual("el CSV del SII guarda los otros impuestos por código, tasa y valor (también las líneas de continuación) y la recepción", [det.n, det.det, det.otros, det.rec, det.tipo, det.sin], [3, "27:332:10,271:1127:18,19:1186:12", 2645, "2031-09-13", "Del Giro", undefined]);
+  igual("el IVA anticipado (código 19) va como anticipo y el resto como impuesto no recuperable, en líneas separadas del resumen mensual", [det.o, det.res], [[1186, 1459, true], [["compra_afecta", 6e4 * 0 + 76856 - 2645 + 134756, 62362 + 113240], ["compra_inr", 1459, 1459], ["compra_anticipo_iva", 1186, 0], ["compra_exenta", 20000, 20000]]]);
   igual("el RCV de Excel sin columna «Tipo Doc» se lee como facturas de compra", [sinT.n, sinT.reg, sinT.tipos, sinT.otros, sinT.periodo], [2, "COMPRA", "33,33", "440,0", "2031-11"]);
   igual("el RCV se compara con las líneas centralizadas del libro, no queda por pagar y avisa si no coincide", [sinT.bien, sinT.pend, sinT.con, sinT.mal], [[true, 25492, 21492], 0, true, [false, 52]]);
   igual("un lado sin RCV cargado no cuenta como diferencia", sinT.sinV, [true, true]);
