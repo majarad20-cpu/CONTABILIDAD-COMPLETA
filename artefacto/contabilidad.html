@@ -289,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.35.0";
+const VERSION = "1.36.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -6328,7 +6328,7 @@ function libroCaja(anio, mes = "", hasta = "") {
 /* Documentos del RCV todavía no cobrados ni pagados (devengados / adeudados). */
 const refRcv = (d) => "rcv:" + d.id;
 function documentosPendientesCaja(anio, hasta = `${anio}-12-31`) {
-  const pagados = new Set(S.caja.map((m) => m.ref).filter(Boolean)), conResumen = new Set(S.caja.map((m) => m.ref?.match(/^rcvmes:(\d{4}-\d{2}):/)?.[1]).filter(Boolean));
+  const pagados = new Set(S.caja.map((m) => m.ref).filter(Boolean)), conResumen = new Set(S.caja.filter((m) => m.ref?.startsWith("rcvmes:") || lineaResumenLibro(m)).map((m) => m.ref?.match(/^rcvmes:(\d{4}-\d{2}):/)?.[1] || m.fecha.slice(0, 7)));
   return S.rcv.filter((d) => d.fecha.startsWith(String(anio)) && d.fecha <= hasta && signoDoc(d.tipo_doc) > 0 && !pagados.has(refRcv(d)) && !conResumen.has(d.periodo)).sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
 }
 function devengadosHasta(hasta) {
@@ -6356,7 +6356,17 @@ function resumenRcvMes(periodo) {
   return [...g.values()].filter((x) => x.monto || x.base).sort((a, b) => orden.indexOf(a.clave) - orden.indexOf(b.clave));
 }
 const refResumen = (periodo, clave) => `rcvmes:${periodo}:${clave}`;
-const periodoConResumen = (periodo) => S.caja.some((m) => m.ref?.startsWith(`rcvmes:${periodo}:`));
+/* Un mes tiene «resumen» si el libro trae sus líneas centralizadas del RCV, ya sea importadas por el programa o cargadas desde el libro del contador (Registro de Compras o de Ventas SII). */
+const lineaResumenLibro = (m) => /^registro de (compras|ventas)/i.test(m.doc_tipo || "") && m.origen !== "rcv" && m.categoria !== "Pago de impuestos (IVA, PPM, F29)";
+const periodoConResumen = (periodo) => S.caja.some((m) => m.ref?.startsWith(`rcvmes:${periodo}:`) || (m.fecha.startsWith(periodo) && lineaResumenLibro(m)));
+/* Cuadre mensual entre el RCV y las líneas centralizadas del libro de caja (monto total y monto que afecta la base). */
+function cuadreRcvLibro(periodo) {
+  const r = resumenRcvMes(periodo), libro = S.caja.filter((m) => m.fecha.startsWith(periodo) && lineaResumenLibro(m)), t = (tipo, f) => (f ? r.filter((x) => x.tipo === tipo) : libro.filter((m) => m.tipo === tipo));
+  const lado = (tipo, nombre) => { const a = t(tipo, true), b = t(tipo, false), rm = a.reduce((x, y) => x + y.monto, 0), rb = a.reduce((x, y) => x + y.base, 0), lm = b.reduce((x, y) => x + y.monto, 0), lb = b.reduce((x, y) => x + y.base, 0);
+    return { nombre, rcv: { monto: Math.round(rm), base: Math.round(rb), n: a.reduce((x, y) => x + y.n, 0) }, libro: { monto: Math.round(lm), base: Math.round(lb), n: b.length }, coincide: Math.abs(rm - lm) <= 1 && Math.abs(rb - lb) <= 1, hay: a.length > 0 || b.length > 0 }; };
+  const lados = [lado(2, "Compras"), lado(1, "Ventas")].filter((x) => x.hay);
+  return { periodo, lados, ok: lados.every((x) => x.coincide), hayLibro: libro.length > 0 };
+}
 const periodoConDocumentos = (periodo) => S.caja.some((m) => m.ref?.startsWith("rcv:") && S.rcv.some((d) => d.periodo === periodo && refRcv(d) === m.ref));
 function movimientosResumenRcv(periodo) {
   const fecha = ultimoDia(periodo);
@@ -6961,6 +6971,8 @@ function vistaImportarCaja(anio) {
   <section class="caja"><h2>Resumen mensual del RCV</h2><p class="ayuda">Crea una línea por tipo de documento (ventas por factura, boleta o comprobante de pago; compras afectas, de activo fijo y exentas), <strong>suponiendo que todo se cobró o pagó en el mes</strong>, a fin de mes. Es la forma en que se lleva el libro con muchos documentos. No se puede mezclar con la importación documento por documento del mismo mes.</p>
     ${(() => { const r = resumenRcvMes(ph); return r.length ? `<div class="tabla"><table><thead><tr><th>Línea</th><th class="num">Documentos</th><th class="num">Monto total</th><th class="num">Afecta la base</th></tr></thead><tbody>${r.map((x) => `<tr><td>${esc(x.glosa)}</td><td class="num">${x.n}</td><td class="num">${clp(x.monto)}</td><td class="num">${clp(x.base)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="ayuda">No hay documentos del RCV en ${nombrePeriodo(ph)}.</p>`; })()}
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-rcvmes" ${resumenRcvMes(ph).length && !periodoConResumen(ph) && !periodoConDocumentos(ph) ? "" : "disabled"}>Importar el resumen del mes</button></div>`)}${periodoConResumen(ph) ? `<p class="ayuda">${nombrePeriodo(ph)} ya tiene su resumen importado.</p>` : periodoConDocumentos(ph) ? `<p class="ayuda">${nombrePeriodo(ph)} ya tiene documentos importados uno a uno.</p>` : ""}</section>
+  ${(() => { const per = [...new Set(S.rcv.map((d) => d.periodo))].sort().map(cuadreRcvLibro).filter((c) => c.hayLibro); if (!per.length) return ""; return `<section class="caja"><h2>Cuadre del RCV con el libro de caja</h2><p class="ayuda">Compara, mes a mes, el total del registro de compras y ventas con las líneas centralizadas del libro de caja (monto total y monto que afecta la base). Las facturas viven en el RCV; el libro lleva una línea por mes.</p>
+    <div class="tabla"><table><thead><tr><th>Mes</th><th>Registro</th><th class="num">Docs. RCV</th><th class="num">Total RCV</th><th class="num">Total libro</th><th class="num">Base RCV</th><th class="num">Base libro</th><th>Estado</th></tr></thead><tbody>${per.flatMap((c) => c.lados.map((x) => `<tr><td>${esc(mesCap(c.periodo))}</td><td>${x.nombre}</td><td class="num">${x.rcv.n}</td><td class="num">${clp(x.rcv.monto)}</td><td class="num">${clp(x.libro.monto)}</td><td class="num">${clp(x.rcv.base)}</td><td class="num">${clp(x.libro.base)}</td><td>${x.coincide ? "<strong>Coincide</strong>" : `<span class="etiqueta cerrado">Diferencia ${clp(x.rcv.monto - x.libro.monto)}</span>`}</td></tr>`)).join("")}</tbody></table></div></section>`; })()}
   <section class="caja"><h2>Remuneraciones</h2><p class="ayuda">Registra dos egresos del mes: las remuneraciones líquidas y las cotizaciones previsionales, aportes del empleador e impuesto único retenido. Es una aproximación: ajústala si el pago real fue distinto.</p>
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-rem" ${liq ? "" : "disabled"}>Importar ${liq} liquidación(es)</button></div>`)}</section>
   <section class="caja"><h2>Boletas de honorarios</h2><p class="ayuda">Registra un egreso por cada boleta de honorarios recibida en el mes, por su monto líquido: la retención se descuenta de la base cuando pagas el F29 (usa «Pago de F29» en el libro de caja).</p>
@@ -7077,6 +7089,7 @@ function revisarDatos(todos = false) {
   /* Empresa */
   if (!e.rut || !rutValido(e.rut)) add("aviso", "Empresa", e.rut ? "El RUT de la empresa no es válido." : "Falta el RUT de la empresa: aparecerá en blanco en los informes.", [], "empresa");
   if (!S.contador.nombre) add("info", "Empresa", "No hay contador configurado: los informes saldrán sin nombre en la firma.", [], "contador");
+  if (simp) for (const per of [...new Set(S.rcv.map((d) => d.periodo))].sort()) { const c = cuadreRcvLibro(per); if (c.hayLibro && !c.ok) add("aviso", "RCV y libro de caja", `El registro de compras y ventas de ${nombrePeriodo(per)} no coincide con las líneas centralizadas del libro de caja.`, c.lados.filter((x) => !x.coincide).map((x) => `${x.nombre}: RCV $${clp(x.rcv.monto)} (base $${clp(x.rcv.base)}) · libro $${clp(x.libro.monto)} (base $${clp(x.libro.base)})`), "caja"); }
   { const mp = mesesPendientesContables(e, simp ? S.caja : S.lista, simp, hoyF);
     if (mp.pendientes.length) add("aviso", simp ? "Libro de caja" : "Contabilidad", `Contabilidad sin hacer: ${mp.pendientes.length} mes(es) sin contabilizar desde ${mesCap(mp.desde)}. Si un mes no tuvo movimientos, márcalo como «sin movimientos».`, mp.pendientes.map((m) => mesCap(m)), simp ? "caja" : "diario");
     if (mp.sinInicio) add("info", "Empresa", "Falta el inicio de actividades: desde esa fecha parte la contabilidad y el aviso de meses sin contabilizar.", [], "empresa"); }
@@ -7306,17 +7319,18 @@ function periodoDeHoja(archivo, hoja, docs) {
   return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
 }
 function analizarHojaRcv(archivo, hoja) {
-  const docs = [], notas = [], esperado = {}; let cab = null, registro = null, rutArchivo = null;
+  const docs = [], notas = [], esperado = {}; let cab = null, registro = null, rutArchivo = null, sinTipo = false;
   const m = hoja.nombre.match(/_(\d{7,8})(?:-[\dkK])?_/); if (m) rutArchivo = m[1];
   for (const fila of hoja.filas) {
     const r = Array.from({ length: 30 }, (_, i) => valorCelda(fila[i]));
-    if (String(r[0] ?? "").trim() === "Nro") { cab = r.map((c) => (c == null ? null : String(c).trim())); registro = /compra/i.test(String(r[2])) ? "COMPRA" : "VENTA"; continue; }
+    if (String(r[0] ?? "").trim() === "Nro") { cab = r.map((c) => (c == null ? null : String(c).trim())); registro = /compra|proveedor/i.test(cab.filter(Boolean).join(" ")) ? "COMPRA" : "VENTA"; sinTipo = !cab.some((h) => /^tipo doc/i.test(h || "")); continue; }
     if (!cab) continue;
     const d = {}; cab.forEach((h, j) => { if (h) d[h] = r[j]; });
-    const sinNro = r[0] == null || r[0] === "", tipoOk = /^\d+$/.test(String(r[1] ?? "").trim());
+    /* Algunos registros del SII no traen la columna «Tipo Doc»: se asume factura (33). */
+    const sinNro = r[0] == null || r[0] === "", tipoOk = sinTipo ? !sinNro && /\d/.test(String(valorCelda(d["RUT Proveedor"] ?? d["Rut cliente"]) ?? "")) : /^\d+$/.test(String(r[1] ?? "").trim());
     if (sinNro && !tipoOk) {
-      const et = normEtiqueta(r[4]);
-      if (/^(PROVEEDORES|CLIENTES)$/.test(et)) { const v = r.slice(5).map(numeroRcv).find((x) => x); if (v && esperado[et] == null) esperado[et] = v; }
+      const et = normEtiqueta(r[sinTipo ? 3 : 4]);
+      if (/^(PROVEEDORES|CLIENTES)$/.test(et)) { const v = r.slice(sinTipo ? 4 : 5).map(numeroRcv).find((x) => x); if (v && esperado[et] == null) esperado[et] = v; }
       for (const c of r) if (typeof c === "string" && c.trim().split(/\s+/).length >= 4 && !ETIQUETAS_CENTRALIZACION.test(normEtiqueta(c)) && !/^\d/.test(c.trim())) notas.push(c.trim());
       continue;
     }
@@ -7326,7 +7340,7 @@ function analizarHojaRcv(archivo, hoja) {
     const previo = docs[docs.length - 1];
     if (sinNro && previo && previo.registro === registro && previo.folio === folioRaw.split(".")[0] && previo.rut === rut) { previo.continuaciones++; continue; }
     const a = (k) => Math.abs(numeroRcv(d[k]));
-    docs.push({ registro, tipo_doc: +String(r[1]).trim(), rut, razon_social: repararTexto(d["Razon Social"]), folio: folioRaw.split(".")[0], fecha: fechaRcv(d["Fecha Docto"]), recepcion: fechaRcv(d["Fecha Recepcion"]),
+    docs.push({ registro, tipo_doc: sinTipo ? 33 : +String(r[1]).trim(), rut, razon_social: repararTexto(d["Razon Social"]), folio: folioRaw.split(".")[0], fecha: fechaRcv(d["Fecha Docto"]), recepcion: fechaRcv(d["Fecha Recepcion"]),
       exento: a("Monto Exento"), neto: a("Monto Neto"), iva: registro === "COMPRA" ? a("Monto IVA Recuperable") : a("Monto IVA"), iva_no_recuperable: a("Monto Iva No Recuperable"),
       otros: otro > 1 && otro === sinDerecho ? otro : otro + sinDerecho, total: Math.abs(numeroRcv(d["Monto Total"] ?? d["Monto total"])), activo_fijo: /^activo fijo$/i.test(String(d["Tipo Compra"] ?? "").trim()), continuaciones: 0 });
   }
