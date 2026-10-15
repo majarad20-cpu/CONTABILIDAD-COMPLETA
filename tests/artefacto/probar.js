@@ -1229,6 +1229,30 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("al elegir el día 10 la línea queda antes de las del día 30 y conserva lo escrito", lcm.fecha === "2037-05-10" && /^[^N]*NUEVA/.test(lcm.despues) && lcm.despues.indexOf("NUEVA") < lcm.despues.indexOf("L0") && lcm.conserva, JSON.stringify(lcm));
   ok("un mes cerrado del libro de caja bloquea los cambios y se puede reabrir", lcm.cerrado && /cerrado/.test(String(lcm.bloqueo)) && lcm.reabierto, JSON.stringify(lcm));
 
+  console.log("Libro de caja: mover líneas con el mouse");
+  await page.evaluate(async () => {
+    const per = "2038-05"; window.__e0 = empresa();
+    await BD.setEmpresa(S.eid, { ...window.__e0, tipo_contabilidad: "simplificada", ejercicio: 2038, inicio_actividades: "2038-01-01" });
+    await guardarMovimientos([["a", "05"], ["b", "10"], ["c", "30"]].map(([k, d]) => ({ id: "mv_" + k, fecha: `${per}-${d}`, tipo: 1, categoria: "Ventas", doc_tipo: "", doc_num: "", rut: "", nombre: "", glosa: "Linea " + k, monto: 1000, base: 1000, origen: "manual", ref: "" })));
+    await new Promise((x) => setTimeout(x, 200));
+    S.cajaAnio = "2038"; S.cajaMes = "05"; S.pestana.caja = "libro"; ir("caja"); await new Promise((x) => setTimeout(x, 80));
+  });
+  const orden = () => page.evaluate(() => [...document.querySelectorAll("tr[data-mov]")].map((tr) => tr.children[6].textContent.trim().slice(-1) + ":" + tr.children[5].textContent.trim().slice(0, 2)).join());
+  const antesDnD = await orden();
+  await page.dragAndDrop('tr[data-mov="mv_c"] .asa', 'tr[data-mov="mv_b"]', { targetPosition: { x: 40, y: 3 } });
+  await page.waitForTimeout(300);
+  const trasDnD = await orden();
+  await page.click('tr[data-mov="mv_a"] [data-n="caja-bajar"]'); await page.waitForTimeout(300);
+  const trasBajar = await orden();
+  const fin = await page.evaluate(async () => {
+    const f = S.caja.filter((m) => m.id.startsWith("mv_")).map((m) => [m.id, m.fecha.slice(8), m.orden]);
+    for (const m of S.caja.filter((x) => x.id.startsWith("mv_"))) await S.almacen.del(`empresas/${S.eid}/caja/${m.id}`);
+    await BD.setEmpresa(S.eid, window.__e0); S.cajaMes = undefined; ir("inicio"); await new Promise((x) => setTimeout(x, 100)); return f;
+  });
+  ok("las líneas del libro se arrastran con el mouse y cambian de lugar", antesDnD === "a:05,b:10,c:30" && trasDnD.startsWith("a:05,c:") , antesDnD + " | " + trasDnD);
+  ok("una línea que queda entre dos fechas toma la que mantiene el orden cronológico", /^a:05,c:(05|10),b:10$/.test(trasDnD), trasDnD);
+  ok("los botones ▲▼ también mueven la línea y el orden queda guardado", trasBajar !== trasDnD && fin.every((x) => x[2] != null), trasBajar + " " + JSON.stringify(fin));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {

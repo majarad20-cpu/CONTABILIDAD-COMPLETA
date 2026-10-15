@@ -265,6 +265,10 @@ input[type="color"].ap-color-input { width: 40px; height: 30px; padding: 0; bord
 body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra-controles { display: none; } body.presentando .banner-sistema { display: none; }
 .rs-notas { width: 100%; min-height: 90px; font: 14px var(--font-ui); }
 @media print { .rs-barra-controles, .rs-salir { display: none; } }
+.asa { cursor: grab; color: var(--muted); user-select: none; padding: 0 .25em; }
+tr[data-mov].arrastrando { opacity: .45; }
+tr[data-mov].sobre-arriba > td { box-shadow: inset 0 3px 0 var(--accent); }
+tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 </style>
 
 <div class="app">
@@ -289,7 +293,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.49.0";
+const VERSION = "1.50.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5884,6 +5888,8 @@ document.addEventListener("click", (ev) => {
     case "caja-ini-guardar": guardarSaldoInicialLinea(); break;
     case "caja-linea": agregarLineaCaja(); break;
     case "ql-dia": ponerDiaRapida(id); break;
+    case "caja-subir": moverLineaPaso(id, -1); break;
+    case "caja-bajar": moverLineaPaso(id, 1); break;
     case "caja-cerrar-mes": if (problemasCierreCaja(id).length) { S.confirmar = `cerrar-caja:${id}`; render(); } else cambiarMes(id, true); break;
     case "caja-cerrar-confirmar": cambiarMes(id, true); break;
     case "caja-cerrar-cancelar": S.confirmar = null; render(); break;
@@ -6435,7 +6441,7 @@ function cierresCaja(anio) {
   return out;
 }
 const saldoInicialCaja = (anio) => +((empresa()?.caja_inicial || {})[anio] || 0);
-const cajaDe = (anio) => S.caja.filter((m) => m.fecha.startsWith(String(anio)) && !antesDelInicio(m.fecha)).sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : String(a.id).localeCompare(String(b.id))));
+const cajaDe = (anio) => S.caja.filter((m) => m.fecha.startsWith(String(anio)) && !antesDelInicio(m.fecha)).sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : (a.orden ?? Infinity) !== (b.orden ?? Infinity) ? (a.orden ?? Infinity) - (b.orden ?? Infinity) : String(a.id).localeCompare(String(b.id))));
 const flujo = (m) => (m.tipo === 1 ? m.monto : -m.monto);
 function saldoCaja(hasta) { const anio = hasta.slice(0, 4); return saldoInicialCaja(anio) + cajaDe(anio).filter((m) => m.fecha <= hasta).reduce((x, m) => x + flujo(m), 0); }
 function estadoCaja(desde, hasta) {
@@ -6970,8 +6976,8 @@ function bloqueMesCaja(anio, mes, unico) {
         <label>Cliente o proveedor<input id="ce-nombre" value="${esc(m.nombre || "")}"></label>
         <label>Período del F29 <small>(pagos de F29)</small><input type="month" id="ce-f29per" value="${esc(m.f29_periodo || "")}"></label>
         <label>Concepto del F29<select id="ce-f29clase"><option value="">—</option>${[["f29_iva", "IVA determinado"], ["f29_ppm", "PPM"], ["f29_ret", "Retención de 2ª categoría"], ["f29_iusc", "Impuesto único de trabajadores"]].map(([k, n]) => `<option value="${k}" ${m.clase === k ? "selected" : ""}>${n}</option>`).join("")}</select></label></div></td></tr>`;
-    return `<tr><td class="c">${f.n}</td><td class="c">${f.tipo}</td><td class="c">${esc(f.doc_num)}</td><td>${esc(f.doc_tipo)}</td><td>${esc(f.rut)}</td><td>${fmtFecha(f.fecha)}</td><td>${esc(f.glosa)}${m.nombre ? `<br><small class="ayuda">${esc(m.nombre)}</small>` : ""}</td><td class="num">${pesosCaja(f.monto)}</td><td class="num ${f.base === 0 ? "cod" : ""}">${pesosCaja(f.base)}</td>
-      <td>${ed ? `<button class="btn enlace" type="button" data-n="caja-editar" data-id="${esc(m.id)}">Editar</button> <button class="btn enlace" type="button" data-n="caja-eliminar" data-id="${esc(m.id)}">Eliminar</button>` : ""}</td></tr>`;
+    return `<tr ${ed ? `draggable="true" data-mov="${esc(m.id)}"` : ""}><td class="c">${ed ? `<span class="asa" title="Arrastra con el mouse para subir o bajar la línea">⠿</span>` : ""}${f.n}</td><td class="c">${f.tipo}</td><td class="c">${esc(f.doc_num)}</td><td>${esc(f.doc_tipo)}</td><td>${esc(f.rut)}</td><td>${fmtFecha(f.fecha)}</td><td>${esc(f.glosa)}${m.nombre ? `<br><small class="ayuda">${esc(m.nombre)}</small>` : ""}</td><td class="num">${pesosCaja(f.monto)}</td><td class="num ${f.base === 0 ? "cod" : ""}">${pesosCaja(f.base)}</td>
+      <td>${ed ? `<button class="btn enlace" type="button" data-n="caja-subir" data-id="${esc(m.id)}" title="Subir la línea" aria-label="Subir">▲</button><button class="btn enlace" type="button" data-n="caja-bajar" data-id="${esc(m.id)}" title="Bajar la línea" aria-label="Bajar">▼</button> <button class="btn enlace" type="button" data-n="caja-editar" data-id="${esc(m.id)}">Editar</button> <button class="btn enlace" type="button" data-n="caja-eliminar" data-id="${esc(m.id)}">Eliminar</button>` : ""}</td></tr>`;
   }).join("");
   const abierta = S.cajaNuevaLinea === `${anio}-${mes}`, rapida = ed && unico && abierta ? filaRapidaCaja(mes, anio, M.filas.length + 2) : "";
   let filasHtml = filas;
@@ -7011,6 +7017,42 @@ function filaRapidaCaja(mes, anio, n = "") {
     <td><input type="date" id="ql-fecha" value="${fechaR}" min="${anio}-${mes}-01" max="${ultimoDia(`${anio}-${mes}`)}" aria-label="Fecha"><br><small>${dias}</small></td><td><input id="ql-glosa" value="${v("glosa")}" list="dl-glosa-ql" placeholder="Nueva línea: glosa" autocomplete="off" style="width:100%" aria-label="Glosa"></td>
     <td class="num"><input id="ql-monto" value="${v("monto")}" inputmode="numeric" placeholder="Monto" style="width:7em" aria-label="Monto"></td><td class="num"><input id="ql-base" value="${v("base")}" inputmode="numeric" placeholder="= monto" style="width:7em" aria-label="Afecta la base (vacío = todo el monto)"></td><td><button class="btn" type="button" data-n="caja-linea">Agregar</button> <button class="btn enlace" type="button" data-n="caja-linea-ocultar" aria-label="Cerrar">×</button></td></tr>`;
 }
+/* Mover una línea del libro arriba o abajo (con el mouse o con ▲▼): el orden se guarda en «orden» y, si la línea queda entre días distintos, toma la fecha que mantiene el libro cronológico. */
+async function moverLineaCaja(id, destinoId, despues) {
+  const m = S.caja.find((x) => x.id === id), d = S.caja.find((x) => x.id === destinoId); if (!m || !d || m === d) return;
+  const mes = d.fecha.slice(0, 7); if (m.fecha.slice(0, 7) !== mes) return aviso("Solo puedes mover una línea dentro de su mes: cambia su fecha para pasarla a otro mes.");
+  const lista = cajaDe(mes.slice(0, 4)).filter((x) => x.fecha.startsWith(mes) && x.id !== id), k = lista.findIndex((x) => x.id === destinoId) + (despues ? 1 : 0);
+  lista.splice(k, 0, m);
+  const arriba = lista[k - 1], abajo = lista[k + 1]; let fecha = m.fecha;
+  if (arriba && fecha < arriba.fecha) fecha = arriba.fecha;
+  if (abajo && fecha > abajo.fecha) fecha = abajo.fecha;
+  const cerr = CAJA_CERRADO([m.fecha, fecha]); if (cerr) return aviso(cerr);
+  const cambios = [];
+  lista.forEach((x, i) => { const nf = x === m ? fecha : x.fecha; if (x.orden !== i + 1 || nf !== x.fecha) cambios.push({ ...x, fecha: nf, orden: i + 1 }); });
+  if (!cambios.length) return;
+  await ocupado(async () => { await guardarMovimientos(cambios); render(); aviso(fecha !== m.fecha ? `Línea movida: tomó la fecha ${fmtFecha(fecha)} para mantener el libro en orden cronológico.` : "Línea movida."); }, "No se pudo mover la línea");
+}
+function moverLineaPaso(id, dir) {
+  const m = S.caja.find((x) => x.id === id); if (!m) return;
+  const lista = cajaDe(m.fecha.slice(0, 4)).filter((x) => x.fecha.startsWith(m.fecha.slice(0, 7))), i = lista.findIndex((x) => x.id === id), v = lista[i + dir];
+  if (v) moverLineaCaja(id, v.id, dir > 0);
+}
+let arrastrandoCaja = null;
+const filaMov = (ev) => ev.target.closest?.("tr[data-mov]");
+document.addEventListener("dragstart", (ev) => { const tr = filaMov(ev); if (!tr) return; arrastrandoCaja = tr.dataset.mov; tr.classList.add("arrastrando"); ev.dataTransfer.effectAllowed = "move"; try { ev.dataTransfer.setData("text/plain", arrastrandoCaja); } catch (_) {} });
+document.addEventListener("dragover", (ev) => {
+  const tr = filaMov(ev); if (!tr || !arrastrandoCaja) return; ev.preventDefault(); ev.dataTransfer.dropEffect = "move";
+  const r = tr.getBoundingClientRect(), abajo = ev.clientY > r.top + r.height / 2;
+  document.querySelectorAll("tr.sobre-arriba, tr.sobre-abajo").forEach((x) => x.classList.remove("sobre-arriba", "sobre-abajo"));
+  if (tr.dataset.mov !== arrastrandoCaja) tr.classList.add(abajo ? "sobre-abajo" : "sobre-arriba");
+});
+document.addEventListener("drop", (ev) => {
+  const tr = filaMov(ev); if (!tr || !arrastrandoCaja) return; ev.preventDefault();
+  const r = tr.getBoundingClientRect(), abajo = ev.clientY > r.top + r.height / 2, id = arrastrandoCaja; arrastrandoCaja = null;
+  document.querySelectorAll("tr.sobre-arriba, tr.sobre-abajo, tr.arrastrando").forEach((x) => x.classList.remove("sobre-arriba", "sobre-abajo", "arrastrando"));
+  moverLineaCaja(id, tr.dataset.mov, abajo);
+});
+document.addEventListener("dragend", () => { arrastrandoCaja = null; document.querySelectorAll("tr.sobre-arriba, tr.sobre-abajo, tr.arrastrando").forEach((x) => x.classList.remove("sobre-arriba", "sobre-abajo", "arrastrando")); });
 /* La línea nueva se coloca en la tabla según su fecha: al cambiar la fecha o pulsar 01, 10, 15 o fin de mes se reubica sin perder lo escrito. */
 function capturarRapida() { S.cajaRapida = Object.fromEntries(["tipo", "num", "doc", "rut", "fecha", "glosa", "monto", "base"].map((k) => [k, $(`#ql-${k}`)?.value ?? ""])); }
 function ponerDiaRapida(d) {
