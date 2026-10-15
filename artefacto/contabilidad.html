@@ -289,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.45.0";
+const VERSION = "1.46.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5884,7 +5884,9 @@ document.addEventListener("click", (ev) => {
     case "caja-mes-prev": case "caja-mes-sig": { const a = String(S.cajaAnio || empresa().ejercicio), cur = S.cajaMes ?? mesPorDefectoCaja(a), n = Math.min(12, Math.max(1, +cur + (t.dataset.n === "caja-mes-sig" ? 1 : -1))); S.cajaMes = String(n).padStart(2, "0"); S.cajaExpD = S.cajaExpH = null; S.cajaEdit = null; render(); break; }
     case "caja-eliminar": { const cerr = CAJA_CERRADO([S.caja.find((m) => m.id === id)?.fecha || ""]); if (cerr) { aviso(cerr); break; } } ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/caja/${id}`); render(); aviso("Movimiento eliminado."); }, "No se pudo eliminar el movimiento"); break;
     case "caja-importar-rcv": importarCaja("rcv"); break;
-    case "caja-importar-rcvmes": importarCaja("rcvmes"); break;
+    case "caja-importar-rcvmes": prepararPrevRcvMes(); break;
+    case "caja-prev-confirmar": confirmarPrevRcvMes(); break;
+    case "caja-prev-cancelar": S.cajaPrev = null; render(); break;
     case "cx-importar": importarLibroCaja(); break;
     case "cx-cancelar": S.migraCaja = null; render(); break;
     case "f29p-rellenar": rellenarPagoF29(); break;
@@ -7133,7 +7135,8 @@ function vistaImportarCaja(anio) {
     ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-rcv" ${pend ? "" : "disabled"}>Importar ${pend} documento(s)</button></div>`)}</section>
   <section class="caja"><h2>Resumen mensual del RCV</h2><p class="ayuda">Crea una línea por tipo de documento (ventas por factura, boleta o comprobante de pago; compras afectas, de activo fijo y exentas), <strong>suponiendo que todo se cobró o pagó en el mes</strong>, a fin de mes. Es la forma en que se lleva el libro con muchos documentos. No se puede mezclar con la importación documento por documento del mismo mes.</p>
     ${(() => { const r = resumenRcvMes(ph); return r.length ? `<div class="tabla"><table><thead><tr><th>Línea</th><th class="num">Documentos</th><th class="num">Monto total</th><th class="num">Afecta la base</th></tr></thead><tbody>${r.map((x) => `<tr><td>${esc(x.glosa)}</td><td class="num">${x.n}</td><td class="num">${clp(x.monto)}</td><td class="num">${clp(x.base)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="ayuda">No hay documentos del RCV en ${nombrePeriodo(ph)}.</p>`; })()}
-    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-rcvmes" ${resumenRcvMes(ph).length && !periodoConResumen(ph) && !periodoConDocumentos(ph) ? "" : "disabled"}>Importar el resumen del mes</button></div>`)}${periodoConResumen(ph) ? `<p class="ayuda">${nombrePeriodo(ph)} ya tiene su resumen importado.</p>` : periodoConDocumentos(ph) ? `<p class="ayuda">${nombrePeriodo(ph)} ya tiene documentos importados uno a uno.</p>` : ""}</section>
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-importar-rcvmes" ${resumenRcvMes(ph).length && !periodoConResumen(ph) && !periodoConDocumentos(ph) ? "" : "disabled"}>Traer el resumen del mes al libro de caja</button></div>`)}${periodoConResumen(ph) ? `<p class="ayuda">${nombrePeriodo(ph)} ya tiene su resumen importado.</p>` : periodoConDocumentos(ph) ? `<p class="ayuda">${nombrePeriodo(ph)} ya tiene documentos importados uno a uno.</p>` : ""}</section>
+  ${panelPrevRcvMes(ph)}
   ${(() => { const per = [...new Set(S.rcv.map((d) => d.periodo))].sort().map(cuadreRcvLibro).filter((c) => c.hayLibro); if (!per.length) return ""; return `<section class="caja"><h2>Cuadre del RCV con el libro de caja</h2><p class="ayuda">Compara, mes a mes, el total del registro de compras y ventas con las líneas centralizadas del libro de caja (monto total y monto que afecta la base). Las facturas viven en el RCV; el libro lleva una línea por mes.</p>
     <div class="tabla"><table><thead><tr><th>Mes</th><th>Registro</th><th class="num">Docs. RCV</th><th class="num">Total RCV</th><th class="num">Total libro</th><th class="num">Base RCV</th><th class="num">Base libro</th><th>Estado</th></tr></thead><tbody>${per.flatMap((c) => c.lados.map((x) => `<tr><td>${esc(mesCap(c.periodo))}</td><td>${x.nombre}</td><td class="num">${x.rcv.n}</td><td class="num">${clp(x.rcv.monto)}</td><td class="num">${clp(x.libro.monto)}</td><td class="num">${clp(x.rcv.base)}</td><td class="num">${clp(x.libro.base)}</td><td>${x.coincide ? "<strong>Coincide</strong>" : x.sinRcv ? "Falta cargar el RCV" : `<span class="etiqueta cerrado">Diferencia ${clp(x.rcv.monto - x.libro.monto)}</span>`}</td></tr>`)).join("")}</tbody></table></div></section>`; })()}
   <section class="caja"><h2>Remuneraciones</h2><p class="ayuda">Registra dos egresos del mes: las remuneraciones líquidas y las cotizaciones previsionales, aportes del empleador e impuesto único retenido. Es una aproximación: ajústala si el pago real fue distinto.</p>
@@ -7211,6 +7214,47 @@ async function registrarPagoF29() {
   if (repetidas.length) return aviso(`El pago de ${nombrePeriodo(periodo)} ya está registrado (${repetidas.map((l) => l.clase.replace("f29_", "")).join(", ")}). Elimina esas líneas si quieres volver a registrarlo.`);
   const atrasado = (Date.parse(hoy()) - Date.parse(fecha)) / 864e5 > DIAS_REGISTRO_ATRASADO;
   await ocupado(async () => { await guardarMovimientos(lineas); render(); aviso(`Pago del F29 de ${nombrePeriodo(periodo)} registrado en ${lineas.length} línea(s).${atrasado ? " Registro con más de 31 días de atraso." : ""}`); }, "No se pudo registrar el pago del F29");
+}
+/* Traer el RCV aceptado al libro de caja: primero una vista previa editable de las líneas del mes; nada se guarda hasta confirmar. */
+function prepararPrevRcvMes() {
+  const ph = S.cajaImp || `${S.cajaAnio || empresa().ejercicio}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  if (periodoConResumen(ph)) return aviso(`${nombrePeriodo(ph)} ya tiene el resumen mensual del RCV.`);
+  if (periodoConDocumentos(ph)) return aviso(`${nombrePeriodo(ph)} ya tiene documentos importados uno a uno: el resumen mensual los contaría dos veces.`);
+  const faltan = [["COMPRA", "compras"], ["VENTA", "ventas"]].filter(([r]) => docsPeriodo(ph, r).length && !cargaAceptada(ph, r)).map(([, n]) => n);
+  if (faltan.length) return aviso(`Primero acepta la carga de ${faltan.join(" y ")} de ${nombrePeriodo(ph)} en el Registro de Compras y Ventas.`);
+  const lineas = resumenRcvMes(ph).map((x) => ({ ...x, incluir: true, orig: { glosa: x.glosa, categoria: x.categoria, monto: x.monto, base: x.base } }));
+  if (!lineas.length) return aviso("El RCV de ese mes no tiene montos para traer.");
+  S.cajaPrev = { periodo: ph, fecha: ultimoDia(ph), lineas }; render();
+}
+function panelPrevRcvMes(ph) {
+  const P = S.cajaPrev; if (!P || P.periodo !== ph) return "";
+  const cat = (t, v, i) => `<select id="cp-${i}-categoria">${Object.entries(CATEGORIAS_CAJA).filter(([, d]) => d[0] === t).map(([c]) => `<option ${c === v ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>`;
+  const inc = P.lineas.filter((x) => x.incluir), tot = (t, k) => inc.filter((x) => x.tipo === t).reduce((a, x) => a + x[k], 0), dif = P.lineas.filter((x) => x.incluir && (x.monto !== x.orig.monto || x.base !== x.orig.base));
+  return `<section class="caja"><h2>Vista previa: lo que se traerá al libro de caja</h2>
+    <p class="ayuda">Son las líneas del RCV aceptado de ${esc(nombrePeriodo(ph))}. Puedes corregir la glosa, la categoría o los montos, cambiar la fecha o dejar fuera una línea antes de traerlas. Si cambias un monto, el cuadre con el RCV mostrará la diferencia.</p>
+    <div class="form"><label>Fecha de las líneas<input type="date" id="cp-fecha" value="${esc(P.fecha)}" min="${ph}-01" max="${ultimoDia(ph)}"></label></div>
+    <div class="tabla"><table><thead><tr><th>Traer</th><th>Tipo</th><th>Glosa</th><th>Categoría</th><th class="num">Docs.</th><th class="num">Monto total</th><th class="num">Afecta la base</th></tr></thead><tbody>${P.lineas.map((x, i) => `<tr><td><input type="checkbox" id="cp-${i}-incluir" ${x.incluir ? "checked" : ""} aria-label="Traer esta línea"></td><td>${x.tipo === 1 ? "Ingreso" : "Egreso"}</td>
+      <td><input id="cp-${i}-glosa" value="${esc(x.glosa)}" style="min-width:18em"></td><td>${cat(x.tipo, x.categoria, i)}</td><td class="num">${x.n}</td>
+      <td class="num"><input id="cp-${i}-monto" inputmode="numeric" value="${clp(x.monto)}" style="width:8em;text-align:right"></td><td class="num"><input id="cp-${i}-base" inputmode="numeric" value="${clp(x.base)}" style="width:8em;text-align:right"></td></tr>`).join("")}</tbody>
+      <tfoot><tr class="total"><td colspan="5">Ingresos ${clp(tot(1, "monto"))} (base ${clp(tot(1, "base"))}) · Egresos ${clp(tot(2, "monto"))} (base ${clp(tot(2, "base"))})</td><td colspan="2"></td></tr></tfoot></table></div>
+    ${dif.length ? `<div class="aviso">${dif.length} línea(s) con montos distintos del RCV: quedarán marcadas como editadas.</div>` : ""}
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="caja-prev-confirmar" ${inc.length ? "" : "disabled"}>Traer ${inc.length} línea(s) al libro de caja</button><button class="btn sec" type="button" data-n="caja-prev-cancelar">Cancelar</button></div>`)}</section>`;
+}
+function editarPrevRcvMes(id, valor, marcado) {
+  const m = id.match(/^cp-(\d+)-(glosa|categoria|monto|base|incluir)$/), P = S.cajaPrev; if (!m || !P) return false;
+  const x = P.lineas[+m[1]]; if (!x) return true;
+  if (m[2] === "incluir") x.incluir = marcado; else if (m[2] === "monto" || m[2] === "base") x[m[2]] = numeroRcv(valor); else x[m[2]] = valor;
+  if (m[2] === "categoria") x.categoria = valor;
+  render(); return true;
+}
+async function confirmarPrevRcvMes() {
+  const P = S.cajaPrev; if (!P) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(P.fecha) || P.fecha.slice(0, 7) !== P.periodo) return aviso("La fecha debe estar dentro del mes del RCV.");
+  const nuevos = P.lineas.filter((x) => x.incluir).map((x) => ({ id: idMov(refResumen(P.periodo, x.clave)), fecha: P.fecha, tipo: x.tipo, categoria: x.categoria, doc_tipo: x.tipo === 1 ? "Registro de Ventas SII" : "Registro de Compras SII", doc_num: "X", rut: "", nombre: "",
+    glosa: x.glosa.trim() || x.orig.glosa, monto: x.monto, base: x.base, clase: x.clave, origen: "rcv_resumen", ref: refResumen(P.periodo, x.clave), ...(x.monto !== x.orig.monto || x.base !== x.orig.base || x.glosa !== x.orig.glosa || x.categoria !== x.orig.categoria ? { editado: true } : {}) }));
+  if (!nuevos.length) return aviso("No hay líneas para traer.");
+  const cerr = CAJA_CERRADO(nuevos.map((m) => m.fecha)); if (cerr) return aviso(cerr);
+  await ocupado(async () => { await guardarMovimientos(nuevos); S.cajaPrev = null; render(); aviso(`${nuevos.length} línea(s) del RCV de ${nombrePeriodo(P.periodo)} traídas al libro de caja.`); }, "No se pudieron traer las líneas");
 }
 async function importarCaja(origen) {
   const ph = S.cajaImp || `${S.cajaAnio || empresa().ejercicio}-${String(new Date().getMonth() + 1).padStart(2, "0")}`, nuevos = [];
@@ -7983,7 +8027,9 @@ document.addEventListener("change", (ev) => {
   if (cid === "cx-corregir") { S.migraCaja.corregir = ev.target.checked; render(); return; }
   if (cid === "caja-control") { S.cajaControl = ev.target.value; render(); return; }
   if (cid === "caja-diario") { S.cajaDiario = ev.target.checked; render(); return; }
-  if (cid === "caja-imp-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.cajaImp = ev.target.value; render(); return; }
+  if (cid === "caja-imp-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.cajaImp = ev.target.value; S.cajaPrev = null; render(); return; }
+  if (cid === "cp-fecha" && S.cajaPrev) { S.cajaPrev.fecha = ev.target.value; render(); return; }
+  if (cid && cid.startsWith("cp-") && editarPrevRcvMes(cid, ev.target.value, ev.target.checked)) return;
   if (cid === "cj-categoria") { const [t, b] = CATEGORIAS_CAJA[ev.target.value] || [1, true]; $("#cj-tipo").value = String(t); $("#cj-afecta").checked = b; if (ev.target.value === "Pago de impuestos (IVA, PPM, F29)" && !$("#cj-f29per").value) $("#cj-f29per").value = periodoAnterior(($("#cj-fecha").value || hoy()).slice(0, 7)); actualizarCalculoCaja(); return; }
   if (cid === "cj-tipo" || cid === "cj-doc" || cid === "cj-fecha") { actualizarCalculoCaja(); return; }
   if (ev.target.id === "rs-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.resPeriodo = ev.target.value; S.resEid = S.eid; render(); }
