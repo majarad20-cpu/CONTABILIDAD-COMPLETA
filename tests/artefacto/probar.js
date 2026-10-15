@@ -1203,6 +1203,32 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("en el RCV el botón de llevar al libro está bloqueado hasta aceptar la carga", ll.bloqueado, JSON.stringify(ll));
   ok("con la carga aceptada el botón abre la vista previa en el libro de caja", ll.habilitado && ll.prev && ll.vista === "importar", JSON.stringify(ll));
 
+  console.log("Libro de caja: línea movible y cierre del mes");
+  const lcm = await page.evaluate(async () => {
+    const per = "2037-05", sc = S.caja, e0 = empresa(), r = {};
+    S.caja = [30, 30].map((d, i) => ({ id: "z" + i, fecha: `${per}-${d}`, tipo: 1, categoria: "Ventas", doc_tipo: "", doc_num: "", rut: "", nombre: "", glosa: "L" + i, monto: 1000, base: 1000, origen: "manual", ref: "" }));
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "simplificada", ejercicio: 2037, inicio_actividades: "2037-01-01" });
+    S.cajaAnio = "2037"; S.cajaMes = "05"; S.pestana.caja = "libro"; S.cajaNuevaLinea = null; S.cajaRapida = null; S.confirmar = null; ir("caja"); await new Promise((x) => setTimeout(x, 50));
+    document.querySelector('[data-n="caja-linea-mostrar"]').click(); await new Promise((x) => setTimeout(x, 50));
+    const filas = () => [...document.querySelectorAll("table:not(.totales) tbody tr")].map((tr) => tr.classList.contains("rapida") ? "NUEVA" : tr.children[6]?.textContent.trim().slice(0, 2));
+    r.antes = filas().join();
+    document.querySelector('[data-n="ql-dia"][data-id="10"]').click(); await new Promise((x) => setTimeout(x, 50));
+    r.fecha = document.querySelector("#ql-fecha").value; r.despues = filas().join();
+    document.querySelector("#ql-glosa").value = "Nueva"; document.querySelector("#ql-monto").value = "500"; document.querySelector('[data-n="ql-dia"][data-id="fin"]').click(); await new Promise((x) => setTimeout(x, 50));
+    r.conserva = document.querySelector("#ql-glosa").value === "Nueva" && document.querySelector("#ql-fecha").value === `${per}-31`;
+    r.cierraSinProblemas = problemasCierreCaja(per).length;
+    cambiarMes(per, true); await new Promise((x) => setTimeout(x, 150));
+    r.cerrado = !!cerrados()[per] && /cerrado/.test(document.querySelector("main").textContent) && !document.querySelector('[data-n="caja-editar"]');
+    r.bloqueo = CAJA_CERRADO([`${per}-10`]);
+    cambiarMes(per, false); await new Promise((x) => setTimeout(x, 150));
+    r.reabierto = !cerrados()[per] && !CAJA_CERRADO([`${per}-10`]);
+    S.cajaNuevaLinea = null; S.cajaRapida = null; S.caja = sc; await BD.setEmpresa(S.eid, e0); S.cajaMes = undefined; ir("inicio");
+    return r;
+  });
+  ok("la línea nueva se coloca en la tabla según su fecha (01, 10, 15 o fin de mes)", /NUEVA,.*/.test(lcm.antes) === false || lcm.despues.indexOf("NUEVA") <= lcm.antes.indexOf("NUEVA"), JSON.stringify(lcm));
+  ok("al elegir el día 10 la línea queda antes de las del día 30 y conserva lo escrito", lcm.fecha === "2037-05-10" && /^[^N]*NUEVA/.test(lcm.despues) && lcm.despues.indexOf("NUEVA") < lcm.despues.indexOf("L0") && lcm.conserva, JSON.stringify(lcm));
+  ok("un mes cerrado del libro de caja bloquea los cambios y se puede reabrir", lcm.cerrado && /cerrado/.test(String(lcm.bloqueo)) && lcm.reabierto, JSON.stringify(lcm));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
