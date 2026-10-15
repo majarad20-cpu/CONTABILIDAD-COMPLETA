@@ -1271,6 +1271,17 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("un pago de F29 sin clasificar se detecta por su glosa con concepto y período", rvl.sug === "f29_ppm:2039-08,f29_iva:2039-08,-", JSON.stringify(rvl));
   ok("al clasificarlo, el PPM de agosto pagado en septiembre entra al control de PPM", rvl.antesPpm === 0 && rvl.despuesPpm === 5000 && rvl.nuevaSug === 0, JSON.stringify(rvl));
   ok("la pestaña de control muestra la revisión del libro de caja", rvl.panel, JSON.stringify(rvl));
+  const cf = await page.evaluate(async () => {
+    const sb = S.f29Borradores, sc = S.caja, per = "2040-09", r = {};
+    S.f29Borradores = [{ id: per, codigos: { 89: 40818, 598: 1524, 62: 7179 }, entradas: {} }]; S.caja = [];
+    r.sinPago = cotejoF29Caja(2040)[0].estado;
+    const pago = (clase, monto) => ({ id: clase, fecha: "2040-10-12", tipo: 2, monto, base: 0, clase, f29_periodo: per, categoria: CAT_F29 });
+    S.caja = [pago("f29_iva", 39294)]; r.parcial = cotejoF29Caja(2040)[0].estado;
+    S.caja = [pago("f29_iva", 39294), pago("f29_ppm", 7179)]; r.ok = cotejoF29Caja(2040)[0].estado;
+    S.f29Borradores = sb; S.caja = sc; return r;
+  });
+  ok("un F29 aún no pagado se muestra «por pagar» y no «difiere»", /^(Por pagar|Sin pago)/.test(cf.sinPago), JSON.stringify(cf));
+  ok("un pago parcial indica cuánto falta y uno completo coincide", /falta PPM \$7\.179/.test(cf.parcial) && cf.ok === "Coincide", JSON.stringify(cf));
 
   console.log("Exportaciones");
   if (hayLibs) {
