@@ -208,6 +208,10 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el formulario de nuevo movimiento se despliega y se cierra con su botón", lc.sinForm && lc.conForm && lc.cierra);
   ok("se agrega una línea rápida al pie de la tabla", lc.filaRapida && lc.agregada);
   ok("la línea nueva del libro no se ve hasta pulsar el botón «+ Agregar línea»", lc.sinLineaAbierta);
+  const sg = await page.evaluate(() => { const sc = S.caja; S.caja = [{ tipo: 2, doc_tipo: "Cartola Bancaria", glosa: "Pago F29 JULIO 2026, PPM.-", monto: 1, base: 0, fecha: "2026-08-16" }, { tipo: 1, doc_tipo: "Factura", glosa: "Ventas de julio 2026", monto: 1, base: 1, fecha: "2026-08-01" }];
+    const r = { d1: sugerenciasDocCaja(1), d2: sugerenciasDocCaja(2), g2: sugerenciasGlosaCaja(2, "", "2026-09-15"), g1: sugerenciasGlosaCaja(1, "Boleta electrónica", "2026-09-30") }; S.caja = sc; return r; });
+  ok("el tipo de documento sugerido depende de si es ingreso o egreso y prioriza lo ya usado", sg.d2[0] === "Cartola Bancaria" && sg.d1[0] === "Factura" && sg.d1.includes("Boleta electrónica") && sg.d2.includes("Boleta de honorarios") && !sg.d1.includes("Boleta de honorarios"), JSON.stringify([sg.d1, sg.d2]));
+  ok("la glosa sugerida trae el mes actual y los meses anteriores, y reutiliza el historial con el mes cambiado", sg.g2[0] === "Pago F29 AGOSTO 2026, PPM.-" && sg.g2.some((g) => /pagadas en septiembre 2026/.test(g)) && sg.g1.some((g) => /Ventas de agosto 2026 afectas a IVA, percibidas en septiembre 2026, Boleta Electrónica/.test(g)), JSON.stringify(sg.g2.slice(0, 5)));
   const av = await page.evaluate(() => {
     const e = { inicio_actividades: "2025-10-08", contab_desde: "inicio" }, h = "2025-12-15", pend = (x) => mesesPendientesContables({ ...e, ...x }, [], true, h).pendientes;
     return { sin: pend({}), constitucion: pend({ caja_inicial: { 2025: 200000 } }), omitido: pend({ caja_inicial: { 2025: 200000 }, avisos_omitidos: { "sinmov:2025-11": true } }), clave: claveAviso({ area: "X", texto: "Hay 3 meses" }) === claveAviso({ area: "X", texto: "Hay 12 meses" }) };
