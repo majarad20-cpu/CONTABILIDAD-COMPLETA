@@ -949,6 +949,25 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     return { solo9: /Septiembre/.test(html.replace(/Cargados y sin aceptar[\s\S]*/, "")) || /sep/i.test(html), sin8: /Cargados y sin aceptar \(no aparecen en el historial\)/.test(html), ventas: /sin aceptar/.test(html), c9: [!!c9.compras, c9.ventas], c8: [c8.compras, c8.ventas], detalle: /Detalle de/.test(conDetalle) && /Resumen mensual del RCV/.test(conDetalle) && /Documentos/.test(conDetalle), lineas };
   });
   ok("el historial del RCV solo muestra los meses con carga aceptada, con el detalle bajo un botón, y lo cargado sin aceptar queda aparte", hi.sin8 && hi.ventas && hi.c9[0] === true && hi.c9[1] === null && hi.c8[0] === null && hi.detalle, JSON.stringify(hi));
+  const xlc = await page.evaluate(async () => {
+    await cargarScript("exceljs");
+    const wb = new window.ExcelJS.Workbook(), f = (d) => new Date(Date.UTC(2031, 3, d)), h = wb.addWorksheet("RC 4");
+    h.addRow(["Nro", "Tipo Doc", "Tipo Compra", "RUT Proveedor", "Razon Social", "Folio", "Fecha Docto", "Fecha Recepcion", "Monto Exento", "Monto Neto", "Monto IVA Recuperable", "Monto Total", "Valor Otro Impuesto", "Tasa Otro Impuesto"]);
+    h.addRow([1, 33, "Del Giro", "81537600-5", "RENDIC HERMANOS S.A.", 44197468, f(5), f(5), 0, 30529, 5801, 37016, 686, 12]);
+    h.addRow([2, 33, "Del Giro", "81537600-5", "RENDIC HERMANOS S.A.", 44388292, f(6), f(6), 0, 22135, 4206, 29615, 2254, 18]);
+    h.addRow([null, 33, "Del Giro", "81537600-5", "RENDIC HERMANOS S.A.", 44388292, f(6), null, null, null, null, null, 665, 10]);
+    h.addRow([null, 33, "Del Giro", "81537600-5", "RENDIC HERMANOS S.A.", 44388292, f(6), null, null, null, null, null, 355, 12]);
+    h.addRow([3, 34, "Del Giro", "78304787-K", "SERVICIOS CONTABLES", 51, f(7), f(7), 25000, 0, 0, 25000, null, null]);
+    h.addRow([]); h.addRow([null, null, null, null, "EXISTENCIAS Y SERVICIOS AFECTOS A IVA", 52664]); h.addRow([null, null, null, null, "PROVEEDORES", 66631]); h.addRow([null, null, null, null, "ACREEDORES", 25000]);
+    const sm = wb.addWorksheet("RC2"); sm.addRow([null, null, "SIN MOVIMIENTOS"]);
+    const hojas = await analizarArchivosRcv([{ nombre: "REGISTRO DE COMPRAS.xlsx", buffer: await wb.xlsx.writeBuffer() }]);
+    S.migra = { hojas, criterio: "recalcular" }; const R = resumenMigracion(), d = R.docs.find((y) => y.folio === "44388292");
+    const sr = S.rcv; S.rcv = R.docs.map((y, i) => ({ ...y, id: "x" + i, periodo: "2031-04" })); const res = resumenRcvMes("2031-04").map((y) => y.clave + ":" + y.monto); S.rcv = sr;
+    const sm1 = hojas.find((y) => y.hoja === "RC2"); S.migra = null;
+    return { det: d.otros_detalle.map((y) => `${y.codigo}:${y.valor}:${y.inferido ? "i" : ""}`).join(","), esperado: hojas[0].esperado.PROVEEDORES, calc: Object.values(R.cuadre(hojas[0]))[0]?.calc, res, sm: [sm1.periodo, sm1.marcarSin] };
+  });
+  igual("el Excel sin columna de código infiere el código de la tasa, suma «Acreedores» al total del registro y la hoja «Sin movimientos» marca el mes", [xlc.det, xlc.esperado, xlc.calc, xlc.sm], ["271:2254:i,27:665:i,19:355:i", 91631, 91631, ["2031-02", "COMPRA"]]);
+  ok("el resumen del mes separa el IVA anticipado, los no recuperables y los exentos del Excel", /compra_inr:2919/.test(xlc.res.join()) && /compra_anticipo_iva:1041/.test(xlc.res.join()) && /compra_exenta:25000/.test(xlc.res.join()), JSON.stringify(xlc));
   igual("el CSV del SII guarda los otros impuestos por código, tasa y valor (también las líneas de continuación) y la recepción", [det.n, det.det, det.otros, det.rec, det.tipo, det.sin, det.acuse], [3, "27:332:10,271:1127:18,19:1186:12", 2645, "2031-09-13", "Del Giro", undefined, "2031-09-14"]);
   igual("los otros impuestos se desglosan por código, en anticipo de IVA y no recuperables, en el panel, la tabla y el informe del RCV", [det.des, det.panel, det.cols, det.informe], [[1186, 1459, "19:1186,27:332,271:1127"], true, true, true]);
   igual("el IVA anticipado (código 19) va como anticipo y el resto como impuesto no recuperable, en líneas separadas del resumen mensual", [det.o, det.res], [[1186, 1459, true], [["compra_afecta", 6e4 * 0 + 76856 - 2645 + 134756, 62362 + 113240], ["compra_inr", 1459, 1459], ["compra_anticipo_iva", 1186, 0], ["compra_exenta", 20000, 20000]]]);
