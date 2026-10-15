@@ -909,18 +909,32 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const sr = S.rcv, e0 = JSON.stringify(empresa().codigos_otros || null), a0 = JSON.stringify(empresa().rcv_aceptado || null);
     const d = { periodo: "2031-09", fecha: "2031-09-10", tipo_doc: 33, exento: 0, cantidad: 1, iva_no_recuperable: 0, activo_fijo: false, asiento: "", registro: "COMPRA", rut: "81.537.600-5", folio: "7", neto: 1000, iva: 190, otros_impuestos: 120, otros_detalle: [{ codigo: "271", valor: 120, tasa: "18" }], total: 1310, id: "k1" };
     S.rcv = [d]; S.rcvPeriodo = "2031-09"; S.rcvPeriodoEid = S.eid;
-    const antes = tratamientoOtro("271"), panel = panelAceptarCarga();
+    const antes = tratamientoOtro("271"), panel = panelAceptarCarga("COMPRA");
     ir("rcv"); await new Promise((r) => setTimeout(r, 60));
     const sel = document.getElementById("ca-cod-271"); if (sel) sel.value = "anticipo";
-    await aceptarCargaRcv(); await new Promise((r) => setTimeout(r, 120));
-    const despues = tratamientoOtro("271"), o = otrosDeDoc(d), aceptada = cargaAceptada("2031-09"), panel2 = panelAceptarCarga();
-    S.rcv = [{ ...d, total: 1400 }]; const cambio = /cambió desde entonces/.test(panelAceptarCarga());
-    S.rcv = sr; await quitarAceptacionRcv(); await new Promise((r) => setTimeout(r, 100));
+    await aceptarCargaRcv("COMPRA"); await new Promise((r) => setTimeout(r, 120));
+    const despues = tratamientoOtro("271"), o = otrosDeDoc(d), aceptada = cargaAceptada("2031-09", "COMPRA"), panel2 = panelAceptarCarga("COMPRA");
+    S.rcv = [{ ...d, total: 1400 }]; const cambio = /cambió desde entonces/.test(panelAceptarCarga("COMPRA"));
+    S.rcv = sr; await quitarAceptacionRcv("COMPRA"); await new Promise((r) => setTimeout(r, 100));
     await BD.setEmpresa(S.eid, { ...empresa(), codigos_otros: JSON.parse(e0) || undefined, rcv_aceptado: JSON.parse(a0) || undefined });
     await new Promise((r) => setTimeout(r, 100));
-    return { antes, boton: /rcv-aceptar/.test(panel), despues, anticipo: o.anticipo, aceptada: aceptada && [aceptada.compras.n, aceptada.compras.total], ok: /Carga aceptada el/.test(panel2), cambio, quitada: !cargaAceptada("2031-09") };
+    return { antes, boton: /rcv-aceptar/.test(panel), despues, anticipo: o.anticipo, aceptada: aceptada && [aceptada.n, aceptada.total], ok: /Carga aceptada el/.test(panel2), cambio, quitada: !cargaAceptada("2031-09", "COMPRA") };
   });
   igual("aceptar la carga del mes fija el tratamiento de los códigos para los meses siguientes y avisa si lo cargado cambia", [ac.antes, ac.boton, ac.despues, ac.anticipo, ac.aceptada, ac.ok, ac.cambio, ac.quitada], ["no_rec", true, "anticipo", 120, [1, 1310], true, true, true]);
+  const vt = await page.evaluate(async () => {
+    const sr = S.rcv, e0 = JSON.stringify(empresa().rcv_aceptado || null), base = { periodo: "2031-09", fecha: "2031-09-10", exento: 0, iva_no_recuperable: 0, otros_impuestos: 0, activo_fijo: false, asiento: "", registro: "VENTA" };
+    S.rcv = [{ ...base, id: "f1", tipo_doc: 33, rut: "76.111.111-1", razon_social: "CLIENTE UNO", folio: "10", neto: 10000, iva: 1900, total: 11900, cantidad: 1 }, { ...base, id: "f2", tipo_doc: 33, rut: "76.222.222-2", razon_social: "CLIENTE DOS", folio: "11", neto: 20000, iva: 3800, total: 23800, cantidad: 1 },
+      { ...base, id: "b1", tipo_doc: 39, rut: "78.268.099-4", razon_social: "Resumen boleta electrónica", folio: "RESUMEN 2031-09", fecha: "2031-09-30", neto: 84034, iva: 15966, total: 100000, cantidad: 42 }];
+    S.rcvPeriodo = "2031-09"; S.rcvPeriodoEid = S.eid; S.pestana.rcv = "mes"; ir("rcv"); await new Promise((r) => setTimeout(r, 80));
+    const html = document.querySelector("main").innerHTML, secciones = /Facturas de ventas/.test(html) && /Boletas, comprobantes de pago y otros ingresos/.test(html), boton = !!document.querySelector('[data-n="rcv-aceptar"][data-id="VENTA"]');
+    const resumen = resumenCargaRcv("2031-09", "VENTA");
+    await aceptarCargaRcv("VENTA"); await new Promise((r) => setTimeout(r, 120));
+    const ac = cargaAceptada("2031-09", "VENTA"), sinCompras = cargaAceptada("2031-09", "COMPRA");
+    S.rcv = sr; await quitarAceptacionRcv("VENTA"); await new Promise((r) => setTimeout(r, 100));
+    await BD.setEmpresa(S.eid, { ...empresa(), rcv_aceptado: JSON.parse(e0) || undefined }); await new Promise((r) => setTimeout(r, 100));
+    return { secciones, boton, resumen: [resumen.facturas.n, resumen.facturas.total, resumen.boletas.n, resumen.boletas.total, resumen.total], ac: ac && [ac.facturas.n, ac.boletas.n, ac.total], sinCompras };
+  });
+  ok("las ventas del RCV se separan en facturas y boletas, cada una con su detalle, y se pueden aceptar aparte de las compras", vt.secciones && vt.boton && JSON.stringify(vt.resumen) === "[2,35700,42,100000,135700]" && JSON.stringify(vt.ac) === "[2,42,135700]" && vt.sinCompras === null, JSON.stringify(vt));
   igual("el CSV del SII guarda los otros impuestos por código, tasa y valor (también las líneas de continuación) y la recepción", [det.n, det.det, det.otros, det.rec, det.tipo, det.sin, det.acuse], [3, "27:332:10,271:1127:18,19:1186:12", 2645, "2031-09-13", "Del Giro", undefined, "2031-09-14"]);
   igual("los otros impuestos se desglosan por código, en anticipo de IVA y no recuperables, en el panel, la tabla y el informe del RCV", [det.des, det.panel, det.cols, det.informe], [[1186, 1459, "19:1186,27:332,271:1127"], true, true, true]);
   igual("el IVA anticipado (código 19) va como anticipo y el resto como impuesto no recuperable, en líneas separadas del resumen mensual", [det.o, det.res], [[1186, 1459, true], [["compra_afecta", 6e4 * 0 + 76856 - 2645 + 134756, 62362 + 113240], ["compra_inr", 1459, 1459], ["compra_anticipo_iva", 1186, 0], ["compra_exenta", 20000, 20000]]]);
