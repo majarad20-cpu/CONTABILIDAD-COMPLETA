@@ -889,10 +889,13 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const R = resumenMigracion(), d = Object.fromEntries(R.docs.map((y) => [y.folio, y]));
     const sr = S.rcv; S.rcv = R.docs.map((y, i) => ({ ...y, id: "z" + i, periodo: "2031-09" }));
     const res = resumenRcvMes("2031-09").map((y) => [y.clave, y.monto, y.base]), o = otrosDeDoc(S.rcv.find((y) => y.folio === "45183980"));
+    const des = desgloseOtros(S.rcv), panel = panelOtrosImpuestos(S.rcv), tabla = (S.rcvPeriodo = "2031-09", S.rcvPeriodoEid = S.eid, tablaRcv("COMPRA")), inf = informeRcv("2031-09");
+    const lineasInf = inf.filas.map((f) => JSON.stringify(f)).join("\n");
     S.rcv = sr; S.migra = null;
-    return { n: R.docs.length, det: d["45183980"].otros_detalle.map((y) => `${y.codigo}:${y.valor}:${y.tasa}`).join(","), otros: d["45183980"].otros_impuestos, rec: d["45183980"].recepcion, tipo: d["45183980"].tipo_compra, sin: d["41584553"].otros_detalle, res, o: [o.anticipo, o.noRec, o.detallado] };
+    return { des: [des.anticipo, des.noRec, des.porCodigo.map((c) => `${c.codigo}:${c.monto}`).join(",")], panel: /IVA anticipado a la harina/.test(panel) && /Anticipo de IVA/.test(panel), cols: /Anticipo IVA/.test(tabla) && /Imp\. no recup\./.test(tabla), informe: /IVA ANTICIPADO/.test(lineasInf) && /IMPUESTOS NO RECUPERABLES/.test(lineasInf), n: R.docs.length, det: d["45183980"].otros_detalle.map((y) => `${y.codigo}:${y.valor}:${y.tasa}`).join(","), otros: d["45183980"].otros_impuestos, rec: d["45183980"].recepcion, tipo: d["45183980"].tipo_compra, sin: d["41584553"].otros_detalle, res, o: [o.anticipo, o.noRec, o.detallado] };
   });
   igual("el CSV del SII guarda los otros impuestos por código, tasa y valor (también las líneas de continuación) y la recepción", [det.n, det.det, det.otros, det.rec, det.tipo, det.sin], [3, "27:332:10,271:1127:18,19:1186:12", 2645, "2031-09-13", "Del Giro", undefined]);
+  igual("los otros impuestos se desglosan por código, en anticipo de IVA y no recuperables, en el panel, la tabla y el informe del RCV", [det.des, det.panel, det.cols, det.informe], [[1186, 1459, "19:1186,27:332,271:1127"], true, true, true]);
   igual("el IVA anticipado (código 19) va como anticipo y el resto como impuesto no recuperable, en líneas separadas del resumen mensual", [det.o, det.res], [[1186, 1459, true], [["compra_afecta", 6e4 * 0 + 76856 - 2645 + 134756, 62362 + 113240], ["compra_inr", 1459, 1459], ["compra_anticipo_iva", 1186, 0], ["compra_exenta", 20000, 20000]]]);
   igual("el RCV de Excel sin columna «Tipo Doc» se lee como facturas de compra", [sinT.n, sinT.reg, sinT.tipos, sinT.otros, sinT.periodo], [2, "COMPRA", "33,33", "440,0", "2031-11"]);
   igual("el RCV se compara con las líneas centralizadas del libro, no queda por pagar y avisa si no coincide", [sinT.bien, sinT.pend, sinT.con, sinT.mal], [[true, 25492, 21492], 0, true, [false, 52]]);
