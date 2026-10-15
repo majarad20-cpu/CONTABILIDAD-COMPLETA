@@ -1134,6 +1134,29 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   const rev = await page.evaluate(() => { const sr = S.rcv; S.rcv = []; const a = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = [{ id: "q", registro: "COMPRA", periodo: "2032-06", revisar_total: true, tipo_doc: 33, total: 1, folio: "1", asiento: "" }]; const b = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = sr; return { vacio: a[0].ok, rt: b.some((x) => !x.ok && x.bloquea) }; });
   ok("sin documentos ni marca de «sin compras» no se puede aceptar, y un total por revisar bloquea", rev.vacio === false && rev.rt === true, JSON.stringify(rev));
 
+  console.log("Traer el RCV aceptado al libro de caja");
+  const pvr = await page.evaluate(async () => {
+    const per = "2033-03", sr = S.rcv, sc = S.caja, e0 = empresa(), r = {};
+    const base = { periodo: per, fecha: per + "-10", tipo_doc: 33, exento: 0, cantidad: 1, iva_no_recuperable: 0, otros_impuestos: 0, activo_fijo: false, asiento: "", rut: "76.111.111-1", razon_social: "P" };
+    S.rcv = [{ ...base, id: "p1", registro: "COMPRA", folio: "1", neto: 100000, iva: 19000, total: 119000 }, { ...base, id: "p2", registro: "VENTA", folio: "2", neto: 200000, iva: 38000, total: 238000 }];
+    S.cajaImp = per; S.cajaPrev = null;
+    prepararPrevRcvMes(); r.sinAceptar = !S.cajaPrev;
+    await BD.setEmpresa(S.eid, { ...e0, rcv_aceptado: { ...(e0.rcv_aceptado || {}), [per]: { COMPRA: { fecha: "2033-04-01", n: 1, total: 119000 }, VENTA: { fecha: "2033-04-01", n: 1, total: 238000 } } } });
+    prepararPrevRcvMes(); r.lineas = S.cajaPrev?.lineas.length;
+    editarPrevRcvMes("cp-0-monto", "$250.000", false); editarPrevRcvMes("cp-1-glosa", "Compras del mes corregidas", false);
+    r.editado = [S.cajaPrev.lineas[0].monto, S.cajaPrev.lineas[1].glosa];
+    const html = panelPrevRcvMes(per); r.panel = /Vista previa/.test(html) && /difieren|distintos del RCV/.test(html);
+    await confirmarPrevRcvMes(); await new Promise((x) => setTimeout(x, 150));
+    const mov = S.caja.filter((m) => m.ref?.startsWith("rcvmes:" + per)); r.mov = mov.length; r.marcado = mov.some((m) => m.editado); r.fecha = mov[0]?.fecha;
+    for (const m of mov) await S.almacen.del(`empresas/${S.eid}/caja/${m.id}`);
+    await BD.setEmpresa(S.eid, e0); S.rcv = sr; S.caja = sc; S.cajaPrev = null; await new Promise((x) => setTimeout(x, 100));
+    return r;
+  });
+  ok("no se trae el RCV al libro si la carga no está aceptada", pvr.sinAceptar, JSON.stringify(pvr));
+  ok("con el RCV aceptado se arma la vista previa con una línea por tipo", pvr.lineas >= 2, JSON.stringify(pvr));
+  ok("se pueden editar montos y glosas antes de traer", pvr.editado[0] === 250000 && pvr.editado[1] === "Compras del mes corregidas" && pvr.panel, JSON.stringify(pvr));
+  ok("al confirmar se guardan las líneas con la fecha de fin de mes y marcadas como editadas", pvr.mov >= 2 && pvr.marcado && pvr.fecha === "2033-03-31", JSON.stringify(pvr));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
