@@ -894,6 +894,17 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     S.rcv = sr; S.migra = null;
     return { des: [des.anticipo, des.noRec, des.porCodigo.map((c) => `${c.codigo}:${c.monto}`).join(",")], panel: /IVA anticipado a la harina/.test(panel) && /Anticipo de IVA/.test(panel), cols: /Anticipo IVA/.test(tabla) && /Imp\. no recup\./.test(tabla), informe: /IVA ANTICIPADO/.test(lineasInf) && /IMPUESTOS NO RECUPERABLES/.test(lineasInf), n: R.docs.length, det: d["45183980"].otros_detalle.map((y) => `${y.codigo}:${y.valor}:${y.tasa}`).join(","), otros: d["45183980"].otros_impuestos, rec: d["45183980"].recepcion, tipo: d["45183980"].tipo_compra, sin: d["41584553"].otros_detalle, res, o: [o.anticipo, o.noRec, o.detallado] };
   });
+  const fa = await page.evaluate(() => {
+    const sr = S.rcv, per = "2031-09", base = { periodo: per, fecha: "2031-09-10", tipo_doc: 33, exento: 0, cantidad: 1, iva_no_recuperable: 0, activo_fijo: false, asiento: "" };
+    const compra = { ...base, id: "c1", registro: "COMPRA", rut: "81.537.600-5", folio: "1", neto: 62362, iva: 11849, otros_impuestos: 1186, otros_detalle: [{ codigo: "19", valor: 1186, tasa: "12" }], total: 75397 };
+    const nr = { ...base, id: "c2", registro: "COMPRA", rut: "81.537.600-5", folio: "2", neto: 1000, iva: 190, otros_impuestos: 332, otros_detalle: [{ codigo: "27", valor: 332, tasa: "10" }], total: 1522 };
+    const venta = (iva) => ({ ...base, id: "v1", registro: "VENTA", rut: "76.111.111-1", folio: "9", neto: Math.round(iva / 0.19), iva, total: Math.round(iva / 0.19) + iva });
+    const calc = (iva, ant = 0) => { S.rcv = [compra, nr, venta(iva)]; const r = calcularF29(per, 0, null, null, 1, 100000, ant).codigos; return { iva: r["89"], an: r["556"], rem: r["557"], tot: r["543"], imp: r["598"], sig: r["rem_anticipo"], ppm: r["62"], pagar: r["91"] }; };
+    const holgado = calc(25000), justo = calc(12100), conRem = calc(12100, 500);
+    S.rcv = sr; return { holgado, justo, conRem };
+  });
+  igual("el anticipo de IVA solo reduce el IVA determinado, sin pasarse del tope, y no toca el PPM", [fa.holgado.an, fa.holgado.imp, fa.holgado.sig, fa.holgado.pagar - (fa.holgado.iva - fa.holgado.imp) - fa.holgado.ppm, fa.holgado.ppm], [1186, 1186, 0, 0, 1000]);
+  ok("lo que no se alcanza a imputar queda como remanente de anticipo para el mes siguiente y el remanente anterior se suma", fa.justo.imp === fa.justo.iva && fa.justo.sig === 1186 - fa.justo.iva && fa.conRem.tot === 1186 + 500 && fa.conRem.rem === 500 && fa.conRem.sig === fa.conRem.tot - fa.conRem.imp, JSON.stringify(fa));
   igual("el CSV del SII guarda los otros impuestos por código, tasa y valor (también las líneas de continuación) y la recepción", [det.n, det.det, det.otros, det.rec, det.tipo, det.sin], [3, "27:332:10,271:1127:18,19:1186:12", 2645, "2031-09-13", "Del Giro", undefined]);
   igual("los otros impuestos se desglosan por código, en anticipo de IVA y no recuperables, en el panel, la tabla y el informe del RCV", [det.des, det.panel, det.cols, det.informe], [[1186, 1459, "19:1186,27:332,271:1127"], true, true, true]);
   igual("el IVA anticipado (código 19) va como anticipo y el resto como impuesto no recuperable, en líneas separadas del resumen mensual", [det.o, det.res], [[1186, 1459, true], [["compra_afecta", 6e4 * 0 + 76856 - 2645 + 134756, 62362 + 113240], ["compra_inr", 1459, 1459], ["compra_anticipo_iva", 1186, 0], ["compra_exenta", 20000, 20000]]]);
