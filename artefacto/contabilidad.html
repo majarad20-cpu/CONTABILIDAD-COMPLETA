@@ -289,7 +289,7 @@ body.presentando .rs-salir { display: inline-block; } body.presentando .rs-barra
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.48.0";
+const VERSION = "1.49.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5883,8 +5883,13 @@ document.addEventListener("click", (ev) => {
     case "caja-ini-auto": restaurarLineaInicial(); break;
     case "caja-ini-guardar": guardarSaldoInicialLinea(); break;
     case "caja-linea": agregarLineaCaja(); break;
-    case "caja-linea-mostrar": S.cajaNuevaLinea = id; render(); $("#ql-glosa")?.focus(); break;
-    case "caja-linea-ocultar": S.cajaNuevaLinea = null; render(); break;
+    case "ql-dia": ponerDiaRapida(id); break;
+    case "caja-cerrar-mes": if (problemasCierreCaja(id).length) { S.confirmar = `cerrar-caja:${id}`; render(); } else cambiarMes(id, true); break;
+    case "caja-cerrar-confirmar": cambiarMes(id, true); break;
+    case "caja-cerrar-cancelar": S.confirmar = null; render(); break;
+    case "caja-reabrir-mes": cambiarMes(id, false); break;
+    case "caja-linea-mostrar": S.cajaRapida = null; S.cajaNuevaLinea = id; render(); $("#ql-glosa")?.focus(); break;
+    case "caja-linea-ocultar": S.cajaNuevaLinea = null; S.cajaRapida = null; render(); break;
     case "aviso-omitir": case "aviso-restaurar": ocupado(async () => { await omitirAviso(id, t.dataset.n === "aviso-omitir"); render(); aviso(t.dataset.n === "aviso-omitir" ? "Aviso omitido: puedes restaurarlo desde el revisor de datos." : "Aviso restaurado."); }, "No se pudo guardar"); break;
     case "caja-mes-prev": case "caja-mes-sig": { const a = String(S.cajaAnio || empresa().ejercicio), cur = S.cajaMes ?? mesPorDefectoCaja(a), n = Math.min(12, Math.max(1, +cur + (t.dataset.n === "caja-mes-sig" ? 1 : -1))); S.cajaMes = String(n).padStart(2, "0"); S.cajaExpD = S.cajaExpH = null; S.cajaEdit = null; render(); break; }
     case "caja-eliminar": { const cerr = CAJA_CERRADO([S.caja.find((m) => m.id === id)?.fecha || ""]); if (cerr) { aviso(cerr); break; } } ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/caja/${id}`); render(); aviso("Movimiento eliminado."); }, "No se pudo eliminar el movimiento"); break;
@@ -6415,7 +6420,8 @@ function sugerenciaPpm() {
   const t = tasaPpmVigente(anio, mes, reg), alta = tasaPpmVigente(anio, mes, reg, true);
   return t == null ? null : { tasa: t, alta, regimen: reg };
 }
-const CAJA_CERRADO = (fechas) => { const antes = [...new Set(fechas.filter(antesDelInicio).map((f) => f.slice(0, 7)))].sort(); if (antes.length) return `${antes.map(nombrePeriodo).join(", ")} ${antes.length === 1 ? "es anterior" : "son anteriores"} al inicio de actividades (${mesCap(inicioContable())}): esos meses no se consideran para efectos contables.`; const c = [...new Set(fechas.filter(mesCerrado).map((f) => f.slice(0, 7)))].sort(); return c.length ? `${c.map(nombrePeriodo).join(", ")} ${c.length === 1 ? "está cerrado" : "están cerrados"}: reábrelo en el cierre de meses para registrar o cambiar movimientos.` : ""; };
+const CAJA_CERRADO = (fechas) => { const ce = [...new Set(fechas.filter((f) => f && mesCerrado(f)).map((f) => f.slice(0, 7)))].sort(); if (ce.length) return `${ce.map(nombrePeriodo).join(", ")} ${ce.length === 1 ? "está cerrado" : "están cerrados"} en el libro de caja: reábrelo para cambiar sus movimientos.`; return CAJA_ANTES_INICIO(fechas); };
+const CAJA_ANTES_INICIO = (fechas) => { const antes = [...new Set(fechas.filter(antesDelInicio).map((f) => f.slice(0, 7)))].sort(); if (antes.length) return `${antes.map(nombrePeriodo).join(", ")} ${antes.length === 1 ? "es anterior" : "son anteriores"} al inicio de actividades (${mesCap(inicioContable())}): esos meses no se consideran para efectos contables.`; const c = [...new Set(fechas.filter(mesCerrado).map((f) => f.slice(0, 7)))].sort(); return c.length ? `${c.map(nombrePeriodo).join(", ")} ${c.length === 1 ? "está cerrado" : "están cerrados"}: reábrelo en el cierre de meses para registrar o cambiar movimientos.` : ""; };
 const rutEmisorCaja = (m) => ((m.emisor_propio ?? ((m.tipo === 1 && !!m.doc_tipo && m.doc_tipo !== "Contrato u otro") || m.origen === "remuneraciones" || DOCS_PROPIOS_CAJA.has(m.doc_tipo))) ? (empresa().rut || "") : (m.rut || ""));
 function cierresCaja(anio) {
   const out = []; let saldo = saldoInicialCaja(anio);
@@ -6943,7 +6949,7 @@ function modeloLibroCaja(anio, mes, auto = false) {
 }
 const pesosCaja = (v) => `$ ${v ? clp(v) : "-"}`;
 function bloqueMesCaja(anio, mes, unico) {
-  const M = modeloLibroCaja(anio, mes), t = M.totales, ed = S.puedeEscribir;
+  const M = modeloLibroCaja(anio, mes), t = M.totales, cerradoMes = !!cerrados()[`${anio}-${mes}`], ed = S.puedeEscribir && !cerradoMes;
   /* Editar el saldo inicial de cualquier mes ajusta el saldo inicial de caja del año, de modo que ese mes parta con el monto indicado. */
   const editaIni = ed, enIni = editaIni && S.cajaIniEdit === `${anio}-${mes}`;
   const accIni = !editaIni ? "" : enIni ? `<button class="btn" type="button" data-n="caja-ini-guardar">Guardar</button> <button class="btn enlace" type="button" data-n="caja-ini-cancelar">Cancelar</button>${ajusteIniCaja(anio, mes) && Object.keys(ajusteIniCaja(anio, mes)).length ? ` <button class="btn enlace" type="button" data-n="caja-ini-auto" title="Vuelve el texto y la base de esta línea a su cálculo automático">Restaurar automático</button>` : ""}` : `<button class="btn enlace" type="button" data-n="caja-ini-editar" data-id="${anio}-${mes}" title="Corregir el saldo inicial: ajusta el saldo inicial de caja de ${anio} para que ${MESES[+mes - 1]} parta con el monto que indiques">Editar</button>`;
@@ -6968,10 +6974,13 @@ function bloqueMesCaja(anio, mes, unico) {
       <td>${ed ? `<button class="btn enlace" type="button" data-n="caja-editar" data-id="${esc(m.id)}">Editar</button> <button class="btn enlace" type="button" data-n="caja-eliminar" data-id="${esc(m.id)}">Eliminar</button>` : ""}</td></tr>`;
   }).join("");
   const abierta = S.cajaNuevaLinea === `${anio}-${mes}`, rapida = ed && unico && abierta ? filaRapidaCaja(mes, anio, M.filas.length + 2) : "";
+  let filasHtml = filas;
+  if (rapida) { const fr = S.cajaRapida?.fecha || "", pos = fr ? M.filas.findIndex((f) => f.fecha > fr) : -1, trs = filas.match(/<tr[\s\S]*?<\/tr>/g) || []; /* la fila nueva se coloca antes de la primera línea con fecha posterior */ const cuerpo = M.filas.map((f, i) => (S.cajaEdit === f.m.id ? 2 : 1)); let idx = pos < 0 ? trs.length : cuerpo.slice(0, pos).reduce((a, b) => a + b, 0); filasHtml = [...trs.slice(0, idx), filaRapidaCaja(mes, anio, pos < 0 ? M.filas.length + 2 : M.filas[pos].n), ...trs.slice(idx)].join(""); }
   const botonMas = ed && unico && !abierta ? `<p><button class="btn sec" type="button" data-n="caja-linea-mostrar" data-id="${anio}-${mes}" title="Agregar una línea al libro de ${MESES[+mes - 1]} ${anio}" aria-label="Agregar línea">+ Agregar línea</button></p>` : "";
-  return `<section class="bloque-caja"><h2>${MESES[+mes - 1]} ${anio}${M.folio ? ` · Folio ${M.folio[0]}${M.folio[1] !== M.folio[0] ? ` al ${M.folio[1]}` : ""}` : ""}</h2>
+  return `<section class="bloque-caja"><h2>${MESES[+mes - 1]} ${anio}${cerradoMes ? ' <span class="etiqueta cerrado">cerrado</span>' : ""}${M.folio ? ` · Folio ${M.folio[0]}${M.folio[1] !== M.folio[0] ? ` al ${M.folio[1]}` : ""}` : ""}</h2>
     <div class="tabla"><table><thead><tr><th class="c" title="N° correlativo">N°</th><th class="c" title="Tipo de operación: flujo de ingreso = 1; flujo de egreso = 2; saldo inicial = 0">Tipo op.</th><th class="c" title="N° de documento">N° doc.</th><th>Tipo documento</th><th>RUT emisor</th><th title="Fecha de la operación">Fecha</th><th>Glosa de operación</th><th class="num" title="Monto total del flujo de ingreso o egreso">Monto flujo</th><th class="num" title="Monto que afecta la base imponible">Afecta base</th><th></th></tr></thead>
-      <tbody>${filaIni}${filas}${rapida}</tbody></table></div>${botonMas}
+      <tbody>${filaIni}${filasHtml}</tbody></table></div>${botonMas}
+    ${unico ? panelCierreCaja(anio, mes) : ""}
     <p class="ayuda">Tipo de operación: 1 flujo de ingreso · 2 flujo de egreso · 0 saldo inicial. Monto flujo: monto total del flujo de ingreso o egreso (los egresos en negativo). Afecta base: monto que afecta la base imponible.</p>
     <div class="tabla"><table class="totales"><thead><tr><th colspan="6" class="c">SALDOS Y TOTALES LIBRO DE CAJA</th></tr><tr><th colspan="3" class="c">Flujo de ingresos y egresos</th><th colspan="3" class="c">Montos que afectan la base imponible</th></tr>
       <tr><th class="num">Total monto flujo de ingresos</th><th class="num">Total monto flujo de egresos</th><th class="num">Saldo flujo de caja</th><th class="num">Ingresos</th><th class="num">Egresos</th><th class="num">Resultado neto</th></tr></thead>
@@ -6995,10 +7004,34 @@ const mesPorDefectoCaja = (anio) => { const h = hoy(); if (h.startsWith(String(a
 /* Línea de captura rápida al pie de la tabla: fecha, glosa, tipo y monto; el detalle (IVA, documento) va en «+ Nuevo movimiento». */
 function filaRapidaCaja(mes, anio, n = "") {
   const fecha = S.cajaFecha && S.cajaFecha.startsWith(String(anio)) && (!mes || S.cajaFecha.slice(5, 7) === mes) ? S.cajaFecha : mes ? (hoy().startsWith(`${anio}-${mes}`) ? hoy() : `${anio}-${mes}-01`) : hoy().startsWith(String(anio)) ? hoy() : `${anio}-01-01`;
-  return `<tr class="rapida"><td class="c">${n}</td><td><select id="ql-tipo" aria-label="Tipo de operación"><option value="1">1 · Ingreso</option><option value="2">2 · Egreso</option></select></td><td><input id="ql-num" placeholder="N°" style="width:7em" aria-label="N° de documento"></td>
-    <td><input id="ql-doc" list="dl-doc-ql" placeholder="Tipo de documento" autocomplete="off" aria-label="Tipo de documento">${datalistsCaja("ql", 1, "", fecha)}</td><td><input id="ql-rut" placeholder="RUT" style="width:8em" aria-label="RUT emisor"></td>
-    <td><input type="date" id="ql-fecha" value="${fecha}" aria-label="Fecha"></td><td><input id="ql-glosa" list="dl-glosa-ql" placeholder="Nueva línea: glosa" autocomplete="off" style="width:100%" aria-label="Glosa"></td>
-    <td class="num"><input id="ql-monto" inputmode="numeric" placeholder="Monto" style="width:7em" aria-label="Monto"></td><td class="num"><input id="ql-base" inputmode="numeric" placeholder="= monto" style="width:7em" aria-label="Afecta la base (vacío = todo el monto)"></td><td><button class="btn" type="button" data-n="caja-linea">Agregar</button> <button class="btn enlace" type="button" data-n="caja-linea-ocultar" aria-label="Cerrar">×</button></td></tr>`;
+  const R = S.cajaRapida || {}, v = (k) => esc(R[k] ?? ""), fechaR = R.fecha && R.fecha.startsWith(`${anio}-${mes}`) ? R.fecha : fecha;
+  const dias = [["01", "01"], ["10", "10"], ["15", "15"], ["fin", "Fin de mes"]].map(([d, t]) => `<button class="btn enlace" type="button" data-n="ql-dia" data-id="${d}" title="Poner la línea en el día ${t}">${t}</button>`).join(" ");
+  return `<tr class="rapida"><td class="c">${n}</td><td><select id="ql-tipo" aria-label="Tipo de operación"><option value="1" ${R.tipo === "2" ? "" : "selected"}>1 · Ingreso</option><option value="2" ${R.tipo === "2" ? "selected" : ""}>2 · Egreso</option></select></td><td><input id="ql-num" value="${v("num")}" placeholder="N°" style="width:7em" aria-label="N° de documento"></td>
+    <td><input id="ql-doc" value="${v("doc")}" list="dl-doc-ql" placeholder="Tipo de documento" autocomplete="off" aria-label="Tipo de documento">${datalistsCaja("ql", 1, "", fechaR)}</td><td><input id="ql-rut" value="${v("rut")}" placeholder="RUT" style="width:8em" aria-label="RUT emisor"></td>
+    <td><input type="date" id="ql-fecha" value="${fechaR}" min="${anio}-${mes}-01" max="${ultimoDia(`${anio}-${mes}`)}" aria-label="Fecha"><br><small>${dias}</small></td><td><input id="ql-glosa" value="${v("glosa")}" list="dl-glosa-ql" placeholder="Nueva línea: glosa" autocomplete="off" style="width:100%" aria-label="Glosa"></td>
+    <td class="num"><input id="ql-monto" value="${v("monto")}" inputmode="numeric" placeholder="Monto" style="width:7em" aria-label="Monto"></td><td class="num"><input id="ql-base" value="${v("base")}" inputmode="numeric" placeholder="= monto" style="width:7em" aria-label="Afecta la base (vacío = todo el monto)"></td><td><button class="btn" type="button" data-n="caja-linea">Agregar</button> <button class="btn enlace" type="button" data-n="caja-linea-ocultar" aria-label="Cerrar">×</button></td></tr>`;
+}
+/* La línea nueva se coloca en la tabla según su fecha: al cambiar la fecha o pulsar 01, 10, 15 o fin de mes se reubica sin perder lo escrito. */
+function capturarRapida() { S.cajaRapida = Object.fromEntries(["tipo", "num", "doc", "rut", "fecha", "glosa", "monto", "base"].map((k) => [k, $(`#ql-${k}`)?.value ?? ""])); }
+function ponerDiaRapida(d) {
+  capturarRapida(); const m = (S.cajaNuevaLinea || "").split("-"); if (m.length !== 2) return;
+  S.cajaRapida.fecha = d === "fin" ? ultimoDia(`${m[0]}-${m[1]}`) : `${m[0]}-${m[1]}-${d}`; render(); $("#ql-glosa")?.focus();
+}
+/* Cierre del mes en el libro de caja (contabilidad simplificada): un mes cerrado no admite agregar, editar, eliminar ni importar movimientos. */
+function problemasCierreCaja(per) {
+  const p = [], docs = docsPeriodo(per), pend = documentosPendientesCaja(per.slice(0, 4), ultimoDia(per)).filter((d) => d.periodo === per).length;
+  if (pend) p.push(`${pend} documento(s) del RCV sin cobrar ni pagar en el libro`);
+  const sinAcept = ["COMPRA", "VENTA"].filter((r) => docs.some((d) => d.registro === r) && !cargaAceptada(per, r));
+  if (sinAcept.length) p.push(`la carga de ${sinAcept.map((r) => (r === "COMPRA" ? "compras" : "ventas")).join(" y ")} del RCV no está aceptada`);
+  const c = cuadreRcvLibro(per); if (c.hayLibro && !c.ok) p.push("el libro no cuadra con el RCV");
+  if (!S.caja.some((m) => m.fecha.startsWith(per)) && !mesSinMovimientos(per)) p.push("el mes no tiene movimientos ni está marcado sin movimientos");
+  return p;
+}
+function panelCierreCaja(anio, mes) {
+  const per = `${anio}-${mes}`, ce = cerrados()[per]; if (!S.puedeEscribir) return ce ? `<p class="ayuda">Mes cerrado el ${fmtFecha(String(ce).slice(0, 10))}.</p>` : "";
+  if (ce) return `<div class="aviso ok">Mes cerrado el ${fmtFecha(String(ce).slice(0, 10))}: no se pueden agregar, editar, eliminar ni importar movimientos. <button class="btn sec" type="button" data-n="caja-reabrir-mes" data-id="${per}">Reabrir el mes</button></div>`;
+  if (S.confirmar === `cerrar-caja:${per}`) return `<div class="confirmar"><span><strong>Antes de cerrar ${esc(nombrePeriodo(per))}:</strong> ${problemasCierreCaja(per).map(esc).join("; ")}. ¿Cerrar de todas formas?</span><button class="btn peligro" type="button" data-n="caja-cerrar-confirmar" data-id="${per}">Sí, cerrar el mes</button><button class="btn sec" type="button" data-n="caja-cerrar-cancelar">No</button></div>`;
+  return `<div class="acciones"><button class="btn sec" type="button" data-n="caja-cerrar-mes" data-id="${per}">Cerrar el mes</button> <small class="ayuda">Al cerrar, el mes queda protegido: puedes reabrirlo cuando lo necesites.</small></div>`;
 }
 async function agregarLineaCaja() {
   const fecha = $("#ql-fecha").value, glosa = $("#ql-glosa").value.trim(), tipo = +$("#ql-tipo").value, monto = parseMonto($("#ql-monto").value || ""), baseTxt = $("#ql-base").value.trim();
@@ -7011,7 +7044,7 @@ async function agregarLineaCaja() {
   const docTipo = $("#ql-doc").value, num = $("#ql-num").value.trim(), rut = $("#ql-rut").value.trim();
   if (rut && !rutValido(rut)) return aviso("El RUT no es válido (revisa el dígito verificador).");
   if (DOCS_TRIBUTARIOS_CAJA.has(docTipo) && !num) return aviso("Indica el número del documento: el libro lo exige para documentos tributarios.");
-  S.cajaFecha = fecha;
+  S.cajaFecha = fecha; S.cajaRapida = null;
   await ocupado(async () => { await guardarMovimientos([{ id: "m" + nuevoId(), fecha, tipo, categoria: tipo === 1 ? "Ventas" : "Compras y gastos", doc_tipo: docTipo, doc_num: num, rut: rut ? formatoRut(rut) : "", nombre: "", glosa, monto, base, origen: "manual", ref: "" }]); S.cajaNuevaLinea = null; render(); aviso("Línea agregada."); }, "No se pudo agregar la línea");
 }
 async function guardarSaldoInicialLinea() {
@@ -8078,6 +8111,7 @@ document.addEventListener("change", (ev) => {
   if (cid && cid.startsWith("cp-") && editarPrevRcvMes(cid, ev.target.value, ev.target.checked)) return;
   if (cid === "cj-categoria") { const [t, b] = CATEGORIAS_CAJA[ev.target.value] || [1, true]; $("#cj-tipo").value = String(t); $("#cj-afecta").checked = b; if (ev.target.value === "Pago de impuestos (IVA, PPM, F29)" && !$("#cj-f29per").value) $("#cj-f29per").value = periodoAnterior(($("#cj-fecha").value || hoy()).slice(0, 7)); actualizarCalculoCaja(); return; }
   if (cid === "cj-tipo" || cid === "cj-doc" || cid === "cj-fecha") { actualizarCalculoCaja(); return; }
+  if (cid === "ql-fecha" && /^\d{4}-\d{2}-\d{2}$/.test(ev.target.value)) { capturarRapida(); render(); return; }
   if (ev.target.id === "rs-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.resPeriodo = ev.target.value; S.resEid = S.eid; render(); }
   else if (ev.target.id === "rs-valores") { recordar("resumen-valores", ev.target.checked); render(); }
   else if (ev.target.id === "rs-notas") { recordar(claveNotas(resumenPeriodo()), ev.target.value); render(); }
