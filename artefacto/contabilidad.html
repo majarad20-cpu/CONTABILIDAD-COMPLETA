@@ -293,7 +293,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.52.1";
+const VERSION = "1.53.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -1918,7 +1918,7 @@ function cambiarMesRcv(campo, valor) {
 function panelMesRcv() {
   const per = S.rcvPeriodo, m = mesRcv(per), nV = docsPeriodo(per, "VENTA").length, nC = docsPeriodo(per, "COMPRA").length, ed = S.puedeEscribir ? "" : "disabled";
   return `<section class="caja"><h2>Situación del mes</h2>
-    <p class="ayuda">Si en el mes no hubo compras, no hubo ventas o solo hubo boletas exentas, no necesitas cargar archivos: márcalo aquí y el F29 mostrará solo lo que corresponde. Las boletas exentas se ingresan a mano más abajo (tipo 41, monto del mes).</p>
+    <p class="ayuda">Si en el mes no hubo compras, no hubo ventas o solo hubo boletas exentas, no necesitas cargar archivos: márcalo aquí y el F29 mostrará solo lo que corresponde. El F29 se declara igual todos los meses, aunque no haya movimientos ni pagos. Las boletas exentas se ingresan a mano más abajo (tipo 41, monto del mes).</p>
     <div class="form"><label class="check"><input type="checkbox" id="mr-sin_ventas" ${m.sin_ventas ? "checked" : ""} ${nV || ed ? "disabled" : ""}> Sin ventas este mes${nV ? ` (hay ${nV} registradas)` : ""}</label>
       <label class="check"><input type="checkbox" id="mr-sin_compras" ${m.sin_compras ? "checked" : ""} ${nC || ed ? "disabled" : ""}> Sin compras este mes${nC ? ` (hay ${nC} registradas)` : ""}</label>
       <label>IVA de las compras de este mes<select id="mr-iva_gasto" ${ed}><option value="">Crédito fiscal (lo normal)</option><option value="1" ${m.iva_gasto ? "selected" : ""}>Gasto: sin derecho a crédito</option></select>
@@ -7415,6 +7415,14 @@ async function registrarPagoDoc(idDoc) {
 
 /* ------------------------------------------------------------------ revisor de calidad de datos */
 const NIVELES_REV = { mal: "Error", aviso: "Aviso", info: "Información" };
+/* El F29 se declara todos los meses desde el inicio de actividades, aunque no haya movimientos ni pagos. Solo se revisa en empresas que ya usan el módulo (borradores guardados o meses marcados como presentados). */
+function periodosF29SinDeclarar(hoyF = hoy()) {
+  const e = empresa(), presentados = e.f29_presentado || {}, ini = (e.inicio_actividades || "").slice(0, 7);
+  if (!S.f29Borradores.length && !Object.keys(presentados).length) return [];
+  const desde = ini || `${hoyF.slice(0, 4)}-01`, ultimo = periodoAnterior(hoyF.slice(0, 7)), out = [];
+  for (let p = desde; p <= ultimo; p = periodoSiguiente(p)) { const b = borradorF29(p); if (!(b?.declarado || presentados[p])) out.push({ periodo: p, vence: `${periodoSiguiente(p)}-20` }); }
+  return out;
+}
 function revisarDatos(todos = false) {
   const hall = [], e = empresa(), simp = esSimplificada(), hoyF = hoy(), ej = String(e.ejercicio), mesActual = hoyF.slice(0, 7);
   const add = (nivel, area, texto, detalle = [], ir = null) => hall.push({ nivel, area, texto, detalle: detalle.slice(0, 8), mas: Math.max(0, detalle.length - 8), cantidad: detalle.length, ir });
@@ -7430,6 +7438,7 @@ function revisarDatos(todos = false) {
     const antes = [...S.caja.filter((m) => antesDelInicio(m.fecha)).map((m) => `Libro de caja · ${fmtFecha(m.fecha)} · ${m.glosa}`), ...S.lista.filter((a) => antesDelInicio(a.fecha)).map((a) => `Asiento N° ${a.numero} · ${fmtFecha(a.fecha)} · ${a.glosa}`), ...S.rcv.filter((d) => antesDelInicio(d.fecha)).map((d) => `RCV · ${fmtFecha(d.fecha)} · ${d.razon_social || d.folio}`)];
     if (antes.length) add("info", "Empresa", `Hay ${antes.length} registro(s) anteriores al inicio de actividades (${mesCap(inicioContable())}): no se consideran para efectos contables.`, antes, "empresa");
   }
+  { const pend = periodosF29SinDeclarar(hoyF); if (pend.length) add("aviso", "F29", `F29 sin declarar: ${pend.length} mes(es). El F29 se declara todos los meses, aunque no haya movimientos ni pagos (en ese caso, sin movimiento).`, pend.map((x) => `${mesCap(x.periodo)} · ${hoyF > x.vence ? "venció el" : "vence el"} ${fmtFecha(x.vence)}`), "f29"); }
   const sinPeriodoF29 = S.caja.filter((m) => String(m.clase || "").startsWith("f29_") && !m.f29_periodo);
   if (sinPeriodoF29.length) add("aviso", "Libro de caja", "Pagos de F29 sin período del F29: no entran al control de PPM ni a la DJ 1947. Asígnalos con «Editar» en el libro de caja.", sinPeriodoF29.map((m) => `${fmtFecha(m.fecha)} · ${m.glosa} · $${clp(m.monto)}`), "caja");
   const sugPpm = sugerenciaPpm();
@@ -7567,7 +7576,7 @@ async function cargarCartera() {
       const sinRegistrar = simp ? rcv.filter((d) => d.periodo >= `${hoyF.slice(0, 4)}-01` && d.periodo < hoyF.slice(0, 7) && signoDoc(d.tipo_doc) > 0 && !refs.has("rcv:" + d.id) && d.fecha < sumarDias(hoyF, -90)).length : rcv.filter((d) => !d.asiento && d.periodo < hoyF.slice(0, 7) && d.periodo >= `${hoyF.slice(0, 4)}-01`).length;
       const ultimo = mov.filter((m) => !m.apertura).map((m) => m.fecha).sort().at(-1) || "", pendContable = mesesPendientesContables(e, mov, simp, hoyF).pendientes.length;
       const activos = trab.filter((t) => t.activo !== false && !t.fecha_finiquito).length;
-      filas.push({ id: e.id, nombre: e.razon_social || "(sin nombre)", rut: e.rut || "", simp, f29Guardado: f29.some((b) => b.id === periodo), f29Presentado: !!(e.f29_presentado || {})[periodo], docs: docs.length, sinRegistrar,
+      filas.push({ id: e.id, nombre: e.razon_social || "(sin nombre)", rut: e.rut || "", simp, f29Guardado: f29.some((b) => b.id === periodo), f29Presentado: !!(e.f29_presentado || {})[periodo] || f29.some((b) => b.id === periodo && b.declarado), docs: docs.length, sinRegistrar,
         cerrado: simp ? null : !!(e.cerrados || {})[periodo], pendContable, remFalta: activos > 0 && !liq.some((l) => l.periodo === periodo), ultimo });
     }
     C.filas = filas; C.periodo = periodo; C.fecha = hoyF; C.actualizado = Date.now();

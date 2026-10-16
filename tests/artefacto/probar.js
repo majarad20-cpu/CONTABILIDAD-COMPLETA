@@ -1302,6 +1302,21 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   ok("el saldo de caja negativo se evalúa al cierre de cada día, no entre operaciones del mismo día", JSON.stringify(sn) === "[false,true]", JSON.stringify(sn));
 
+  const f29d = await page.evaluate(async () => {
+    const e0 = empresa(), sb = S.f29Borradores, r = {};
+    await BD.setEmpresa(S.eid, { ...e0, inicio_actividades: "2042-01-10", f29_presentado: {} });
+    const hoyF = "2042-05-16";
+    S.f29Borradores = [];
+    r.sinUso = periodosF29SinDeclarar(hoyF).length;
+    S.f29Borradores = [{ id: "2042-01", declarado: true, codigos: {}, entradas: {} }, { id: "2042-02", declarado: false, codigos: {}, entradas: {} }];
+    r.pend = periodosF29SinDeclarar(hoyF).map((x) => x.periodo).join();
+    r.vence = periodosF29SinDeclarar(hoyF)[0].vence;
+    S.f29Borradores = sb; await BD.setEmpresa(S.eid, e0);
+    return r;
+  });
+  ok("sin borradores ni meses presentados no se exige el F29 (la empresa no usa el módulo)", f29d.sinUso === 0, JSON.stringify(f29d));
+  ok("el F29 se exige todos los meses desde el inicio de actividades, también los sin movimiento", f29d.pend === "2042-02,2042-03,2042-04" && f29d.vence === "2042-03-20", JSON.stringify(f29d));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
