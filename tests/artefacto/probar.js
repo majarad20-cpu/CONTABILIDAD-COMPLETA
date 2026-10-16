@@ -1317,6 +1317,13 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("sin borradores ni meses presentados no se exige el F29 (la empresa no usa el módulo)", f29d.sinUso === 0, JSON.stringify(f29d));
   ok("el F29 se exige todos los meses desde el inicio de actividades, también los sin movimiento", f29d.pend === "2042-02,2042-03,2042-04" && f29d.vence === "2042-03-20", JSON.stringify(f29d));
 
+  const bp = await page.evaluate(() => {
+    const sr = S.rcv, per = "2043-08", mk = (id, tipo, neto, iva, ex = 0) => ({ id, registro: "VENTA", periodo: per, tipo_doc: tipo, neto, iva, exento: ex, total: neto + iva + ex, cantidad: 1, folio: id, rut: "1-9", fecha: per + "-10", activo_fijo: false, iva_no_recuperable: 0, otros_impuestos: 0, asiento: "" });
+    S.rcv = [mk("a", 33, 619000, 117612), mk("b", 39, 245655, 46675), mk("c", 48, 196160, 37270), mk("d", 34, 0, 0, 5000)];
+    const c = calcularF29(per, 0, null, null, 1).codigos; S.rcv = sr; return [c["538"], c["563"], c["62"]];
+  });
+  ok("la base del PPM se calcula como el SII: débitos ÷ 0,19 más las ventas exentas (agosto de Andrea: 201.557 → 1.060.826)", JSON.stringify(bp) === "[201557,1065826,10658]", JSON.stringify(bp));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
