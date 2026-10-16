@@ -1290,6 +1290,18 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   ok("el remanente de anticipo de IVA se reajusta en UTM como el remanente de crédito (698, 2.088 y 2.097 del SII)", JSON.stringify(ra) === "[2088,2167,2097,500,2088]", JSON.stringify(ra));
 
+  const sn = await page.evaluate(async () => {
+    const sc = S.caja, e0 = empresa(); const ej = e0.ejercicio;
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "simplificada" });
+    const base = { tipo: 1, categoria: "Ventas", doc_tipo: "", doc_num: "", rut: "", nombre: "", glosa: "x", monto: 1000, base: 1000, origen: "manual", ref: "" };
+    S.caja = [{ ...base, id: "a1", fecha: `${ej}-03-31`, tipo: 2, monto: 2e9, base: 800, glosa: "egreso" }, { ...base, id: "a2", fecha: `${ej}-03-31`, monto: 2e9 + 1000, glosa: "ingreso" }];
+    const r = revisarDatos(true).some((h) => /saldo de caja se vuelve negativo/.test(h.texto));
+    S.caja = [{ ...base, id: "a1", fecha: `${ej}-03-30`, tipo: 2, monto: 2e9, base: 800, glosa: "egreso" }, { ...base, id: "a2", fecha: `${ej}-03-31`, monto: 2e9 + 1000, glosa: "ingreso" }];
+    const r2 = revisarDatos(true).some((h) => /saldo de caja se vuelve negativo/.test(h.texto));
+    S.caja = sc; await BD.setEmpresa(S.eid, e0); return [r, r2];
+  });
+  ok("el saldo de caja negativo se evalúa al cierre de cada día, no entre operaciones del mismo día", JSON.stringify(sn) === "[false,true]", JSON.stringify(sn));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
