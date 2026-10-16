@@ -1283,6 +1283,13 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("un F29 aún no pagado se muestra «por pagar» y no «difiere»", /^(Por pagar|Sin pago)/.test(cf.sinPago), JSON.stringify(cf));
   ok("un pago parcial indica cuánto falta y uno completo coincide", /falta PPM \$7\.179/.test(cf.parcial) && cf.ok === "Coincide", JSON.stringify(cf));
 
+  const ra = await page.evaluate(() => {
+    const sr = S.rcv; S.rcv = [];
+    const a = calcularF29("2041-01", 0, 69751, 69611, null, null, 2167), b = calcularF29("2041-02", 0, 69611, 69889, null, null, 2088), c = calcularF29("2041-03", 0, null, null, null, null, 500);
+    S.rcv = sr; return [a.codigos["557"], a.entradas.anticipo_anterior, b.codigos["557"], c.codigos["557"], a.codigos["rem_anticipo"]];
+  });
+  ok("el remanente de anticipo de IVA se reajusta en UTM como el remanente de crédito (698, 2.088 y 2.097 del SII)", JSON.stringify(ra) === "[2088,2167,2097,500,2088]", JSON.stringify(ra));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
