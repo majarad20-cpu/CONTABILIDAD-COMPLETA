@@ -19,7 +19,8 @@ ejemplospdf/
 *.xls
 
 # Archivos locales del editor y del asistente
-.claude/
+.claude/*
+!.claude/skills/
 .vscode/
 .idea/
 Thumbs.db
