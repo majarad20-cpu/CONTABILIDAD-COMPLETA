@@ -1324,6 +1324,30 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   ok("la base del PPM se calcula como el SII: débitos ÷ 0,19 más las ventas exentas (agosto de Andrea: 201.557 → 1.060.826)", JSON.stringify(bp) === "[201557,1065826,10658]", JSON.stringify(bp));
 
+  console.log("Corrección monetaria del PPM (movimiento sin efectivo)");
+  const cm = await page.evaluate(async () => {
+    const sc = S.caja, e0 = empresa(), r = {};
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "simplificada", ejercicio: 2044, inicio_actividades: "2044-01-01" });
+    const base = { doc_tipo: "Ajuste PPM", doc_num: "x", rut: "", nombre: "", origen: "manual", ref: "" };
+    const aj = { ...base, id: "aj1", fecha: "2044-12-31", tipo: 1, categoria: CAT_AJUSTE_PPM, glosa: "Corrección Monetaria PPM PAGADO", monto: 0, base: 49 };
+    const normal = { ...base, id: "n1", doc_tipo: "Boleta", fecha: "2044-12-30", tipo: 1, categoria: "Ventas", glosa: "Ventas", monto: 1000, base: 1000 };
+    S.caja = [normal, aj];
+    r.clasif = clasificarMovimientoExcel(1, "Ajuste PPM", "Corrección Monetaria PPM PAGADO", "2044-12-31").categoria;
+    r.malos = revisarDatos(true).filter((h) => /inválidos/.test(h.texto)).length;
+    S.caja = [normal, { ...aj, base: 0 }]; r.malosSinBase = revisarDatos(true).filter((h) => /inválidos/.test(h.texto)).length;
+    S.caja = [normal, { ...aj, monto: 10 }]; r.malosConMonto = revisarDatos(true).filter((h) => /inválidos/.test(h.texto)).length;
+    S.caja = [{ ...normal, monto: 0 }]; r.malosNormalCero = revisarDatos(true).filter((h) => /inválidos/.test(h.texto)).length;
+    S.caja = [normal, aj];
+    const L = cajaDe(2044); r.saldo = L.filter((m) => m.tipo === 1).reduce((x, m) => x + m.monto, 0);
+    S.caja = sc; await BD.setEmpresa(S.eid, e0); ir("inicio");
+    return r;
+  });
+  ok("«Corrección Monetaria PPM» se clasifica como movimiento sin efectivo", cm.clasif === "Corrección monetaria del PPM", JSON.stringify(cm));
+  ok("monto $0 con base positiva no es un movimiento inválido", cm.malos === 0, JSON.stringify(cm));
+  ok("una corrección monetaria sin base, o con monto distinto de cero, sí se avisa", cm.malosSinBase === 1 && cm.malosConMonto === 1, JSON.stringify(cm));
+  ok("un movimiento normal con monto $0 sigue siendo inválido", cm.malosNormalCero === 1, JSON.stringify(cm));
+  ok("no mueve la caja: el flujo de ingresos solo suma la venta", cm.saldo === 1000, JSON.stringify(cm));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
