@@ -1347,6 +1347,24 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("una corrección monetaria sin base, o con monto distinto de cero, sí se avisa", cm.malosSinBase === 1 && cm.malosConMonto === 1, JSON.stringify(cm));
   ok("un movimiento normal con monto $0 sigue siendo inválido", cm.malosNormalCero === 1, JSON.stringify(cm));
   ok("no mueve la caja: el flujo de ingresos solo suma la venta", cm.saldo === 1000, JSON.stringify(cm));
+  const ga = await page.evaluate(async () => {
+    const sc = S.caja, e0 = empresa(), r = {};
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "simplificada", ejercicio: 2045, inicio_actividades: "2045-01-01" });
+    const base = { doc_tipo: "", doc_num: "", rut: "", nombre: "", origen: "manual", ref: "", monto: 0 };
+    const mas = { ...base, id: "a1", fecha: "2045-06-30", tipo: 1, categoria: CAT_AJUSTE_MAS, glosa: "Ajuste a la base por reajuste", base: 300 };
+    const menos = { ...base, id: "a2", fecha: "2045-06-30", tipo: 2, categoria: CAT_AJUSTE_MENOS, glosa: "Ajuste a la base: deducción sin flujo", base: 120 };
+    const venta = { ...base, id: "v1", fecha: "2045-06-29", tipo: 1, categoria: "Ventas", doc_tipo: "Boleta", glosa: "Ventas", monto: 1000, base: 1000 };
+    S.caja = [venta, mas, menos];
+    r.cl1 = clasificarMovimientoExcel(1, "", "Ajuste a la base por reajuste", "2045-06-30").categoria; r.cl2 = clasificarMovimientoExcel(2, "", "Partida sin movimiento de efectivo", "2045-06-30").categoria;
+    r.malos = revisarDatos(true).filter((h) => /inválidos/.test(h.texto)).length;
+    r.info = revisarDatos(true).filter((h) => /sin movimiento de efectivo/.test(h.texto)).map((h) => h.texto)[0] || "";
+    const d = datosControlResultados(2045); r.resultado = Math.round(totalAnio(d.resultado)); r.flujo = Math.round(totalAnio(datosControlFlujo(2045).neto));
+    S.caja = sc; await BD.setEmpresa(S.eid, e0); ir("inicio");
+    return r;
+  });
+  ok("los ajustes «aumenta» y «disminuye» se reconocen por la glosa y no son inválidos", ga.cl1 === "Ajuste a la base imponible (aumenta)" && ga.cl2 === "Ajuste a la base imponible (disminuye)" && ga.malos === 0, JSON.stringify(ga));
+  ok("el resultado tributario suma el ajuste que aumenta y resta el que disminuye ($1.000 + $300 − $120), y el flujo de caja solo trae los $1.000", ga.resultado === 1180 && ga.flujo === 1000, JSON.stringify(ga));
+  ok("el revisor informa los ajustes sin efectivo y su efecto en el resultado", /2 ajuste\(s\).*\$180/.test(ga.info), JSON.stringify(ga));
 
   console.log("Exportaciones");
   if (hayLibs) {
