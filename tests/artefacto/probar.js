@@ -1366,6 +1366,30 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el resultado tributario suma el ajuste que aumenta y resta el que disminuye ($1.000 + $300 − $120), y el flujo de caja solo trae los $1.000", ga.resultado === 1180 && ga.flujo === 1000, JSON.stringify(ga));
   ok("el revisor informa los ajustes sin efectivo y su efecto en el resultado", /2 ajuste\(s\).*\$180/.test(ga.info), JSON.stringify(ga));
 
+  console.log("Capital propio tributario inicial editable");
+  const cpi = await page.evaluate(async () => {
+    const sc = S.caja, e0 = empresa(), r = {};
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "simplificada", ejercicio: 2046, inicio_actividades: "2046-01-01", cpt_inicial: undefined });
+    await new Promise((x) => setTimeout(x, 60));
+    r.sin = cptInicialEmpresa(2046);
+    S.cajaAnio = "2046"; S.pestana.caja = "control"; S.cajaControl = "resultados"; ir("caja"); await new Promise((x) => setTimeout(x, 80));
+    r.panel = !!document.querySelector("#cpt-inicial");
+    document.querySelector("#cpt-inicial").value = "3.106.987";
+    document.querySelector('form[data-form="n-cpt-inicial"]').requestSubmit(); await new Promise((x) => setTimeout(x, 200));
+    r.guardado = cptInicialEmpresa(2046);
+    r.informe = JSON.stringify(informeControlResultados(2046).paneles.der[0].filas.slice(0, 2));
+    r.renta = calcularRenta(nuevaRenta(2046)).cpt.inicial;
+    document.querySelector("#cpt-inicial").value = "-500"; document.querySelector('form[data-form="n-cpt-inicial"]').requestSubmit(); await new Promise((x) => setTimeout(x, 200));
+    r.negativo = cptInicialEmpresa(2046);
+    document.querySelector("#cpt-inicial").value = ""; document.querySelector('form[data-form="n-cpt-inicial"]').requestSubmit(); await new Promise((x) => setTimeout(x, 200));
+    r.vacio = cptInicialEmpresa(2046);
+    S.caja = sc; await BD.setEmpresa(S.eid, e0); S.pestana.caja = "libro"; ir("inicio");
+    return r;
+  });
+  ok("el control de resultados permite registrar el capital propio tributario inicial del año", cpi.sin === null && cpi.panel && cpi.guardado === 3106987, JSON.stringify(cpi));
+  ok("el capital propio inicial registrado entra al informe y a la ficha de renta", /3106987/.test(cpi.informe) && cpi.renta === 3106987, JSON.stringify(cpi));
+  ok("acepta un valor negativo y, vacío, vuelve al del año anterior", cpi.negativo === -500 && cpi.vacio === null, JSON.stringify(cpi));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
