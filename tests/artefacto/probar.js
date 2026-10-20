@@ -1466,6 +1466,14 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     for (const [n, v] of Object.entries(ex)) ok(`PDF y Excel de ${n}`, JSON.stringify(v) === "[true,true]" || v === true, JSON.stringify(v));
   } else console.log("  (se omiten: ejecuta «npm install» en tests/artefacto para probar PDF y Excel)");
 
+  console.log("Resumen mensual: la nota de crédito va en la línea del documento que corrige");
+  const ncl = await page.evaluate(() => {
+    const sr = S.rcv, v = (tipo, folio, neto, iva, exento, extra = {}) => ({ id: "n" + folio, registro: "VENTA", periodo: "2031-09", tipo_doc: tipo, folio: String(folio), fecha: "2031-09-05", neto, iva, exento, iva_no_recuperable: 0, otros_impuestos: 0, total: neto + iva + exento, ...extra });
+    S.rcv = [v(33, 2, 1e6, 19e4, 0), v(34, 33, 0, 0, 1e6), v(34, 36, 0, 0, 36e4), v(61, 3, 0, 0, 1e6, { nc_de: "34-33" })];
+    const r = resumenRcvMes("2031-09").map((y) => [y.clave, y.monto, y.base]); S.rcv = sr; return r;
+  });
+  igual("una nota de crédito de factura exenta resta de las ventas exentas y no de las afectas", ncl, [["factura", 119e4, 1e6], ["factura_exenta", 36e4, 36e4]]);
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
