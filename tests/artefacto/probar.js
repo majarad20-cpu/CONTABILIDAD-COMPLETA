@@ -1175,6 +1175,9 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     r.despues = lineasRcvFaltantes(per).length; r.lineas = S.caja.filter((m) => m.ref?.startsWith("rcvmes:" + per)).length;
     r.cuadre = cuadreRcvLibro(per).ok;
     prepararPrevRcvMes(true); r.sinFaltas = !S.cajaPrev;
+    /* El contador puede repartir las líneas de otra forma: si el total y la base del lado coinciden, no falta nada. */
+    const sc2 = S.caja; S.caja = [{ id: "z1", fecha: per + "-31", tipo: 2, categoria: "Compras y gastos", doc_tipo: "Registro de Compras SII", doc_num: "xx", rut: "", nombre: "", glosa: "neto", monto: 100000, base: 100000, origen: "excel", ref: "xl:1" }, { id: "z2", fecha: per + "-31", tipo: 2, categoria: "Compras y gastos", doc_tipo: "Registro de Compras SII", doc_num: "xx", rut: "", nombre: "", glosa: "iva", monto: 19000, base: 0, origen: "excel", ref: "xl:2" }, ...sc2.filter((m) => m.tipo === 1)];
+    r.otraForma = lineasRcvFaltantes(per, "COMPRA").length; S.caja = sc2;
     for (const m of S.caja.filter((m) => m.ref?.startsWith("rcvmes:" + per))) await S.almacen.del(`empresas/${S.eid}/caja/${m.id}`);
     await BD.setEmpresa(S.eid, e0); S.rcv = sr; S.caja = sc; S.cajaPrev = null; await new Promise((x) => setTimeout(x, 100));
     return r;
@@ -1184,6 +1187,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("la reimportación arma una vista previa con solo la línea faltante", rim.prev === 1 && rim.reimp && rim.panel, JSON.stringify(rim));
   ok("al confirmar queda el mes completo, cuadrado con el RCV y sin duplicar líneas", rim.despues === 0 && rim.lineas === 2 && rim.cuadre, JSON.stringify(rim));
   ok("si no falta nada, la reimportación avisa y no arma vista previa", rim.sinFaltas, JSON.stringify(rim));
+  ok("si el libro reparte las líneas de otra forma pero el total y la base coinciden, no se reclama nada", rim.otraForma === 0, JSON.stringify(rim));
 
   console.log("Aceptar cargas que cuadran con el libro de caja");
   const pl = await page.evaluate(async () => {
