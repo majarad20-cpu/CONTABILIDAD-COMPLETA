@@ -1422,6 +1422,34 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el capital propio inicial registrado entra al informe y a la ficha de renta", /3106987/.test(cpi.informe) && cpi.renta === 3106987, JSON.stringify(cpi));
   ok("acepta un valor negativo y, vacío, vuelve al del año anterior", cpi.negativo === -500 && cpi.vacio === null, JSON.stringify(cpi));
 
+  console.log("Imprimir el RCV por rango de meses");
+  const rg = await page.evaluate(async () => {
+    const sr = S.rcv, sl = S.lista, e0 = empresa(), r = {};
+    const mk = (id, per, reg, folio, neto, asiento = "") => ({ id, periodo: per, registro: reg, fecha: per + "-10", tipo_doc: 33, rut: "76.111.111-1", razon_social: "P", folio, exento: 0, neto, iva: Math.round(neto * 0.19), iva_no_recuperable: 0, otros_impuestos: 0, total: neto + Math.round(neto * 0.19), cantidad: 1, activo_fijo: false, asiento });
+    const ids = S.cuentas.filter((c) => c.imputable).slice(0, 2).map((c) => c.id);
+    S.lista = [{ id: "AR1", numero: 7, fecha: "2047-01-31", glosa: "Centralización compras enero", lineas: [{ cuenta: ids[0], debe: 119000, haber: 0 }, { cuenta: ids[1], debe: 0, haber: 119000 }] }];
+    S.rcv = [mk("r1", "2047-01", "COMPRA", "1", 100000, "AR1"), mk("r2", "2047-02", "COMPRA", "2", 200000), mk("r3", "2047-02", "VENTA", "3", 300000)];
+    const texto = (inf) => inf.filas.map((f) => f.valores.join("|")).join("\n");
+    const con = informeRcv("2047-01", "2047-02", { asientos: true }), sin = informeRcv("2047-01", "2047-02", { asientos: false }), uno = informeRcv("2047-01");
+    r.sub = con.subtitulo; r.nombre = con.nombre;
+    r.meses = ["ENERO", "FEBRERO"].every((m) => new RegExp("REGISTRO DE COMPRAS — " + m).test(texto(con)));
+    r.resumen = /RESUMEN DEL PERÍODO/.test(texto(con)) && /TOTAL COMPRAS DEL PERÍODO \(2 documentos\)/.test(texto(con)) && /TOTAL VENTAS DEL PERÍODO \(1 documentos\)/.test(texto(con));
+    r.conAsiento = /ASIENTOS CONTABLES DEL MES — ENERO/.test(texto(con)) && /CENTRALIZACIÓN COMPRAS ENERO/.test(texto(con));
+    r.sinAsiento = !/ASIENTOS CONTABLES/.test(texto(sin));
+    r.unMes = !/RESUMEN DEL PERÍODO/.test(texto(uno)) && /PERÍODO TRIBUTARIO: ENERO 2047/.test(uno.subtitulo);
+    const csvC = csvRcv("2047-01", "2047-02", { asientos: true }), csvS = csvRcv("2047-01", "2047-02", { asientos: false });
+    r.csv = csvC.filas[0][0] === "Período" && csvC.filas.some((f) => f[0] === "ASIENTOS CONTABLES") && !csvS.filas.some((f) => f[0] === "ASIENTOS CONTABLES") && /_2047-01_2047-02\.csv$/.test(csvC.archivo);
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "simplificada" });
+    r.simple = !/ASIENTOS CONTABLES/.test(texto(informeRcv("2047-01", "2047-02", { asientos: true })));
+    S.rcvPeriodo = "2047-02"; S.rcvPeriodoEid = S.eid; const pan = panelRangoRcv(); r.panelSimple = !pan || (/rcv-rg-asientos" disabled/.test(pan) && /no lleva asientos/.test(pan));
+    await BD.setEmpresa(S.eid, e0); S.rcv = sr; S.lista = sl;
+    return r;
+  });
+  ok("el informe por rango trae el período, cada mes y el resumen con los totales del período", /PERÍODOS TRIBUTARIOS: ENERO 2047 A FEBRERO 2047/.test(rg.sub) && rg.nombre === "rcv_2047-01_2047-02" && rg.meses && rg.resumen, JSON.stringify(rg));
+  ok("pregunta por el asiento de centralización: con él se imprime mes a mes; sin él, solo el registro", rg.conAsiento && rg.sinAsiento, JSON.stringify(rg));
+  ok("un solo mes sigue igual que antes y el CSV por rango agrega el período", rg.unMes && rg.csv, JSON.stringify(rg));
+  ok("en contabilidad simplificada no hay asientos y el panel lo explica", rg.simple && rg.panelSimple, JSON.stringify(rg));
+
   console.log("Exportaciones");
   if (hayLibs) {
     const ex = await page.evaluate(async () => {
