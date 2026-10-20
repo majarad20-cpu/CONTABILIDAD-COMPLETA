@@ -1432,7 +1432,10 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const texto = (inf) => inf.filas.map((f) => f.valores.join("|")).join("\n");
     const con = informeRcv("2047-01", "2047-02", { asientos: true }), sin = informeRcv("2047-01", "2047-02", { asientos: false }), uno = informeRcv("2047-01");
     r.sub = con.subtitulo; r.nombre = con.nombre;
-    r.meses = ["ENERO", "FEBRERO"].every((m) => new RegExp("REGISTRO DE COMPRAS — " + m).test(texto(con)));
+    const bandas = con.filas.filter((f) => f.estilo === "mes"); r.meses = bandas.length === 3 && /^ENERO 2047 {2}· {2}Compras: 1 documento\(s\)/.test(bandas[0].valores[0]) && /^FEBRERO 2047/.test(bandas[1].valores[0]);
+    const sinHojas = informeRcv("2047-01", "2047-02", { asientos: false, hojas: false });
+    r.saltos = con.filas.filter((f) => f.salto).length === 2 && sinHojas.filas.filter((f) => f.salto).length === 0 && con.filas.filter((f) => f.estilo === "mes" && f.sinCabeza).length === 1;
+    r.unir = con.filas.filter((f) => /^TOTAL (COMPRAS|VENTAS) \(/.test(String(f.valores[0]))).every((f) => f.unir === 5);
     r.resumen = /RESUMEN DEL PERÍODO/.test(texto(con)) && /TOTAL COMPRAS DEL PERÍODO \(2 documentos\)/.test(texto(con)) && /TOTAL VENTAS DEL PERÍODO \(1 documentos\)/.test(texto(con));
     r.conAsiento = /ASIENTOS CONTABLES DEL MES — ENERO/.test(texto(con)) && /CENTRALIZACIÓN COMPRAS ENERO/.test(texto(con));
     r.sinAsiento = !/ASIENTOS CONTABLES/.test(texto(sin));
@@ -1445,7 +1448,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     await BD.setEmpresa(S.eid, e0); S.rcv = sr; S.lista = sl;
     return r;
   });
-  ok("el informe por rango trae el período, cada mes y el resumen con los totales del período", /PERÍODOS TRIBUTARIOS: ENERO 2047 A FEBRERO 2047/.test(rg.sub) && rg.nombre === "rcv_2047-01_2047-02" && rg.meses && rg.resumen, JSON.stringify(rg));
+  ok("el informe por rango trae el período, cada mes y el resumen con los totales del período", /PERÍODOS TRIBUTARIOS: ENERO 2047 A FEBRERO 2047/.test(rg.sub) && rg.nombre === "rcv_2047-01_2047-02" && rg.meses && rg.resumen && rg.saltos && rg.unir, JSON.stringify(rg));
   ok("pregunta por el asiento de centralización: con él se imprime mes a mes; sin él, solo el registro", rg.conAsiento && rg.sinAsiento, JSON.stringify(rg));
   ok("un solo mes sigue igual que antes y el CSV por rango agrega el período", rg.unMes && rg.csv, JSON.stringify(rg));
   ok("en contabilidad simplificada no hay asientos y el panel lo explica", rg.simple && rg.panelSimple, JSON.stringify(rg));

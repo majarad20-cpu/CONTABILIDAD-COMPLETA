@@ -293,7 +293,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.59.0";
+const VERSION = "1.60.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -2245,16 +2245,17 @@ function panelRangoRcv() {
   const hasta = S.rcvPeriodo, desde = S.rcvRango?.desde || `${hasta.slice(0, 4)}-01`, completa = !esSimplificada(), asientos = S.rcvRango?.asientos ?? true;
   return `<section class="caja"><h2>Imprimir el registro por rango de meses</h2>
     <div class="form"><label>Desde<input type="month" id="rcv-rg-desde" value="${esc(desde)}"></label><label>Hasta<input type="month" id="rcv-rg-hasta" value="${esc(S.rcvRango?.hasta || hasta)}"></label>
-      <label>¿Incluir el asiento de centralización de cada mes?<select id="rcv-rg-asientos" ${completa ? "" : "disabled"}><option value="1" ${asientos && completa ? "selected" : ""}>Sí, con los asientos</option><option value="0" ${asientos && completa ? "" : "selected"}>No, solo el registro</option></select></label></div>
+      <label>¿Incluir el asiento de centralización de cada mes?<select id="rcv-rg-asientos" ${completa ? "" : "disabled"}><option value="1" ${asientos && completa ? "selected" : ""}>Sí, con los asientos</option><option value="0" ${asientos && completa ? "" : "selected"}>No, solo el registro</option></select></label>
+      <label>¿Cada mes en una hoja nueva?<select id="rcv-rg-hojas"><option value="1" ${S.rcvRango?.hojas === false ? "" : "selected"}>Sí, una hoja por mes</option><option value="0" ${S.rcvRango?.hojas === false ? "selected" : ""}>No, seguido</option></select></label></div>
     <div class="acciones"><button class="btn sec" type="button" data-accion="rcv-rango-pdf">PDF</button><button class="btn sec" type="button" data-accion="rcv-rango-excel">Excel</button><button class="btn sec" type="button" data-accion="rcv-rango-csv">CSV</button></div>
     <p class="ayuda">${completa ? "Con los asientos se imprime, mes a mes, el asiento de centralización registrado o, si aún no está, la propuesta marcada como no registrada." : "La contabilidad simplificada no lleva asientos: se imprime solo el registro de compras y ventas."} Al final se agrega un resumen con los totales de cada mes y del período.</p></section>`;
 }
 function leerRangoRcv() {
-  const desde = $("#rcv-rg-desde")?.value, hasta = $("#rcv-rg-hasta")?.value, asientos = $("#rcv-rg-asientos")?.value !== "0";
+  const desde = $("#rcv-rg-desde")?.value, hasta = $("#rcv-rg-hasta")?.value, asientos = $("#rcv-rg-asientos")?.value !== "0", hojas = $("#rcv-rg-hojas")?.value !== "0";
   if (!/^\d{4}-\d{2}$/.test(desde || "") || !/^\d{4}-\d{2}$/.test(hasta || "")) { aviso("Indica el mes inicial y el mes final."); return null; }
   if (desde > hasta) { aviso("El mes inicial no puede ser posterior al mes final."); return null; }
   if (mesesDelRango(desde, hasta).length > 60) { aviso("Elige un rango de hasta 60 meses."); return null; }
-  S.rcvRango = { desde, hasta, asientos };
+  S.rcvRango = { desde, hasta, asientos, hojas };
   return S.rcvRango;
 }
 function vistaRcvMes() {
@@ -2896,7 +2897,7 @@ async function liberarRemuneraciones(asientoId) {
 const nombrePrograma = () => (esSimplificada() ? "CONTABILIDAD SIMPLIFICADA" : "CONTABILIDAD COMPLETA");
 const ARTICULO_100 = "Artículo 100 Código Tributario: Declaración jurada de que los datos corresponden a los registros contables de la empresa.";
 const MESES_MAYUS = MESES.map((m) => m.toUpperCase());
-const NEGRITA_FILA = new Set(["seccion", "glosa", "subtotal", "total", "destacado"]);
+const NEGRITA_FILA = new Set(["seccion", "mes", "glosa", "subtotal", "total", "destacado"]);
 const NOMBRES_TIPO_INFORME = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 
 const col = (titulo, ancho, tipo = "texto", negrita = false) => ({ titulo, ancho, tipo, negrita });
@@ -2904,7 +2905,8 @@ class Informe {
   constructor(titulo, subtitulo, columnas, nombre, opciones = {}) {
     Object.assign(this, { titulo, subtitulo, columnas, nombre, filas: [], grupos: [], horizontal: false, oficial: false, firmas: [], vacio: "", notas: [], recuadro: null }, opciones);
   }
-  agregar(valores, opciones = {}) { this.filas.push({ valores, estilo: "", nivel: 0, abarca: null, derecha: false, bloque: false, ...opciones }); }
+  /* estilo «mes»: franja de color para separar períodos; `unir`: cantidad de columnas iniciales que se funden en una sola celda (etiquetas de totales); `salto`: la fila parte en hoja nueva (con `sinCabeza` sin repetir los títulos de columna). */
+  agregar(valores, opciones = {}) { this.filas.push({ valores, estilo: "", nivel: 0, abarca: null, derecha: false, bloque: false, unir: 0, salto: false, sinCabeza: false, ...opciones }); }
 }
 const periodoTexto = (desde, hasta) => `PERÍODO: ${fmtFecha(desde)} a ${fmtFecha(hasta)}`;
 const pesosTexto = (v) => (v < 0 ? `-$${clp(-v)}` : `$${clp(v)}`);
@@ -3053,15 +3055,20 @@ function informeF29(f = resultadoF29(), guardado = null) {
 }
 
 /* Registro de compras y ventas de un mes o de un rango de meses. Con `asientos` se agrega, mes a mes, el asiento de centralización (registrado o propuesto); en contabilidad simplificada no hay asientos. */
+const TIPO_DOC_CORTO = { 30: "Factura", 32: "Fact. exenta", 33: "Factura", 34: "Fact. exenta", 35: "Boleta", 38: "Bol. exenta", 39: "Boleta", 41: "Bol. exenta", 45: "Fact. compra", 46: "Fact. compra", 48: "Comprobante", 55: "N. débito", 56: "N. débito", 60: "N. crédito", 61: "N. crédito", 110: "Fact. export.", 112: "N. crédito" };
 function informeRcv(desde, hasta = desde, opc = {}) {
-  const meses = mesesDelRango(desde, hasta), rango = meses.length > 1, conAsientos = (opc.asientos ?? true) && !esSimplificada(), resumen = [];
+  const meses = mesesDelRango(desde, hasta), rango = meses.length > 1, conAsientos = (opc.asientos ?? true) && !esSimplificada(), hojas = opc.hojas ?? true, resumen = [], fallas = new Map();
   const inf = new Informe("REGISTRO DE COMPRAS Y VENTAS", rango ? `PERÍODOS TRIBUTARIOS: ${nombrePeriodo(desde).toUpperCase()} A ${nombrePeriodo(hasta).toUpperCase()}` : `PERÍODO TRIBUTARIO: ${nombrePeriodo(desde).toUpperCase()}`,
-    [col("Tipo / Código", 10), col("Folio", 10), col("Fecha", 9, "fecha"), col("RUT", 12), col("Razón social / Cuenta", 34), col("Exento", 11, "monto"), col("Neto", 12, "monto"),
+    [col("Tipo de documento", 14), col("Folio", 11), col("Fecha", 9, "fecha"), col("RUT", 12), col("Razón social / Cuenta", 31), col("Exento", 11, "monto"), col("Neto", 12, "monto"),
       col("IVA", 11, "monto"), col("Otros imp.", 10, "monto"), col("Total", 12, "monto")], rango ? `rcv_${desde}_${hasta}` : `rcv_${desde}`, { horizontal: true });
   for (const periodo of meses) {
   const mes = nombrePeriodo(periodo).toUpperCase(), asientos = [];
+  if (rango) {
+    const nd = (r) => docsPeriodo(periodo, r).reduce((x, d) => x + (d.cantidad || 1), 0);
+    inf.agregar([`${mes}  ·  Compras: ${nd("COMPRA")} documento(s)  ·  Ventas: ${nd("VENTA")} documento(s)`], { estilo: "mes", abarca: 0, salto: hojas && periodo !== meses[0] });
+  }
   for (const [registro, titulo] of [["COMPRA", "REGISTRO DE COMPRAS"], ["VENTA", "REGISTRO DE VENTAS"]]) {
-    inf.agregar([`${titulo} — ${mes}`], { estilo: "seccion", abarca: 0 });
+    inf.agregar([rango ? titulo : `${titulo} — ${mes}`], { estilo: "seccion", abarca: 0 });
     const docs = docsPeriodo(periodo, registro);
     const t = { exento: 0, neto: 0, iva: 0, otros: 0, total: 0 };
     let cantidad = 0;
@@ -3072,16 +3079,16 @@ function informeRcv(desde, hasta = desde, opc = {}) {
       cantidad += d.cantidad || 1;
       const a = pendiente(d) ? null : S.lista.find((x) => x.id === d.asiento);
       if (a && !asientos.includes(a)) asientos.push(a);
-      inf.agregar([String(d.tipo_doc) + (s < 0 ? " NC" : ""), esResumen(d) ? `Resumen (${d.cantidad} doc.)` : String(d.folio), d.fecha, d.rut, d.razon_social,
+      inf.agregar([TIPO_DOC_CORTO[+d.tipo_doc] ? `${d.tipo_doc} · ${TIPO_DOC_CORTO[+d.tipo_doc]}` : String(d.tipo_doc), esResumen(d) ? "Resumen" : String(d.folio), d.fecha, d.rut, esResumen(d) ? `${d.razon_social} · ${d.cantidad} doc.` : d.razon_social,
         sinCeros(v.exento), sinCeros(v.neto), sinCeros(v.iva), sinCeros(v.otros), v.total]);
     }
     if (!docs.length) inf.agregar([null, null, null, null, "Sin documentos en el período."], { estilo: "nota" });
-    inf.agregar([null, null, null, null, `TOTAL ${titulo.split(" ").at(-1)} (${cantidad} documentos)`, t.exento, t.neto, t.iva, t.otros, t.total], { estilo: "subtotal", derecha: true });
+    inf.agregar([`TOTAL ${titulo.split(" ").at(-1)} (${cantidad} documentos)`, null, null, null, null, t.exento, t.neto, t.iva, t.otros, t.total], { estilo: "subtotal", derecha: true, unir: 5 });
     resumen.push({ periodo, registro, cantidad, ...t });
     if (registro === "COMPRA") {
       const o = desgloseOtros(docs);
-      for (const x of o.porCodigo) inf.agregar([`Cód. ${x.codigo || "—"}`, null, null, null, `${nombreOtroImpuesto(x.codigo)}${x.tasas.size ? ` · tasa ${[...x.tasas].join(", ")} %` : ""} · ${tratamientoOtro(x.codigo) === "anticipo" ? "anticipo de IVA" : "no recuperable"}`, null, null, null, x.monto, null]);
-      if (o.porCodigo.length) { inf.agregar([null, null, null, null, "IVA ANTICIPADO (se descuenta del IVA, no afecta la base)", null, null, null, o.anticipo, null], { estilo: "subtotal", derecha: true }); inf.agregar([null, null, null, null, "IMPUESTOS NO RECUPERABLES (incluye IVA no recuperable)", null, null, null, o.noRec, null], { estilo: "subtotal", derecha: true }); }
+      for (const x of o.porCodigo) inf.agregar([`Cód. ${x.codigo || "—"} · ${nombreOtroImpuesto(x.codigo)}${x.tasas.size ? ` · tasa ${[...x.tasas].join(", ")} %` : ""} · ${tratamientoOtro(x.codigo) === "anticipo" ? "anticipo de IVA" : "no recuperable"}`, null, null, null, null, null, null, null, x.monto, null], { unir: 5, derecha: true });
+      if (o.porCodigo.length) { inf.agregar(["IVA ANTICIPADO (se descuenta del IVA, no afecta la base)", null, null, null, null, null, null, null, o.anticipo, null], { estilo: "subtotal", derecha: true, unir: 5 }); inf.agregar(["IMPUESTOS NO RECUPERABLES (incluye IVA no recuperable)", null, null, null, null, null, null, null, o.noRec, null], { estilo: "subtotal", derecha: true, unir: 5 }); }
     }
   }
   if (conAsientos) {
@@ -3099,20 +3106,22 @@ function informeRcv(desde, hasta = desde, opc = {}) {
     for (const registro of ["COMPRA", "VENTA"]) {
       if (!docsPeriodo(periodo, registro).some(pendiente)) continue;
       try { const p = propuestaCentralizacion(periodo, registro); asiento("Propuesta", p.fecha, p.glosa, p.lineas, "NO REGISTRADA"); propuestas++; }
-      catch (e) { inf.notas.push(`No se pudo proponer el asiento de ${registro.toLowerCase()}s pendientes: ${e.message}`); }
+      catch (e) { const k = `${registro.toLowerCase()}s pendientes: ${e.message}`; fallas.set(k, [...(fallas.get(k) || []), periodo]); }
     }
     if (!asientos.length && !propuestas) inf.agregar([null, null, null, null, "No hay asientos de centralización para este período."], { estilo: "nota" });
   }
   }
   if (rango) {
-    inf.agregar(["RESUMEN DEL PERÍODO"], { estilo: "seccion", abarca: 0, bloque: true });
-    for (const periodo of meses) for (const x of resumen.filter((r) => r.periodo === periodo))
-      inf.agregar([null, null, null, null, `${mesCap(periodo)} · ${x.registro === "COMPRA" ? "Compras" : "Ventas"} (${x.cantidad} doc.)`, sinCeros(x.exento), sinCeros(x.neto), sinCeros(x.iva), sinCeros(x.otros), x.total]);
+    inf.agregar([`RESUMEN DEL PERÍODO  ·  ${mesCap(desde)} a ${mesCap(hasta)}`.toUpperCase()], { estilo: "mes", abarca: 0, salto: hojas, sinCabeza: true });
     for (const [registro, nombre] of [["COMPRA", "COMPRAS"], ["VENTA", "VENTAS"]]) {
+      inf.agregar([`${nombre} POR MES`], { estilo: "seccion", abarca: 0 });
+      inf.agregar(["Mes", null, null, null, null, "Exento", "Neto", "IVA", "Otros imp.", "Total"], { estilo: "subtotal", unir: 5 });
+      for (const x of resumen.filter((r) => r.registro === registro)) inf.agregar([`${mesCap(x.periodo)} (${x.cantidad} doc.)`, null, null, null, null, sinCeros(x.exento), sinCeros(x.neto), sinCeros(x.iva), sinCeros(x.otros), x.total], { unir: 5 });
       const t = resumen.filter((r) => r.registro === registro).reduce((a, r) => ({ cantidad: a.cantidad + r.cantidad, exento: a.exento + r.exento, neto: a.neto + r.neto, iva: a.iva + r.iva, otros: a.otros + r.otros, total: a.total + r.total }), { cantidad: 0, exento: 0, neto: 0, iva: 0, otros: 0, total: 0 });
-      inf.agregar([null, null, null, null, `TOTAL ${nombre} DEL PERÍODO (${t.cantidad} documentos)`, t.exento, t.neto, t.iva, t.otros, t.total], { estilo: "subtotal", derecha: true });
+      inf.agregar([`TOTAL ${nombre} DEL PERÍODO (${t.cantidad} documentos)`, null, null, null, null, t.exento, t.neto, t.iva, t.otros, t.total], { estilo: "total", derecha: true, unir: 5 });
     }
   }
+  for (const [k, per] of fallas) inf.notas.push(`No se pudo proponer el asiento de ${k}${rango ? ` (${per.map(mesCap).join(", ")})` : ""}`);
   inf.notas.unshift("Las notas de crédito se muestran con signo negativo. «Otros imp.» incluye el IVA no recuperable y otros impuestos. Los resúmenes de boletas y comprobantes de pago llevan el RUT de la empresa emisora.");
   return inf;
 }
@@ -3210,7 +3219,7 @@ const textoPdf = (t) => String(t ?? "").replace(/[−–]/g, "-").replace(/✔/g
 
 /* ------------------------------------------------------------------ PDF */
 const CM = 28.3465;
-const GRIS_FONDO = [238, 238, 238], GRIS_GRILLA = [158, 158, 158], GRIS_TEXTO = [85, 85, 85], ROJO = [180, 35, 24], AMARILLO = [255, 244, 204];
+const AZUL_MES = [31, 56, 100], GRIS_FONDO = [238, 238, 238], GRIS_GRILLA = [158, 158, 158], GRIS_TEXTO = [85, 85, 85], ROJO = [180, 35, 24], AMARILLO = [255, 244, 204];
 
 async function aPdf(inf, folioInicial = null) {
   await cargarScript("jspdf"); await cargarScript("autotable");
@@ -3246,6 +3255,7 @@ async function aPdf(inf, folioInicial = null) {
       if (f.derecha && j === principal) st.halign = "right";
     }
     if (f.estilo === "seccion") st.fillColor = GRIS_FONDO;
+    if (f.estilo === "mes") { st.fillColor = AZUL_MES; st.textColor = [255, 255, 255]; st.fontSize = cuerpo + 3; st.cellPadding = { top: 5, bottom: 5, left: 6, right: 4 }; }
     if (f.estilo === "destacado") st.fillColor = AMARILLO;
     return { content: textoPdf(texto), styles: st, linea: f.estilo };
   };
@@ -3253,6 +3263,7 @@ async function aPdf(inf, folioInicial = null) {
     const valores = [...f.valores, ...Array(Math.max(n - f.valores.length, 0)).fill(null)];
     const celdas = [];
     for (let j = 0; j < n; j++) {
+      if (f.unir > 1 && j === 0) { const u = celdaDe(f, 0, { ...inf.columnas[0], tipo: "texto" }, valores[0]); u.colSpan = f.unir; if (f.derecha) u.styles.halign = "right"; celdas.push(u); j = f.unir - 1; continue; }
       if (f.abarca !== null && j > f.abarca) break;
       const celda = celdaDe(f, j, inf.columnas[j], valores[j]);
       if (f.abarca !== null && j === f.abarca && f.abarca < n - 1) celda.colSpan = n - f.abarca;
@@ -3274,7 +3285,7 @@ async function aPdf(inf, folioInicial = null) {
     const segunda = [];
     for (const [titulo, span] of inf.grupos) { if (titulo) for (let k = jj; k < jj + span; k++) segunda.push(textoPdf(inf.columnas[k].titulo)); jj += span; }
     cabeza.push(segunda);
-  } else cabeza.push(inf.columnas.map((c) => textoPdf(c.titulo)));
+  } else cabeza.push(inf.columnas.map((c) => ({ content: textoPdf(c.titulo), styles: { halign: c.tipo === "monto" || c.tipo === "numero" ? "right" : "left" } })));
 
   const base = {
     margin: { top: arribaMargen, bottom: abajoMargen, left: margen, right: margen },
@@ -3332,14 +3343,15 @@ async function aPdf(inf, folioInicial = null) {
   const filasCola = inf.oficial ? Math.min(4, todas.length - 1) : 0;
   const cuerpoFilas = filasCola > 0 ? todas.slice(0, todas.length - filasCola) : todas;
   const cola = filasCola > 0 ? todas.slice(todas.length - filasCola) : [];
-  const cortes = todas.map((f, i) => (f.bloque ? i : -1)).filter((i) => i > 0);
+  const cortes = todas.map((f, i) => (f.bloque || f.salto ? i : -1)).filter((i) => i > 0);
   if (cortes.length && !filasCola) {
     let desde = 0;
     for (const corte of [...cortes, todas.length]) {
       const parte = todas.slice(desde, corte);
       if (!parte.length) continue;
-      if (desde > 0) { y = yFinal(); if (y + alto(parte) > H - abajoMargen && alto(parte) < H - arribaMargen - abajoMargen) nuevaPagina(); }
-      dibujar(parte, { y, sinCabeza: desde > 0 });
+      const salta = desde > 0 && todas[desde].salto;
+      if (desde > 0) { y = yFinal(); if (salta || (y + alto(parte) > H - abajoMargen && alto(parte) < H - arribaMargen - abajoMargen)) nuevaPagina(); }
+      dibujar(parte, { y, sinCabeza: desde > 0 && (!salta || todas[desde].sinCabeza) });
       desde = corte;
     }
   } else dibujar(cuerpoFilas, { y });
@@ -3534,7 +3546,7 @@ async function aExcel(inf) {
     fila++;
   }
   inf.columnas.forEach((c, j) => {
-    Object.assign(ws.getCell(fila, j + 1), { value: c.titulo, font: { bold: true, size: 9 }, fill: fondo, border: grilla, alignment: { vertical: "middle", wrapText: true } });
+    Object.assign(ws.getCell(fila, j + 1), { value: c.titulo, font: { bold: true, size: 9 }, fill: fondo, border: grilla, alignment: { vertical: "middle", wrapText: true, horizontal: c.tipo === "monto" || c.tipo === "numero" ? "right" : "left" } });
     ws.getColumn(j + 1).width = c.ancho;
   });
   if (inf.grupos.length) {
@@ -3563,6 +3575,7 @@ async function aExcel(inf) {
       celda.font = { bold: negrita, italic: f.estilo === "glosa" || f.estilo === "nota", size: 9, ...(f.estilo === "nota" ? { color: { argb: "FF555555" } } : {}) };
       celda.border = grilla;
       if (f.estilo === "seccion") celda.fill = fondo;
+      if (f.estilo === "mes") { celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F3864" } }; celda.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } }; }
       if (f.estilo === "destacado") { celda.font = { bold: true, size: 12 }; celda.fill = amarillo; celda.border = { top: negro, left: negro, bottom: negro, right: negro }; }
       else if (f.estilo === "subtotal" || f.estilo === "total") celda.border = { left: linea, right: linea, top: negro, bottom: f.estilo === "total" ? negro : linea };
       if ((c.tipo === "monto" || c.tipo === "numero") && dato) {
@@ -3573,6 +3586,9 @@ async function aExcel(inf) {
       else celda.alignment = { vertical: "top", wrapText: f.abarca === null, horizontal: f.derecha && j - 1 === principal ? "right" : "left", indent: j - 1 === principal && !f.derecha ? Math.min(f.nivel, 10) : 0 };
     }
     if (f.abarca !== null && f.abarca < n - 1) ws.mergeCells(fila, f.abarca + 1, fila, n);
+    if (f.unir > 1) { unir(fila, 1, f.unir); if (f.derecha) ws.getCell(fila, 1).alignment = { horizontal: "right", vertical: "top" }; }
+    if (f.estilo === "mes") ws.getRow(fila).height = 20;
+    if (f.salto && fila > filaTitulos + 1) ws.getRow(fila - 1).addPageBreak();
   }
   (inf.recuadro || []).forEach(([texto, valor], k) => {
     fila += k === 0 ? 2 : 1;
@@ -6314,7 +6330,7 @@ document.addEventListener("click", (ev) => {
     case "pedir-eliminar-liq": S.confirmar = "liq:" + t.dataset.id; render(); break;
     case "pedir-eliminar-rcv-mes": S.confirmar = "rcvmes:" + t.dataset.periodo; render(); break;
     case "eliminar-rcv-mes": eliminarDocs(docsPeriodo(t.dataset.periodo).filter(pendiente).map((d) => d.id)); break;
-    case "rcv-rango-pdf": case "rcv-rango-excel": case "rcv-rango-csv": { const r = leerRangoRcv(); if (!r) break; S.informe = () => informeRcv(r.desde, r.hasta, { asientos: r.asientos }); S.csv = csvRcv(r.desde, r.hasta, { asientos: r.asientos });
+    case "rcv-rango-pdf": case "rcv-rango-excel": case "rcv-rango-csv": { const r = leerRangoRcv(); if (!r) break; S.informe = () => informeRcv(r.desde, r.hasta, { asientos: r.asientos, hojas: r.hojas }); S.csv = csvRcv(r.desde, r.hasta, { asientos: r.asientos });
       if (accion === "rcv-rango-csv") descargarCsv(); else exportar(accion === "rcv-rango-pdf" ? "pdf" : "excel"); break; }
     case "pdf": exportar("pdf"); break;
     case "excel": exportar("excel"); break;
