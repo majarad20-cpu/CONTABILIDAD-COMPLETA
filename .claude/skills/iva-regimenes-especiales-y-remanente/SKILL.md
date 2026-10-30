@@ -14,7 +14,10 @@ Esto es orientación técnica. Los criterios dudosos se anotan como «a confirma
 - Códigos de otros impuestos (columna aparte): 14 IVA de margen de comercialización (gas licuado); 17, 18 y 19 son IVA anticipado de faenamiento, carne y harina (anticipo, no gasto, va contra el IVA determinado). Cada empresa fija el tratamiento de cada código al aceptar el mes (`codigos_otros`).
 
 ## Gas licuado (Resolución Ex. SII N° 1087 de 1978)
-El IVA del margen de comercialización de subdistribuidores y agentes es un impuesto de retención de la distribuidora; esos agentes quedan exentos de emitir boletas al consumidor final. Indicios: ventas casi todas exentas por comprobante de pago, sin boleta electrónica en «documentos autorizados», compras a la distribuidora con código 14. Se puede pedir salir del régimen (Formulario 2117) y operar con régimen general, con boleta electrónica y derecho a crédito. Antes de usar el crédito de esas compras, confirmar con el contador el régimen de la empresa y su resolución del SII.
+El IVA del margen de comercialización de subdistribuidores y agentes es un impuesto de retención de la distribuidora; esos agentes quedan exentos de emitir boletas al consumidor final y sus ventas salen como exentas (comprobantes de pago). Indicios: ventas casi todas exentas, sin boleta electrónica en «documentos autorizados», compras a la distribuidora con código 14.
+
+**Criterio del usuario (contador): en estas empresas las compras de gas a la distribuidora son «IVA no recuperable».** Las facturas de la distribuidora se clasifican así en todos los meses, incluso cuando el RCV las trae «Del Giro»: no se usa su crédito fiscal, y el IVA va al costo de la compra. Si un mes aparece con crédito de esas facturas y remanente, es un error de clasificación: hay que reclasificar el RCV, recalcular el F29 y rectificar (el IVA pagará de más o de menos según el caso). Otras compras de la empresa (comisiones, servicios) se evalúan una a una.
+Salir del régimen (Formulario 2117, resolución del SII) cambiaría el criterio: solo si el usuario lo indica y existe la resolución.
 
 ## Remanente de crédito fiscal
 - El remanente del período anterior (504) se reajusta: se expresa en UTM con 2 decimales y se vuelve a pesos con la UTM del mes de presentación del F29 actual. Si dos F29 se presentan en el mismo mes, casi no hay reajuste (solo el redondeo de la UTM).
