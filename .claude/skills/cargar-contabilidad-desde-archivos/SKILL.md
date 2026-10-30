@@ -40,3 +40,5 @@ Documento en `empresas/{eid}/asientos`, id `aAAAA_NNN`:
 2. Cierre del año anterior contra apertura del siguiente: saldos de balance iguales, resultado en pérdidas/utilidades acumuladas.
 3. Resultado del ejercicio contra el balance del Excel si lo trae.
 4. Informa al usuario en español: cuentas creadas o mapeadas, líneas redondeadas, fechas corregidas, observaciones (por ejemplo tasas de PPM que cambian) y años faltantes.
+
+Para empresas sin libro diario del contador (solo RCV y carpeta tributaria) usa `contabilidad-completa-desde-rcv`; para el formato de lotes y versiones, `operar-base-de-datos-artefacto`.

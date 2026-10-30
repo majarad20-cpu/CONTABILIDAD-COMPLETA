@@ -15,6 +15,8 @@ Sistema contable chileno en un solo archivo HTML con JavaScript puro: `artefacto
 - No crear cuentas que no existan en el plan de una empresa sin preguntar.
 - No hacer cálculos ni cambios más allá de lo pedido; si algo no cuadra, informarlo.
 - Antes de modificar un documento de la base, vuelve a leerlo y cambia solo la clave necesaria (`update` reemplaza los campos de primer nivel completos).
+- Preguntar antes de decidir criterios (cobros y pagos de facturas, fechas de pago, costo de ventas, rectificatorias). Si una cifra dada antes resulta errada, corregirla de inmediato y decir cuál era la correcta.
+- Si el usuario dice que los cambios los revisará después, dejar todo guardado y listar al final lo que debe revisar.
 - El usuario es contador: responder en español, claro y directo, con cifras comprobadas. Si el usuario dice "dame acceso al programa", abrir el artefacto con `Artifact open`.
 
 ## Flujo por cada cambio de código
@@ -29,5 +31,8 @@ Sistema contable chileno en un solo archivo HTML con JavaScript puro: `artefacto
 - Asientos: el sistema numera por año ordenando fecha, apertura primero, cierre último, luego `creado`, luego id.
 - Libro de caja: orden por fecha, orden, id; cierre mensual por `empresa.cerrados`.
 - F29: `calcularF29`; remanentes reajustados por UTM con 2 decimales; códigos 114/115 son anticipo del mes y remanente de anticipo; base PPM 563 = round(538/0,19) + 142.
+- Skills relacionadas: `cargar-rcv-y-libro-de-caja`, `contabilidad-completa-desde-rcv`, `cotejo-f29-carpeta-tributaria`, `iva-regimenes-especiales-y-remanente`, `operar-base-de-datos-artefacto`.
+- Notas de crédito y de débito de venta van en la línea del documento que corrigen (1.61.0).
+- Reajuste del remanente: UTM del mes de presentación del F29.
 - RCV: `rcv_aceptado`, `rcv_meses`, `codigos_otros` (incluye `sin_detalle:AAAA-MM`).
 - Coherencia tributaria: lo declarado en el SII manda (ej. anticipo de IVA no es gasto); los ajustes de años declarados se registran para el año siguiente.
