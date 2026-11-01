@@ -1553,6 +1553,17 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("crear cuenta rápida desde el asiento y desde Cuentas tributarias", cr, { codigo: cr.codigo, creada: true, linea: true, panelCerrado: true, panelTrib: true, trib: true, guardada: true });
   ok("el código propuesto es el siguiente libre del grupo 1.1", /^1\.1\.\d{2,}$/.test(cr.codigo), cr.codigo);
 
+  const sv = await page.evaluate(() => {
+    const ctf = window.cuentasTributarias, mm = window.movimientoMes, srcv = S.rcv;
+    S.rcv = []; window.cuentasTributarias = () => ({ ...ctf(), iva_debito: "", iva_credito: "" });
+    const a = calcularF29("2031-12", 0, null, null, 1);
+    window.cuentasTributarias = () => ({ ...ctf(), iva_debito: "X9" }); window.movimientoMes = (c) => (c === "X9" ? [13100, 0] : [0, 0]);
+    const b = calcularF29("2031-12", 0, null, null, 1);
+    window.cuentasTributarias = ctf; window.movimientoMes = mm; S.rcv = srcv;
+    return [a.alertas.some((x) => /Falta configurar/.test(x)), b.comparacion.length, b.alertas.some((x) => /IVA débito fiscal:/.test(x))];
+  });
+  igual("un mes sin IVA en el RCV no pide cuentas de IVA ni las compara", sv, [false, 0, false]);
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
