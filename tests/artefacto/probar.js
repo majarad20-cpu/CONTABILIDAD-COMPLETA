@@ -1474,6 +1474,40 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   igual("una nota de crédito de factura exenta resta de las ventas exentas y no de las afectas", ncl, [["factura", 119e4, 1e6], ["factura_exenta", 36e4, 36e4]]);
 
+  console.log("F29: valores editados a mano y base del PPM sin duplicar");
+  const ed = await page.evaluate(() => {
+    const mm = window.movimientoMes, ctf = window.cuentasTributarias, srcv = S.rcv, esc = esSimplificada;
+    S.rcv = []; window.esSimplificada = () => false;
+    window.cuentasTributarias = () => ({ ...ctf(), ventas_neto: "X1", ventas_exento: "X1" });
+    window.movimientoMes = (cta, per) => (cta === "X1" ? [0, 1310000] : [0, 0]);
+    const misma = calcularF29("2031-10", 0, null, null, 1).codigos["563"];
+    window.cuentasTributarias = () => ({ ...ctf(), ventas_neto: "X1", ventas_exento: "X2" });
+    window.movimientoMes = (cta, per) => (cta === "X1" ? [0, 1310000] : cta === "X2" ? [0, 200000] : [0, 0]);
+    const distintas = calcularF29("2031-10", 0, null, null, 1).codigos["563"];
+    window.movimientoMes = mm; window.cuentasTributarias = ctf; window.esSimplificada = esc;
+    const base = calcularF29("2031-10", 0, null, null, 1, 100000, 0, {}).codigos;
+    const aj = calcularF29("2031-10", 0, null, null, 1, 100000, 0, { "502": 190000, "520": 50000, "62": 777, "115": 9 });
+    S.rcv = srcv;
+    return { misma, distintas, base: [base["538"], base["62"], base["91"]], aj: [aj.codigos["538"], aj.codigos["537"], aj.codigos["89"], aj.codigos["62"], aj.codigos["91"], aj.codigos["115"], Object.keys(aj.entradas.ajustes).sort()] };
+  });
+  igual("ventas netas y exentas en la misma cuenta se cuentan una sola vez", ed.misma, 1310000);
+  igual("ventas netas y exentas en cuentas distintas se suman", ed.distintas, 1510000);
+  igual("sin ajustes el F29 no cambia", ed.base, [0, 1000, 1000]);
+  igual("los totales se recalculan con los valores editados y el PPM editado se respeta", ed.aj, [190000, 50000, 140000, 777, 140777, 1, ["502", "520", "62"]]);
+
+  const ui = await page.evaluate(async () => {
+    ir("f29"); const p = parametrosF29(); p.periodo = "2031-10"; p.manual = null; p.completo = null; render();
+    document.querySelector('[data-accion="f29-editar-valores"]').click(); await new Promise((r) => setTimeout(r, 60));
+    const hay = document.querySelectorAll("input.f29c").length;
+    const el = document.querySelector('input.f29c[data-f29c="502"]'); el.value = "190.000";
+    document.querySelector('[data-form="f29"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await new Promise((r) => setTimeout(r, 60));
+    const tras = document.querySelector('input.f29c[data-f29c="502"]');
+    const r = [hay > 10, tras.value, tras.classList.contains("editado"), (document.querySelector('input.f29c[data-f29c="538"]') || {}).value];
+    document.querySelector('[data-accion="f29-quitar-ajustes"]').click(); await new Promise((r) => setTimeout(r, 60));
+    r.push(document.querySelector('input.f29c[data-f29c="502"]').value, parametrosF29().editando); return r;
+  });
+  igual("editar valores del F29 en pantalla: celdas, marca de editado, totales y restablecer", ui, [true, "190.000", true, "190.000", "0", true]);
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);

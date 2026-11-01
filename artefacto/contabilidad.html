@@ -103,6 +103,8 @@ td.c, th.c { text-align: center; }
 .bloque-caja td:nth-child(8) input, .bloque-caja td:nth-child(9) input { width: 6rem !important; }
 .bloque-caja h2 { margin: 1rem 0 .4rem; }
 .bloque-caja table.totales { width: auto; min-width: 60%; }
+.tabla.f29 input.f29c { width: 8.5em; text-align: right; font: inherit; padding: 2px 6px; }
+.tabla.f29 input.f29c.editado { border-color: var(--acento, #b45309); background: color-mix(in srgb, var(--acento, #b45309) 12%, transparent); }
 td.num, th.num { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
 td.cod { font-family: var(--font-num); white-space: nowrap; color: var(--muted); }
 tr.clic { cursor: pointer; }
@@ -293,7 +295,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.61.0";
+const VERSION = "1.62.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -2379,7 +2381,7 @@ function borradorF29(periodo) { return S.f29Borradores.find((b) => b.id === peri
 
 function valoresInicialesF29(periodo) {
   const propio = borradorF29(periodo);
-  if (propio) return { remanente_anterior: propio.entradas.remanente_anterior, utm_anterior: propio.entradas.utm_anterior, utm_actual: propio.entradas.utm_actual, tasa_ppm: propio.entradas.tasa_ppm ?? null, base_ppm: propio.entradas.base_ppm ?? null, anticipo_anterior: propio.entradas.anticipo_anterior || 0,
+  if (propio) return { remanente_anterior: propio.entradas.remanente_anterior, utm_anterior: propio.entradas.utm_anterior, utm_actual: propio.entradas.utm_actual, tasa_ppm: propio.entradas.tasa_ppm ?? null, base_ppm: propio.entradas.base_ppm ?? null, anticipo_anterior: propio.entradas.anticipo_anterior || 0, ajustes: propio.entradas.ajustes || {},
     origen_remanente: propio.entradas.origen_remanente || "borrador guardado" };
   const anterior = periodoAnterior(periodo);
   const previo = borradorF29(anterior);
@@ -2416,7 +2418,9 @@ const LINEAS_F29 = [
   ["total", "91", "TOTAL A PAGAR"],
 ];
 
-function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActual = null, tasaPpm = null, basePpm = null, anticipoAnterior = 0) {
+/* Códigos que son totales del formulario: se recalculan salvo que se editen directamente. */
+const DERIVADOS_F29 = new Set(["538", "537", "89", "77", "543", "598", "rem_anticipo", "62", "91"]);
+function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActual = null, tasaPpm = null, basePpm = null, anticipoAnterior = 0, ajustes = null) {
   const tasa = tasaPpm != null ? tasaPpm : +(empresa().tasa_ppm || 0);
   const docs = docsPeriodo(periodo);
   const ventas = docs.filter((d) => d.registro === "VENTA"), comprasTodas = docs.filter((d) => d.registro === "COMPRA"), mes = mesRcv(periodo);
@@ -2469,15 +2473,31 @@ function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActu
   const ct = cuentasTributarias();
   /* Completa sin ventas en el RCV: la base del PPM sale de las cuentas de ventas del mes; también se puede ingresar a mano. */
   let baseContable = 0;
-  if (!ventas.length && !esSimplificada()) { const [d1, h1] = movimientoMes(ct.ventas_neto, periodo), [d2, h2] = movimientoMes(ct.ventas_exento, periodo); baseContable = Math.max(h1 - d1 + (h2 - d2), 0); if (baseContable) c["563"] = baseContable; }
+  if (!ventas.length && !esSimplificada()) { /* Si ventas netas y exentas apuntan a la misma cuenta, se cuenta una sola vez. */
+    const [d1, h1] = movimientoMes(ct.ventas_neto, periodo), [d2, h2] = ct.ventas_exento && ct.ventas_exento !== ct.ventas_neto ? movimientoMes(ct.ventas_exento, periodo) : [0, 0]; baseContable = Math.max(h1 - d1 + (h2 - d2), 0); if (baseContable) c["563"] = baseContable; }
   if (basePpm != null) c["563"] = Math.round(basePpm);
   c["115"] = tasa;
   c["62"] = Math.max(redondearPar(c["563"] * tasa / 100), 0);
   c["151"] = esSimplificada() ? totalesModulos(periodo).retencion_honorarios : movimientoMes(ct.retencion_honorarios, periodo)[1];
   c["48"] = esSimplificada() ? totalesModulos(periodo).impuesto_unico : movimientoMes(ct.impuesto_unico, periodo)[1];
   c["91"] = c["89"] - c["598"] + c["62"] + c["151"] + c["48"];
+  /* Valores editados a mano: reemplazan al cálculo automático y los totales se recalculan con ellos (salvo que también se hayan editado). */
+  const aj = {};
+  for (const k of Object.keys(ajustes || {})) if (k !== "115" && k in c && Number.isFinite(+ajustes[k])) aj[k] = Math.round(+ajustes[k]);
+  const editados = Object.keys(aj);
+  if (editados.length) {
+    const v = (k, auto) => (aj[k] != null ? aj[k] : auto);
+    for (const k of editados) if (!DERIVADOS_F29.has(k)) c[k] = aj[k];
+    c["538"] = v("538", c["502"] + c["111"] + c["759"] + c["513"] - c["510"]);
+    c["537"] = v("537", c["520"] + c["525"] + c["532"] + c["535"] - c["528"] + c["504"]);
+    c["89"] = v("89", Math.max(c["538"] - c["537"], 0)); c["77"] = v("77", Math.max(c["537"] - c["538"], 0));
+    c["543"] = v("543", c["556"] + c["557"]); c["598"] = v("598", Math.min(c["543"], c["89"])); c["rem_anticipo"] = v("rem_anticipo", c["543"] - c["598"]);
+    c["62"] = v("62", Math.max(redondearPar(c["563"] * c["115"] / 100), 0));
+    c["91"] = v("91", c["89"] - c["598"] + c["62"] + c["151"] + c["48"]);
+  }
 
   const alertas = [];
+  if (editados.length) alertas.push(`Valores editados a mano en este borrador (códigos ${editados.join(", ")}); los totales se recalcularon con ellos.`);
   if (c["543"]) alertas.push(`Anticipo de IVA: $${clp(c["543"])} disponible (período $${clp(c["556"])}, remanente anterior $${clp(c["557"])}); se imputan $${clp(c["598"])} al IVA determinado${c["rem_anticipo"] ? ` y quedan $${clp(c["rem_anticipo"])} de remanente para el mes siguiente` : ""}. Verifica los códigos 556, 557 y 598 con la propuesta del SII.`);
   const pendientes = esSimplificada() ? [] : docs.filter(pendiente);
   if (pendientes.length) alertas.push(`Hay ${pendientes.length} documento(s) del RCV sin centralizar en ${nombrePeriodo(periodo)}.`);
@@ -2505,7 +2525,7 @@ function calcularF29(periodo, remanenteAnterior = 0, utmAnterior = null, utmActu
   if (remanente && !(utmAnterior && utmActual)) alertas.push("Ingresa la UTM del mes en que se presentó el F29 anterior y la del mes en que se presenta este F29, para reajustar el remanente.");
   return { periodo, codigos: c, alertas, comparacion, reajuste, remanenteUtm, documentos: docs.length, pendientes: pendientes.length,
     sinIva: sinIvaDe(c),
-    entradas: { remanente_anterior: remanente, anticipo_anterior: anticipoEntrada, utm_anterior: utmAnterior, utm_actual: utmActual, tasa_ppm: tasa, base_ppm: basePpm } };
+    entradas: { remanente_anterior: remanente, anticipo_anterior: anticipoEntrada, utm_anterior: utmAnterior, utm_actual: utmActual, tasa_ppm: tasa, base_ppm: basePpm, ajustes: aj } };
 }
 /* El borrador muestra solo las líneas con valor cuando el mes no tiene operaciones con IVA (o si así se elige). */
 const sinIvaDe = (c) => !c["538"] && !c["142"] && !c["521"] && !c["562"] && c["537"] === c["504"] && !c["543"];
@@ -2540,7 +2560,7 @@ function resultadoF29() {
   const ini = valoresInicialesF29(p.periodo);
   const m = p.manual || {};
   const remanente = m.remanente_anterior ?? (ini.remanente_anterior || 0);
-  const r = calcularF29(p.periodo, remanente, m.utm_anterior ?? ini.utm_anterior, m.utm_actual ?? ini.utm_actual, m.tasa_ppm !== undefined ? m.tasa_ppm : ini.tasa_ppm ?? null, m.base_ppm !== undefined ? m.base_ppm : ini.base_ppm ?? null, m.anticipo_anterior ?? (ini.anticipo_anterior || 0));
+  const r = calcularF29(p.periodo, remanente, m.utm_anterior ?? ini.utm_anterior, m.utm_actual ?? ini.utm_actual, m.tasa_ppm !== undefined ? m.tasa_ppm : ini.tasa_ppm ?? null, m.base_ppm !== undefined ? m.base_ppm : ini.base_ppm ?? null, m.anticipo_anterior ?? (ini.anticipo_anterior || 0), m.ajustes ?? ini.ajustes ?? {});
   r.entradas.origen_remanente = remanente !== (ini.remanente_anterior || 0) ? "ingresado manualmente" : ini.origen_remanente;
   return r;
 }
@@ -2551,11 +2571,13 @@ function vistaF29Mes() {
   const presentacion = periodoSiguiente(p.periodo), guardado = borradorF29(p.periodo);
   const pesos = (cod) => `$${clp(c[cod])}`;
   const completo = f29Completo(f, p), visibles = lineasF29Visibles(c, completo);
+  const edit = !!p.editando && S.puedeEscribir, ajs = f.entradas.ajustes || {};
+  const celda = (cod, valor) => (edit ? `<input class="f29c${ajs[cod] != null ? " editado" : ""}" data-f29c="${cod}" inputmode="numeric" value="${clp(valor)}" title="${ajs[cod] != null ? "Valor editado a mano (vacía la celda para volver al cálculo automático)" : "Escribe un valor para reemplazar el cálculo"}">` : `$${clp(valor)}`);
   const filas = visibles.map((l) => {
     if (l[0] === "titulo") return `<tr class="titulo"><td colspan="5">${l[1]}</td></tr>`;
-    if (l[0] === "total") return `<tr class="${l[1] === "91" ? "pagar" : "sub"}"><td>${l[2]}</td><td></td><td></td><td class="num">${l[1]}</td><td class="num">${pesos(l[1])}</td></tr>`;
-    return `<tr><td>${l[2]}</td><td class="num cod">${l[0] || ""}</td><td class="num">${l[0] ? c[l[0]] : ""}</td><td class="num cod">${/^\d+$/.test(l[1]) ? l[1] : ""}</td>
-      <td class="num">${l[1] === "115" ? `${String(c["115"]).replace(".", ",")} %` : pesos(l[1])}</td></tr>`;
+    if (l[0] === "total") return `<tr class="${l[1] === "91" ? "pagar" : "sub"}"><td>${l[2]}</td><td></td><td></td><td class="num">${l[1]}</td><td class="num">${celda(l[1], c[l[1]])}</td></tr>`;
+    return `<tr><td>${l[2]}</td><td class="num cod">${l[0] || ""}</td><td class="num">${l[0] ? (edit ? celda(l[0], c[l[0]]).replace("$", "") : c[l[0]]) : ""}</td><td class="num cod">${/^\d+$/.test(l[1]) ? l[1] : ""}</td>
+      <td class="num">${l[1] === "115" ? `${String(c["115"]).replace(".", ",")} %` : celda(l[1], c[l[1]])}</td></tr>`;
   }).join("");
   S.informe = informeF29;
   S.csv = { archivo: `borrador_f29_${slug()}_${p.periodo}.csv`, filas: [["Código", "Concepto", "Cód. cantidad", "Cantidad", "Monto"],
@@ -2574,6 +2596,8 @@ function vistaF29Mes() {
     ${puedeEditar(`<button class="btn" type="button" data-accion="guardar-f29">Guardar borrador</button>`)}
     ${puedeEditar(`<button class="btn sec" type="button" data-accion="ppm-empresa" title="Usar esta tasa como tasa habitual de la empresa">Guardar tasa en la empresa</button>`)}
     ${botonesExportar()}
+    ${puedeEditar(`<button class="btn sec" type="button" data-accion="f29-editar-valores" title="Escribir directamente los valores de cada línea del formulario">${edit ? "Terminar edición de valores" : "Editar valores del F29"}</button>`)}
+    ${Object.keys(ajs).length ? puedeEditar(`<button class="btn enlace" type="button" data-accion="f29-quitar-ajustes">Quitar valores editados (${Object.keys(ajs).length})</button>`) : ""}
     <button class="btn sec" type="button" data-accion="f29-lineas">${completo ? "Mostrar solo las líneas con valor" : "Mostrar todas las líneas"}</button>
   </form>
   ${f.sinIva && !completo ? `<div class="aviso ok">Mes sin operaciones con IVA: solo se pagan el PPM y las retenciones. Las demás líneas están ocultas.</div>` : ""}
@@ -2600,7 +2624,17 @@ function leerEntradasF29() {
   if (Number.isNaN(tp) || (tp != null && (tp < 0 || tp > 100))) { aviso("La tasa de PPM debe ser un número entre 0 y 100, por ejemplo 1 o 0,25."); return false; }
   const bp = numeroF29($("#f29-base")?.value ?? "");
   if (Number.isNaN(bp) || (bp != null && bp < 0)) { aviso("La base del PPM debe ser un monto en pesos, por ejemplo 250.000."); return false; }
-  p.manual = { remanente_anterior: rem ?? 0, anticipo_anterior: ant ?? 0, utm_anterior: ua, utm_actual: uc, tasa_ppm: tp == null ? null : tp, base_ppm: bp };
+  /* Valores editados directamente en la tabla: solo cuentan las celdas que la persona cambió; vaciar una celda vuelve al cálculo automático. */
+  const ajustes = { ...(p.manual?.ajustes ?? valoresInicialesF29(p.periodo).ajustes ?? {}) };
+  for (const el of document.querySelectorAll("input.f29c")) {
+    const k = el.dataset.f29c, txt = el.value.trim();
+    if (txt === "") { delete ajustes[k]; continue; }
+    if (txt === el.defaultValue.trim()) continue;
+    const n = numeroF29(txt);
+    if (n == null || Number.isNaN(n)) { aviso(`Valor inválido en el código ${k}: «${el.value}».`); return false; }
+    ajustes[k] = n;
+  }
+  p.manual = { remanente_anterior: rem ?? 0, anticipo_anterior: ant ?? 0, utm_anterior: ua, utm_actual: uc, tasa_ppm: tp == null ? null : tp, base_ppm: bp, ajustes };
   return true;
 }
 
@@ -3833,7 +3867,7 @@ function vistaF29Guardado(periodo) {
   S.csv = { archivo: `borrador_f29_${slug()}_${periodo}.csv`, filas: [["Código", "Concepto", "Cód. cantidad", "Cantidad", "Monto"],
     ...LINEAS_F29.filter((l) => l[0] !== "titulo").map((l) => [l[1], l[2], l[0] && l[0] !== "total" ? l[0] : "", l[0] && l[0] !== "total" ? c[l[0]] ?? "" : "", c[l[1]] ?? ""])] };
   let actual = null;
-  try { const e = f.entradas; actual = calcularF29(periodo, e.remanente_anterior || 0, e.utm_anterior, e.utm_actual, e.tasa_ppm ?? null, e.base_ppm ?? null, e.anticipo_anterior || 0).codigos; } catch (_) { /* sin datos para recalcular */ }
+  try { const e = f.entradas; actual = calcularF29(periodo, e.remanente_anterior || 0, e.utm_anterior, e.utm_actual, e.tasa_ppm ?? null, e.base_ppm ?? null, e.anticipo_anterior || 0, e.ajustes || {}).codigos; } catch (_) { /* sin datos para recalcular */ }
   const cambios = actual ? ["538", "537", "77", "556", "598", "62", "91"].filter((k) => (actual[k] || 0) !== (c[k] || 0)) : [];
   const filas = LINEAS_F29.map((l) => {
     if (l[0] === "titulo") return `<tr class="titulo"><td colspan="5">${l[1]}</td></tr>`;
@@ -6319,11 +6353,14 @@ document.addEventListener("click", (ev) => {
     case "pedir-eliminar-marcados": S.confirmar = "docs"; render(); break;
     case "eliminar-marcados": eliminarDocs([...S.rcvSel]); break;
     case "guardar-f29": guardarF29(); break;
+    case "f29-editar-valores": { if (!leerEntradasF29()) break; const p = parametrosF29(); p.editando = !p.editando; if (p.editando) p.completo = true; render();
+      if (p.editando) aviso("Escribe el valor en cualquier línea y pulsa «Calcular»; los totales se recalculan. Vacía una celda para volver al cálculo automático."); break; }
+    case "f29-quitar-ajustes": { if (!leerEntradasF29()) break; parametrosF29().manual.ajustes = {}; render(); aviso("Valores automáticos restablecidos. Pulsa «Guardar borrador» para conservarlos."); break; }
     case "f29-lineas": { const p = parametrosF29(); p.completo = !f29Completo(resultadoF29(), p); render(); break; }
     case "ppm-empresa": { if (!leerEntradasF29()) break; const tp = parametrosF29().manual.tasa_ppm; if (tp == null) { aviso("Escribe la tasa de PPM."); break; } ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), tasa_ppm: tp }); render(); aviso(`Tasa de PPM de la empresa: ${textoTasa(tp)} %.`); }, "No se pudo guardar la tasa"); break; }
     case "volver-historial-f29": S.f29Ver = null; S.pestana.f29 = "historial"; S.confirmar = null; render(); break;
     case "editar-f29": { const b = borradorF29(t.dataset.periodo); const p = parametrosF29(); p.periodo = t.dataset.periodo;
-      p.manual = { remanente_anterior: b.entradas.remanente_anterior || 0, anticipo_anterior: b.entradas.anticipo_anterior || 0, utm_anterior: b.entradas.utm_anterior ?? null, utm_actual: b.entradas.utm_actual ?? null, tasa_ppm: b.entradas.tasa_ppm ?? null, base_ppm: b.entradas.base_ppm ?? null };
+      p.manual = { remanente_anterior: b.entradas.remanente_anterior || 0, anticipo_anterior: b.entradas.anticipo_anterior || 0, utm_anterior: b.entradas.utm_anterior ?? null, utm_actual: b.entradas.utm_actual ?? null, tasa_ppm: b.entradas.tasa_ppm ?? null, base_ppm: b.entradas.base_ppm ?? null, ajustes: b.entradas.ajustes || {} };
       S.f29Ver = null; S.pestana.f29 = "mes"; render(); window.scrollTo(0, 0); aviso("Revisa el cálculo y pulsa «Guardar borrador» para actualizar el historial."); break; }
     case "pedir-eliminar-f29": S.confirmar = "f29"; render(); break;
     case "eliminar-f29": { const periodo = S.f29Ver; ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/f29/${periodo}`); S.f29Ver = null; S.confirmar = null; S.pestana.f29 = "historial"; render(); aviso(`Borrador de ${nombrePeriodo(periodo)} eliminado.`); }, "No se pudo eliminar el borrador"); break; }
@@ -8096,7 +8133,7 @@ function datosResumen(p) {
   const clientes = simp ? dv.cobrar : hoja(bg.activo, ct.clientes), proveedores = simp ? dv.pagar : hoja(bg.pasivo, ct.proveedores), cotizaciones = simp ? 0 : hoja(bg.pasivo, ct.rem_cotizaciones);
   const activoCirc = suma(bg.activo, "1.1."), pasivoCirc = suma(bg.pasivo, "2.1.");
   let f29 = null;
-  try { const ini = valoresInicialesF29(p), r = calcularF29(p, ini.remanente_anterior || 0, ini.utm_anterior, ini.utm_actual, null, null, ini.anticipo_anterior || 0); f29 = { iva: r.codigos["89"] - r.codigos["598"], remanente: r.codigos["77"], ppm: r.codigos["62"], retenciones: r.codigos["151"], unico: r.codigos["48"], total: r.codigos["91"], documentos: r.documentos, pendientes: r.pendientes }; } catch (_) {}
+  try { const ini = valoresInicialesF29(p), r = calcularF29(p, ini.remanente_anterior || 0, ini.utm_anterior, ini.utm_actual, null, null, ini.anticipo_anterior || 0, ini.ajustes || {}); f29 = { iva: r.codigos["89"] - r.codigos["598"], remanente: r.codigos["77"], ppm: r.codigos["62"], retenciones: r.codigos["151"], unico: r.codigos["48"], total: r.codigos["91"], documentos: r.documentos, pendientes: r.pendientes }; } catch (_) {}
   const liq = S.liquidaciones.filter((l) => l.periodo === p);
   const rem = liq.length ? { cantidad: liq.length, liquido: liq.reduce((x, l) => x + l.liquido, 0), costo: liq.reduce((x, l) => x + (l.costo_empresa || 0), 0) } : null;
   const aPagar = (f29?.total || 0) + Math.max(cotizaciones, 0);
