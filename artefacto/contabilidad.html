@@ -295,7 +295,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.63.0";
+const VERSION = "1.64.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -586,7 +586,7 @@ const SECCIONES = [
 const SIN_EMPRESA = ["empresas", "contador", "apariencia", "panel"];
 function ir(vista) {
   if (vista === "nuevo") { abrirEditor(null); return; }
-  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.vincular = null; S.docEdit = null; S.rcvMensajes = null; S.migra = null; S.migraCaja = null; S.socioEdit = null; S.boletaEdit = null;
+  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.vincular = null; S.cuentaRapida = null; S.tribPend = null; S.docEdit = null; S.rcvMensajes = null; S.migra = null; S.migraCaja = null; S.socioEdit = null; S.boletaEdit = null;
   S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null;
   if (vista !== "editor") recordar("vista", vista);
   render();
@@ -739,6 +739,7 @@ function vistaEditor() {
   const motivo = `<label>Motivo (opcional, queda registrado)<input id="a-motivo" value="${esc(ed.motivo || "")}" placeholder="Ej.: corrección de glosa"></label>`;
   return `${cabecera(titulo, ed.cierre ? "Asiento de cierre" : "")}
   ${ed.propuesta ? `<div class="aviso ok">${esc(ed.propuesta)} Revisa cuentas y montos; nada se guarda hasta que pulses «Guardar asiento».</div>` : ""}
+  ${panelCuentaRapida()}
   <form class="caja" data-form="asiento" autocomplete="off">
     <div class="form">
       <label>Fecha<input type="date" id="a-fecha" value="${esc(ed.fecha)}" required></label>
@@ -749,7 +750,7 @@ function vistaEditor() {
     <div class="tabla lineas"><table>
       <thead><tr><th style="min-width:230px">Cuenta</th><th style="min-width:160px">Glosa de la línea</th><th class="num" style="min-width:120px">Debe</th><th class="num" style="min-width:120px">Haber</th><th></th></tr></thead>
       <tbody>${ed.lineas.map((l, i) => `<tr>
-        <td><input list="dl-cuentas" id="l-${i}-cuenta" data-linea="${i}" data-campo="texto" value="${esc(l.texto)}" placeholder="Código o nombre" class="${l.texto && !l.cuenta ? "malo" : ""}"></td>
+        <td><input list="dl-cuentas" id="l-${i}-cuenta" data-linea="${i}" data-campo="texto" value="${esc(l.texto)}" placeholder="Código o nombre" class="${l.texto && !l.cuenta ? "malo" : ""}">${!l.cuenta && S.puedeEscribir ? `<button type="button" class="btn enlace" data-accion="cuenta-rapida-linea" data-linea="${i}">+ Crear cuenta nueva</button>` : ""}</td>
         <td><input id="l-${i}-glosa" data-linea="${i}" data-campo="glosa" value="${esc(l.glosa)}"></td>
         <td><input id="l-${i}-debe" class="monto" inputmode="numeric" data-linea="${i}" data-campo="debe" value="${esc(l.debe)}"></td>
         <td><input id="l-${i}-haber" class="monto" inputmode="numeric" data-linea="${i}" data-campo="haber" value="${esc(l.haber)}"></td>
@@ -925,6 +926,59 @@ async function guardarCuenta() {
     await BD.setEmpresa(S.eid, { ...empresa(), cuentas });
     S.cuentaEdit = null; render(); aviso(`Cuenta ${codigo} guardada.`);
   }, "No se pudo guardar la cuenta");
+}
+
+/* Crear una cuenta sin salir del asiento ni de Cuentas tributarias: se elige el grupo, el programa propone el código y la cuenta queda asignada. */
+const gruposParaCuenta = () => S.cuentas.filter((c) => !c.imputable && c.codigo.includes(".")).sort(porCodigo);
+function codigoSugerido(grupoId) {
+  const g = S.porId.get(grupoId);
+  if (!g) return "";
+  const nivelHijo = g.codigo.split(".").length + 1;
+  const nums = S.cuentas.filter((c) => c.codigo.startsWith(g.codigo + ".") && c.codigo.split(".").length === nivelHijo).map((c) => c.codigo.split(".").pop());
+  const ancho = Math.max(2, ...nums.map((n) => n.length)), sig = Math.max(0, ...nums.map((n) => +n || 0)) + 1;
+  return `${g.codigo}.${String(sig).padStart(ancho, "0")}`;
+}
+function abrirCuentaRapida(destino) { S.cuentaRapida = { destino, grupo: "", codigo: "", nombre: "" }; }
+function leerCuentaRapida() {
+  const q = S.cuentaRapida;
+  if (q && $("#cr-codigo")) { q.grupo = $("#cr-grupo").value; q.codigo = $("#cr-codigo").value.trim(); q.nombre = $("#cr-nombre").value.trim(); }
+  return q;
+}
+function panelCuentaRapida() {
+  const q = S.cuentaRapida;
+  if (!q || !S.puedeEscribir) return "";
+  const donde = q.destino.tipo === "linea" ? `Se asignará a la línea ${q.destino.i + 1} del asiento.` : `Se asignará a «${esc(CONCEPTOS[q.destino.k][0])}».`;
+  return `<form class="caja" data-form="cuenta-rapida" autocomplete="off"><h2>Nueva cuenta</h2>
+    <div class="form">
+      <label>Grupo donde crearla<select id="cr-grupo"><option value="">— Elegir grupo —</option>${gruposParaCuenta().map((g) => `<option value="${esc(g.id)}" ${q.grupo === g.id ? "selected" : ""}>${esc(etiquetaCuenta(g))}</option>`).join("")}</select></label>
+      <label>Código<input id="cr-codigo" value="${esc(q.codigo)}" placeholder="1.1.12" required></label>
+      <label>Nombre<input id="cr-nombre" value="${esc(q.nombre)}" required></label>
+    </div>
+    <p class="ayuda">${donde} Al elegir el grupo, el programa propone el siguiente código libre; puedes cambiarlo. El tipo se deduce del primer dígito.</p>
+    <div class="acciones"><button class="btn" type="submit">Crear y usar</button><button class="btn sec" type="button" data-accion="cuenta-rapida-cancelar">Cancelar</button></div></form>`;
+}
+async function crearCuentaRapida() {
+  const q = leerCuentaRapida();
+  if (!q) return;
+  const { codigo, nombre } = q;
+  if (!/^\d+(\.\d+)*$/.test(codigo)) return aviso("El código debe tener el formato 1.1.01 (números separados por puntos).");
+  if (!nombre) return aviso("El nombre es obligatorio.");
+  const tipo = TIPO_POR_DIGITO[codigo[0]];
+  if (!tipo) return aviso("El código debe comenzar con 1, 2, 3, 4 o 5.");
+  if (S.cuentas.some((c) => c.codigo === codigo)) return aviso(`Ya existe la cuenta ${codigo}.`);
+  const partes = codigo.split(".");
+  if (partes.length > 1) {
+    const padre = S.cuentas.find((c) => c.codigo === partes.slice(0, -1).join("."));
+    if (!padre) return aviso(`Primero crea el grupo ${partes.slice(0, -1).join(".")}.`);
+    if (padre.imputable) return aviso(`La cuenta ${padre.codigo} es imputable; no puede tener subcuentas.`);
+  }
+  const cuenta = { id: "c" + nuevoId(), codigo, nombre, tipo, imputable: true, activa: true, resultados_en_ocho: false };
+  await ocupado(async () => {
+    await BD.setEmpresa(S.eid, { ...empresa(), cuentas: S.cuentas.concat(cuenta).sort(porCodigo) });
+    if (q.destino.tipo === "linea") { const l = S.edit?.lineas[q.destino.i]; if (l) { l.cuenta = cuenta.id; l.texto = etiquetaCuenta(cuenta); } }
+    else S.tribPend = { ...(S.tribPend || {}), [q.destino.k]: cuenta.id };
+    S.cuentaRapida = null; render(); aviso(`Cuenta ${codigo} creada y asignada.`);
+  }, "No se pudo crear la cuenta");
 }
 
 async function eliminarCuenta() {
@@ -2339,16 +2393,17 @@ function formularioResumenBoletas() {
 
 /* ------------------------------------------------------------------ cuentas tributarias */
 function vistaTributarias() {
-  const actuales = cuentasTributarias();
+  const pend = S.tribPend, actuales = pend ? { ...cuentasTributarias(), ...Object.fromEntries(Object.entries(pend).filter(([k]) => k in CONCEPTOS)) } : cuentasTributarias();
   const imputables = S.cuentas.filter((c) => c.imputable);
   const e = empresa();
   return `${cabecera("Cuentas tributarias", "")}
+  ${panelCuentaRapida()}
   <p class="ayuda">Cuentas que usa la centralización del Registro de Compras y Ventas, el borrador del F29 y las remuneraciones de <strong>${esc(e.razon_social)}</strong>. Si una cuenta no está configurada, el programa sugiere una según su nombre; revísalas y pulsa Guardar. En cada documento del RCV puedes elegir otra cuenta para el neto.</p>
   <form class="caja" data-form="tributarias">
     ${GRUPOS_CONCEPTOS.map(([titulo, claves]) => `<h2>${titulo}</h2><div class="form">${claves.map((k) => `<label>${esc(CONCEPTOS[k][0])}
-      <select id="tr-${k}" ${S.puedeEscribir ? "" : "disabled"}><option value="">— Sin cuenta —</option>${imputables.map((c) => `<option value="${esc(c.id)}" ${c.id === actuales[k] ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}</select></label>`).join("")}</div>`).join("")}
+      <select id="tr-${k}" ${S.puedeEscribir ? "" : "disabled"}><option value="">— Sin cuenta —</option>${imputables.map((c) => `<option value="${esc(c.id)}" ${c.id === actuales[k] ? "selected" : ""}>${esc(etiquetaCuenta(c))}</option>`).join("")}${S.puedeEscribir ? `<option value="__nueva">+ Crear cuenta nueva…</option>` : ""}</select></label>`).join("")}</div>`).join("")}
     <h2>Pagos provisionales mensuales</h2>
-    <div class="form"><label>Tasa de PPM (%)<input id="tr-ppm" inputmode="decimal" placeholder="0,25" value="${esc(String(e.tasa_ppm || 0).replace(".", ","))}" ${S.puedeEscribir ? "" : "readonly"}>
+    <div class="form"><label>Tasa de PPM (%)<input id="tr-ppm" inputmode="decimal" placeholder="0,25" value="${esc(pend?.ppm ?? String(e.tasa_ppm || 0).replace(".", ","))}" ${S.puedeEscribir ? "" : "readonly"}>
       <small>Porcentaje que se aplica a los ingresos del giro del mes (código 115 del F29).${(() => { const g = sugerenciaPpm(); return g ? ` Tasa vigente para ${g.regimen === "d8" ? "Pro Pyme transparente" : "Pro Pyme general"} en ${empresa().ejercicio}: ${textoTasa(g.tasa)} % (${textoTasa(g.alta)} % si los ingresos del año anterior superan 50.000 UF). El F29 de cada empresa trae la tasa que le asignó el SII (muchas pagan 1 % mientras no tengan datos del año anterior): usa esa.` : " Tu régimen depende de los ingresos del año anterior: no hay una tasa sugerida."; })()}</small>
       ${(() => { const g = sugerenciaPpm(); return g && S.puedeEscribir ? `<button class="btn sec" type="button" data-n="ppm-vigente" data-v="${textoTasa(g.tasa)}">Usar la tasa vigente (${textoTasa(g.tasa)} %)</button>` : ""; })()}</label></div>
     <div class="acciones">${puedeEditar(`<button class="btn" type="submit">Guardar</button>`)}<button class="btn sec" type="button" data-ir="rcv">Volver al RCV</button></div>
@@ -2357,11 +2412,11 @@ function vistaTributarias() {
 
 async function guardarTributarias() {
   const tributarias = {};
-  for (const k of Object.keys(CONCEPTOS)) { const v = $("#tr-" + k).value; if (v) tributarias[k] = v; }
+  for (const k of Object.keys(CONCEPTOS)) { const v = $("#tr-" + k).value; if (v && v !== "__nueva") tributarias[k] = v; }
   const tasa = Number(String($("#tr-ppm").value || "0").replace(",", "."));
   if (!Number.isFinite(tasa)) return aviso("La tasa de PPM debe ser un número, por ejemplo 0,25.");
   if (tasa < 0 || tasa > 100) return aviso("La tasa de PPM debe estar entre 0 y 100 %.");
-  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), tributarias, tasa_ppm: tasa }); render(); aviso("Cuentas tributarias guardadas."); }, "No se pudieron guardar las cuentas");
+  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), tributarias, tasa_ppm: tasa }); S.tribPend = null; render(); aviso("Cuentas tributarias guardadas."); }, "No se pudieron guardar las cuentas");
 }
 
 /* ------------------------------------------------------------------ UTM */
@@ -6389,6 +6444,8 @@ document.addEventListener("click", (ev) => {
     case "eliminar-doc": eliminarDocs([S.docEdit.id]); break;
     case "pedir-eliminar-marcados": S.confirmar = "docs"; render(); break;
     case "eliminar-marcados": eliminarDocs([...S.rcvSel]); break;
+    case "cuenta-rapida-linea": abrirCuentaRapida({ tipo: "linea", i: +t.dataset.linea }); render(); $("#cr-grupo")?.focus(); break;
+    case "cuenta-rapida-cancelar": S.cuentaRapida = null; render(); break;
     case "vincular-abrir": S.vincular = { registro: t.dataset.registro, asiento: "" }; render(); break;
     case "vincular-cerrar": S.vincular = null; render(); break;
     case "vincular-confirmar": { const v = S.vincular, c = v && v.asiento ? comparacionVinculo(v.registro, v.asiento) : null; if (!c) break;
@@ -6454,6 +6511,7 @@ document.addEventListener("submit", (ev) => {
     case "filtros": S.filtros = { anio: $("#f-anio").value, mes: $("#f-mes").value, texto: $("#f-texto").value }; render(); break;
     case "asiento": guardarAsiento(); break;
     case "cuenta": guardarCuenta(); break;
+    case "cuenta-rapida": crearCuentaRapida(); break;
     case "empresa": guardarEmpresa(); break;
     case "nueva-empresa": crearEmpresa(); break;
     case "contador": guardarContador(); break;
@@ -6507,6 +6565,12 @@ document.addEventListener("change", (ev) => {
   if (ev.target.dataset.cuentaDoc) cambiarCuentaDoc(ev.target.dataset.cuentaDoc, ev.target.value);
   if (ev.target.dataset.selDoc) { if (ev.target.checked) S.rcvSel.add(ev.target.dataset.selDoc); else S.rcvSel.delete(ev.target.dataset.selDoc); S.confirmar = null; render(); }
   if (ev.target.id === "doc-tipo_doc") { leerFormularioDoc(); render(); }
+  if (ev.target.id === "cr-grupo" && S.cuentaRapida) { const q = leerCuentaRapida(); q.codigo = codigoSugerido(q.grupo); render(); $("#cr-nombre")?.focus(); }
+  if (/^tr-/.test(ev.target.id) && ev.target.value === "__nueva" && S.vista === "tributarias") {
+    const k = ev.target.id.slice(3), snap = { ppm: $("#tr-ppm")?.value ?? "" };
+    for (const kk of Object.keys(CONCEPTOS)) snap[kk] = kk === k ? (cuentasTributarias()[k] || "") : $("#tr-" + kk).value;
+    S.tribPend = snap; abrirCuentaRapida({ tipo: "trib", k }); render(); $("#cr-grupo")?.focus();
+  }
   if (ev.target.id === "vinc-asiento" && S.vincular) { S.vincular.asiento = ev.target.value; render(); }
   for (const m of ["f29", "sueldos", "honorarios", "rcv"]) if (ev.target.id === `hist-${m}-anio`) { S.historialAnio[m] = ev.target.value; S.confirmar = null; render(); }
   if (ev.target.id === "rem-periodo" && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.remPeriodo = ev.target.value; S.boletaEdit = null; S.socioEdit = null; render(); }

@@ -1526,6 +1526,33 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   igual("vincular un asiento hecho a mano deja el documento centralizado sin crear otro asiento", vi, [true, 500000, true, "avinc", false]);
 
+  console.log("Crear una cuenta desde el asiento y desde Cuentas tributarias");
+  const cr = await page.evaluate(async () => {
+    const w = (ms = 80) => new Promise((r) => setTimeout(r, ms)), r = {};
+    abrirEditor(null); await w(); render();
+    document.querySelector('[data-accion="cuenta-rapida-linea"][data-linea="0"]').click(); await w();
+    const g = S.cuentas.find((c) => c.codigo === "1.1");
+    const sg = document.querySelector("#cr-grupo"); sg.value = g.id; sg.dispatchEvent(new Event("change", { bubbles: true })); await w();
+    r.codigo = document.querySelector("#cr-codigo").value;
+    document.querySelector("#cr-nombre").value = "CUENTA DE PRUEBA RAPIDA";
+    document.querySelector('[data-form="cuenta-rapida"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(200);
+    const nueva = S.cuentas.find((c) => c.nombre === "CUENTA DE PRUEBA RAPIDA");
+    r.creada = !!nueva && nueva.tipo === "ACTIVO" && nueva.imputable; r.linea = S.edit.lineas[0].cuenta === nueva?.id; r.panelCerrado = !S.cuentaRapida;
+    ir("tributarias"); await w();
+    const sel = document.querySelector("#tr-clientes"); sel.value = "__nueva"; sel.dispatchEvent(new Event("change", { bubbles: true })); await w();
+    r.panelTrib = !!document.querySelector("#cr-grupo");
+    const sg2 = document.querySelector("#cr-grupo"); sg2.value = g.id; sg2.dispatchEvent(new Event("change", { bubbles: true })); await w();
+    document.querySelector("#cr-nombre").value = "OTRA CUENTA RAPIDA";
+    document.querySelector('[data-form="cuenta-rapida"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(200);
+    const n2 = S.cuentas.find((c) => c.nombre === "OTRA CUENTA RAPIDA");
+    r.trib = document.querySelector("#tr-clientes").value === n2?.id;
+    document.querySelector('[data-form="tributarias"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(200);
+    r.guardada = cuentasTributarias().clientes === n2?.id;
+    return r;
+  });
+  igual("crear cuenta rápida desde el asiento y desde Cuentas tributarias", cr, { codigo: cr.codigo, creada: true, linea: true, panelCerrado: true, panelTrib: true, trib: true, guardada: true });
+  ok("el código propuesto es el siguiente libre del grupo 1.1", /^1\.1\.\d{2,}$/.test(cr.codigo), cr.codigo);
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
