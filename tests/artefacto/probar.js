@@ -1508,6 +1508,24 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   igual("editar valores del F29 en pantalla: celdas, marca de editado, totales y restablecer", ui, [true, "190.000", true, "190.000", "0", true]);
 
+  console.log("RCV: vincular documentos a un asiento de centralización hecho a mano");
+  const vi = await page.evaluate(async () => {
+    const cta = (c) => S.cuentas.find((x) => x.codigo === c).id, srcv = S.rcv;
+    await BD.setAsiento("e1", "avinc", { fecha: "2031-11-30", glosa: "CENTRALIZACION MANUAL", apertura: false, cierre: false, creado: 9, lineas: [{ cuenta: cta("1.1.02"), debe: 500000, haber: 0 }, { cuenta: cta("4.1.01"), debe: 0, haber: 500000 }] });
+    await new Promise((r) => setTimeout(r, 80));
+    S.rcv = [{ id: "vv1", registro: "VENTA", periodo: "2031-11", tipo_doc: 41, folio: "RESUMEN 2031-11", fecha: "2031-11-30", rut: "1-9", razon_social: "Boletas", neto: 0, exento: 500000, iva: 0, otros_impuestos: 0, iva_no_recuperable: 0, total: 500000, cantidad: 1, asiento: "", cuenta: "" }];
+    S.rcvPeriodo = "2031-11"; S.rcvPeriodoEid = S.eid; S.pestana.rcv = "mes"; ir("rcv");
+    const antes = pendiente(S.rcv[0]);
+    document.querySelector('[data-accion="vincular-abrir"][data-registro="VENTA"]').click(); await new Promise((r) => setTimeout(r, 60));
+    const sel = document.querySelector("#vinc-asiento"); sel.value = "avinc"; sel.dispatchEvent(new Event("change", { bubbles: true })); await new Promise((r) => setTimeout(r, 60));
+    const txt = document.querySelector('[data-accion="vincular-confirmar"]')?.textContent || "";
+    const comp = comparacionVinculo("VENTA", "avinc");
+    document.querySelector('[data-accion="vincular-confirmar"]').click(); await new Promise((r) => setTimeout(r, 120));
+    const r = [antes, comp.totalAsiento, /^(Vincular|Vincular de todos modos) los 1/.test(txt), S.rcv[0].asiento, pendiente(S.rcv[0])];
+    S.rcv = srcv; return r;
+  });
+  igual("vincular un asiento hecho a mano deja el documento centralizado sin crear otro asiento", vi, [true, 500000, true, "avinc", false]);
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
