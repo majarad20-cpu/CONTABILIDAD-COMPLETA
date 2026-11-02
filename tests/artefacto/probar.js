@@ -1582,6 +1582,19 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   igual("el nombre se pregunta, se limpia, se mantiene la extensión y se puede cancelar", dn, { sugerido: "informe_marzo", ext: ".pdf", cancel: "declined", guardado: ["Mi informe 2026.pdf", "otro.xlsx"], modales: 0 });
 
+  console.log("Libro Mayor: la apertura no arrastra el saldo del año anterior");
+  const mj = await page.evaluate(async () => {
+    const w = (ms = 80) => new Promise((r) => setTimeout(r, ms)), cta = (c) => S.cuentas.find((x) => x.codigo === c).id;
+    const A = (id, fecha, glosa, l, ap = false) => BD.setAsiento("e1", id, { fecha, glosa, apertura: ap, cierre: false, creado: 50, lineas: l });
+    await A("my1", "2040-12-20", "VENTA 2040", [{ cuenta: cta("1.1.02"), debe: 500, haber: 0 }, { cuenta: cta("4.1.01"), debe: 0, haber: 500 }]);
+    await A("my2", "2041-01-02", "APERTURA 2041", [{ cuenta: cta("1.1.02"), debe: 700, haber: 0 }, { cuenta: cta("3.1.01"), debe: 0, haber: 700 }], true);
+    await A("my3", "2041-01-15", "COBRO", [{ cuenta: cta("1.1.01"), debe: 100, haber: 0 }, { cuenta: cta("1.1.02"), debe: 0, haber: 100 }]);
+    await w(150);
+    const cl = libroMayor(cta("1.1.02"), "2041-01-01", "2041-12-31"), ing = libroMayor(cta("4.1.01"), "2041-01-01", "2041-12-31");
+    return { cl: [cl.saldoInicial, cl.movimientos.some((m) => m.reinicio), cl.saldoFinal], ing: [ing.saldoInicial, ing.movimientos.length, ing.saldoFinal] };
+  });
+  igual("el mayor no muestra saldo anterior ni reinicio cuando la apertura va primero", mj, { cl: [0, false, 600], ing: [0, 0, 0] });
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
