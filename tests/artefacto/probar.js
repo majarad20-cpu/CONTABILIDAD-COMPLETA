@@ -1595,6 +1595,13 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   igual("el mayor no muestra saldo anterior ni reinicio cuando la apertura va primero", mj, { cl: [0, false, 600], ing: [0, 0, 0] });
 
+  const sinSaldoAnt = await page.evaluate(() => {
+    const id = S.cuentas.find((x) => x.codigo === "1.1.02").id, filas = [], html = tablaMayor(libroMayor(id, "2041-01-01", "2041-12-31"), filas);
+    const pdf = informeMayor(id, "2041-01-01", "2041-12-31");
+    return [/Saldo anterior/i.test(html), filas.some((f) => /Saldo anterior/i.test(String(f[4]))), JSON.stringify(pdf).toUpperCase().includes("SALDO ANTERIOR")];
+  });
+  igual("el Libro Mayor no muestra «Saldo anterior» en pantalla, CSV ni PDF", sinSaldoAnt, [false, false, false]);
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
