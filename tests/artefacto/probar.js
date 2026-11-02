@@ -1564,6 +1564,24 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   igual("un mes sin IVA en el RCV no pide cuentas de IVA ni las compara", sv, [false, 0, false]);
 
+  console.log("Descargas: preguntar el nombre del archivo");
+  const dn = await page.evaluate(async () => {
+    const w = (ms = 60) => new Promise((r) => setTimeout(r, ms)), guardado = [];
+    const falso = envolverDescargas({ save: async (op) => { guardado.push(op.filename); } });
+    const r = {};
+    let p = falso.save({ filename: "informe_marzo.pdf", data: "x" }); await w();
+    r.sugerido = document.querySelector("#nom-archivo").value; r.ext = document.querySelector(".modal-nombre .ext").textContent;
+    document.querySelector("#nom-archivo").value = 'Mi: informe/2026.pdf';
+    document.querySelector(".modal-nombre").dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await p;
+    p = falso.save({ filename: "datos.csv", data: "x" }); await w();
+    document.querySelector("[data-cancelar-nombre]").click();
+    try { await p; r.cancel = "no"; } catch (e) { r.cancel = e.code; }
+    p = falso.save({ filename: "otro.xlsx", data: "x" }); await w();
+    document.querySelector("#nom-archivo").value = "   "; document.querySelector(".modal-nombre").dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await p;
+    r.guardado = guardado; r.modales = document.querySelectorAll(".modal-nombre").length; return r;
+  });
+  igual("el nombre se pregunta, se limpia, se mantiene la extensión y se puede cancelar", dn, { sugerido: "informe_marzo", ext: ".pdf", cancel: "declined", guardado: ["Mi informe 2026.pdf", "otro.xlsx"], modales: 0 });
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
