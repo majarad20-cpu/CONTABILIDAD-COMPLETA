@@ -1699,6 +1699,46 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("al elegir una pantalla el menú se cierra y el contenido usa todo el ancho", mn.tras && mn.anchoApp === "block", JSON.stringify(mn));
   igual("en Apariencia se puede volver al menú lateral", mn.lateral, ["grid", "contents"]);
 
+  console.log("Bitácora de la empresa");
+  const bt = await page.evaluate(async () => {
+    const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {}, ahora = new Date().toISOString();
+    r.fechas = [sumarMeses("2026-01-31", 1, 31), sumarMeses("2026-02-28", 1, 31), sumarMeses("2026-07-31", 6, 31), sumarMeses("2026-12-20", 1, 20)];
+    const base = { texto: "", etiquetas: [], prioridad: "normal", fijada: false, estado: "abierto", hecho_en: "", fecha: hoy(), autor: "Usuario", creado: ahora, actualizado: ahora };
+    const venc = sumarDias(hoy(), -3);
+    await S.almacen.set(`empresas/${S.eid}/bitacora/t1`, { ...base, tipo: "pendiente", titulo: "Pagar la patente comercial", vence: venc, repite: "semestral", dia_base: +venc.slice(8) });
+    await S.almacen.set(`empresas/${S.eid}/bitacora/t2`, { ...base, tipo: "caracteristica", titulo: "Actividad exenta de IVA", fijada: true });
+    await S.almacen.set(`empresas/${S.eid}/bitacora/t3`, { ...base, tipo: "pendiente", titulo: "Revisar el F29", vence: sumarDias(hoy(), 4), repite: "", dia_base: 0 });
+    await w(250);
+    r.resumen = (({ abiertos, vencidos, proximos, fijadas }) => ({ abiertos, vencidos, proximos, fijadas }))(resumenBitacora());
+    r.boton = document.querySelector("#bit-boton").textContent.replace(/\s+/g, " ").trim();
+    prepararAvisoBitacora(); render(); await w();
+    r.aviso = document.querySelector("#bit-aviso")?.textContent.replace(/\s+/g, " ").trim().slice(0, 220) || "";
+    document.querySelector("#bit-boton").click(); await w();
+    r.panelAbierto = !document.querySelector("#bit-panel").hidden && !document.querySelector("#bit-aviso");
+    r.items = document.querySelectorAll("#bit-panel .bit-item").length;
+    document.querySelector("#bit-titulo").value = "Anotar criterio de prueba"; document.querySelector("#bit-tipo").value = "criterio";
+    document.querySelector('[data-form="bit"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(250);
+    r.creada = S.bitacora.some((x) => x.titulo === "Anotar criterio de prueba" && x.tipo === "criterio" && x.autor === "Usuario");
+    document.querySelector('#bit-panel [data-bit="hecho"][data-id="t1"]').click(); await w(300);
+    const viejo = S.bitacora.find((x) => x.id === "t1"), nuevo = S.bitacora.find((x) => x.viene_de === "t1");
+    r.hecho = [viejo?.estado, nuevo?.estado, nuevo?.vence === sumarMeses(venc, 6, +venc.slice(8)), nuevo?.repite];
+    r.contadorTras = document.querySelector("#bit-boton").textContent.replace(/\s+/g, " ").trim();
+    document.querySelector('#bit-panel [data-bit="cerrar"]').click(); await w();
+    ir("bitacora"); await w(200);
+    r.pantalla = document.querySelectorAll("main table tbody tr").length > 0 && /Bitácora/.test(document.querySelector("main h1").textContent);
+    r.csv = S.csv?.filas?.length > 1;
+    for (const x of S.bitacora.slice()) await S.almacen.del(`empresas/${S.eid}/bitacora/${x.id}`);
+    await w(200); ir("inicio");
+    r.limpio = S.bitacora.length === 0;
+    return r;
+  });
+  igual("las repeticiones respetan el día del mes", bt.fechas, ["2026-02-28", "2026-03-31", "2027-01-31", "2027-01-20"]);
+  igual("el resumen cuenta pendientes, vencidos, próximos y fijadas", bt.resumen, { abiertos: 2, vencidos: 1, proximos: 1, fijadas: 1 });
+  ok("el botón de la barra muestra los pendientes y el aviso corto los resume", /Bitácora 2/.test(bt.boton) && /vencido/.test(bt.aviso) && /fijada/.test(bt.aviso), JSON.stringify(bt));
+  ok("el panel se abre, oculta el aviso, lista las entradas y permite agregar una", bt.panelAbierto && bt.items >= 2 && bt.creada, JSON.stringify(bt));
+  igual("marcar hecho un pendiente repetido crea el siguiente 6 meses después", bt.hecho, ["hecho", "abierto", true, "semestral"]);
+  ok("la pantalla completa lista y exporta, y la limpieza deja la bitácora vacía", bt.pantalla && bt.csv && bt.limpio, JSON.stringify(bt));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
