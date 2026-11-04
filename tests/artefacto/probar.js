@@ -1666,6 +1666,39 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("el pago queda en el libro con el folio y la fecha elegida", hp.lineas, [["f29_ppm", 16294, "9876543210", "2047-04-18", "2047-03"]]);
   ok("tras registrar el pago el historial lo marca como pagado y el CSV trae el folio", hp.pagado && hp.csv, JSON.stringify(hp));
 
+  console.log("Menú superior fijo con desplegables");
+  const mn = await page.evaluate(async () => {
+    const w = (ms = 100) => new Promise((r) => setTimeout(r, ms)), r = {};
+    recordar("posmenu", "superior"); aplicarApariencia(); ir("inicio"); await w(200);
+    const nav = document.querySelector("#nav"), menu = document.querySelector(".menu");
+    r.grupos = [...nav.querySelectorAll(".grupo-btn")].map((b) => b.textContent.trim());
+    r.estiloMenu = getComputedStyle(menu).position;
+    const g = nav.querySelector(".grupo"), btn = g.querySelector(".grupo-btn");
+    r.cerradoAlInicio = getComputedStyle(g.querySelector(".desplegable")).display === "none";
+    btn.click(); await w();
+    r.abierto = g.classList.contains("abierto") && getComputedStyle(g.querySelector(".desplegable")).display !== "none" && btn.getAttribute("aria-expanded") === "true";
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); await w();
+    r.cierraConEsc = !g.classList.contains("abierto");
+    btn.click(); await w(); document.body.click(); await w(); r.cierraAfuera = !g.classList.contains("abierto");
+    const alto = document.createElement("div"); alto.id = "relleno-prueba"; alto.style.height = "4000px"; document.querySelector("#main").appendChild(alto);
+    window.scrollTo(0, 1500); await w(150);
+    r.fijo = Math.abs(menu.getBoundingClientRect().top) < 1;
+    alto.remove(); window.scrollTo(0, 0);
+    nav.querySelector(".grupo-btn").click(); await w();
+    nav.querySelector(".grupo.abierto .desplegable button[data-ir]").click(); await w(250);
+    r.tras = !document.querySelector("#nav .grupo.abierto");
+    r.anchoApp = getComputedStyle(document.querySelector(".app")).display;
+    recordar("posmenu", "lateral"); aplicarApariencia(); await w(100);
+    r.lateral = [getComputedStyle(document.querySelector(".app")).display, getComputedStyle(document.querySelector(".desplegable")).display];
+    recordar("posmenu", "superior"); aplicarApariencia(); ir("inicio");
+    return r;
+  });
+  igual("los grupos del lateral pasan a menús de la barra superior", mn.grupos, ["Registro", "Tributario", "Gestión", "Libros", "Informes", "Administración"]);
+  ok("los menús parten cerrados, se abren con un clic y se cierran con Esc o al hacer clic afuera", mn.cerradoAlInicio && mn.abierto && mn.cierraConEsc && mn.cierraAfuera, JSON.stringify(mn));
+  ok("la barra queda fija al desplazarse por la página", mn.estiloMenu === "sticky" && mn.fijo, JSON.stringify(mn));
+  ok("al elegir una pantalla el menú se cierra y el contenido usa todo el ancho", mn.tras && mn.anchoApp === "block", JSON.stringify(mn));
+  igual("en Apariencia se puede volver al menú lateral", mn.lateral, ["grid", "contents"]);
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
