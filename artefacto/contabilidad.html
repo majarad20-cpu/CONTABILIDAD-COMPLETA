@@ -300,7 +300,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.68.0";
+const VERSION = "1.69.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -3948,7 +3948,7 @@ function vistaF29Historial() {
   ${lista.length ? `<div class="tabla"><table><thead><tr><th>Período</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">IVA det.</th><th class="num">Remanente</th><th class="num">PPM</th><th class="num">Retenciones</th><th class="num">Total a pagar</th><th>Estado</th><th>Guardado</th><th></th></tr></thead>
     <tbody>${lista.map((b) => `<tr class="clic" data-ver-f29="${esc(b.id)}"><td>${mesCap(b.id)}</td><td class="num">${clp(c(b, "538"))}</td><td class="num">${clp(c(b, "537"))}</td><td class="num">${clp(c(b, "89"))}</td>
       <td class="num">${clp(c(b, "77"))}</td><td class="num">${clp(c(b, "62"))}</td><td class="num">${clp(c(b, "151") + c(b, "48"))}</td><td class="num"><strong>${clp(c(b, "91"))}</strong></td>
-      <td>${b.declarado ? '<span class="etiqueta">declarado</span>' : '<span class="etiqueta cerrado">borrador</span>'}</td><td>${b.guardado_en ? fmtFecha(b.guardado_en.slice(0, 10)) : ""}</td>
+      <td>${b.declarado ? `<span class="etiqueta">declarado${c(b, "91") ? "" : " · sin pago"}</span>` : '<span class="etiqueta cerrado">borrador</span>'}</td><td>${b.guardado_en ? fmtFecha(b.guardado_en.slice(0, 10)) : ""}</td>
       <td><button class="btn enlace" type="button" data-ver-f29="${esc(b.id)}">Ver</button></td></tr>`).join("")}</tbody>
     <tfoot><tr class="total"><td>Total</td>${["538", "537", "89"].map((k) => `<td class="num">${clp(lista.reduce((s, b) => s + c(b, k), 0))}</td>`).join("")}<td></td>
       <td class="num">${clp(lista.reduce((s, b) => s + c(b, "62"), 0))}</td><td class="num">${clp(lista.reduce((s, b) => s + c(b, "151") + c(b, "48"), 0))}</td><td class="num">${clp(lista.reduce((s, b) => s + c(b, "91"), 0))}</td><td colspan="3"></td></tr></tfoot></table></div>`
@@ -3989,17 +3989,47 @@ function vistaF29Guardado(periodo) {
       <label>Fecha de declaración<input type="date" id="fg-fecha" value="${esc(b.fecha_declaracion || "")}" ${S.puedeEscribir ? "" : "readonly"}></label>
       <label>Folio del F29 en el SII<input id="fg-folio" value="${esc(b.folio_sii || "")}" ${S.puedeEscribir ? "" : "readonly"}></label></div>
     <label class="campo-largo">Observaciones<textarea id="fg-obs" rows="3" ${S.puedeEscribir ? "" : "readonly"}>${esc(b.observacion || "")}</textarea></label>
+    ${panelPagoF29Guardado(b, periodo)}
     ${puedeEditar(`<div class="acciones"><button class="btn" type="submit">Guardar estado</button>
       ${S.confirmar === "f29" ? `<span class="confirmar"><span>¿Eliminar el borrador de ${nombrePeriodo(periodo)}? El mes siguiente ya no tomará su remanente.</span><button class="btn peligro" type="button" data-accion="eliminar-f29">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
         : `<button class="btn enlace" type="button" data-accion="pedir-eliminar-f29">Eliminar borrador</button>`}</div>`)}
   </form>`;
 }
 
+/* Pago del F29 en el libro de caja (contabilidad simplificada): se ofrece al declararlo; si el total a pagar es $0 (remanente de crédito fiscal, mes sin ventas) no hay pago que registrar. */
+function pagosRegistradosF29(periodo) { return S.caja.filter((m) => m.f29_periodo === periodo && (String(m.clase || "").startsWith("f29_") || String(m.ref || "").startsWith(`f29:${periodo}:`))); }
+function panelPagoF29Guardado(b, periodo) {
+  if (!esSimplificada()) return "";
+  const m = montosPagoF29(b), c = b.codigos || {}, hecho = pagosRegistradosF29(periodo), ro = S.puedeEscribir ? "" : "readonly";
+  if (!m.total) {
+    const motivos = [(c["77"] || 0) > 0 ? `queda un remanente de crédito fiscal de $${clp(c["77"])}` : "", !m.ppm ? "no hay PPM" : "", !m.ret && !m.iusc ? "no hay retenciones" : ""].filter(Boolean);
+    return `<div class="aviso ok"><strong>Este F29 no tiene nada que pagar</strong> (total $0${motivos.length ? `: ${motivos.join(", ")}` : ""}). Puedes marcarlo como declarado con su folio y su fecha; no se registra ningún pago en el libro de caja.</div>`;
+  }
+  if (hecho.length) return `<div class="aviso ok">Pago registrado en el libro de caja: ${hecho.length} línea(s), $${clp(hecho.reduce((x, l) => x + l.monto, 0))}${hecho[0].fecha ? ` el ${fmtFecha(hecho[0].fecha)}` : ""}.</div>`;
+  const filas = [["IVA determinado", m.iva], ["PPM", m.ppm], ["Retención de 2ª categoría", m.ret], ["Impuesto único de 2ª categoría", m.iusc]].filter(([, v]) => v);
+  return `<fieldset class="caja" ${S.puedeEscribir ? "" : "disabled"}><legend>Pago en el libro de caja</legend>
+    <p class="ayuda">Total a pagar $${clp(m.total)}: ${filas.map(([t, v]) => `${t} $${clp(v)}`).join(" · ")}. Si lo marcas, al guardar el estado el pago queda registrado en el libro de caja con el folio y la fecha de pago.</p>
+    <div class="form"><label class="check"><input type="checkbox" id="fg-pago" ${b.declarado ? "" : "checked"}> Registrar el pago en el libro de caja al guardar</label>
+      <label>Fecha de pago<input type="date" id="fg-fecha-pago" value="${esc(b.fecha_declaracion || hoy())}" ${ro}></label>
+      <label>Intereses y multas ($, si pagaste con atraso)<input id="fg-multa" inputmode="numeric" placeholder="0" ${ro}></label></div></fieldset>`;
+}
 async function guardarEstadoF29() {
   const periodo = S.f29Ver, b = borradorF29(periodo);
   if (!b) return;
-  const datos = { ...b, declarado: $("#fg-declarado").checked, fecha_declaracion: $("#fg-fecha").value, folio_sii: $("#fg-folio").value.trim(), observacion: $("#fg-obs").value.trim() };
-  await ocupado(async () => { await S.almacen.set(`empresas/${S.eid}/f29/${periodo}`, datos); render(); aviso("Estado del borrador guardado."); }, "No se pudo guardar el estado");
+  const declarado = $("#fg-declarado").checked, folio = $("#fg-folio").value.trim();
+  const datos = { ...b, declarado, fecha_declaracion: $("#fg-fecha").value, folio_sii: folio, observacion: $("#fg-obs").value.trim() };
+  let lineas = [];
+  if ($("#fg-pago")?.checked) {
+    if (!declarado) return aviso("Para registrar el pago, marca el F29 como declarado.");
+    const r = lineasPagoF29({ periodo, fecha: $("#fg-fecha-pago").value, folio, montos: montosPagoF29(b), multa: parseMonto($("#fg-multa").value || "0") });
+    if (r.error) return aviso(r.error);
+    lineas = r.lineas;
+  }
+  await ocupado(async () => {
+    await S.almacen.set(`empresas/${S.eid}/f29/${periodo}`, datos);
+    if (lineas.length) await guardarMovimientos(lineas);
+    render(); aviso(lineas.length ? `Estado guardado y pago registrado en el libro de caja (${lineas.length} línea(s)).` : "Estado del borrador guardado.");
+  }, "No se pudo guardar el estado");
 }
 
 function informeHistorialF29(lista) {
@@ -7576,22 +7606,37 @@ function rellenarPagoF29() {
   for (const [, , id, codigo] of CONCEPTOS_F29_PAGO) { const v = codigo === "89" ? (b.codigos?.["89"] || 0) - (b.codigos?.["598"] || 0) : b.codigos?.[codigo]; $("#" + id).value = v ? clp(v) : ""; }
   aviso("Montos tomados del borrador guardado.");
 }
-async function registrarPagoF29() {
-  const periodo = $("#f29p-periodo").value, fecha = $("#f29p-fecha").value, folio = $("#f29p-folio").value.trim();
-  if (!/^\d{4}-\d{2}$/.test(periodo)) return aviso("Elige el período del F29.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return aviso("Ingresa la fecha de pago.");
-  if (fecha.slice(0, 7) <= periodo) return aviso("La fecha de pago debe ser posterior al período del F29.");
-  const cerr = CAJA_CERRADO([fecha]); if (cerr) return aviso(cerr);
+/* Montos a pagar de un F29 guardado, por concepto (el total es el código 91). */
+function montosPagoF29(b) {
+  const c = b?.codigos || {};
+  return { iva: Math.max((c["89"] || 0) - (c["598"] || 0), 0), ppm: c["62"] || 0, ret: c["151"] || 0, iusc: c["48"] || 0, total: c["91"] || 0 };
+}
+/* Líneas del libro de caja que registran el pago de un F29 (una por concepto y, si hay, otra por intereses y multas). */
+function lineasPagoF29({ periodo, fecha, folio, montos, multa = 0 }) {
+  if (!/^\d{4}-\d{2}$/.test(periodo)) return { error: "Elige el período del F29." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { error: "Ingresa la fecha de pago." };
+  if (fecha.slice(0, 7) <= periodo) return { error: "La fecha de pago debe ser posterior al período del F29." };
+  const cerr = CAJA_CERRADO([fecha]); if (cerr) return { error: cerr };
+  if (!Number.isFinite(multa) || multa < 0) return { error: "Las multas e intereses deben ser un monto positivo en pesos enteros." };
   const lineas = [];
-  for (const [clave, texto, id, , afecta] of CONCEPTOS_F29_PAGO) {
-    const monto = parseMonto($("#" + id).value || "0");
-    if (!Number.isFinite(monto) || monto < 0) return aviso("Los montos deben ser números positivos en pesos enteros.");
+  for (const [clave, texto, , , afecta] of CONCEPTOS_F29_PAGO) {
+    const monto = montos[clave] || 0;
+    if (!Number.isFinite(monto) || monto < 0) return { error: "Los montos deben ser números positivos en pesos enteros." };
     if (monto > 0) lineas.push({ id: idMov(`f29:${periodo}:${clave}`), fecha, tipo: 2, categoria: "Pago de impuestos (IVA, PPM, F29)", doc_tipo: "Formulario 29", doc_num: folio, rut: "", nombre: "", glosa: `Pago F29 ${nombrePeriodo(periodo)}, ${texto}`, monto, base: afecta ? monto : 0, clase: `f29_${clave}`, f29_periodo: periodo, origen: "f29", ref: `f29:${periodo}:${clave}` });
   }
-  if (!lineas.length) return aviso("Escribe al menos un monto.");
+  if (multa > 0) lineas.push({ id: idMov(`f29:${periodo}:multa`), fecha, tipo: 2, categoria: "Multas (fiscales, municipales, laborales)", doc_tipo: "Formulario 29", doc_num: folio, rut: "", nombre: "", glosa: `Intereses y multas por pago atrasado F29 ${nombrePeriodo(periodo)}.`, monto: multa, base: 0, f29_periodo: periodo, origen: "f29", ref: `f29:${periodo}:multa` });
+  if (!lineas.length) return { error: "Escribe al menos un monto." };
   const repetidas = lineas.filter((l) => S.caja.some((m) => m.ref === l.ref));
-  if (repetidas.length) return aviso(`El pago de ${nombrePeriodo(periodo)} ya está registrado (${repetidas.map((l) => l.clase.replace("f29_", "")).join(", ")}). Elimina esas líneas si quieres volver a registrarlo.`);
-  const atrasado = (Date.parse(hoy()) - Date.parse(fecha)) / 864e5 > DIAS_REGISTRO_ATRASADO;
+  if (repetidas.length) return { error: `El pago de ${nombrePeriodo(periodo)} ya está registrado (${repetidas.map((l) => l.ref.split(":")[2]).join(", ")}). Elimina esas líneas si quieres volver a registrarlo.` };
+  return { lineas };
+}
+async function registrarPagoF29() {
+  const periodo = $("#f29p-periodo").value, fecha = $("#f29p-fecha").value, folio = $("#f29p-folio").value.trim();
+  const montos = {};
+  for (const [clave, , id] of CONCEPTOS_F29_PAGO) montos[clave] = parseMonto($("#" + id).value || "0");
+  const r = lineasPagoF29({ periodo, fecha, folio, montos });
+  if (r.error) return aviso(r.error);
+  const lineas = r.lineas, atrasado = (Date.parse(hoy()) - Date.parse(fecha)) / 864e5 > DIAS_REGISTRO_ATRASADO;
   await ocupado(async () => { await guardarMovimientos(lineas); render(); aviso(`Pago del F29 de ${nombrePeriodo(periodo)} registrado en ${lineas.length} línea(s).${atrasado ? " Registro con más de 31 días de atraso." : ""}`); }, "No se pudo registrar el pago del F29");
 }
 /* Traer el RCV aceptado al libro de caja: primero una vista previa editable de las líneas del mes; nada se guarda hasta confirmar. */

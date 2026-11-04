@@ -1602,6 +1602,42 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   igual("el Libro Mayor no muestra «Saldo anterior» en pantalla, CSV ni PDF", sinSaldoAnt, [false, false, false]);
 
+  console.log("F29 declarado: registrar el pago en el libro de caja y F29 sin pago");
+  const pg = await page.evaluate(async () => {
+    const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), e0 = empresa(), r = {};
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "simplificada", ejercicio: 2046, inicio_actividades: "2046-01-01" }); await w(200);
+    const doc = (c) => ({ declarado: false, fecha_declaracion: "", folio_sii: "", observacion: "", codigos: c, entradas: {}, alertas: [], comparacion: [], guardado_en: new Date().toISOString() });
+    await S.almacen.set(`empresas/${S.eid}/f29/2046-03`, doc({ "89": 120000, "598": 0, "62": 16294, "151": 3698, "48": 0, "91": 139992, "77": 0 }));
+    await S.almacen.set(`empresas/${S.eid}/f29/2046-04`, doc({ "89": 0, "598": 0, "62": 0, "151": 0, "48": 0, "91": 0, "77": 224458 }));
+    await w(250);
+    S.pestana.f29 = "historial"; S.f29Ver = "2046-04"; S.vista = "f29"; render(); await w();
+    r.sinPagoAviso = /no tiene nada que pagar/.test(document.body.innerText) && /remanente de cr/.test(document.body.innerText);
+    r.sinPagoCheckbox = !!document.querySelector("#fg-pago");
+    document.querySelector("#fg-declarado").checked = true; document.querySelector("#fg-folio").value = "9999"; document.querySelector("#fg-fecha").value = "2046-05-10";
+    document.querySelector('[data-form="f29-guardado"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(250);
+    r.sinPagoDeclarado = borradorF29("2046-04")?.declarado === true; r.sinLineas = pagosRegistradosF29("2046-04").length;
+    S.f29Ver = "2046-03"; render(); await w();
+    r.hayCheckbox = !!document.querySelector("#fg-pago");
+    document.querySelector("#fg-declarado").checked = true; document.querySelector("#fg-folio").value = "9411035776"; document.querySelector("#fg-fecha").value = "2046-04-18";
+    document.querySelector("#fg-fecha-pago").value = "2046-04-18"; document.querySelector("#fg-multa").value = "1.500";
+    document.querySelector('[data-form="f29-guardado"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(400);
+    const L = pagosRegistradosF29("2046-03").sort((a, b) => (a.clase || "z") < (b.clase || "z") ? -1 : 1);
+    r.lineas = L.map((m) => [m.clase || "multa", m.monto, m.base, m.doc_num, m.fecha, m.f29_periodo]);
+    r.declarado = borradorF29("2046-03")?.declarado === true;
+    render(); await w(); r.yaRegistrado = /Pago registrado en el libro de caja/.test(document.body.innerText) && !document.querySelector("#fg-pago");
+    S.pestana.f29 = "historial"; S.f29Ver = null; render(); await w();
+    r.etiquetas = [...document.querySelectorAll("#contenido .etiqueta, main .etiqueta")].map((x) => x.textContent.trim()).filter((t) => /declarado/.test(t));
+    for (const m of S.caja.filter((x) => String(x.ref || "").startsWith("f29:2046-"))) await S.almacen.del(`empresas/${S.eid}/caja/${m.id}`);
+    await S.almacen.del(`empresas/${S.eid}/f29/2046-03`); await S.almacen.del(`empresas/${S.eid}/f29/2046-04`);
+    await BD.setEmpresa(S.eid, e0); await w(200); ir("inicio");
+    return r;
+  });
+  ok("un F29 con total $0 avisa que no hay pago y no ofrece registrarlo", pg.sinPagoAviso && !pg.sinPagoCheckbox, JSON.stringify(pg));
+  ok("un F29 con total $0 se puede declarar sin crear líneas en el libro", pg.sinPagoDeclarado && pg.sinLineas === 0, JSON.stringify(pg));
+  ok("un F29 con pago ofrece registrarlo en el libro de caja", pg.hayCheckbox, JSON.stringify(pg));
+  igual("al declararlo se registran IVA, PPM, retención y multas con folio y fecha", pg.lineas, [["f29_iva", 120000, 0, "9411035776", "2046-04-18", "2046-03"], ["f29_ppm", 16294, 0, "9411035776", "2046-04-18", "2046-03"], ["f29_ret", 3698, 3698, "9411035776", "2046-04-18", "2046-03"], ["multa", 1500, 0, "9411035776", "2046-04-18", "2046-03"]]);
+  ok("el pago ya registrado no se ofrece de nuevo", pg.declarado && pg.yaRegistrado, JSON.stringify(pg));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
