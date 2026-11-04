@@ -220,6 +220,40 @@ input[type="range"] { accent-color: var(--accent); }
 @media (min-width: 761px) { .app { grid-template-columns: var(--menu-w, 230px) minmax(0, 1fr); } }
 /* Menú superior fijo (por defecto): los grupos del lateral pasan a menús desplegables y el contenido usa todo el ancho. */
 .grupo { position: relative; }
+.bit-boton { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius); font-size: 13px; font-weight: 600; background: var(--surface); color: var(--fg); }
+.bit-boton:hover { background: var(--surface-2); }
+.bit-boton:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.bit-n { background: var(--accent); color: var(--accent-fg); border-radius: 999px; padding: 0 7px; font-size: 11px; line-height: 17px; }
+.bit-n.mal { background: var(--neg); color: #fff; }
+:root:not([data-posmenu="lateral"]) .bit-boton { margin-left: auto; }
+:root:not([data-posmenu="lateral"]) .menu .ap-boton { margin-left: 0; }
+.bit-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100%); z-index: 90; background: var(--surface); border-left: 1px solid var(--line); box-shadow: -12px 0 30px -14px rgba(0, 0, 0, .35); display: flex; flex-direction: column; }
+.bit-panel[hidden] { display: none; }
+.bit-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 12px 16px 8px; border-bottom: 1px solid var(--line); }
+.bit-cab h2 { font-size: 16px; }
+.bit-cab small { color: var(--muted); display: block; font-size: 12px; }
+.bit-cuerpo { overflow: auto; padding: 12px 16px 20px; display: grid; gap: 12px; align-content: start; }
+.bit-form { display: grid; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.bit-form label { display: grid; gap: 2px; font-size: 12px; color: var(--muted); }
+.bit-form .fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.bit-form textarea { resize: vertical; min-height: 52px; }
+.bit-plantillas { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 12px; color: var(--muted); }
+.bit-plantillas button { all: unset; cursor: pointer; font-size: 12px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); }
+.bit-plantillas button:hover { background: var(--accent-soft); }
+.bit-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.bit-tabs button { all: unset; cursor: pointer; padding: 4px 10px; border-radius: 6px; font-size: 13px; color: var(--muted); }
+.bit-tabs button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.bit-item { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 4px; background: var(--surface); }
+.bit-item.hecho { opacity: .6; }
+.bit-item.vencido { border-color: var(--neg); }
+.bit-item header { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.bit-item p { white-space: pre-wrap; font-size: 13px; }
+.bit-item footer { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12px; color: var(--muted); }
+.bit-item .acc { margin-left: auto; display: flex; gap: 2px; flex-wrap: wrap; }
+.bit-venc { font-weight: 600; } .bit-venc.mal { color: var(--neg); } .bit-venc.aviso { color: var(--warn-fg); }
+#bit-aviso { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+#bit-aviso span { flex: 1; min-width: 220px; }
+@media print { .bit-panel, .bit-boton { display: none !important; } }
 .menu-movil { display: none; }
 .caret { width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); opacity: .7; flex: none; }
 :root:not([data-posmenu="lateral"]) .app { display: block; }
@@ -243,7 +277,7 @@ input[type="range"] { accent-color: var(--accent); }
 :root[data-posmenu="lateral"] .grupo-btn { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 12px 8px 4px; pointer-events: none; }
 :root[data-posmenu="lateral"] .grupo-btn .caret { display: none; }
 @media (max-width: 1500px) { :root:not([data-posmenu="lateral"]) .version { display: none; } }
-@media (max-width: 1180px) { :root:not([data-posmenu="lateral"]) .marca small { display: none; } }
+@media (max-width: 1400px) { :root:not([data-posmenu="lateral"]) .marca small { display: none; } }
 @media (max-width: 760px) {
   :root:not([data-posmenu="lateral"]) .menu { position: sticky; padding: 6px 12px; }
   :root:not([data-posmenu="lateral"]) .menu-movil { display: inline-block; all: unset; cursor: pointer; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius); font-weight: 600; font-size: 13.5px; margin-left: auto; }
@@ -323,6 +357,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
     </div>
     <button type="button" class="menu-movil" id="menu-movil" aria-expanded="false" aria-controls="nav">☰ Menú</button>
     <nav id="nav" aria-label="Secciones"></nav>
+    <button type="button" class="bit-boton" id="bit-boton" aria-controls="bit-panel" aria-expanded="false" title="Bitácora de la empresa: pendientes, criterios y notas">Bitácora</button>
     <button class="ap-boton" id="ap-rapido" type="button" title="Alterna entre tema del sistema, claro y oscuro">Cambiar tema</button>
     <small class="version" id="version"></small>
   </aside>
@@ -330,6 +365,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
     <div class="vacio"><p>Cargando la contabilidad…</p></div>
   </main>
 </div>
+<aside id="bit-panel" class="bit-panel" aria-label="Bitácora de la empresa" hidden></aside>
 <div id="toast" class="toast" role="status" hidden></div>
 
 <script>
@@ -338,7 +374,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.71.0";
+const VERSION = "1.72.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -386,7 +422,7 @@ async function reintentar(fn) {
 }
 
 /* Subcolecciones de cada empresa (se borran junto con ella). */
-const SUBCOLECCIONES = ["asientos", "cambios", "rcv", "f29", "socios", "sueldos", "honorarios", "activos", "depreciaciones", "trabajadores", "liquidaciones", "finiquitos", "caja", "renta"];
+const SUBCOLECCIONES = ["asientos", "cambios", "rcv", "f29", "socios", "sueldos", "honorarios", "activos", "depreciaciones", "trabajadores", "liquidaciones", "finiquitos", "caja", "renta", "bitacora"];
 
 /* Acceso a datos por ruta («empresas/e1/asientos/a1»). Dos implementaciones con la misma interfaz:
    memoria (archivo abierto fuera del artefacto, para probar) y la base del artefacto de Claude. */
@@ -616,7 +652,7 @@ const SECCIONES_SIMPLE = [
   ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["sueldos", "Sueldo empresarial"], ["honorarios", "Honorarios"], ["f29", "Borrador F29"], ["renta", "Renta anual (F22)"], ["dj", "Declaraciones juradas"]]],
   ["Gestión", [["rrhh", "Personal y remuneraciones"], ["activos", "Activo fijo"]]],
   ["Informes", [["resumen", "Resumen ejecutivo"]]],
-  ["Administración", [["revisor", "Revisor de datos"], ["empresa", "Datos de la empresa"], ["contador", "Contador y firma"], ["apariencia", "Apariencia"], ["empresas", "Empresas e importación"]]],
+  ["Administración", [["bitacora", "Bitácora"], ["revisor", "Revisor de datos"], ["empresa", "Datos de la empresa"], ["contador", "Contador y firma"], ["apariencia", "Apariencia"], ["empresas", "Empresas e importación"]]],
 ];
 const SECCIONES = [
   [null, [["inicio", "Inicio"], ["panel", "Panel de clientes"]]],
@@ -626,7 +662,7 @@ const SECCIONES = [
   ["Libros", [["diario", "Libro Diario"], ["mayor", "Libro Mayor"]]],
   ["Informes", [["resumen", "Resumen ejecutivo"], ["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
   ["Administración", [["periodos", "Cierre de meses"], ["cierre", "Cierre de ejercicio"], ["apertura", "Apertura de ejercicio"],
-    ["revisor", "Revisor de datos"], ["empresa", "Datos de la empresa"], ["contador", "Contador y firma"], ["apariencia", "Apariencia"], ["empresas", "Empresas e importación"]]],
+    ["bitacora", "Bitácora"], ["revisor", "Revisor de datos"], ["empresa", "Datos de la empresa"], ["contador", "Contador y firma"], ["apariencia", "Apariencia"], ["empresas", "Empresas e importación"]]],
 ];
 
 const SIN_EMPRESA = ["empresas", "contador", "apariencia", "panel"];
@@ -655,6 +691,7 @@ function renderMenu() {
     return titulo ? `<div class="grupo${items.some(([v]) => v === actual) ? " activo" : ""}"><button type="button" class="grupo-btn" aria-haspopup="true" aria-expanded="false">${titulo}<span class="caret" aria-hidden="true"></span></button><div class="desplegable">${botones}</div></div>` : botones;
   }).join("");
   document.querySelector(".menu")?.classList.remove("movil-abierto"); $("#menu-movil")?.setAttribute("aria-expanded", "false");
+  renderBitacoraBoton();
 }
 /* Menús desplegables de la barra superior: clic para abrir y cerrar, el mouse cambia de menú si ya hay uno abierto, Esc cierra y las flechas se mueven. */
 const menuSuperior = () => document.documentElement.dataset.posmenu !== "lateral";
@@ -702,13 +739,13 @@ function render() {
   else if (esSimplificada() && !SECCIONES_SIMPLE.some(([, it]) => it.some(([v]) => v === S.vista))) html = vistaInicio();
   else html = ({ inicio: vistaInicio, asientos: vistaAsientos, editor: vistaEditor, cuentas: vistaCuentas, diario: vistaDiario, mayor: vistaMayor,
     ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas,
-    periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador, apariencia: vistaApariencia, resumen: vistaResumen, caja: vistaCaja, panel: vistaPanel, revisor: vistaRevisor,
+    periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador, apariencia: vistaApariencia, resumen: vistaResumen, caja: vistaCaja, panel: vistaPanel, revisor: vistaRevisor, bitacora: vistaBitacora,
     rcv: vistaRcv, tributarias: vistaTributarias, f29: vistaF29, sueldos: vistaSueldos, honorarios: vistaHonorarios,
     rrhh: vistaRrhh, activos: vistaActivos, renta: vistaRenta, dj: vistaDj }[S.vista] || vistaInicio)();
   const banner = !S.almacen.enLinea
     ? `<div class="aviso">Esta copia no está conectada con Claude: puedes probarla, pero los cambios se pierden al cerrar. Ábrela como artefacto en claude.ai para guardar.</div>`
     : !S.puedeEscribir ? `<div class="aviso">Tienes acceso de solo lectura: puedes ver los libros e informes, pero no modificar datos.</div>` : "";
-  main.innerHTML = banner + panelFolio() + html;
+  main.innerHTML = banner + bitAvisoHTML() + panelFolio() + html;
   if (S.vista === "editor") actualizarCuadre();
 }
 
@@ -4238,6 +4275,7 @@ function informeHistorialHonorarios(lista) {
 
 /* ================================================================== activo fijo, personal y remuneraciones, renta anual */
 Object.assign(S, {
+  bitacora: [], bitCargada: false, bitAbierta: false, bitFiltro: "pend", bitEdit: null, bitConfirmar: null, bitAviso: null, bitBorrador: null, bitVista: { texto: "", tipo: "", hechas: false },
   activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], finiquitos: [], finiqEdit: null, vacFecha: null, vacTrab: null, resPeriodo: null, resEid: null, presentando: false, migra: null, cartera: { cargando: false, filas: [], actualizado: null, fecha: null }, caja: [], cajaAnio: null, cajaMes: "", cajaDiario: false, cajaImp: null, cajaPago: null, renta: [], desuscribirNx: [],
   prev: { uf: {}, parametros: [] },
   activoEdit: null, afPeriodo: null, afPeriodoEid: null, afAnio: null,
@@ -6483,6 +6521,7 @@ function cambiarEmpresa(id) {
   S.eid = id; recordar("empresa", id);
   S.cajaMes = undefined; S.cajaExpD = S.cajaExpH = null; S.cajaEdit = null; S.cajaPanel = null;
   S.desuscribirAsientos?.(); S.desuscribirAsientos = null;
+  S.desuscribirBit?.(); S.desuscribirBit = null; S.bitacora = []; S.bitCargada = false; S.bitAbierta = false; S.bitEdit = null; S.bitConfirmar = null; S.bitAviso = null; S.bitAvisoEval = false; S.bitBorrador = null;
   S.desuscribirCambios?.(); S.desuscribirCambios = null; S.cambios = [];
   S.desuscribirRcv?.(); S.desuscribirRcv = null; S.rcv = []; S.rcvSel.clear(); S.docEdit = null;
   S.desuscribirF29?.(); S.desuscribirF29 = null; S.f29Borradores = []; S.f29 = null;
@@ -6494,6 +6533,15 @@ function cambiarEmpresa(id) {
   S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
   prepararCuentas();
   if (!id) return;
+  setTimeout(() => { if (id === S.eid) S.bitAvisoEval = true; }, 1500);
+  S.desuscribirBit = S.almacen.onCol(`empresas/${id}/bitacora`, (lista) => {
+    if (id !== S.eid) return;
+    const primera = !S.bitCargada;
+    S.bitacora = lista; S.bitCargada = true;
+    const evaluar = !S.bitAvisoEval; if (evaluar) prepararAvisoBitacora();
+    renderBitacoraBoton(); if (S.bitAbierta) renderBitacora();
+    if ((S.vista === "bitacora" || primera || (evaluar && S.bitAviso)) && !S.ocupado) render();
+  }, () => {});
   S.desuscribirCambios = S.almacen.onCol(`empresas/${id}/cambios`, (lista) => {
     if (id !== S.eid) return;
     S.cambios = lista.sort((a, b) => (a.fecha_hora < b.fecha_hora ? 1 : -1));
@@ -7978,13 +8026,13 @@ async function cargarCartera() {
   try {
     for (const e of S.empresas) {
       const simp = e.tipo_contabilidad === "simplificada", leer = (c) => S.almacen.leerCol(`empresas/${e.id}/${c}`).catch(() => []);
-      const [rcv, f29, trab, liq, mov] = await Promise.all([leer("rcv"), leer("f29"), leer("trabajadores"), leer("liquidaciones"), simp ? leer("caja") : leer("asientos")]);
+      const [rcv, f29, trab, liq, mov, bita] = await Promise.all([leer("rcv"), leer("f29"), leer("trabajadores"), leer("liquidaciones"), simp ? leer("caja") : leer("asientos"), leer("bitacora")]);
       const docs = rcv.filter((d) => d.periodo === periodo), refs = new Set(simp ? mov.map((m) => m.ref).filter(Boolean) : []);
       const sinRegistrar = simp ? rcv.filter((d) => d.periodo >= `${hoyF.slice(0, 4)}-01` && d.periodo < hoyF.slice(0, 7) && signoDoc(d.tipo_doc) > 0 && !refs.has("rcv:" + d.id) && d.fecha < sumarDias(hoyF, -90)).length : rcv.filter((d) => !d.asiento && d.periodo < hoyF.slice(0, 7) && d.periodo >= `${hoyF.slice(0, 4)}-01`).length;
       const ultimo = mov.filter((m) => !m.apertura).map((m) => m.fecha).sort().at(-1) || "", pendContable = mesesPendientesContables(e, mov, simp, hoyF).pendientes.length;
       const activos = trab.filter((t) => t.activo !== false && !t.fecha_finiquito).length;
       filas.push({ id: e.id, nombre: e.razon_social || "(sin nombre)", rut: e.rut || "", simp, f29Guardado: f29.some((b) => b.id === periodo), f29Presentado: !!(e.f29_presentado || {})[periodo] || f29.some((b) => b.id === periodo && b.declarado), docs: docs.length, sinRegistrar,
-        cerrado: simp ? null : !!(e.cerrados || {})[periodo], pendContable, remFalta: activos > 0 && !liq.some((l) => l.periodo === periodo), ultimo });
+        cerrado: simp ? null : !!(e.cerrados || {})[periodo], pendContable, remFalta: activos > 0 && !liq.some((l) => l.periodo === periodo), ultimo, bit: resumenBitacora(bita) });
     }
     C.filas = filas; C.periodo = periodo; C.fecha = hoyF; C.actualizado = Date.now();
   } catch (err) { aviso("No se pudo leer toda la cartera: " + (err?.message || err)); }
@@ -8007,11 +8055,12 @@ function vistaPanel() {
   <div class="barra"><button class="btn" type="button" data-n="panel-actualizar" ${C.cargando ? "disabled" : ""}>${C.cargando ? "Leyendo empresas…" : C.actualizado ? "Actualizar" : "Cargar el estado de mis clientes"}</button>${C.actualizado ? `<span class="sub">Actualizado ${new Date(C.actualizado).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}</span>` : ""}</div>
   ${C.actualizado ? `<div class="tarjetas"><div class="tarjeta"><span>Clientes</span><strong>${filas.length}</strong></div><div class="tarjeta ${sinHacer ? "" : ""}"><span>F29 por presentar</span><strong>${sinHacer}</strong></div>
     <div class="tarjeta ${vencidos ? "neg" : ""}"><span>F29 vencidos</span><strong>${vencidos}</strong></div><div class="tarjeta"><span>Documentos sin registrar</span><strong>${docs}</strong></div><div class="tarjeta ${filas.some((f) => f.pendContable) ? "neg" : ""}"><span>Clientes con meses sin contabilizar</span><strong>${filas.filter((f) => f.pendContable).length}</strong></div></div>
-  <div class="tabla"><table><thead><tr><th>Cliente</th><th>F29 ${esc(nombrePeriodo(C.periodo))}</th><th class="num">Docs. del mes</th><th class="num">Sin registrar</th><th>Mes cerrado</th><th class="num">Meses sin contabilizar</th><th>Remuneraciones</th><th>Último movimiento</th><th></th></tr></thead><tbody>
+  <div class="tabla"><table><thead><tr><th>Cliente</th><th>F29 ${esc(nombrePeriodo(C.periodo))}</th><th class="num">Docs. del mes</th><th class="num">Sin registrar</th><th>Mes cerrado</th><th class="num">Meses sin contabilizar</th><th>Remuneraciones</th><th>Último movimiento</th><th>Bitácora</th><th></th></tr></thead><tbody>
     ${filas.map((f) => `<tr><td><strong>${esc(f.nombre)}</strong><br><small class="ayuda">${esc(f.rut)} · ${f.simp ? "Simplificada" : "Completa"}</small></td>
       <td><span class="etiqueta ${f.est.clase === "mal" ? "cerrado" : ""}" style="border-radius:6px;margin:0;${f.est.clase === "aviso" ? "background:var(--warn-bg);color:var(--warn-fg)" : f.est.clase === "ok" ? "background:var(--ok-bg);color:var(--ok-fg)" : ""}">${esc(f.est.texto)}</span></td>
       <td class="num">${f.docs}</td><td class="num ${f.sinRegistrar ? "neg" : ""}">${f.sinRegistrar || ""}</td><td>${f.cerrado == null ? "—" : f.cerrado ? "Sí" : "No"}</td><td class="num ${f.pendContable ? "neg" : ""}">${f.pendContable || ""}</td>
       <td>${f.remFalta ? `<span class="neg">Falta liquidar</span>` : "—"}</td><td>${f.ultimo ? fmtFecha(f.ultimo) : "—"}</td>
+      <td>${f.bit && f.bit.abiertos ? `<span class="${f.bit.vencidos ? "neg" : ""}">${f.bit.abiertos} pendiente${f.bit.abiertos === 1 ? "" : "s"}${f.bit.vencidos ? ` · ${f.bit.vencidos} vencido${f.bit.vencidos === 1 ? "" : "s"}` : ""}</span>` : "—"}</td>
       <td><button class="btn enlace" type="button" data-n="panel-abrir" data-id="${esc(f.id)}">Abrir</button>${S.puedeEscribir ? `<button class="btn enlace" type="button" data-n="panel-presentado" data-id="${esc(f.id)}">${f.f29Presentado ? "Quitar «presentado»" : "Marcar presentado"}</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
     : `<div class="caja vacio"><p>Pulsa «Cargar el estado de mis clientes» para ver el resumen.</p></div>`}
   <section class="caja"><h2>Próximos vencimientos</h2>
@@ -8019,6 +8068,193 @@ function vistaPanel() {
     <form class="barra" data-form="n-recordatorio"><label>Recordatorio propio<input id="rec-texto" placeholder="Ej. Enviar balance a cliente X" style="min-width:240px"></label><label>Fecha<input type="date" id="rec-fecha" value="${hoyF}"></label><button class="btn sec" type="submit">Agregar</button></form>
     ${rec.length ? `<p class="ayuda">Los recordatorios propios se guardan en este navegador.</p>` : ""}</section>`;
 }
+
+/* ------------------------------------------------------------------ bitácora de la empresa */
+/* Pendientes con vencimiento (que pueden repetirse), características de la empresa, criterios acordados y notas. Vive en empresas/{id}/bitacora y no toca la contabilidad. */
+const TIPOS_BIT = { pendiente: "Pendiente", caracteristica: "Característica de la empresa", criterio: "Criterio o acuerdo", nota: "Nota" };
+const REPITE_BIT = { "": "No se repite", mensual: "Cada mes", trimestral: "Cada 3 meses", semestral: "Cada 6 meses", anual: "Cada año" };
+const MESES_REPITE = { mensual: 1, trimestral: 3, semestral: 6, anual: 12 };
+function sumarMeses(fecha, n, dia) {
+  const [a, m] = fecha.split("-").map(Number), t = m - 1 + n, A = a + Math.floor(t / 12), M = ((t % 12) + 12) % 12 + 1, ult = new Date(A, M, 0).getDate();
+  return `${A}-${String(M).padStart(2, "0")}-${String(Math.min(dia || +fecha.slice(8), ult)).padStart(2, "0")}`;
+}
+const proximaFechaAnual = (mes, dia) => { const h = hoy(), a = +h.slice(0, 4), f = `${a}-${mes}-${dia}`; return f >= h ? f : `${a + 1}-${mes}-${dia}`; };
+const proximoDiaDelMes = (dia) => { const h = hoy(), f = `${h.slice(0, 7)}-${String(dia).padStart(2, "0")}`; return f >= h ? f : sumarMeses(f, 1, dia); };
+function plantillasBit() {
+  return [
+    ["Patente comercial", { tipo: "pendiente", titulo: "Pagar la patente comercial", texto: "Primera y segunda cuota semestral (31 de enero y 31 de julio; depende de la municipalidad).", vence: [proximaFechaAnual("01", "31"), proximaFechaAnual("07", "31")].sort()[0], repite: "semestral", etiquetas: "patente" }],
+    ["F29 y PPM", { tipo: "pendiente", titulo: "Declarar y pagar el F29 y el PPM del mes anterior", texto: "Plazo general el día 12; por internet, hasta el día 20.", vence: proximoDiaDelMes(20), repite: "mensual", etiquetas: "F29" }],
+    ["Operación Renta", { tipo: "pendiente", titulo: "Operación Renta: Formulario 22", texto: "Fecha referencial: el SII fija el plazo cada año.", vence: proximaFechaAnual("04", "30"), repite: "anual", etiquetas: "renta" }],
+    ["DJ 1887 y 1879", { tipo: "pendiente", titulo: "Declaraciones juradas 1887 y 1879", texto: "Fecha referencial: confirma el plazo del año en el calendario del SII.", vence: proximaFechaAnual("03", "31"), repite: "anual", etiquetas: "declaraciones juradas" }],
+  ];
+}
+function resumenBitacora(lista = S.bitacora) {
+  const h = hoy(), pend = lista.filter((x) => x.tipo === "pendiente" && x.estado !== "hecho");
+  const vencidos = pend.filter((x) => x.vence && x.vence < h), proximos = pend.filter((x) => x.vence && x.vence >= h && diasEntre(h, x.vence) <= 7);
+  return { abiertos: pend.length, vencidos: vencidos.length, proximos: proximos.length, fijadas: lista.filter((x) => x.fijada || x.tipo === "caracteristica").length, titulosVencidos: vencidos.sort((a, b) => (a.vence < b.vence ? -1 : 1)).map((x) => x.titulo) };
+}
+function textoVence(e) {
+  if (!e.vence) return null;
+  const d = diasEntre(hoy(), e.vence);
+  if (e.estado === "hecho") return { clase: "", texto: `vencía el ${fmtFecha(e.vence)}` };
+  return d < 0 ? { clase: "mal", texto: `vencido hace ${-d} día${d === -1 ? "" : "s"} (${fmtFecha(e.vence)})` } : d === 0 ? { clase: "aviso", texto: "vence hoy" } : { clase: d <= 7 ? "aviso" : "", texto: `vence en ${d} día${d === 1 ? "" : "s"} (${fmtFecha(e.vence)})` };
+}
+function prepararAvisoBitacora() {
+  const r = resumenBitacora(), partes = [];
+  if (r.vencidos) partes.push(`${r.vencidos} pendiente${r.vencidos === 1 ? "" : "s"} vencido${r.vencidos === 1 ? "" : "s"}: ${r.titulosVencidos.slice(0, 2).join("; ")}${r.vencidos > 2 ? "…" : ""}`);
+  if (r.proximos) partes.push(`${r.proximos} por vencer esta semana`);
+  if (r.fijadas) partes.push(`${r.fijadas} nota${r.fijadas === 1 ? "" : "s"} fijada${r.fijadas === 1 ? "" : "s"}`);
+  S.bitAviso = partes.length ? { eid: S.eid, texto: partes.join(" · ") } : null;
+}
+function bitAvisoHTML() {
+  const a = S.bitAviso;
+  if (!a || a.eid !== S.eid || S.vista === "bitacora") return "";
+  return `<div class="aviso" id="bit-aviso" role="status"><span><strong>Bitácora:</strong> ${esc(a.texto)}.</span><button class="btn enlace" type="button" data-bit="abrir">Abrir bitácora</button><button class="btn enlace" type="button" data-bit="aviso-cerrar" aria-label="Cerrar el aviso">Cerrar</button></div>`;
+}
+function renderBitacoraBoton() {
+  const b = document.getElementById("bit-boton"); if (!b) return;
+  const r = resumenBitacora(), e = empresa();
+  b.disabled = !e; b.hidden = !e;
+  b.innerHTML = `Bitácora${r.abiertos ? ` <span class="bit-n${r.vencidos ? " mal" : ""}">${r.abiertos}</span>` : ""}`;
+  b.setAttribute("aria-expanded", String(!!S.bitAbierta));
+}
+async function guardarEntradaBitacora(d, id) {
+  const ahora = new Date().toISOString(), previo = id ? S.bitacora.find((x) => x.id === id) : null;
+  const doc = { tipo: d.tipo, titulo: d.titulo, texto: d.texto || "", etiquetas: d.etiquetas || [], vence: d.vence || "", repite: d.vence ? d.repite || "" : "", dia_base: d.vence ? +d.vence.slice(8) : 0, prioridad: d.prioridad || "normal", fijada: !!d.fijada,
+    estado: previo?.estado || "abierto", hecho_en: previo?.hecho_en || "", fecha: previo?.fecha || hoy(), autor: previo?.autor || "Usuario", creado: previo?.creado || ahora, actualizado: ahora };
+  id = id || "b" + nuevoId();
+  await S.almacen.set(`empresas/${S.eid}/bitacora/${id}`, doc);
+  return id;
+}
+async function marcarHechoBitacora(id) {
+  const e = S.bitacora.find((x) => x.id === id); if (!e) return null;
+  const { id: _i, ...doc } = e, ahora = new Date().toISOString();
+  await S.almacen.set(`empresas/${S.eid}/bitacora/${id}`, { ...doc, estado: "hecho", hecho_en: hoy(), actualizado: ahora });
+  const n = MESES_REPITE[e.repite];
+  if (n && e.vence) {
+    const sig = "b" + nuevoId();
+    await S.almacen.set(`empresas/${S.eid}/bitacora/${sig}`, { ...doc, vence: sumarMeses(e.vence, n, e.dia_base || +e.vence.slice(8)), estado: "abierto", hecho_en: "", fecha: hoy(), creado: ahora, actualizado: ahora, viene_de: id });
+    return sig;
+  }
+  return null;
+}
+function leerFormularioBitacora() {
+  const v = (id) => document.getElementById(id)?.value ?? "";
+  return { tipo: v("bit-tipo") || "nota", titulo: v("bit-titulo").trim(), texto: v("bit-texto").trim(), vence: v("bit-vence"), repite: v("bit-repite"), prioridad: v("bit-prio") || "normal",
+    fijada: !!document.getElementById("bit-fija")?.checked, etiquetas: v("bit-etiquetas").split(",").map((x) => x.trim()).filter(Boolean) };
+}
+function ordenBitacora(a, b) {
+  const pa = a.tipo === "pendiente" && a.estado !== "hecho", pb = b.tipo === "pendiente" && b.estado !== "hecho";
+  if (pa !== pb) return pa ? -1 : 1;
+  if (pa) return (a.vence || "9999") < (b.vence || "9999") ? -1 : (a.vence || "9999") > (b.vence || "9999") ? 1 : 0;
+  return (a.creado || "") < (b.creado || "") ? 1 : -1;
+}
+function itemBitacoraHTML(e, acciones = true) {
+  const tv = e.tipo === "pendiente" ? textoVence(e) : null, hecho = e.estado === "hecho", esc_ = esc, ro = S.puedeEscribir;
+  const confirmar = S.bitConfirmar === e.id;
+  return `<article class="bit-item${hecho ? " hecho" : ""}${tv?.clase === "mal" ? " vencido" : ""}" data-bit-id="${esc_(e.id)}">
+    <header><span class="etiqueta">${esc_(TIPOS_BIT[e.tipo] || e.tipo)}</span>${e.prioridad === "alta" ? '<span class="etiqueta cerrado">alta</span>' : ""}${e.fijada ? '<span class="etiqueta">fijada</span>' : ""}${hecho ? '<span class="etiqueta">hecho</span>' : ""}<strong>${esc_(e.titulo)}</strong></header>
+    ${e.texto ? `<p>${esc_(e.texto)}</p>` : ""}
+    <footer>${tv ? `<span class="bit-venc ${tv.clase}">${esc_(tv.texto)}</span>` : ""}${e.repite ? `<span>${esc_(REPITE_BIT[e.repite])}</span>` : ""}${(e.etiquetas || []).map((t) => `<span>#${esc_(t)}</span>`).join("")}<span>${esc_(e.autor || "")} · ${fmtFecha(e.fecha || hoy())}</span>
+      ${acciones && ro ? `<span class="acc">${confirmar ? `<span>¿Eliminar?</span><button class="btn enlace" type="button" data-bit="eliminar-si" data-id="${esc_(e.id)}">Sí</button><button class="btn enlace" type="button" data-bit="eliminar-no">No</button>`
+        : `${e.tipo === "pendiente" ? (hecho ? `<button class="btn enlace" type="button" data-bit="reabrir" data-id="${esc_(e.id)}">Reabrir</button>` : `<button class="btn enlace" type="button" data-bit="hecho" data-id="${esc_(e.id)}">Hecho</button>`) : ""}<button class="btn enlace" type="button" data-bit="fijar" data-id="${esc_(e.id)}">${e.fijada ? "Quitar fijada" : "Fijar"}</button><button class="btn enlace" type="button" data-bit="editar" data-id="${esc_(e.id)}">Editar</button><button class="btn enlace" type="button" data-bit="eliminar" data-id="${esc_(e.id)}">Eliminar</button>`}</span>` : ""}</footer></article>`;
+}
+function formularioBitacoraHTML() {
+  const ed = S.bitEdit ? S.bitacora.find((x) => x.id === S.bitEdit) : null, b = ed ? { ...ed, etiquetas: (ed.etiquetas || []).join(", ") } : S.bitBorrador || {};
+  const opt = (mapa, sel) => Object.entries(mapa).map(([k, v]) => `<option value="${esc(k)}" ${k === sel ? "selected" : ""}>${esc(v)}</option>`).join("");
+  return `<form class="bit-form" data-form="bit">
+    <div class="bit-plantillas"><span>Recordatorios habituales:</span>${plantillasBit().map(([n], i) => `<button type="button" data-bit="plantilla" data-i="${i}">${esc(n)}</button>`).join("")}</div>
+    <div class="fila"><label>Tipo<select id="bit-tipo">${opt(TIPOS_BIT, b.tipo || "pendiente")}</select></label>
+      <label>Prioridad<select id="bit-prio"><option value="normal" ${b.prioridad !== "alta" ? "selected" : ""}>Normal</option><option value="alta" ${b.prioridad === "alta" ? "selected" : ""}>Alta</option></select></label></div>
+    <label>Título<input id="bit-titulo" maxlength="140" value="${esc(b.titulo || "")}" placeholder="Ej. Gestionar la patente comercial" required></label>
+    <label>Detalle (opcional)<textarea id="bit-texto" rows="2">${esc(b.texto || "")}</textarea></label>
+    <div class="fila"><label>Vence<input type="date" id="bit-vence" value="${esc(b.vence || "")}"></label><label>Se repite<select id="bit-repite">${opt(REPITE_BIT, b.repite || "")}</select></label></div>
+    <label>Etiquetas (separadas por coma)<input id="bit-etiquetas" value="${esc(b.etiquetas || "")}" placeholder="patente, F29"></label>
+    <label class="check" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="bit-fija" ${b.fijada ? "checked" : ""}> Fijar arriba y mostrar al abrir la empresa</label>
+    <div class="acciones"><button class="btn" type="submit">${ed ? "Guardar cambios" : "Agregar a la bitácora"}</button>${ed ? '<button class="btn sec" type="button" data-bit="cancelar-edicion">Cancelar</button>' : ""}</div></form>`;
+}
+function renderBitacora() {
+  const p = document.getElementById("bit-panel"); if (!p) return;
+  p.hidden = !S.bitAbierta;
+  renderBitacoraBoton();
+  if (!S.bitAbierta) return;
+  const e = empresa(); if (!e) { p.hidden = true; return; }
+  const r = resumenBitacora(), todas = S.bitacora.slice().sort(ordenBitacora);
+  const filtros = { pend: todas.filter((x) => x.tipo === "pendiente" && x.estado !== "hecho"), fijas: todas.filter((x) => x.fijada || x.tipo === "caracteristica"), todo: todas };
+  const lista = filtros[S.bitFiltro] || filtros.pend;
+  const tab = (k, t) => `<button type="button" data-bit="filtro" data-k="${k}" aria-pressed="${S.bitFiltro === k}">${t} (${filtros[k].length})</button>`;
+  p.innerHTML = `<div class="bit-cab"><div><h2>Bitácora</h2><small>${esc(e.razon_social || "")} · ${r.abiertos} pendiente${r.abiertos === 1 ? "" : "s"}${r.vencidos ? `, ${r.vencidos} vencido${r.vencidos === 1 ? "" : "s"}` : ""}</small></div>
+      <span><button class="btn enlace" type="button" data-bit="pantalla">Ver todo</button><button class="btn enlace" type="button" data-bit="cerrar" aria-label="Cerrar la bitácora">Cerrar</button></span></div>
+    <div class="bit-cuerpo">${S.puedeEscribir ? formularioBitacoraHTML() : '<div class="aviso">Tienes acceso de solo lectura.</div>'}
+      <div class="bit-tabs" role="group" aria-label="Filtrar entradas">${tab("pend", "Pendientes")}${tab("fijas", "Fijadas")}${tab("todo", "Todo")}</div>
+      ${lista.length ? lista.map((x) => itemBitacoraHTML(x)).join("") : `<p class="ayuda">${S.bitFiltro === "pend" ? "No hay pendientes abiertos." : S.bitFiltro === "fijas" ? "No hay notas fijadas." : "La bitácora de esta empresa está vacía."} Usa el formulario de arriba para anotar algo.</p>`}</div>`;
+}
+function abrirBitacora(abrir = true) {
+  S.bitAbierta = abrir; S.bitAvisoEval = true; if (abrir) S.bitAviso = null;
+  renderBitacora(); if (abrir) { render(); document.getElementById("bit-titulo")?.focus(); }
+}
+async function accionBitacora(t) {
+  const acc = t.dataset.bit, id = t.dataset.id;
+  if (acc === "abrir") return abrirBitacora(true);
+  if (acc === "cerrar") return abrirBitacora(false);
+  if (acc === "aviso-cerrar") { S.bitAviso = null; S.bitAvisoEval = true; render(); return; }
+  if (acc === "pantalla") { abrirBitacora(false); ir("bitacora"); return; }
+  if (acc === "filtro") { S.bitFiltro = t.dataset.k; return renderBitacora(); }
+  if (acc === "plantilla") { const p = plantillasBit()[+t.dataset.i]; if (p) { S.bitEdit = null; S.bitBorrador = { ...p[1], prioridad: "normal" }; renderBitacora(); } return; }
+  if (acc === "editar") { S.bitEdit = id; S.bitBorrador = null; renderBitacora(); document.getElementById("bit-titulo")?.focus(); return; }
+  if (acc === "cancelar-edicion") { S.bitEdit = null; return renderBitacora(); }
+  if (acc === "eliminar") { S.bitConfirmar = id; return renderBitacora(); }
+  if (acc === "eliminar-no") { S.bitConfirmar = null; return renderBitacora(); }
+  if (acc === "eliminar-si") { await ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/bitacora/${id}`); S.bitConfirmar = null; if (S.bitEdit === id) S.bitEdit = null; aviso("Entrada eliminada."); }, "No se pudo eliminar la entrada"); return; }
+  if (acc === "fijar") { const e = S.bitacora.find((x) => x.id === id); if (e) { const { id: _i, ...doc } = e; await ocupado(async () => { await S.almacen.set(`empresas/${S.eid}/bitacora/${id}`, { ...doc, fijada: !e.fijada, actualizado: new Date().toISOString() }); }, "No se pudo cambiar la entrada"); } return; }
+  if (acc === "reabrir") { const e = S.bitacora.find((x) => x.id === id); if (e) { const { id: _i, ...doc } = e; await ocupado(async () => { await S.almacen.set(`empresas/${S.eid}/bitacora/${id}`, { ...doc, estado: "abierto", hecho_en: "", actualizado: new Date().toISOString() }); }, "No se pudo reabrir la entrada"); } return; }
+  if (acc === "hecho") { await ocupado(async () => { const sig = await marcarHechoBitacora(id); aviso(sig ? "Hecho. Se creó el siguiente recordatorio." : "Marcado como hecho."); }, "No se pudo marcar como hecho"); return; }
+}
+async function guardarFormularioBitacora() {
+  const d = leerFormularioBitacora();
+  if (!d.titulo) return aviso("Escribe un título para la entrada.");
+  if (d.repite && !d.vence) return aviso("Para que se repita, indica la fecha de vencimiento.");
+  const id = S.bitEdit;
+  await ocupado(async () => { await guardarEntradaBitacora(d, id); S.bitEdit = null; S.bitBorrador = null; aviso(id ? "Entrada actualizada." : "Entrada agregada a la bitácora."); }, "No se pudo guardar la entrada");
+}
+function informeBitacora(lista) {
+  const e = empresa() || {};
+  const inf = new Informe("BITÁCORA DE LA EMPRESA", `${(e.razon_social || "").toUpperCase()} · ${lista.length} ENTRADA${lista.length === 1 ? "" : "S"}`,
+    [col("Fecha", 11), col("Tipo", 18), col("Título", 30), col("Detalle", 44), col("Vence", 11), col("Se repite", 13), col("Estado", 9), col("Autor", 9)], "bitacora", { horizontal: true });
+  for (const x of lista) inf.agregar([fmtFecha(x.fecha || ""), TIPOS_BIT[x.tipo] || x.tipo, x.titulo, x.texto || "", x.vence ? fmtFecha(x.vence) : "", REPITE_BIT[x.repite || ""], x.tipo === "pendiente" ? (x.estado === "hecho" ? "Hecho" : "Abierto") : "", x.autor || ""]);
+  return inf;
+}
+function vistaBitacora() {
+  const V = S.bitVista, t = (V.texto || "").toLowerCase();
+  const lista = S.bitacora.filter((x) => (V.hechas || x.estado !== "hecho") && (!V.tipo || x.tipo === V.tipo) && (!t || `${x.titulo} ${x.texto || ""} ${(x.etiquetas || []).join(" ")}`.toLowerCase().includes(t))).sort(ordenBitacora);
+  S.informe = () => informeBitacora(lista);
+  S.csv = { archivo: `bitacora_${slug()}.csv`, filas: [["Fecha", "Tipo", "Título", "Detalle", "Vence", "Se repite", "Estado", "Etiquetas", "Autor"],
+    ...lista.map((x) => [x.fecha || "", TIPOS_BIT[x.tipo] || x.tipo, x.titulo, x.texto || "", x.vence || "", REPITE_BIT[x.repite || ""], x.tipo === "pendiente" ? (x.estado === "hecho" ? "Hecho" : "Abierto") : "", (x.etiquetas || []).join(", "), x.autor || ""])] };
+  const r = resumenBitacora();
+  return `${cabecera("Bitácora", `${empresa()?.razon_social || ""} · ${r.abiertos} pendiente${r.abiertos === 1 ? "" : "s"}${r.vencidos ? ` (${r.vencidos} vencido${r.vencidos === 1 ? "" : "s"})` : ""}`)}
+  <div class="barra"><label>Buscar<input id="bv-texto" value="${esc(V.texto)}" placeholder="Título, detalle o etiqueta"></label>
+    <label>Tipo<select id="bv-tipo"><option value="">Todos</option>${Object.entries(TIPOS_BIT).map(([k, v]) => `<option value="${k}" ${V.tipo === k ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>
+    <label class="check" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="bv-hechas" ${V.hechas ? "checked" : ""}> Incluir pendientes hechos</label>
+    ${puedeEditar(`<button class="btn" type="button" data-bit="abrir">+ Anotar</button>`)}${botonesExportar()}</div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Título y detalle</th><th>Vence</th><th>Se repite</th><th>Estado</th><th>Autor</th><th></th></tr></thead><tbody>${lista.map((x) => { const tv = x.tipo === "pendiente" ? textoVence(x) : null;
+    return `<tr><td>${fmtFecha(x.fecha || "")}</td><td>${esc(TIPOS_BIT[x.tipo] || x.tipo)}${x.fijada ? ' <span class="etiqueta">fijada</span>' : ""}${x.prioridad === "alta" ? ' <span class="etiqueta cerrado">alta</span>' : ""}</td>
+      <td style="white-space:normal;min-width:260px"><strong>${esc(x.titulo)}</strong>${x.texto ? `<br><small class="ayuda" style="white-space:pre-wrap">${esc(x.texto)}</small>` : ""}${(x.etiquetas || []).length ? `<br><small class="ayuda">${x.etiquetas.map((e2) => "#" + esc(e2)).join(" ")}</small>` : ""}</td>
+      <td class="${tv?.clase === "mal" ? "neg" : ""}">${tv ? esc(tv.texto) : ""}</td><td>${esc(REPITE_BIT[x.repite || ""] === "No se repite" ? "" : REPITE_BIT[x.repite || ""])}</td><td>${x.tipo === "pendiente" ? (x.estado === "hecho" ? "Hecho" : "Abierto") : ""}</td><td>${esc(x.autor || "")}</td>
+      <td>${S.puedeEscribir ? `${x.tipo === "pendiente" && x.estado !== "hecho" ? `<button class="btn enlace" type="button" data-bit="hecho" data-id="${esc(x.id)}">Hecho</button>` : ""}<button class="btn enlace" type="button" data-bit="editar-abrir" data-id="${esc(x.id)}">Editar</button>` : ""}</td></tr>`; }).join("")}</tbody></table></div>`
+    : `<div class="caja vacio"><p>${S.bitacora.length ? "Ninguna entrada coincide con el filtro." : "La bitácora de esta empresa está vacía. Pulsa «Anotar» o el botón «Bitácora» de la barra para agregar un pendiente, una característica de la empresa o una nota."}</p></div>`}`;
+}
+document.addEventListener("click", (ev) => {
+  const bb = ev.target.closest("#bit-boton"); if (bb) { abrirBitacora(!S.bitAbierta); return; }
+  const t = ev.target.closest("[data-bit]"); if (!t) return;
+  if (t.dataset.bit === "editar-abrir") { S.bitEdit = t.dataset.id; S.bitBorrador = null; abrirBitacora(true); return; }
+  accionBitacora(t);
+});
+document.addEventListener("submit", (ev) => { if (ev.target.dataset?.form === "bit") { ev.preventDefault(); guardarFormularioBitacora(); } });
+document.addEventListener("change", (ev) => {
+  const id = ev.target.id;
+  if (id === "bv-texto" || id === "bv-tipo" || id === "bv-hechas") { S.bitVista = { texto: $("#bv-texto").value, tipo: $("#bv-tipo").value, hechas: $("#bv-hechas").checked }; render(); }
+});
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && S.bitAbierta && !document.querySelector("#nav .grupo.abierto")) abrirBitacora(false); });
 
 /* ------------------------------------------------------------------ importador de RCV desde Excel o planillas de texto */
 /* Lee libros de Excel (.xlsx) o archivos de texto con «;», con una o varias hojas (un mes por hoja), y ofrece una vista previa antes de guardar.
