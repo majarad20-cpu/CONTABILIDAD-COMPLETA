@@ -1773,6 +1773,31 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("no deja repetir el RUT, agrega al segundo socio y deja de avisar al sumar 100 %", prop.dup === 1 && prop.dos === 2 && prop.suma100, JSON.stringify(prop));
   ok("los socios van en el respaldo y se pueden eliminar", prop.respaldo === 2 && prop.tras === 1, JSON.stringify(prop));
 
+  console.log("F22 declarado");
+  const f22t = await page.evaluate(async () => {
+    const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {};
+    S.pestana.renta = "declarado"; S.rentaAnio = String(empresa().ejercicio); S.vista = "renta"; render(); await w();
+    r.pestana = /Registrar el F22 del año comercial/.test(document.body.innerText);
+    const poner = (id, v) => { document.querySelector(id).value = v; };
+    poner("#f22-folio", "321 270 106"); poner("#f22-fecha", "2047-04-29"); poner("#f22-1400", "106.484.169"); poner("#f22-1440", "16.997.331"); poner("#f22-20", "2.124.666"); poner("#f22-91", "167.772");
+    document.querySelector('[data-form="f22"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(400);
+    const d = S.f22.find((x) => x.id === String(empresa().ejercicio));
+    r.guardado = d && [d.folio, d.fecha_presentacion, d.codigos["1400"], d.codigos["1440"], d.codigos["20"], d.codigos["91"]];
+    r.tabla = /F22 declarados/.test(document.body.innerText) && /321270106/.test(document.body.innerText);
+    r.comparacion = /Declarado contra el borrador/.test(document.body.innerText) && /Base imponible afecta a IDPC/.test(document.body.innerText);
+    r.informe = S.informe().filas.length > 0 && (S.csv.filas.flat().join("|").includes("16997331"));
+    r.respaldo = (await datosRespaldo()).colecciones.f22.length;
+    document.querySelector('[data-accion="f22-pedir-eliminar"]').click(); await w();
+    document.querySelector('[data-accion="f22-eliminar"]').click(); await w(400);
+    r.tras = S.f22.length; S.pestana.renta = "rli"; ir("inicio");
+    return r;
+  });
+  ok("la pestaña F22 declarado se abre", f22t.pestana, JSON.stringify(f22t));
+  igual("se guarda el F22 con folio, fecha y cifras", f22t.guardado, ["321270106", "2047-04-29", 106484169, 16997331, 2124666, 167772]);
+  ok("el F22 guardado aparece en la lista y se compara con el borrador", f22t.tabla && f22t.comparacion, JSON.stringify(f22t));
+  ok("el informe y el CSV traen el F22, y el respaldo lo incluye", f22t.informe && f22t.respaldo === 1, JSON.stringify(f22t));
+  ok("el F22 declarado se puede eliminar", f22t.tras === 0, JSON.stringify(f22t));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
