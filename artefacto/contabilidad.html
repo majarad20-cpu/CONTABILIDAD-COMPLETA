@@ -374,7 +374,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.72.0";
+const VERSION = "1.73.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -481,7 +481,7 @@ const S = {
   periodosAnio: null, cierreAnio: null, apertura: null,
   f29Borradores: [], desuscribirF29: null, f29: null, utm: {},
   informe: null, folioPendiente: false, pestana: {}, historialAnio: {}, f29Ver: null,
-  socios: [], sueldos: [], honorarios: [], desuscribirRem: [], remPeriodo: null, remPeriodoEid: null, socioEdit: null, boletaEdit: null,
+  socios: [], sueldos: [], honorarios: [], desuscribirRem: [], remPeriodo: null, remPeriodoEid: null, socioEdit: null, propEdit: null, boletaEdit: null,
   rcv: [], desuscribirRcv: null, rcvPeriodo: null, rcvPeriodoEid: null, rcvSel: new Set(), rcvMensajes: null, docEdit: null,
 };
 
@@ -668,7 +668,7 @@ const SECCIONES = [
 const SIN_EMPRESA = ["empresas", "contador", "apariencia", "panel"];
 function ir(vista) {
   if (vista === "nuevo") { abrirEditor(null); return; }
-  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.f29Pago = null; S.vincular = null; S.cuentaRapida = null; S.tribPend = null; S.docEdit = null; S.rcvMensajes = null; S.migra = null; S.migraCaja = null; S.socioEdit = null; S.boletaEdit = null;
+  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.f29Pago = null; S.vincular = null; S.cuentaRapida = null; S.tribPend = null; S.docEdit = null; S.rcvMensajes = null; S.migra = null; S.migraCaja = null; S.socioEdit = null; S.propEdit = null; S.boletaEdit = null;
   S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null;
   if (vista !== "editor") recordar("vista", vista);
   render();
@@ -1305,6 +1305,7 @@ function vistaEmpresa() {
   <form class="caja" data-form="empresa">${formularioEmpresa(e, false)}
     ${puedeEditar(`<div class="acciones"><button class="btn" type="submit">Guardar datos</button></div>`)}
   </form>
+  ${panelPropietarios()}
   ${panelRespaldo()}
   ${puedeEditar(`<section class="caja"><h2>Eliminar empresa</h2>
     <p class="ayuda">Borra la empresa con su plan de cuentas y sus ${S.lista.length} asientos de esta versión en línea. El programa de tu PC no se modifica. Descarga antes un respaldo (arriba) por si necesitas recuperarla.</p>
@@ -1365,6 +1366,57 @@ async function crearEmpresa() {
   }, "No se pudo crear la empresa");
 }
 
+/* Socios o propietarios de la empresa, como figuran en la carpeta tributaria del SII: participación en el capital y en las utilidades. */
+const propietarios = () => (Array.isArray(empresa()?.propietarios) ? empresa().propietarios : []);
+const textoPct = (n) => String(Math.round((+n || 0) * 100) / 100).replace(".", ",");
+function panelPropietarios() {
+  const lista = propietarios(), pe = S.propEdit, e = empresa();
+  const sumaC = lista.reduce((t, p) => t + (+p.part_capital || 0), 0), sumaU = lista.reduce((t, p) => t + (+p.part_utilidades || 0), 0);
+  const formulario = (p) => `<form class="barra" data-form="propietario">
+      <label>Nombre o razón social<input id="pr-nombre" value="${esc(p.nombre)}"></label><label>RUT<input id="pr-rut" value="${esc(p.rut)}"></label>
+      <label>Fecha de incorporación<input type="date" id="pr-desde" value="${esc(p.incorporacion || "")}"></label>
+      <label>% del capital<input id="pr-capital" inputmode="decimal" value="${esc(textoPct(p.part_capital))}"></label>
+      <label>% de las utilidades<input id="pr-utilidades" inputmode="decimal" value="${esc(textoPct(p.part_utilidades))}"></label>
+      <label class="check"><input type="checkbox" id="pr-rep" ${p.representante ? "checked" : ""}> Representante legal</label>
+      <button class="btn" type="submit">Guardar</button><button class="btn sec" type="button" data-accion="prop-cancelar">Cancelar</button></form>`;
+  const fila = (p, i) => pe && pe.i === i ? `<tr><td colspan="7">${formulario(pe)}</td></tr>`
+    : `<tr><td>${esc(p.nombre)}</td><td class="cod">${esc(p.rut)}</td><td>${p.incorporacion ? fmtFecha(p.incorporacion) : ""}</td><td class="num">${textoPct(p.part_capital)} %</td><td class="num">${textoPct(p.part_utilidades)} %</td>
+        <td>${p.representante ? `<span class="etiqueta">representante legal</span>${rutValido(e.rut_representante || "") && limpiarRut(e.rut_representante) === limpiarRut(p.rut) ? " · en la ficha" : ""}` : ""}</td>
+        <td>${puedeEditar(S.confirmar === "prop:" + i
+          ? `<span class="acciones"><button class="btn peligro" type="button" data-accion="prop-eliminar" data-i="${i}">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button></span>`
+          : `<button class="btn enlace" type="button" data-accion="prop-editar" data-i="${i}">Editar</button>${p.representante ? `<button class="btn enlace" type="button" data-accion="prop-ficha" data-i="${i}">Poner en la ficha</button>` : ""}<button class="btn enlace" type="button" data-accion="prop-pedir-eliminar" data-i="${i}">Eliminar</button>`)}</td></tr>`;
+  const avisos = lista.length ? [Math.abs(sumaC - 100) > 0.001 ? `El capital suma ${textoPct(sumaC)} %` : "", Math.abs(sumaU - 100) > 0.001 ? `las utilidades suman ${textoPct(sumaU)} %` : ""].filter(Boolean) : [];
+  return `<section class="caja"><h2>Socios o propietarios</h2>
+    <p class="ayuda">Quiénes son los dueños de la empresa y cuánto participa cada uno (la carpeta tributaria del SII trae este detalle). Sirve para repartir utilidades, retiros y los datos de la renta. Esto no es lo mismo que los socios que se pagan sueldo empresarial, que están en Remuneraciones.</p>
+    ${lista.length ? `<div class="tabla"><table><thead><tr><th>Nombre</th><th>RUT</th><th>Desde</th><th class="num">% capital</th><th class="num">% utilidades</th><th></th><th></th></tr></thead>
+      <tbody>${lista.map(fila).join("")}</tbody>
+      <tfoot><tr class="total"><td colspan="3">Total</td><td class="num">${textoPct(sumaC)} %</td><td class="num">${textoPct(sumaU)} %</td><td colspan="2"></td></tr></tfoot></table></div>` : `<div class="vacio"><p>Aún no hay socios registrados.</p></div>`}
+    ${avisos.length ? `<p class="ayuda">⚠ ${esc(avisos.join(" y "))}: deberían sumar 100 %.</p>` : ""}
+    ${puedeEditar(pe && pe.i === -1 ? formulario(pe) : `<div class="acciones"><button class="btn sec" type="button" data-accion="prop-nuevo">+ Agregar socio o propietario</button></div>`)}
+  </section>`;
+}
+async function guardarPropietario() {
+  const pe = S.propEdit; if (!pe) return;
+  const nombre = $("#pr-nombre").value.trim(), rut = $("#pr-rut").value.trim(), desde = $("#pr-desde").value;
+  const num = (id) => Number(String($(id).value || "0").replace(",", ".")), cap = num("#pr-capital"), uti = num("#pr-utilidades");
+  if (!nombre) return aviso("Ingresa el nombre del socio.");
+  if (!rutValido(rut)) return aviso("El RUT del socio no es válido (revisa el dígito verificador).");
+  if (![cap, uti].every((n) => Number.isFinite(n) && n >= 0 && n <= 100)) return aviso("Los porcentajes deben estar entre 0 y 100, por ejemplo 50 o 33,33.");
+  const r = formatoRut(rut), lista = propietarios().slice();
+  if (lista.some((p, i) => limpiarRut(p.rut) === limpiarRut(r) && i !== pe.i)) return aviso(`Ya figura un socio con el RUT ${r}.`);
+  const reg = { nombre: nombre.toUpperCase(), rut: r, incorporacion: desde || "", part_capital: cap, part_utilidades: uti, representante: $("#pr-rep").checked };
+  if (pe.i === -1) lista.push(reg); else lista[pe.i] = reg;
+  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), propietarios: lista }); S.propEdit = null; render(); aviso("Socio guardado."); }, "No se pudo guardar el socio");
+}
+async function eliminarPropietario(i) {
+  const lista = propietarios().filter((_, k) => k !== i);
+  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), propietarios: lista }); S.confirmar = null; render(); aviso("Socio eliminado."); }, "No se pudo eliminar el socio");
+}
+async function propietarioEnFicha(i) {
+  const p = propietarios()[i]; if (!p) return;
+  await ocupado(async () => { await BD.setEmpresa(S.eid, { ...empresa(), representante: p.nombre, rut_representante: p.rut }); render(); aviso(`${p.nombre} quedó como representante legal en la ficha.`); }, "No se pudo actualizar la ficha");
+}
+
 async function guardarEmpresa() {
   const d = leerEmpresa();
   if (typeof d === "string") return aviso(d);
@@ -1412,7 +1464,7 @@ async function importar() {
   const eid = "e" + nuevoId();
   const mapa = new Map(cuentas.map((c) => [String(c.id), "c" + c.id]));
   const datosEmpresa = { razon_social: e.razon_social || "", rut: e.rut || "", giro: e.giro || "", direccion: e.direccion || "", comuna: e.comuna || "",
-    representante: e.representante || "", rut_representante: e.rut_representante || "", regimen: e.regimen || "", ultimo_folio: +e.ultimo_folio || 0, ejercicio: +e.ejercicio || new Date().getFullYear(),
+    representante: e.representante || "", rut_representante: e.rut_representante || "", propietarios: Array.isArray(e.propietarios) ? e.propietarios : [], regimen: e.regimen || "", ultimo_folio: +e.ultimo_folio || 0, ejercicio: +e.ejercicio || new Date().getFullYear(),
     creado: Date.now(), cerrados: imp.datos.cerrados || {}, tasa_ppm: +imp.datos.tasa_ppm || 0,
     tributarias: Object.fromEntries(Object.entries(imp.datos.tributarias || {}).map(([k, v]) => [k, "c" + v])),
     cuentas_rut: Object.fromEntries(Object.entries(imp.datos.cuentas_rut || {}).map(([k, v]) => [k, "c" + v])),
@@ -6661,6 +6713,12 @@ document.addEventListener("click", (ev) => {
     case "excel": exportar("excel"); break;
     case "cancelar-folio": S.folioPendiente = false; render(); break;
     case "pdf-asiento": { const a = S.lista.find((x) => x.id === ed.id); if (a) { S.informe = () => informeComprobante(a); exportar("pdf"); } break; }
+    case "prop-nuevo": S.propEdit = { i: -1, nombre: "", rut: "", incorporacion: "", part_capital: 0, part_utilidades: 0, representante: false }; render(); $("#pr-nombre")?.focus(); break;
+    case "prop-editar": S.propEdit = { i: +t.dataset.i, ...propietarios()[+t.dataset.i] }; render(); break;
+    case "prop-cancelar": S.propEdit = null; render(); break;
+    case "prop-pedir-eliminar": S.confirmar = "prop:" + t.dataset.i; render(); break;
+    case "prop-eliminar": eliminarPropietario(+t.dataset.i); break;
+    case "prop-ficha": propietarioEnFicha(+t.dataset.i); break;
     case "nuevo-socio": S.socioEdit = { id: null, nombre: "", rut: "", sueldo_bruto: 0 }; render(); $("#so-nombre")?.focus(); break;
     case "editar-socio": S.socioEdit = { ...socioPorId(t.dataset.id) }; render(); break;
     case "cancelar-socio": S.socioEdit = null; render(); break;
@@ -6703,6 +6761,7 @@ document.addEventListener("submit", (ev) => {
     case "cuenta": guardarCuenta(); break;
     case "cuenta-rapida": crearCuentaRapida(); break;
     case "empresa": guardarEmpresa(); break;
+    case "propietario": guardarPropietario(); break;
     case "nueva-empresa": crearEmpresa(); break;
     case "contador": guardarContador(); break;
     case "documento": guardarDocumento(); break;

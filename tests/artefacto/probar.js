@@ -1739,6 +1739,40 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("marcar hecho un pendiente repetido crea el siguiente 6 meses después", bt.hecho, ["hecho", "abierto", true, "semestral"]);
   ok("la pantalla completa lista y exporta, y la limpieza deja la bitácora vacía", bt.pantalla && bt.csv && bt.limpio, JSON.stringify(bt));
 
+  console.log("Socios o propietarios de la empresa");
+  const prop = await page.evaluate(async () => {
+    const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), e0 = empresa(), r = {};
+    S.vista = "empresa"; render(); await w();
+    r.vacio = /Aún no hay socios registrados/.test(document.body.innerText);
+    document.querySelector('[data-accion="prop-nuevo"]').click(); await w();
+    const poner = (id, v) => { document.querySelector(id).value = v; };
+    poner("#pr-nombre", "ana soto"); poner("#pr-rut", "12.345.678-5"); poner("#pr-desde", "2021-09-24"); poner("#pr-capital", "60"); poner("#pr-utilidades", "60,5");
+    document.querySelector("#pr-rep").checked = true;
+    document.querySelector('[data-form="propietario"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(300);
+    r.guardado = JSON.stringify(propietarios());
+    r.aviso = /deberían sumar 100/.test(document.body.innerText) && /60 %/.test(document.body.innerText) && /60,5 %/.test(document.body.innerText);
+    document.querySelector('[data-accion="prop-ficha"]').click(); await w(300);
+    r.ficha = [empresa().representante, empresa().rut_representante];
+    document.querySelector('[data-accion="prop-nuevo"]').click(); await w();
+    poner("#pr-nombre", "otro"); poner("#pr-rut", "12.345.678-5"); poner("#pr-capital", "40"); poner("#pr-utilidades", "39,5");
+    document.querySelector('[data-form="propietario"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(200);
+    r.dup = propietarios().length;
+    poner("#pr-rut", "7.654.321-6"); document.querySelector('[data-form="propietario"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(300);
+    r.dos = propietarios().length; r.suma100 = !/deberían sumar 100/.test(document.body.innerText);
+    r.respaldo = (await datosRespaldo()).empresa.propietarios.length;
+    document.querySelector('[data-accion="prop-pedir-eliminar"][data-i="1"]').click(); await w();
+    document.querySelector('[data-accion="prop-eliminar"]').click(); await w(300);
+    r.tras = propietarios().length;
+    await BD.setEmpresa(S.eid, e0); await w(200); ir("inicio");
+    return r;
+  });
+  ok("el apartado de socios parte vacío", prop.vacio, JSON.stringify(prop));
+  igual("se guarda el socio con nombre en mayúsculas, RUT formateado y porcentajes", prop.guardado, JSON.stringify([{ nombre: "ANA SOTO", rut: "12.345.678-5", incorporacion: "2021-09-24", part_capital: 60, part_utilidades: 60.5, representante: true }]));
+  ok("avisa cuando los porcentajes no suman 100 %", prop.aviso, JSON.stringify(prop));
+  igual("el socio representante se puede poner en la ficha", prop.ficha, ["ANA SOTO", "12.345.678-5"]);
+  ok("no deja repetir el RUT, agrega al segundo socio y deja de avisar al sumar 100 %", prop.dup === 1 && prop.dos === 2 && prop.suma100, JSON.stringify(prop));
+  ok("los socios van en el respaldo y se pueden eliminar", prop.respaldo === 2 && prop.tras === 1, JSON.stringify(prop));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
