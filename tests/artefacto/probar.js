@@ -1844,6 +1844,40 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("las liquidaciones se imprimen en una copia, dos copias por hoja y dos copias en hojas separadas", Object.values(remu.pdf).every((n) => n > 2000) && remu.pdf["dos-separadas"] > remu.pdf.una, JSON.stringify(remu.pdf));
   ok("el anexo y el certificado de trabajo se generan", remu.anexo && remu.pdfAnexo === true && remu.pdfCert === true && /Ana Prueba|ANA PRUEBA/i.test(remu.cert) && /presta servicios/.test(remu.cert), JSON.stringify(remu));
 
+  console.log("Pago en Previred");
+  const ppv = await page.evaluate(async () => {
+    const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {}, e0 = empresa();
+    const banco = S.cuentas.find((c) => c.codigo === "1.1.02").id, pasivo = S.cuentas.find((c) => c.imputable && c.tipo === "PASIVO").id, gasto = S.cuentas.find((c) => c.imputable && c.tipo === "GASTO").id;
+    await BD.setEmpresa(S.eid, { ...e0, tipo_contabilidad: "completa", tributarias: { ...(e0.tributarias || {}), rem_cotizaciones: pasivo, rem_multas: gasto, previred_pago: banco } }); await w(200);
+    const base = { ...trabajadorVacio(), id: "wpv", nombre: "Ana Previred", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2025-01-01", tipo: "indefinido", fecha_nac: "1990-01-01", jornada: 44, sueldo_base: 600000, gratificacion: "ninguna", afp: "Provida", afp_comision: 1.45 };
+    const liq = calcularLiquidacionTrabajador(base, "2026-02", { dias: 30, festivos: 0 });
+    await S.almacen.set(`empresas/${S.eid}/liquidaciones/wpv_2026-02`, liq); await w(250);
+    S.liqPeriodo = "2026-02"; S.liqPeriodoEid = S.eid; S.pestana.rrhh = "libro"; S.vista = "rrhh"; render(); await w();
+    r.panel = /Pago en Previred/.test(document.body.innerText) && /Total a pagar en Previred/.test(document.body.innerText);
+    r.esperado = liq.afp + liq.salud + liq.cesantia + liq.aportes_empleador;
+    document.querySelector("#pv-fecha").value = "2026-03-12"; document.querySelector("#pv-folio").value = "2005202603564650"; document.querySelector("#pv-multas").value = "1.500";
+    document.querySelector('[data-n="previred-pagar"]').click(); await w();
+    const lin = S.edit.lineas.map((x) => [x.debe ? parseMonto(x.debe) : 0, x.haber ? parseMonto(x.haber) : 0]);
+    r.lineas = lin; r.cuadra = lin.reduce((t, x) => t + x[0], 0) === lin.reduce((t, x) => t + x[1], 0);
+    r.glosa = S.edit.glosa;
+    await guardarAsiento(); await w(400);
+    const pv = S.previred.find((x) => x.id === "2026-02");
+    r.registro = pv && [pv.fecha_pago, pv.folio, pv.cotizaciones, pv.recargos, pv.total];
+    S.vista = "rrhh"; S.pestana.rrhh = "libro"; render(); await w();
+    r.pagado = /pagado/.test(document.body.innerText) && /planilla N° 2005202603564650/.test(document.body.innerText) && !document.querySelector('[data-n="previred-pagar"]');
+    const as = S.lista.find((x) => x.id === pv.asiento); r.asientoGlosa = as && as.glosa;
+    await BD.deleteAsiento(S.eid, pv.asiento); await liberarRemuneraciones(pv.asiento); await w(300);
+    r.liberado = S.previred.length === 0;
+    await S.almacen.del(`empresas/${S.eid}/liquidaciones/wpv_2026-02`); await BD.setEmpresa(S.eid, e0); await w(200); ir("inicio");
+    return r;
+  });
+  ok("el libro de Previred muestra el detalle a pagar del mes", ppv.panel, JSON.stringify(ppv));
+  igual("el asiento del pago carga cotizaciones y multas contra banco", ppv.lineas, [[ppv.esperado, 0], [1500, 0], [0, ppv.esperado + 1500]]);
+  ok("el asiento cuadra y la glosa lleva el mes y el folio", ppv.cuadra && /PAGO PREVIRED FEBRERO 2026 - PLANILLA N° 2005202603564650/.test(ppv.glosa), JSON.stringify(ppv));
+  igual("el pago queda registrado con fecha, folio, cotizaciones, recargos y total", ppv.registro, ["2026-03-12", "2005202603564650", ppv.esperado, 1500, ppv.esperado + 1500]);
+  ok("el mes aparece como pagado y ya no ofrece pagarlo", ppv.pagado, JSON.stringify(ppv));
+  ok("al eliminar el asiento se libera el registro", ppv.liberado, JSON.stringify(ppv));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
