@@ -1131,8 +1131,23 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("detecta el documento que ya no está en el archivo y el que es nuevo", gi.ausentes === "2,3" && gi.nuevos === "9", gi.ausentes + " / " + gi.nuevos);
   ok("los documentos centralizados no se pueden quitar desde la importación", gi.sacadas === "2", gi.sacadas);
   ok("la revisión del mes señala lo que falta", gi.lis.length >= 1 && gi.lis[0][0] === true, JSON.stringify(gi.lis));
-  const rev = await page.evaluate(() => { const sr = S.rcv; S.rcv = []; const a = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = [{ id: "q", registro: "COMPRA", periodo: "2032-06", revisar_total: true, tipo_doc: 33, total: 1, folio: "1", asiento: "" }]; const b = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = sr; return { vacio: a[0].ok, rt: b.some((x) => !x.ok && x.bloquea) }; });
+  const rev = await page.evaluate(() => { const sr = S.rcv; S.rcv = []; const a = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = [{ id: "q", registro: "COMPRA", periodo: "2032-06", revisar_total: true, tipo_doc: 33, neto: 1000, iva: 50, total: 1, folio: "1", asiento: "" }]; const b = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = sr; return { vacio: a[0].ok, rt: b.some((x) => !x.ok && x.bloquea) }; });
   ok("sin documentos ni marca de «sin compras» no se puede aceptar, y un total por revisar bloquea", rev.vacio === false && rev.rt === true, JSON.stringify(rev));
+
+  console.log("Control aritmético del RCV");
+  const cax = await page.evaluate(() => {
+    const sr = S.rcv, p = "2032-07", mk = (id, o) => ({ id, registro: "COMPRA", periodo: p, tipo_doc: 33, rut: "76.111.111-1", folio: id, exento: 0, iva_no_recuperable: 0, otros_impuestos: 0, asiento: "", ...o });
+    const r = {};
+    S.rcv = [mk("a", { neto: 100000, iva: 19000, total: 119000 }), mk("b", { neto: 107320, iva: 20391, otros_impuestos: 1, total: 127712, revisar_total: true, total_rcv: 115000, dif_total: -12712 })];
+    const ok1 = listaRevisionRcv(p, "COMPRA"); r.limpio = [ok1.some((x) => !x.ok), ok1.some((x) => /Control aritm/.test(x.texto)), ok1.some((x) => /total del RCV defectuoso/.test(x.texto) && x.ok)];
+    S.rcv = [mk("c", { neto: 100000, iva: 15000, total: 115000 }), mk("d", { neto: 100000, iva: 19000, total: 125000 })];
+    const ok2 = listaRevisionRcv(p, "COMPRA"); r.malo = [ok2.filter((x) => !x.ok && x.bloquea).length, ok2.some((x) => /IVA que no es el 19/.test(x.texto)), ok2.some((x) => /no es neto \+ IVA/.test(x.texto))];
+    r.helper = [controlAritmeticoRcv({ tipo_doc: 34, neto: 0, iva: 0, exento: 5000, total: 5000 }).ivaOk, controlAritmeticoRcv({ tipo_doc: 33, neto: 1000, iva: 190, total: 1190 }).sumaOk, controlAritmeticoRcv({ tipo_doc: 33, neto: 1000, iva: 100, total: 1100 }).ivaOk];
+    S.rcv = sr; return r;
+  });
+  igual("el control aritmético da por buenos los documentos con IVA 19 % aunque el total del RCV venga malo", cax.limpio, [false, true, true]);
+  igual("un IVA distinto del 19 % o un total que no suma bloquean la aceptación del mes", cax.malo, [2, true, true]);
+  igual("el control reconoce exentos, sumas correctas e IVA mal calculado", cax.helper, [true, true, false]);
 
   console.log("Traer el RCV aceptado al libro de caja");
   const pvr = await page.evaluate(async () => {
