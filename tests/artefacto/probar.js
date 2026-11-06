@@ -2004,6 +2004,32 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("si lo pagado coincide con el borrador lo indica y suma las multas aparte", cpl.cuadra && cpl.cmp[0] === 0 && cpl.cmp[1] === 1500 && cpl.cmp[2], JSON.stringify(cpl));
   ok("si difiere, avisa y compara por trabajador", cpl.difiere && cpl.trab[0] === 2 && cpl.trab[1] && cpl.trab[2], JSON.stringify(cpl));
 
+  console.log("DJ 1887 declarada contra las remuneraciones");
+  const dje = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((r) => setTimeout(r, ms)), r = {};
+    await S.almacen.set(`empresas/${S.eid}/trabajadores/wdj`, { ...trabajadorVacio(), id: undefined, nombre: "Ana DJ", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2025-01-01", tipo: "indefinido", fecha_nac: "1990-01-01", jornada: 44, sueldo_base: 600000, gratificacion: "ninguna", afp: "Provida", afp_comision: 1.45 }); await w(300);
+    S.utm = { ...(S.utm || {}), "2024-03": 65000, "2024-04": 65000 }; const t1 = S.trabajadores.find((x) => x.nombre === "Ana DJ"), l1 = calcularLiquidacionTrabajador(t1, "2024-03", { dias: 30, festivos: 0 }), l2 = calcularLiquidacionTrabajador(t1, "2024-04", { dias: 30, festivos: 0 });
+    await S.almacen.set(`empresas/${S.eid}/liquidaciones/${t1.id}_2024-03`, l1); await S.almacen.set(`empresas/${S.eid}/liquidaciones/${t1.id}_2024-04`, l2); await w(300);
+    S.djAnio = "2024"; S.djBorrador = null; S.pestana.dj = "1887"; S.vista = "dj"; render(); await w();
+    r.vacio = /Carga la DJ 1887 del año comercial 2024/.test(document.body.innerText);
+    document.querySelector('[data-n="djd-fila-agregar"]').click(); await w();
+    const poner = (id, v) => { document.querySelector(id).value = v; };
+    poner("#djd-rut-0", "12.345.678-5"); poner("#djd-nom-0", "ANA DJ"); poner("#djd-m3-0", clp(l1.base_tributable)); poner("#djd-m4-0", clp(l2.base_tributable + 1000));
+    poner("#djd-rut-1", "7.654.321-6"); poner("#djd-nom-1", "OTRA PERSONA"); poner("#djd-m1-1", "300.000");
+    poner("#djd-folio", "2798862"); poner("#djd-ley", clp(l1.afp + l1.salud + l1.cesantia + l2.afp + l2.salud + l2.cesantia));
+    document.querySelector('[data-form="dj-decl"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(400);
+    const d = S.dj_decl.find((x) => x.id === "1887_2024"); r.doc = d && [d.folio, d.perceptores.length, d.total_sin_actualizar === l1.base_tributable + l2.base_tributable + 1000 + 300000];
+    S.vista = "dj"; render(); await w();
+    const c = compararDj1887(2024);
+    r.cmp = [c.filas.length, c.filas[0].dif, c.filas[1].falta === true, c.meses.length, c.meses.some((x) => x.mes === 4 && x.dj - x.calc === 1000), c.meses.some((x) => x.mes === 1 && x.dj === 300000), d.leyes_sociales === c.leyesCalc];
+    r.pantalla = /mes\(es\) con diferencias/.test(document.body.innerText) && /no está en las remuneraciones/.test(document.body.innerText);
+    await S.almacen.del(`empresas/${S.eid}/dj_decl/1887_2024`); await S.almacen.del(`empresas/${S.eid}/liquidaciones/${t1.id}_2024-03`); await S.almacen.del(`empresas/${S.eid}/liquidaciones/${t1.id}_2024-04`); await S.almacen.del(`empresas/${S.eid}/trabajadores/wdj`); await w(300); S.djAnio = null; S.djBorrador = null; ir("inicio");
+    return r;
+  });
+  ok("la DJ 1887 se puede cargar desde el SII y se guarda con folio, personas y total", dje.vacio && dje.doc && dje.doc[0] === "2798862" && dje.doc[1] === 2 && dje.doc[2], JSON.stringify(dje));
+  igual("se compara por persona, por mes, las que faltan y las leyes sociales", dje.cmp, [2, 1000, true, 2, true, true, true]);
+  ok("la pantalla muestra las diferencias y la persona que no está en las remuneraciones", dje.pantalla, JSON.stringify(dje));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
