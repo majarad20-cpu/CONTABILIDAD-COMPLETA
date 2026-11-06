@@ -1818,6 +1818,32 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("la liquidación avisa si la AFP es voluntaria", pens.aviso, JSON.stringify(pens));
   ok("la ficha tiene la casilla y solo vale si es pensionado", pens.casilla && pens.leido[0] && pens.leido[1] && pens.sinPensionado === false, JSON.stringify(pens));
 
+  console.log("Remuneraciones: ausencias, licencias, atrasos e impresión de liquidaciones");
+  const remu = await page.evaluate(async () => {
+    const r = {}, base = { ...trabajadorVacio(), id: "wt", nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2025-01-01", tipo: "indefinido", fecha_nac: "1990-01-01", jornada: 44, sueldo_base: 600000, gratificacion: "ninguna", afp: "Provida", afp_comision: 1.45 };
+    r.letras = [431399, 1000000, 1, 21000, 529000, 1250000].map(montoEnLetras);
+    const l = calcularLiquidacionTrabajador(base, "2026-01", { dias: 25, dias_contrato: 30, dias_ausencia: 2, dias_licencia: 3, dias_permiso: 0, horas_atraso: 2, festivos: 0 });
+    r.calc = [l.sueldo_dias, l.descuento_atrasos, l.sueldo, l.imponible, l.dias, l.dias_contrato, l.dias_ausencia, l.dias_licencia, l.horas_atraso];
+    r.avisos = l.avisos.some((a) => /Licencia médica de 3 días/.test(a)) && l.avisos.some((a) => /2 días de ausencia/.test(a));
+    const sin = calcularLiquidacionTrabajador(base, "2026-01", { dias: 30, festivos: 0 }); r.sinCambios = [sin.sueldo, sin.descuento_atrasos, sin.dias_contrato];
+    const tam = {};
+    for (const modo of ["una", "dos-hoja", "dos-separadas"]) { try { tam[modo] = (await pdfLiquidaciones([{ ...l, id: "x1" }, { ...l, id: "x2" }], modo)).size; } catch (e) { tam[modo] = "ERR " + e.message; } }
+    r.pdf = tam;
+    r.letrasLinea = lineasLiquidacion(l).haberes.map((x) => x[0]);
+    const a = { fecha: "2026-11-06", desde: "2026-12-01", cargo: "Jefe de taller", sueldo: 700000, jornada: 42, termino: "", otro: "" };
+    const ta = textoAnexo(base, a).map((b) => b.texto).join(" ");
+    r.anexo = /Jefe de taller/.test(ta) && /\$700\.000/.test(ta) && /42 horas/.test(ta);
+    try { r.pdfAnexo = (await pdfDocumento("Anexo", textoAnexo(base, a), [["E", "p.p.", "EMPLEADOR"]])).size > 1000; r.pdfCert = (await pdfCertificado(base)).size > 1000; } catch (e) { r.pdfAnexo = "ERR " + e.message; }
+    r.cert = textoCertificado(base).map((b) => b.texto).join(" ");
+    return r;
+  });
+  igual("el monto en letras de las liquidaciones", remu.letras, ["cuatrocientos treinta y un mil trescientos noventa y nueve pesos", "un millón de pesos", "un peso", "veintiún mil pesos", "quinientos veintinueve mil pesos", "un millón doscientos cincuenta mil pesos"]);
+  igual("ausencias, licencia y atrasos: días pagados, sueldo proporcional y descuento por atrasos", remu.calc, [500000, 6364, 493636, 493636, 25, 30, 2, 3, 2]);
+  ok("la liquidación avisa de la licencia médica y de las ausencias", remu.avisos, JSON.stringify(remu));
+  igual("sin ausencias ni atrasos nada cambia", remu.sinCambios, [600000, 0, 30]);
+  ok("las liquidaciones se imprimen en una copia, dos copias por hoja y dos copias en hojas separadas", Object.values(remu.pdf).every((n) => n > 2000) && remu.pdf["dos-separadas"] > remu.pdf.una, JSON.stringify(remu.pdf));
+  ok("el anexo y el certificado de trabajo se generan", remu.anexo && remu.pdfAnexo === true && remu.pdfCert === true && /Ana Prueba|ANA PRUEBA/i.test(remu.cert) && /presta servicios/.test(remu.cert), JSON.stringify(remu));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
