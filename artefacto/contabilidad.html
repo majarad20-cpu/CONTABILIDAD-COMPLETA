@@ -374,7 +374,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.76.0";
+const VERSION = "1.76.1";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -5038,7 +5038,7 @@ function montoEnLetras(n) {
 }
 function selectorCopiasLiq() {
   const v = recuerdo("liq-copias", "dos-hoja");
-  return `<label>Copias<select id="lq-copias"><option value="una" ${v === "una" ? "selected" : ""}>Una copia por hoja</option><option value="dos-hoja" ${v === "dos-hoja" ? "selected" : ""}>Dos copias en la misma hoja (empleador y trabajador)</option><option value="dos-separadas" ${v === "dos-separadas" ? "selected" : ""}>Dos copias en hojas separadas</option></select></label>`;
+  return `<label>Copias<select id="lq-copias"><option value="una" ${v === "una" ? "selected" : ""}>Una copia por hoja (vertical)</option><option value="dos-hoja" ${v === "dos-hoja" ? "selected" : ""}>Dos copias verticales lado a lado en una hoja apaisada (empleador y trabajador)</option><option value="dos-separadas" ${v === "dos-separadas" ? "selected" : ""}>Dos copias en hojas separadas</option></select></label>`;
 }
 function lineasLiquidacion(l) {
   const h = [], d = [], a = (lista, n, v, siempre) => { if (siempre || v) lista.push([n, v || 0]); };
@@ -5051,63 +5051,61 @@ function lineasLiquidacion(l) {
   return { haberes: h, descuentos: d };
 }
 function dibujarLiquidacion(doc, l, x, y, w, h, copia) {
+  /* Copia vertical: todo el ancho se usa en columna (datos, haberes, descuentos y total), pensada para una hoja angosta y alta. */
   const e = empresa(), t = trabajadorPorId(l.trabajador) || { nombre: "(trabajador eliminado)", rut: "", cargo: "" }, T = textoPdf, { haberes, descuentos } = lineasLiquidacion(l);
-  const filas = Math.max(haberes.length, descuentos.length, 3), pad = 10, medio = x + w / 2, lh = Math.min(11.5, Math.max(8.5, (h - 205) / (filas + 1)));
+  const pad = 12, ancho = w - 2 * pad, filas = haberes.length + descuentos.length, lh = Math.min(11.5, Math.max(8.4, (h - 330) / (filas + 4)));
   doc.setDrawColor(110); doc.setLineWidth(0.6); doc.rect(x, y, w, h); doc.setTextColor(0);
-  let cy = y + 17;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10.5); doc.text(T(e.razon_social || ""), x + pad, cy);
-  doc.setFontSize(12); doc.text("LIQUIDACIÓN DE SUELDO", x + w - pad, cy, { align: "right" });
-  cy += 12; doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(T(`RUT ${e.rut || ""}${e.direccion ? " · " + e.direccion : ""}`), x + pad, cy);
-  doc.setFont("helvetica", "bold"); doc.text(T(mesMayus(l.periodo)), x + w - pad, cy, { align: "right" });
-  if (copia) { cy += 9; doc.setFont("helvetica", "italic"); doc.setFontSize(7.5); doc.text(T(copia), x + w - pad, cy, { align: "right" }); }
-  doc.setFont("helvetica", "normal"); cy += 5; doc.line(x + pad, cy, x + w - pad, cy);
-  doc.setFontSize(8); cy += 11;
-  const par = (a, b, px, py) => { doc.setFont("helvetica", "bold"); doc.text(T(a), px, py); const aw = doc.getTextWidth(T(a)) + 3; doc.setFont("helvetica", "normal"); doc.text(T(String(b)), px + aw, py); };
-  par("Trabajador:", t.nombre, x + pad, cy); par("RUT:", t.rut, medio + 4, cy); cy += 10;
-  par("Cargo:", t.cargo || "", x + pad, cy); par("Contrato:", `${TIPOS_CONTRATO[t.tipo] || ""}${t.fecha_ingreso ? ", desde " + fmtFecha(t.fecha_ingreso) : ""}`, medio + 4, cy); cy += 10;
-  par("Días trabajados:", `${l.dias} de ${l.dias_contrato ?? l.dias}`, x + pad, cy); par("Previsión:", `AFP ${l.afp_nombre} · Salud ${l.salud_nombre}`, medio + 4, cy); cy += 10;
+  let cy = y + 18;
+  const lineas = (texto, py, alto) => { const ls = doc.splitTextToSize(T(texto), ancho); doc.text(ls, x + pad, py); return py + ls.length * alto; };
+  doc.setFont("helvetica", "bold"); doc.setFontSize(10); cy = lineas(e.razon_social || "", cy, 12);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8); cy = lineas(`RUT ${e.rut || ""}${e.direccion ? " · " + e.direccion : ""}`, cy, 10);
+  cy += 2; doc.line(x + pad, cy, x + w - pad, cy); cy += 15;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.text("LIQUIDACIÓN DE SUELDO", x + w / 2, cy, { align: "center" }); cy += 12;
+  doc.setFontSize(8.5); doc.text(T(`${mesMayus(l.periodo)}${copia ? " · " + copia : ""}`), x + w / 2, cy, { align: "center" }); cy += 8;
+  doc.line(x + pad, cy, x + w - pad, cy); cy += 12;
+  doc.setFontSize(8);
+  const par = (a, b) => {
+    doc.setFont("helvetica", "bold"); const rot = T(a) + " ", aw = doc.getTextWidth(rot); doc.text(rot, x + pad, cy); doc.setFont("helvetica", "normal");
+    const ls = doc.splitTextToSize(T(String(b)), ancho - aw); doc.text(ls[0] || "", x + pad + aw, cy); for (let i = 1; i < ls.length; i++) { cy += 10; doc.text(ls[i], x + pad + aw, cy); } cy += 10;
+  };
+  par("Trabajador:", t.nombre); par("RUT:", t.rut); par("Cargo:", t.cargo || ""); par("Contrato:", `${TIPOS_CONTRATO[t.tipo] || ""}${t.fecha_ingreso ? ", desde " + fmtFecha(t.fecha_ingreso) : ""}`);
+  par("Días trabajados:", `${l.dias} de ${l.dias_contrato ?? l.dias}`); par("Previsión:", `AFP ${l.afp_nombre} · Salud ${l.salud_nombre}`);
   const aus = [l.dias_ausencia ? `ausencias: ${l.dias_ausencia} d` : "", l.dias_licencia ? `licencia médica: ${l.dias_licencia} d` : "", l.dias_permiso ? `permiso sin goce: ${l.dias_permiso} d` : "", l.horas_atraso ? `atrasos: ${comaDecimal(l.horas_atraso)} h` : ""].filter(Boolean);
-  if (aus.length) { doc.setFont("helvetica", "italic"); doc.setFontSize(7.5); doc.text(T(aus.join(" · ")), x + pad, cy); doc.setFontSize(8); cy += 10; }
-  cy += 3;
-  const izq = x + pad, anchoCol = w / 2 - pad - 3, der = medio + 3;
-  doc.setFillColor(232, 232, 232); doc.rect(izq, cy, anchoCol, 12, "F"); doc.rect(der, cy, anchoCol, 12, "F");
-  doc.setFont("helvetica", "bold"); doc.text("HABERES", izq + 4, cy + 9); doc.text("DESCUENTOS", der + 4, cy + 9); cy += 12 + lh - 2;
-  doc.setFont("helvetica", "normal");
-  for (let i = 0; i < filas; i++) {
-    const hh = haberes[i], dd = descuentos[i];
-    if (hh) { doc.text(T(hh[0]), izq + 4, cy); doc.text(clp(hh[1]), izq + anchoCol - 4, cy, { align: "right" }); }
-    if (dd) { doc.text(T(dd[0]), der + 4, cy); doc.text(clp(dd[1]), der + anchoCol - 4, cy, { align: "right" }); }
-    cy += lh;
-  }
-  cy += 2; doc.line(izq, cy - lh + 3, izq + anchoCol, cy - lh + 3); doc.line(der, cy - lh + 3, der + anchoCol, cy - lh + 3);
-  doc.setFont("helvetica", "bold"); doc.text("Total haberes", izq + 4, cy); doc.text(clp(l.haberes), izq + anchoCol - 4, cy, { align: "right" });
-  doc.text("Total descuentos", der + 4, cy); doc.text(clp(l.total_descuentos), der + anchoCol - 4, cy, { align: "right" });
-  cy += 8; doc.setFillColor(238, 244, 238); doc.rect(x + pad, cy, w - 2 * pad, 22, "FD");
-  doc.setFontSize(10); doc.text("LÍQUIDO A PAGAR", x + pad + 6, cy + 15); doc.setFontSize(12); doc.text(`$ ${clp(l.liquido)}`, x + w - pad - 6, cy + 15, { align: "right" });
-  cy += 33; doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
-  doc.text(doc.splitTextToSize(T(`Son: ${montoEnLetras(l.liquido)}.`), w - 2 * pad), x + pad, cy);
-  cy += 15; doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
-  doc.text(T(`Remuneración imponible: $${clp(l.imponible)} · Base del impuesto único: $${clp(l.base_tributable)} · Impuesto único: $${clp(l.impuesto_unico)}`), x + pad, cy);
-  cy += 15; doc.setFont("helvetica", "italic");
-  doc.text(doc.splitTextToSize(T("Declaro haber recibido a mi entera satisfacción el líquido indicado y no tener cargo ni cobro posterior que hacer por los conceptos de esta liquidación."), w - 2 * pad), x + pad, cy);
-  const base = y + h - 14;
-  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.line(x + pad + 10, base - 12, x + pad + 150, base - 12); doc.text("Firma del empleador", x + pad + 30, base - 3);
-  doc.line(x + w - pad - 190, base - 12, x + w - pad - 10, base - 12); doc.text("Recibí conforme · Firma del trabajador", x + w - pad - 175, base - 3);
+  if (aus.length) { doc.setFont("helvetica", "italic"); doc.setFontSize(7.5); cy = lineas(aus.join(" · "), cy, 9.5); doc.setFontSize(8); }
+  cy += 4;
+  const bloque = (titulo, lista, total, valorTotal) => {
+    doc.setFillColor(232, 232, 232); doc.rect(x + pad, cy, ancho, 12, "F"); doc.setFont("helvetica", "bold"); doc.text(titulo, x + pad + 4, cy + 9); cy += 12 + lh - 2;
+    doc.setFont("helvetica", "normal");
+    for (const [n, v] of lista) { doc.text(T(n), x + pad + 4, cy); doc.text(clp(v), x + w - pad - 4, cy, { align: "right" }); cy += lh; }
+    doc.line(x + pad, cy - lh + 3, x + w - pad, cy - lh + 3); doc.setFont("helvetica", "bold"); doc.text(total, x + pad + 4, cy + 1); doc.text(clp(valorTotal), x + w - pad - 4, cy + 1, { align: "right" }); cy += lh + 5;
+  };
+  bloque("HABERES", haberes, "Total haberes", l.haberes); bloque("DESCUENTOS", descuentos, "Total descuentos", l.total_descuentos);
+  doc.setFillColor(238, 244, 238); doc.rect(x + pad, cy, ancho, 24, "FD");
+  doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text("LÍQUIDO A PAGAR", x + pad + 6, cy + 16); doc.setFontSize(12); doc.text(`$ ${clp(l.liquido)}`, x + w - pad - 6, cy + 16, { align: "right" }); cy += 36;
+  doc.setFont("helvetica", "italic"); doc.setFontSize(7.5); cy = lineas(`Son: ${montoEnLetras(l.liquido)}.`, cy, 9.5) + 3;
+  doc.setFont("helvetica", "normal"); cy = lineas(`Remuneración imponible: $${clp(l.imponible)} · Base del impuesto único: $${clp(l.base_tributable)} · Impuesto único: $${clp(l.impuesto_unico)}`, cy, 9.5) + 3;
+  doc.setFont("helvetica", "italic"); lineas("Declaro haber recibido a mi entera satisfacción el líquido indicado y no tener cargo ni cobro posterior que hacer por los conceptos de esta liquidación.", cy, 9.5);
+  const base = y + h - 14, mitad = w / 2;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+  doc.line(x + pad, base - 12, x + mitad - 8, base - 12); doc.text("Firma del empleador", x + pad + 6, base - 3);
+  doc.line(x + mitad + 8, base - 12, x + w - pad, base - 12); doc.text("Recibí conforme · Firma del trabajador", x + mitad + 8, base - 3);
 }
 async function pdfLiquidaciones(lista, modo) {
   await cargarScript("jspdf");
-  const { jsPDF } = window.jspdf, doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
-  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 28, ancho = W - 2 * m, mitad = (H - 3 * m) / 2, alta = 410;
+  const { jsPDF } = window.jspdf, m = 28, doble = modo === "dos-hoja";
+  const doc = new jsPDF({ unit: "pt", format: "letter", orientation: doble ? "landscape" : "portrait", compress: true });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
   doc.setProperties({ title: `Liquidaciones de sueldo – ${empresa().razon_social}`, author: empresa().razon_social });
   let primera = true;
   const pagina = () => { if (!primera) doc.addPage(); primera = false; };
   for (const l of lista) {
-    if (modo === "dos-hoja") {
-      pagina(); dibujarLiquidacion(doc, l, m, m, ancho, mitad, "COPIA EMPLEADOR"); dibujarLiquidacion(doc, l, m, m + mitad + m, ancho, mitad, "COPIA TRABAJADOR");
-      doc.setLineDashPattern([4, 3], 0); doc.setDrawColor(150); doc.line(m, m + mitad + m / 2, W - m, m + mitad + m / 2); doc.setLineDashPattern([], 0);
+    if (doble) {
+      const ancho = (W - 3 * m) / 2;
+      pagina(); dibujarLiquidacion(doc, l, m, m, ancho, H - 2 * m, "COPIA EMPLEADOR"); dibujarLiquidacion(doc, l, 2 * m + ancho, m, ancho, H - 2 * m, "COPIA TRABAJADOR");
+      doc.setLineDashPattern([4, 3], 0); doc.setDrawColor(150); doc.line(W / 2, m - 10, W / 2, H - m + 10); doc.setLineDashPattern([], 0);
     } else if (modo === "dos-separadas") {
-      pagina(); dibujarLiquidacion(doc, l, m, m, ancho, alta, "COPIA EMPLEADOR"); pagina(); dibujarLiquidacion(doc, l, m, m, ancho, alta, "COPIA TRABAJADOR");
-    } else { pagina(); dibujarLiquidacion(doc, l, m, m, ancho, alta, ""); }
+      pagina(); dibujarLiquidacion(doc, l, m, m, W - 2 * m, H - 2 * m, "COPIA EMPLEADOR"); pagina(); dibujarLiquidacion(doc, l, m, m, W - 2 * m, H - 2 * m, "COPIA TRABAJADOR");
+    } else { pagina(); dibujarLiquidacion(doc, l, m, m, W - 2 * m, H - 2 * m, ""); }
   }
   return doc.output("blob");
 }
