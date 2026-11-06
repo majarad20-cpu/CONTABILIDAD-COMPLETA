@@ -1878,6 +1878,40 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el mes aparece como pagado y ya no ofrece pagarlo", ppv.pagado, JSON.stringify(ppv));
   ok("al eliminar el asiento se libera el registro", ppv.liberado, JSON.stringify(ppv));
 
+  console.log("Asistencia y novedades del mes");
+  const asist = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((r) => setTimeout(r, ms)), r = {};
+    await S.almacen.set(`empresas/${S.eid}/trabajadores/wasis`, { ...trabajadorVacio(), id: undefined, nombre: "Ana Asistencia", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2025-01-01", tipo: "indefinido", fecha_nac: "1990-01-01", jornada: 44, sueldo_base: 600000, gratificacion: "ninguna", afp: "Provida", afp_comision: 1.45 });
+    await w(300);
+    S.liqPeriodo = "2026-03"; S.liqPeriodoEid = S.eid; S.pestana.rrhh = "asistencia"; S.asisBorrador = null; S.vista = "rrhh"; render(); await w();
+    const tid = S.trabajadores.find((x) => x.nombre === "Ana Asistencia").id;
+    r.tab = [/asistencia y novedades/i.test(document.body.innerText), document.querySelectorAll(".asis-dia").length, 1];
+    const dia = (n) => document.querySelector(`[data-n="asis-dia"][data-t="${tid}"][data-d="${n}"]`);
+    const cod = (n) => dia(n).querySelector("b").textContent; dia(2).click(); await w(); r.ciclo = [cod(2) === "A"]; dia(2).click(); await w(); r.ciclo.push(cod(2) === "L"); dia(2).click(); await w(); dia(2).click(); await w(); dia(2).click(); await w(); r.ciclo.push(cod(2) === "");
+    dia(2).click(); await w();
+    document.querySelector(`#as-desde-${tid}`).value = "10"; document.querySelector(`#as-hasta-${tid}`).value = "12"; document.querySelector(`#as-cod-${tid}`).value = "L";
+    document.querySelector(`[data-n="asis-rango"][data-t="${tid}"]`).click(); await w();
+    document.querySelector(`#as-he-${tid}`).value = "4,5"; document.querySelector(`#as-atraso-${tid}`).value = "1,5"; document.querySelector(`#as-anticipos-${tid}`).value = "50.000";
+    r.resumen = /27 de 30 días pagados|\b26\b de 30 días pagados/.test(document.body.innerText) || document.body.innerText.match(/(\d+) de 30 días pagados/)?.[0];
+    document.querySelector('[data-n="asis-guardar"]').click(); await w(500);
+    const d = S.asistencia.find((x) => x.id === `${tid}_2026-03`);
+    r.doc = d && [d.dias["2"], d.dias["10"], d.dias["12"], d.dias["13"] || null, d.he, d.atraso, d.anticipos];
+    S.pestana.rrhh = "liquidaciones"; render(); await w();
+    r.previa = [document.querySelector(`#lq-aus-${tid}`).value, document.querySelector(`#lq-lic-${tid}`).value, document.querySelector(`#lq-he-${tid}`).value, document.querySelector(`#lq-atr-${tid}`).value, document.querySelector(`#lq-ant-${tid}`).value];
+    document.querySelector('[data-n="liquidar-mes"]').click(); await w(500);
+    const l = S.liquidaciones.find((x) => x.trabajador === tid && x.periodo === "2026-03");
+    r.liq = l && [l.dias, l.dias_ausencia, l.dias_licencia, l.horas_extra, l.horas_atraso, l.anticipos];
+    if (l) await S.almacen.del(`empresas/${S.eid}/liquidaciones/${l.id}`);
+    if (d) await S.almacen.del(`empresas/${S.eid}/asistencia/${d.id}`);
+    await S.almacen.del(`empresas/${S.eid}/trabajadores/wasis`); await w(300); S.asisBorrador = null; ir("inicio");
+    return r;
+  });
+  ok("la pestaña Asistencia muestra el calendario del mes", asist.tab[0] && asist.tab[1] >= 31 && asist.tab[1] % 31 === 0, JSON.stringify(asist.tab));
+  igual("cada clic en un día recorre ausencia, licencia, permiso, vacaciones y vuelve a trabajado", asist.ciclo, [true, true, true]);
+  igual("se guardan los días marcados (también con el rango) y las horas y descuentos del mes", asist.doc, ["A", "L", "L", null, 4.5, 1.5, 50000]);
+  igual("las liquidaciones del mes cargan ausencias, licencia, horas extra, atraso y anticipo desde la asistencia", asist.previa, ["1", "3", "4,5", "1,5", "50.000"]);
+  igual("al calcular, los días pagados descuentan la ausencia y la licencia", asist.liq, [26, 1, 3, 4.5, 1.5, 50000]);
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
