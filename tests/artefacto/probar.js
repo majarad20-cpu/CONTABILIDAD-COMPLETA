@@ -1134,6 +1134,26 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   const rev = await page.evaluate(() => { const sr = S.rcv; S.rcv = []; const a = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = [{ id: "q", registro: "COMPRA", periodo: "2032-06", revisar_total: true, tipo_doc: 33, neto: 1000, iva: 50, total: 1, folio: "1", asiento: "" }]; const b = listaRevisionRcv("2032-06", "COMPRA"); S.rcv = sr; return { vacio: a[0].ok, rt: b.some((x) => !x.ok && x.bloquea) }; });
   ok("sin documentos ni marca de «sin compras» no se puede aceptar, y un total por revisar bloquea", rev.vacio === false && rev.rt === true, JSON.stringify(rev));
 
+  console.log("Aceptar varios meses del RCV");
+  const acv = await page.evaluate(async () => {
+    const sr = S.rcv, e0 = empresa(), r = {};
+    const mk = (id, per, o) => ({ id, registro: "COMPRA", periodo: per, fecha: per + "-10", tipo_doc: 33, rut: "76.111.111-1", razon_social: "P", folio: id, exento: 0, iva_no_recuperable: 0, otros_impuestos: 0, cantidad: 1, activo_fijo: false, asiento: "", ...o });
+    S.rcv = [mk("v1", "2035-01", { neto: 100000, iva: 19000, total: 119000 }), mk("v2", "2035-02", { neto: 200000, iva: 38000, total: 238000 }), mk("v3", "2035-03", { neto: 100000, iva: 15000, total: 115000 }), mk("v4", "2035-04", { neto: 100000, iva: 19000, total: 119000 })];
+    S.avDesde = "2035-01"; S.avHasta = "2035-03";
+    const L = cargasAceptables(); r.lista = L.map((x) => [x.periodo, x.fallos.length]);
+    r.panel = /<strong>2<\/strong> carga\(s\) pasan la revisión/.test(panelAceptarVarios()) && /<strong>1<\/strong> necesitan revisión/.test(panelAceptarVarios());
+    await aceptarCargasVarias(); await new Promise((x) => setTimeout(x, 200));
+    r.acept = ["2035-01", "2035-02", "2035-03", "2035-04"].map((p) => !!cargaAceptada(p, "COMPRA"));
+    r.marca = cargaAceptada("2035-01", "COMPRA")?.varias === true && cargaAceptada("2035-01", "COMPRA").n === 1;
+    S.avDesde = null; S.avHasta = null; r.resto = cargasAceptables().map((x) => x.periodo).join();
+    await BD.setEmpresa(S.eid, e0); S.rcv = sr; await new Promise((x) => setTimeout(x, 100));
+    return r;
+  });
+  igual("las cargas sin aceptar se separan en las que pasan la revisión y las que no", acv.lista, [["2035-01", 0], ["2035-02", 0], ["2035-03", 1], ["2035-04", 0]]);
+  ok("el panel dice cuántas pasan y cuántas necesitan revisión", acv.panel && acv.lista.length === 4 && acv.lista[2][1] === 1, JSON.stringify(acv));
+  igual("se aceptan solo las que pasan y están en el rango; la que falla y la de fuera quedan sin aceptar", acv.acept, [true, true, false, false]);
+  ok("la aceptación queda marcada como hecha junto con otros meses", acv.marca && acv.resto === "2035-03,2035-04", JSON.stringify(acv));
+
   console.log("Control aritmético del RCV");
   const cax = await page.evaluate(() => {
     const sr = S.rcv, p = "2032-07", mk = (id, o) => ({ id, registro: "COMPRA", periodo: p, tipo_doc: 33, rut: "76.111.111-1", folio: id, exento: 0, iva_no_recuperable: 0, otros_impuestos: 0, asiento: "", ...o });
