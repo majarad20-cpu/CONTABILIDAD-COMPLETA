@@ -1975,6 +1975,35 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el mes aparece declarado y en el historial", bpv.estado && bpv.historial, JSON.stringify(bpv));
   ok("sin liquidaciones el borrador lo indica", bpv.sinLiq, JSON.stringify(bpv));
 
+  console.log("Comparación del borrador de Previred con la planilla pagada");
+  const cpl = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((r) => setTimeout(r, ms)), r = {};
+    await S.almacen.set(`empresas/${S.eid}/trabajadores/wpl`, { ...trabajadorVacio(), id: undefined, nombre: "Ana Planilla", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2025-01-01", tipo: "indefinido", fecha_nac: "1990-01-01", jornada: 44, sueldo_base: 600000, gratificacion: "ninguna", afp: "Provida", afp_comision: 1.45 }); await w(300);
+    const t1 = S.trabajadores.find((x) => x.nombre === "Ana Planilla"), l = calcularLiquidacionTrabajador(t1, "2026-05", { dias: 30, festivos: 0 });
+    await S.almacen.set(`empresas/${S.eid}/liquidaciones/${t1.id}_2026-05`, l); await w(300);
+    S.liqPeriodo = "2026-05"; S.liqPeriodoEid = S.eid; S.pestana.rrhh = "borrador_previred"; S.pestana.prvd = "borrador"; S.vista = "rrhh"; render(); await w();
+    const est = estructuraPrevired([l]); r.tipos = est.instituciones.map((i) => i.tipo);
+    r.sinPlanilla = /Aún no cargas la planilla pagada/.test(document.body.innerText);
+    const filas = [...document.querySelectorAll('tr[id^="pp-fila-"]')]; r.filas = filas.length;
+    filas.forEach((tr) => { const k = tr.id.slice(8), nombre = tr.dataset.nombre, i = est.instituciones.find((x) => x.nombre === nombre); document.querySelector(`#pp-cot-${k}`).value = String(i.total); if (tr.dataset.tipo === "salud") document.querySelector(`#pp-rec-${k}`).value = "1.500"; document.querySelector(`#pp-fol-${k}`).value = "2005202605000" + k; });
+    document.querySelector("#pp-fecha").value = "2026-06-12";
+    document.querySelector('[data-form="previred-plan"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(400);
+    const pl = S.previred_plan.find((x) => x.id === "2026-05"); r.doc = pl && [pl.fecha_pago, pl.instituciones.length, pl.total_pagado === est.total + 1500];
+    S.vista = "rrhh"; render(); await w();
+    r.cuadra = /coincide con el borrador/.test(document.body.innerText) && /Total pagado/.test(document.body.innerText);
+    const c = compararPlanilla(est, pl); r.cmp = [c.dif, c.recargos, c.borrador === est.total];
+    await S.almacen.set(`empresas/${S.eid}/previred_plan/2026-05`, { ...pl, instituciones: pl.instituciones.map((i) => (i.tipo === "afp" ? { ...i, cotizacion: i.cotizacion + 100 } : i)), trabajadores: [{ rut: "12.345.678-5", nombre: "ANA PLANILLA", imponible: 600000, afp: l.afp, salud: l.salud }, { rut: "7.654.321-6", nombre: "OTRO", imponible: 500000, afp: 1, salud: 1 }] }); await w(300);
+    S.vista = "rrhh"; render(); await w();
+    r.difiere = /difiere del borrador/.test(document.body.innerText) && /no está en el borrador/.test(document.body.innerText);
+    const tr = compararTrabajadoresPlanilla("2026-05", [l], S.previred_plan.find((x) => x.id === "2026-05")); r.trab = [tr.length, tr[0].impB === tr[0].impP, tr[1].falta === true];
+    await S.almacen.del(`empresas/${S.eid}/previred_plan/2026-05`); await S.almacen.del(`empresas/${S.eid}/liquidaciones/${t1.id}_2026-05`); await S.almacen.del(`empresas/${S.eid}/trabajadores/wpl`); await w(300); ir("inicio");
+    return r;
+  });
+  ok("las instituciones del borrador llevan su tipo y se puede cargar la planilla", cpl.tipos.includes("afp") && cpl.tipos.includes("salud") && cpl.filas >= 2 && cpl.sinPlanilla, JSON.stringify(cpl));
+  igual("la planilla pagada se guarda con fecha, instituciones y total (incluye las multas)", cpl.doc, ["2026-06-12", cpl.filas, true]);
+  ok("si lo pagado coincide con el borrador lo indica y suma las multas aparte", cpl.cuadra && cpl.cmp[0] === 0 && cpl.cmp[1] === 1500 && cpl.cmp[2], JSON.stringify(cpl));
+  ok("si difiere, avisa y compara por trabajador", cpl.difiere && cpl.trab[0] === 2 && cpl.trab[1] && cpl.trab[2], JSON.stringify(cpl));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
