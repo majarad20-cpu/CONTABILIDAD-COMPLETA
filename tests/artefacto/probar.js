@@ -1923,6 +1923,28 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("las liquidaciones del mes cargan la asistencia", asist.previa, ["1", "3", "4,5", "1,5", "50.000"]);
   igual("al calcular, los días pagados descuentan la ausencia y la licencia", asist.liq, [26, 1, 3, 4.5, 1.5, 50000]);
 
+  console.log("Liquidación en formato tira");
+  const tir = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((r) => setTimeout(r, ms)), r = {};
+    await S.almacen.set(`empresas/${S.eid}/trabajadores/wtira`, { ...trabajadorVacio(), id: undefined, nombre: "Ana Tira", rut: "12.345.678-5", cargo: "Operaria", centro_costo: "Taller", fecha_ingreso: "2025-01-01", tipo: "indefinido", fecha_nac: "1990-01-01", jornada: 44, sueldo_base: 600000, gratificacion: "legal", afp: "Provida", afp_comision: 1.45, colacion: 20000 });
+    await w(300);
+    const t = S.trabajadores.find((x) => x.nombre === "Ana Tira");
+    const l = calcularLiquidacionTrabajador(t, "2026-03", { dias: 25, dias_contrato: 30, dias_ausencia: 2, dias_licencia: 3, dias_permiso: 0, horas_atraso: 2, horas_extra: 4.5, bonos: 30000, anticipos: 50000, otros_desc: 12000, festivos: 0 });
+    const d = lineasTira(l), suma = (a) => a.reduce((x, y) => x + y[1], 0);
+    r.imp = [suma(d.imp) === l.imponible, d.totImp === l.imponible, d.imp[0][1], d.imp[1][1] + d.imp[2][1] === -(d.imp[0][1] - l.sueldo_dias)];
+    r.tot = [d.totHaberes === l.haberes, d.alcance - d.anticipos - suma(d.otros) === l.liquido, d.aPagar === l.liquido];
+    r.neg = d.imp.filter((x) => x[1] < 0).map((x) => x[0]);
+    const tam = {};
+    for (const modo of ["tira-hoja", "tira", "tira-original"]) { try { tam[modo] = (await pdfLiquidaciones([{ ...l, id: "t1" }, { ...l, id: "t2" }], modo)).size; } catch (e) { tam[modo] = "ERR " + e.message; } }
+    r.pdf = tam;
+    await S.almacen.del(`empresas/${S.eid}/trabajadores/wtira`); await w(250);
+    return r;
+  });
+  igual("la tira detalla el sueldo base completo, las licencias, ausencias y atrasos, y los haberes suman el imponible", tir.imp, [true, true, 600000, true]);
+  igual("la tira cuadra: haberes, descuentos, alcance líquido, anticipos y total a pagar", tir.tot, [true, true, true]);
+  igual("los descuentos por licencia, ausencia y atraso salen como líneas aparte", tir.neg, ["3 días de licencia médica", "2 días de ausencia", "2 h de atraso"]);
+  ok("la tira se imprime en las tres variantes (carta con dos copias, hojas separadas y solo original)", Object.values(tir.pdf).every((n) => n > 2000) && tir.pdf.tira > tir.pdf["tira-original"], JSON.stringify(tir.pdf));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);

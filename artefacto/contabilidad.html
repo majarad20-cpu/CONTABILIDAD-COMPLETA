@@ -392,7 +392,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.79.0";
+const VERSION = "1.80.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -4692,7 +4692,7 @@ function trabajadorVacio() {
   const e = empresa();
   return { id: null, nombre: "", rut: "", nacionalidad: "Chilena", fecha_nac: "", domicilio: "", comuna: "", cargo: "", funciones: "",
     lugar: [e.direccion, e.comuna].filter(Boolean).join(", "), fecha_ingreso: hoy(), tipo: "indefinido", fecha_termino: "", obra: "",
-    jornada: 42, distribucion: distribucionSugerida(42), sueldo_base: 0, gratificacion: "legal", gratificacion_monto: 0, colacion: 0, movilizacion: 0, semana_corrida: false,
+    jornada: 42, distribucion: distribucionSugerida(42), centro_costo: "", sueldo_base: 0, gratificacion: "legal", gratificacion_monto: 0, colacion: 0, movilizacion: 0, semana_corrida: false,
     forma_pago: "Mensualmente, por período vencido, mediante transferencia electrónica a la cuenta bancaria que el trabajador indique",
     afp: "Habitat", afp_comision: AFPS.Habitat, salud: "fonasa", isapre: "", plan_uf: 0, sin_cesantia: false, pensionado: false, afp_voluntaria: false, cargas: 0, trabajo_pesado: "ninguno", apv_monto: 0, apv_regimen: "B",
     haberes_fijos: [], descuentos_fijos: [], anios_previos: 0, vacaciones: [], activo: true, fecha_finiquito: "" };
@@ -4857,7 +4857,7 @@ function formularioTrabajador(te) {
       <label>Tipo de contrato<select id="tb-tipo">${Object.entries(TIPOS_CONTRATO).map(([k, v]) => `<option value="${k}" ${te.tipo === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
       <label>Fecha de ingreso *<input type="date" id="tb-fecha_ingreso" value="${esc(te.fecha_ingreso)}"></label>
       <label>Fecha de término (plazo fijo)<input type="date" id="tb-fecha_termino" value="${esc(te.fecha_termino)}"></label>
-      ${c("obra", "Obra o faena (si es por obra)", te.obra)}${c("lugar", "Lugar de trabajo", te.lugar)}
+      ${c("obra", "Obra o faena (si es por obra)", te.obra)}${c("lugar", "Lugar de trabajo", te.lugar)}${c("centro_costo", "Centro de costo (aparece en la liquidación)", te.centro_costo || "")}
       <label>Jornada semanal (horas)<input id="tb-jornada" inputmode="numeric" value="${esc(te.jornada)}"></label>
       <label class="campo-largo">Distribución de la jornada<input id="tb-distribucion" value="${esc(te.distribucion)}"></label></div>
     <label class="campo-largo">Funciones<textarea id="tb-funciones" rows="3" placeholder="Describe las labores que realizará">${esc(te.funciones)}</textarea></label>
@@ -4910,7 +4910,7 @@ function leerTrabajador() {
   const haberes = lista("hf", (i) => ({ concepto: v(`hf-con-${i}`).trim(), monto: parseMonto(v(`hf-monto-${i}`) || "0") || 0, imponible: $(`#tb-hf-imp-${i}`).checked, proporcional: $(`#tb-hf-prop-${i}`).checked }));
   const descuentos = lista("df", (i) => { const tipo = v(`df-tipo-${i}`); const x = decimal(v(`df-valor-${i}`)); return { concepto: v(`df-con-${i}`).trim(), tipo, valor: x == null || Number.isNaN(x) ? 0 : x }; });
   const d = { nombre: v("nombre").trim(), rut: v("rut").trim(), nacionalidad: v("nacionalidad").trim(), fecha_nac: v("fecha_nac"), domicilio: v("domicilio").trim(), comuna: v("comuna").trim(), cargo: v("cargo").trim(), funciones: v("funciones").trim(),
-    lugar: v("lugar").trim(), fecha_ingreso: v("fecha_ingreso"), tipo: v("tipo"), fecha_termino: v("fecha_termino"), obra: v("obra").trim(), jornada: Number(v("jornada")), distribucion: v("distribucion").trim(),
+    lugar: v("lugar").trim(), centro_costo: v("centro_costo").trim(), fecha_ingreso: v("fecha_ingreso"), tipo: v("tipo"), fecha_termino: v("fecha_termino"), obra: v("obra").trim(), jornada: Number(v("jornada")), distribucion: v("distribucion").trim(),
     sueldo_base: parseMonto(v("sueldo_base") || "0"), gratificacion: v("gratificacion"), gratificacion_monto: parseMonto(v("gratificacion_monto") || "0"), colacion: parseMonto(v("colacion") || "0"), movilizacion: parseMonto(v("movilizacion") || "0"),
     semana_corrida: !!$("#tb-semana_corrida")?.checked, cargas: Number(v("cargas") || 0), forma_pago: v("forma_pago").trim(), afp: v("afp"), afp_comision: decimal(v("afp_comision")), salud: v("salud"), isapre: v("isapre").trim(), plan_uf: decimal(v("plan_uf")) || 0,
     trabajo_pesado: v("trabajo_pesado") || "ninguno", apv_monto: parseMonto(v("apv_monto") || "0"), apv_regimen: v("apv_regimen") || "B", sin_cesantia: !!$("#tb-sin_cesantia")?.checked, pensionado: !!$("#tb-pensionado")?.checked, afp_voluntaria: !!$("#tb-pensionado")?.checked && !!$("#tb-afp_voluntaria")?.checked, sexo: v("sexo") || "", anios_previos: Number(v("anios_previos") || 0),
@@ -5059,8 +5059,8 @@ function montoEnLetras(n) {
   return `${apocope(p.join(" "))}${!mil && !res && mill ? " de" : ""} pesos`;
 }
 function selectorCopiasLiq() {
-  const v = recuerdo("liq-copias", "dos-hoja");
-  return `<label>Copias<select id="lq-copias"><option value="una" ${v === "una" ? "selected" : ""}>Una copia por hoja (vertical)</option><option value="dos-hoja" ${v === "dos-hoja" ? "selected" : ""}>Dos copias verticales lado a lado en una hoja apaisada (empleador y trabajador)</option><option value="dos-separadas" ${v === "dos-separadas" ? "selected" : ""}>Dos copias en hojas separadas</option></select></label>`;
+  const v = recuerdo("liq-copias", "tira-hoja");
+  return `<label>Formato y copias<select id="lq-copias"><option value="tira-hoja" ${v === "tira-hoja" ? "selected" : ""}>Tira angosta, original y copia lado a lado en una hoja carta</option><option value="tira" ${v === "tira" ? "selected" : ""}>Tira angosta (4 × 11 pulgadas), original y copia en hojas separadas</option><option value="tira-original" ${v === "tira-original" ? "selected" : ""}>Tira angosta (4 × 11 pulgadas), solo el original</option><option value="una" ${v === "una" ? "selected" : ""}>Una copia por hoja (vertical)</option><option value="dos-hoja" ${v === "dos-hoja" ? "selected" : ""}>Dos copias verticales lado a lado en una hoja apaisada (empleador y trabajador)</option><option value="dos-separadas" ${v === "dos-separadas" ? "selected" : ""}>Dos copias en hojas separadas</option></select></label>`;
 }
 function lineasLiquidacion(l) {
   const h = [], d = [], a = (lista, n, v, siempre) => { if (siempre || v) lista.push([n, v || 0]); };
@@ -5071,6 +5071,59 @@ function lineasLiquidacion(l) {
   a(d, "Impuesto único 2ª categoría", l.impuesto_unico); a(d, "Ahorro previsional voluntario", v0(l.apv)); a(d, "Anticipos", l.anticipos); a(d, "Otros descuentos", l.otros_desc);
   for (const x of l.descuentos_fijos || []) a(d, x.concepto, x.monto);
   return { haberes: h, descuentos: d };
+}
+/* Detalle de la liquidación en el formato de «tira» (4 × 11 pulgadas): el sueldo base completo con las licencias, ausencias y atrasos como descuentos a la vista, y los totales por tramos. */
+function lineasTira(l) {
+  const t = trabajadorPorId(l.trabajador) || {}, r = Math.round, base = t.sueldo_base || 0, dc = l.dias_contrato ?? l.dias;
+  const full = base ? r((base * dc) / 30) : l.sueldo + (l.descuento_atrasos || 0), dedDias = base ? full - (l.sueldo_dias ?? l.sueldo) : 0;
+  const cant = { lic: l.dias_licencia || 0, aus: l.dias_ausencia || 0, perm: l.dias_permiso || 0 }, ded = { lic: 0, aus: 0, perm: 0 };
+  let acum = 0; for (const k of Object.keys(cant)) { ded[k] = base && cant[k] ? r((base * cant[k]) / 30) : 0; acum += ded[k]; }
+  const primero = Object.keys(cant).find((k) => cant[k]); if (primero) ded[primero] += dedDias - acum;
+  const dias = (n) => `${n} día${n === 1 ? "" : "s"}`, imp = [["Sueldo base", full]];
+  if (cant.lic) imp.push([`${dias(cant.lic)} de licencia médica`, -ded.lic]); if (cant.aus) imp.push([`${dias(cant.aus)} de ausencia`, -ded.aus]); if (cant.perm) imp.push([`${dias(cant.perm)} de permiso sin goce`, -ded.perm]);
+  if (l.descuento_atrasos) imp.push([`${comaDecimal(l.horas_atraso)} h de atraso`, -l.descuento_atrasos]);
+  const he50 = l.horas_extra_monto - (l.horas_extra_100_monto || 0);
+  if (he50) imp.push([`${comaDecimal(l.horas_extra)} h extras (50 %)`, he50]); if (l.horas_extra_100_monto) imp.push([`${comaDecimal(l.horas_extra_100)} h extras (100 %)`, l.horas_extra_100_monto]);
+  for (const [n, v] of [["Comisiones", v0(l.comisiones)], ["Semana corrida", v0(l.semana_corrida)], ["Bonos", l.bonos], ["Haberes fijos imponibles", v0(l.haberes_fijos_imp)], ["Gratificación", l.gratificacion], ["Pago de vacaciones", v0(l.vacaciones_pago)]]) if (v) imp.push([n, v]);
+  const noImp = [];
+  for (const [n, v] of [["Colación", l.colacion], ["Movilización", l.movilizacion], ["Otros haberes no imponibles", v0(l.haberes_fijos_no_imp) + l.no_imponibles], [`Cargas familiares (${l.cargas || 0})`, v0(l.asig_familiar)]]) if (v) noImp.push([n, v]);
+  const des = [];
+  for (const [n, v, siempre] of [[`AFP ${l.afp_nombre} (${comaDecimal(l.afp_tasa)} %)`, l.afp, !!l.afp], [`Salud ${l.salud_nombre}`, l.salud, true], ["Seguro de cesantía", l.cesantia], ["Trabajo pesado", v0(l.trabajo_pesado)], ["Impuesto único 2ª categoría", l.impuesto_unico], ["Ahorro previsional voluntario", v0(l.apv)]]) if (siempre || v) des.push([n, v]);
+  const otros = []; if (l.otros_desc) otros.push(["Otros descuentos", l.otros_desc]); for (const x of l.descuentos_fijos || []) if (x.monto) otros.push([x.concepto, x.monto]);
+  const totDes = l.descuentos_legales + v0(l.apv);
+  return { imp, noImp, des, otros, totImp: l.imponible, totNoImp: l.no_imponible + v0(l.asig_familiar), totHaberes: l.haberes, totDes, alcance: l.haberes - totDes, anticipos: l.anticipos, aPagar: l.liquido };
+}
+function dibujarLiquidacionTira(doc, l, x, y, w, h, copia) {
+  const e = empresa(), t = trabajadorPorId(l.trabajador) || { nombre: "(trabajador eliminado)", rut: "", cargo: "" }, T = textoPdf, d = lineasTira(l), pr = parametrosPrev(l.periodo), pad = 14, ancho = w - 2 * pad;
+  const lh = 10.6, num = (v) => (v < 0 ? `(${clp(-v)})` : clp(v));
+  doc.setTextColor(0); doc.setDrawColor(120); doc.setLineWidth(0.5);
+  let cy = y + 22;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text("LIQUIDACIÓN DE REMUNERACIONES", x + w / 2, cy, { align: "center" });
+  if (copia) { doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(T(copia), x + w - pad, cy - 12, { align: "right" }); }
+  cy += 16; doc.setFontSize(8);
+  const par = (a, b, ancla = 92) => { doc.setFont("helvetica", "bold"); doc.text(T(a), x + pad, cy); doc.setFont("helvetica", "normal"); const ls = doc.splitTextToSize(T(String(b || "")), ancho - ancla); doc.text(ls[0] || "", x + pad + ancla, cy); for (let i = 1; i < ls.length; i++) { cy += lh - 1; doc.text(ls[i], x + pad + ancla, cy); } cy += lh; };
+  par("SUCURSAL:", t.lugar || ""); par("MES:", mesMayus(l.periodo)); par("EMPRESA:", e.razon_social); par("R.U.T:", e.rut); cy += 3;
+  par("TRABAJADOR:", t.nombre); par("CARGO:", t.cargo); par("R.U.T:", t.rut); if (t.centro_costo) par("C. COSTOS:", t.centro_costo);
+  par("FECHA CONTRATO:", t.fecha_ingreso ? fmtFecha(t.fecha_ingreso) : ""); par("CONTRATO:", TIPOS_CONTRATO[t.tipo] || "");
+  par("COTIZ. PACTADA:", t.salud === "isapre" ? `${t.isapre || "Isapre"} (${comaDecimal(t.plan_uf || 0)} UF)` : "7 % (Fonasa)", 92);
+  par("DÍAS TRABAJADOS:", `${l.dias}${l.dias_contrato != null && l.dias_contrato !== l.dias ? ` de ${l.dias_contrato}` : ""}`, 92);
+  if (l.uf) { par("VALOR UF:", comaDecimal(l.uf).replace(/\B(?=(\d{3})+(?!\d))/g, "."), 92); par("TOPE IMPON.:", clp(Math.round(pr.tope_afp_uf * l.uf)), 92); }
+  cy += 4;
+  const seccion = (titulo) => { doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.text(titulo, x + w / 2, cy, { align: "center" }); doc.line(x + pad, cy + 3, x + w - pad, cy + 3); cy += 14; doc.setFontSize(8); };
+  const filas = (lista) => { doc.setFont("helvetica", "normal"); for (const [n, v] of lista) { const ls = doc.splitTextToSize(T(n), ancho - 60); doc.text(ls, x + pad + 2, cy); doc.text(num(v), x + w - pad, cy, { align: "right" }); cy += lh * ls.length; } };
+  const total = (rot, v, grande = false) => { doc.setFont("helvetica", "bold"); doc.setFontSize(grande ? 9 : 8); cy += 1; doc.text(rot, x + w - pad - 62, cy, { align: "right" }); doc.text(`$ ${clp(v)}`, x + w - pad, cy, { align: "right" }); doc.setFontSize(8); cy += lh + 2; };
+  seccion("H A B E R E S"); filas(d.imp); total("** TOTAL IMPONIBLE **", d.totImp);
+  if (d.noImp.length) { filas(d.noImp); total("** TOTAL HABERES NO IMPONIBLES **", d.totNoImp); }
+  total("** TOTAL HABERES **", d.totHaberes);
+  cy += 2; seccion("D E S C U E N T O S"); filas(d.des); total("** TOTAL DESCUENTOS **", d.totDes);
+  doc.line(x + pad, cy - 4, x + w - pad, cy - 4); cy += 2;
+  total("** ALCANCE LÍQUIDO **", d.alcance); if (d.otros.length || d.anticipos) { total("** TOTAL ANTICIPOS **", d.anticipos); if (d.otros.length) filas(d.otros.map(([n, v]) => [n, -v])); }
+  doc.setFillColor(238, 244, 238); doc.rect(x + pad, cy - 4, ancho, 18, "FD"); doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.text("** TOTAL A PAGAR **", x + pad + 6, cy + 8); doc.text(`$ ${clp(d.aPagar)}`, x + w - pad - 6, cy + 8, { align: "right" }); cy += 26;
+  doc.setFont("helvetica", "italic"); doc.setFontSize(8); const son = doc.splitTextToSize(T(`Son: ${montoEnLetras(d.aPagar)}.`), ancho); doc.text(son, x + pad, cy); cy += son.length * lh + 6;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); const dec = doc.splitTextToSize(T(`Certifico que he recibido de ${e.razon_social}, a mi entera satisfacción, el saldo indicado en la presente liquidación y no tengo cargo ni cobro posterior que hacer.`), ancho); doc.text(dec, x + pad, cy);
+  const base = y + h - 16;
+  doc.setFontSize(8); doc.text(`FECHA DE EMISIÓN:  ${fmtFecha(hoy())}`, x + pad, base - 44);
+  doc.line(x + w / 2 - 55, base - 12, x + w / 2 + 55, base - 12); doc.text("Recibí conforme", x + w / 2, base - 2, { align: "center" });
 }
 function dibujarLiquidacion(doc, l, x, y, w, h, copia) {
   /* Copia vertical: todo el ancho se usa en columna (datos, haberes, descuentos y total), pensada para una hoja angosta y alta. */
@@ -5114,14 +5167,19 @@ function dibujarLiquidacion(doc, l, x, y, w, h, copia) {
 }
 async function pdfLiquidaciones(lista, modo) {
   await cargarScript("jspdf");
-  const { jsPDF } = window.jspdf, m = 28, doble = modo === "dos-hoja";
-  const doc = new jsPDF({ unit: "pt", format: "letter", orientation: doble ? "landscape" : "portrait", compress: true });
+  const { jsPDF } = window.jspdf, m = 28, doble = modo === "dos-hoja", tira = modo === "tira" || modo === "tira-original";
+  const doc = new jsPDF({ unit: "pt", format: tira ? [288, 792] : "letter", orientation: doble ? "landscape" : "portrait", compress: true });
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
   doc.setProperties({ title: `Liquidaciones de sueldo – ${empresa().razon_social}`, author: empresa().razon_social });
   let primera = true;
   const pagina = () => { if (!primera) doc.addPage(); primera = false; };
   for (const l of lista) {
-    if (doble) {
+    if (modo === "tira-hoja") {
+      pagina(); dibujarLiquidacionTira(doc, l, 18, 0, 288, 792, "Original"); dibujarLiquidacionTira(doc, l, 306, 0, 288, 792, "Copia");
+      doc.setLineDashPattern([4, 3], 0); doc.setDrawColor(150); doc.line(306, 10, 306, 782); doc.setLineDashPattern([], 0);
+    } else if (tira) {
+      pagina(); dibujarLiquidacionTira(doc, l, 0, 0, 288, 792, "Original"); if (modo === "tira") { pagina(); dibujarLiquidacionTira(doc, l, 0, 0, 288, 792, "Copia"); }
+    } else if (doble) {
       const ancho = (W - 3 * m) / 2;
       pagina(); dibujarLiquidacion(doc, l, m, m, ancho, H - 2 * m, "COPIA EMPLEADOR"); dibujarLiquidacion(doc, l, 2 * m + ancho, m, ancho, H - 2 * m, "COPIA TRABAJADOR");
       doc.setLineDashPattern([4, 3], 0); doc.setDrawColor(150); doc.line(W / 2, m - 10, W / 2, H - m + 10); doc.setLineDashPattern([], 0);
@@ -6747,10 +6805,10 @@ document.addEventListener("click", (ev) => {
       try { const p = propuestaFiniquito(q); abrirPropuesta(p.fecha, p.glosa, p.lineas, `Finiquito de ${trabajadorPorId(q.trabajador)?.nombre || ""}.`, { finiquitoIds: [q.id] }); }
       catch (e) { if (e instanceof ErrorRcv) aviso(e.message); else throw e; } break; }
     case "eliminar-finiquito": ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/finiquitos/${id}`); render(); aviso("Finiquito eliminado (el trabajador sigue dado de baja: reactívalo desde Trabajadores si corresponde)."); }, "No se pudo eliminar el finiquito"); break;
-    case "imprimir-liquidaciones": { const modo = $("#lq-copias")?.value || "dos-hoja", per = periodoLiquidaciones(), lista = liquidacionesMesRrhh(per); recordar("liq-copias", modo);
+    case "imprimir-liquidaciones": { const modo = $("#lq-copias")?.value || "tira-hoja", per = periodoLiquidaciones(), lista = liquidacionesMesRrhh(per); recordar("liq-copias", modo);
       if (!lista.length) { aviso("No hay liquidaciones calculadas en este mes."); break; }
       ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`liquidaciones_${per}.pdf`, await pdfLiquidaciones(lista, modo), "Liquidaciones descargadas."); }, "No se pudo generar el PDF de las liquidaciones"); break; }
-    case "imprimir-liquidacion": { const modo = $("#lq-copias")?.value || "dos-hoja", lq = S.liquidaciones.find((x) => x.id === id); recordar("liq-copias", modo); if (!lq) break;
+    case "imprimir-liquidacion": { const modo = $("#lq-copias")?.value || "tira-hoja", lq = S.liquidaciones.find((x) => x.id === id); recordar("liq-copias", modo); if (!lq) break;
       ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`liquidacion_${limpiarRut((trabajadorPorId(lq.trabajador) || {}).rut || "")}_${lq.periodo}.pdf`, await pdfLiquidaciones([lq], modo), "Liquidación descargada."); }, "No se pudo generar el PDF"); break; }
     case "anexo-abrir": S.anexoEdit = { trabajador: id }; render(); break;
     case "anexo-cancelar": S.anexoEdit = null; render(); break;
