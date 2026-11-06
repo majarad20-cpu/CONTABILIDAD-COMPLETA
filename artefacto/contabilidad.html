@@ -392,7 +392,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.80.0";
+const VERSION = "1.81.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -440,7 +440,7 @@ async function reintentar(fn) {
 }
 
 /* Subcolecciones de cada empresa (se borran junto con ella). */
-const SUBCOLECCIONES = ["asientos", "cambios", "rcv", "f29", "socios", "sueldos", "honorarios", "activos", "depreciaciones", "trabajadores", "liquidaciones", "finiquitos", "caja", "renta", "f22", "previred", "asistencia", "bitacora"];
+const SUBCOLECCIONES = ["asientos", "cambios", "rcv", "f29", "socios", "sueldos", "honorarios", "activos", "depreciaciones", "trabajadores", "liquidaciones", "finiquitos", "caja", "renta", "f22", "previred", "previred_borr", "asistencia", "bitacora"];
 
 /* Acceso a datos por ruta («empresas/e1/asientos/a1»). Dos implementaciones con la misma interfaz:
    memoria (archivo abierto fuera del artefacto, para probar) y la base del artefacto de Claude. */
@@ -4350,7 +4350,7 @@ function informeHistorialHonorarios(lista) {
 /* ================================================================== activo fijo, personal y remuneraciones, renta anual */
 Object.assign(S, {
   bitacora: [], bitCargada: false, bitAbierta: false, bitFiltro: "pend", bitEdit: null, bitConfirmar: null, bitAviso: null, bitBorrador: null, bitVista: { texto: "", tipo: "", hechas: false },
-  f22: [], previred: [], asistencia: [], asisBorrador: null, asisPincel: "A", asisPintando: false, activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], finiquitos: [], finiqEdit: null, vacFecha: null, vacTrab: null, resPeriodo: null, resEid: null, presentando: false, migra: null, cartera: { cargando: false, filas: [], actualizado: null, fecha: null }, caja: [], cajaAnio: null, cajaMes: "", cajaDiario: false, cajaImp: null, cajaPago: null, renta: [], desuscribirNx: [],
+  f22: [], previred: [], previred_borr: [], asistencia: [], asisBorrador: null, asisPincel: "A", asisPintando: false, activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], finiquitos: [], finiqEdit: null, vacFecha: null, vacTrab: null, resPeriodo: null, resEid: null, presentando: false, migra: null, cartera: { cargando: false, filas: [], actualizado: null, fecha: null }, caja: [], cajaAnio: null, cajaMes: "", cajaDiario: false, cajaImp: null, cajaPago: null, renta: [], desuscribirNx: [],
   prev: { uf: {}, parametros: [] },
   activoEdit: null, afPeriodo: null, afPeriodoEid: null, afAnio: null,
   trabEdit: null, contratoVer: null, liqVer: null, liqPeriodo: null, liqPeriodoEid: null, prevEdit: null,
@@ -4827,8 +4827,8 @@ function vistaRrhh() {
   const t = pestanaActual("rrhh", "trabajadores");
   if (S.contratoVer && trabajadorPorId(S.contratoVer)) return vistaContrato(trabajadorPorId(S.contratoVer));
   if (S.liqVer && S.liquidaciones.some((l) => l.id === S.liqVer)) return vistaLiquidacion(S.liquidaciones.find((l) => l.id === S.liqVer));
-  return pestanasDe("rrhh", [["trabajadores", "Trabajadores y contratos"], ["asistencia", "Asistencia"], ["liquidaciones", "Liquidaciones"], ["libro", "Libro y Previred"], ["vacaciones", "Vacaciones"], ["finiquitos", "Finiquitos"], ["parametros", "Parámetros"]])
-    + (t === "asistencia" ? vistaAsistencia() : t === "liquidaciones" ? vistaLiquidaciones() : t === "libro" ? vistaLibroRem() : t === "vacaciones" ? vistaVacaciones() : t === "finiquitos" ? vistaFiniquitos() : t === "parametros" ? vistaParametros() : vistaTrabajadores());
+  return pestanasDe("rrhh", [["trabajadores", "Trabajadores y contratos"], ["asistencia", "Asistencia"], ["liquidaciones", "Liquidaciones"], ["libro", "Libro y Previred"], ["borrador_previred", "Borrador Previred"], ["vacaciones", "Vacaciones"], ["finiquitos", "Finiquitos"], ["parametros", "Parámetros"]])
+    + (t === "asistencia" ? vistaAsistencia() : t === "liquidaciones" ? vistaLiquidaciones() : t === "borrador_previred" ? vistaBorradorPrevired() : t === "libro" ? vistaLibroRem() : t === "vacaciones" ? vistaVacaciones() : t === "finiquitos" ? vistaFiniquitos() : t === "parametros" ? vistaParametros() : vistaTrabajadores());
 }
 
 /* ---------- trabajadores y contratos ---------- */
@@ -5659,6 +5659,106 @@ document.addEventListener("pointerdown", (ev) => { const c = ev.target.closest?.
 document.addEventListener("pointermove", (ev) => { if (!S.asisPintando) return; pintarAsis(document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.(".asis-celda")); });
 document.addEventListener("pointerup", () => { S.asisPintando = false; });
 document.addEventListener("pointercancel", () => { S.asisPintando = false; });
+
+/* ---------- borrador de Previred (como el borrador del F29): resumen por institución, detalle por trabajador, revisiones, estado y exportación ---------- */
+function estructuraPrevired(lista) {
+  const rc = empresa().rem_config || {}, afp = new Map(), salud = new Map(), mapa = (m, k) => { if (!m.has(k)) m.set(k, { n: 0, trab: 0, sis: 0, reforma: 0, apv: 0, tpT: 0, tpE: 0, imp: 0 }); return m.get(k); };
+  let cesT = 0, cesE = 0, mutual = 0, sanna = 0, asig = 0;
+  for (const l of lista) {
+    const a = mapa(afp, l.afp_nombre || "sin AFP"); a.n++; a.imp += l.imponible; a.trab += l.afp; a.sis += l.emp_sis; a.reforma += l.emp_reforma; a.apv += v0(l.apv); a.tpT += v0(l.trabajo_pesado); a.tpE += v0(l.emp_trabajo_pesado);
+    const sl = mapa(salud, l.salud_nombre || "Fonasa"); sl.n++; sl.imp += l.imponible; sl.trab += l.salud;
+    cesT += l.cesantia; cesE += l.emp_cesantia; mutual += l.emp_mutual; sanna += l.emp_sanna; asig += v0(l.asig_familiar);
+  }
+  const inst = [], suma = (c) => c.reduce((t, x) => t + x[1], 0), poner = (nombre, conceptos, n) => { const cs = conceptos.filter((x) => x[1]); if (cs.length) inst.push({ nombre, conceptos: cs, total: suma(cs), n }); };
+  for (const [n, a] of afp) poner(`AFP ${n}`, [["Cotización obligatoria del trabajador (10 % más comisión)", a.trab], ["SIS (empleador)", a.sis], ["Cotización adicional del empleador (Ley 21.735)", a.reforma], ["Ahorro previsional voluntario (APV)", a.apv], ["Trabajo pesado: trabajador", a.tpT], ["Trabajo pesado: empleador", a.tpE]], a.n);
+  for (const [n, a] of salud) poner(n === "Fonasa" ? "Fonasa" : `Isapre ${n}`, [["Cotización de salud (7 % o plan pactado)", a.trab]], a.n);
+  poner("Seguro de cesantía (AFC)", [["Trabajador", cesT], ["Empleador", cesE]], lista.length);
+  poner(rc.mutual_nombre || "Mutual de seguridad / ISL", [["Seguro de accidentes del trabajo (básica y adicional)", mutual], ["Ley SANNA", sanna]], lista.length);
+  const total = inst.reduce((t, i) => t + i.total, 0);
+  return { instituciones: inst, asig, total, neto: total - asig };
+}
+function filasPreviredTrabajadores(periodo, lista) {
+  return lista.map((l) => {
+    const t = trabajadorPorId(l.trabajador) || { nombre: "(eliminado)", rut: "" }, mov = [];
+    if (t.fecha_ingreso && t.fecha_ingreso.slice(0, 7) === periodo) mov.push(`Ingreso (${t.tipo === "indefinido" ? "indefinido" : "plazo fijo"})`);
+    if (t.fecha_finiquito && t.fecha_finiquito.slice(0, 7) === periodo) mov.push("Término");
+    if (l.dias_licencia) mov.push(`Licencia ${l.dias_licencia} d`); if (t.pensionado) mov.push("Pensionado");
+    return { nombre: t.nombre, rut: t.rut, dias: l.dias, imponible: l.imponible, afp: `${l.afp_nombre || ""}`, cotAfp: l.afp, sis: l.emp_sis + l.emp_reforma, salud: `${l.salud_nombre || ""}`, cotSalud: l.salud, afcT: l.cesantia, afcE: l.emp_cesantia, mutual: l.emp_mutual + l.emp_sanna, mov: mov.join(" · ") };
+  });
+}
+function alertasPrevired(periodo, lista, est) {
+  const a = [], vigentes = S.trabajadores.filter((t) => vigenteEn(t, periodo)), d = S.previred_borr.find((x) => x.id === periodo);
+  for (const t of vigentes) if (!lista.some((l) => l.trabajador === t.id)) a.push({ nivel: "error", texto: `Falta la liquidación de ${t.nombre} en ${nombrePeriodo(periodo)}: no está en el borrador.` });
+  if (!lista.length) a.push({ nivel: "error", texto: "No hay liquidaciones calculadas en este mes." });
+  const sinContabilizar = lista.filter((l) => !contabilizado(l)).length;
+  if (sinContabilizar && !esSimplificada()) a.push({ nivel: "info", texto: `${sinContabilizar} liquidación(es) sin contabilizar: contabiliza las remuneraciones del mes para que el pago de Previred tenga su asiento de origen.` });
+  for (const p of revisionArchivosRem(lista)) a.push({ nivel: "aviso", texto: `Archivo de Previred: ${p}` });
+  const conTope = lista.filter((l) => l.tope_aplicado).length; if (conTope) a.push({ nivel: "info", texto: `${conTope} trabajador(es) con renta sobre el tope imponible: las cotizaciones se calcularon con el tope.` });
+  const conLic = lista.filter((l) => l.dias_licencia).length; if (conLic) a.push({ nivel: "info", texto: `${conLic} trabajador(es) con licencia médica: se declaran con el movimiento 3 y el subsidio lo paga la entidad de salud.` });
+  const prev = liquidacionesMesRrhh(periodoAnterior(periodo)); if (prev.length) { const pt = estructuraPrevired(prev).neto; if (pt && est.neto && Math.abs(est.neto - pt) / pt > 0.25) a.push({ nivel: "aviso", texto: `El total a pagar ($${clp(est.neto)}) varía más de 25 % respecto del mes anterior ($${clp(pt)}): revisa ingresos, términos o cambios de sueldo.` }); }
+  if (d && d.total !== est.neto) a.push({ nivel: "aviso", texto: `Las liquidaciones cambiaron desde que guardaste el borrador: guardado $${clp(d.total)}, ahora $${clp(est.neto)}. Vuelve a guardarlo.` });
+  const pago = S.previred.find((x) => x.id === periodo);
+  if (!pago && !(d && d.declarado) && hoy() > `${periodoSiguiente(periodo)}-13`) a.push({ nivel: "error", texto: "El plazo para declarar y pagar (hasta el día 10, o el 13 por internet) ya venció: Previred cobra multas e intereses. Regístralos al pagar." });
+  if (pago && pago.cotizaciones !== est.neto) a.push({ nivel: "aviso", texto: `Lo registrado como pagado ($${clp(pago.cotizaciones)}) difiere del borrador ($${clp(est.neto)}).` });
+  return a;
+}
+function informePreviredBorrador(periodo, lista) {
+  const est = estructuraPrevired(lista), fi = filasPreviredTrabajadores(periodo, lista), d = S.previred_borr.find((x) => x.id === periodo);
+  const inf = new Informe("BORRADOR DE PREVIRED", `PERÍODO: ${mesMayus(periodo)}${d?.declarado ? ` · DECLARADO${d.folio ? " · PLANILLA N° " + d.folio : ""}` : " · BORRADOR"}`, [col("Institución y concepto", 54), col("Monto", 16, "monto")], `borrador_previred_${periodo}`, { firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  for (const i of est.instituciones) { inf.agregar([`${i.nombre} · ${i.n} trabajador(es)`], { estilo: "seccion", abarca: 0 }); for (const [c, v] of i.conceptos) inf.agregar([c, v]); inf.agregar([`Total ${i.nombre}`, i.total], { estilo: "subtotal" }); }
+  if (est.asig) inf.agregar(["(−) Asignación familiar pagada, compensada por Previred", -est.asig]);
+  inf.agregar(["TOTAL A PAGAR EN PREVIRED", est.neto], { estilo: "total" });
+  inf.notas.push("Detalle por trabajador:");
+  for (const x of fi) inf.notas.push(`${x.nombre} (${x.rut}): ${x.dias} días · imponible $${clp(x.imponible)} · AFP ${x.afp} $${clp(x.cotAfp)} · salud ${x.salud} $${clp(x.cotSalud)}${x.afcT || x.afcE ? ` · AFC $${clp(x.afcT)} y $${clp(x.afcE)}` : ""}${x.mutual ? ` · mutual $${clp(x.mutual)}` : ""}${x.mov ? ` · ${x.mov}` : ""}`);
+  inf.notas.push("Borrador calculado desde las liquidaciones del mes. Compáralo con la planilla de Previred antes de declarar y pagar.");
+  return inf;
+}
+function vistaBorradorPrevired() {
+  const periodo = periodoLiquidaciones(), t = pestanaActual("prvd", "borrador");
+  const cab = `${cabecera("Borrador de Previred", nombrePeriodo(periodo))}${pestanasDe("prvd", [["borrador", "Borrador"], ["historial", "Historial"]])}`;
+  if (t === "historial") return cab + historialPrevired();
+  const lista = liquidacionesMesRrhh(periodo), est = estructuraPrevired(lista), fi = filasPreviredTrabajadores(periodo, lista), al = alertasPrevired(periodo, lista, est), d = S.previred_borr.find((x) => x.id === periodo), pago = S.previred.find((x) => x.id === periodo);
+  S.informe = () => informePreviredBorrador(periodo, lista); S.csv = csvDeInforme(S.informe());
+  const limite = `${periodoSiguiente(periodo)}-10`;
+  const estado = `<div class="caja"><p><span class="etiqueta ${d?.declarado ? "" : "cerrado"}">${d?.declarado ? "declarado" : "borrador"}</span>${d?.declarado ? ` el ${fmtFecha(d.fecha_declaracion)}${d.folio ? ` · planilla N° ${esc(d.folio)}` : ""}` : ""}
+      · ${pago ? `<span class="etiqueta">pagado</span> el ${fmtFecha(pago.fecha_pago)} ($${clp(pago.total)})` : `<span class="etiqueta cerrado">sin pagar</span> · plazo hasta el ${fmtFecha(limite)} (13 si declaras y pagas por internet)`}</p></div>`;
+  const avisos = al.map((x) => `<div class="aviso ${x.nivel === "error" ? "error" : ""}">${x.nivel === "error" ? "⚠ " : ""}${esc(x.texto)}</div>`).join("");
+  const resumen = lista.length ? `<h2>Resumen por institución</h2>
+    <div class="tabla"><table><thead><tr><th>Institución y concepto</th><th class="num">Monto</th></tr></thead><tbody>
+      ${est.instituciones.map((i) => `<tr class="sub"><td><strong>${esc(i.nombre)}</strong> <small class="ayuda">${i.n} trabajador(es)</small></td><td class="num"><strong>${clp(i.total)}</strong></td></tr>${i.conceptos.map(([c, v]) => `<tr><td>&nbsp;&nbsp;${esc(c)}</td><td class="num">${clp(v)}</td></tr>`).join("")}`).join("")}
+      ${est.asig ? `<tr><td>(−) Asignación familiar pagada, compensada por Previred</td><td class="num">−${clp(est.asig)}</td></tr>` : ""}
+      <tr class="total"><td>Total a pagar en Previred</td><td class="num">${clp(est.neto)}</td></tr></tbody></table></div>
+    <h2>Detalle por trabajador</h2>
+    <div class="tabla"><table><thead><tr><th>Trabajador</th><th class="num">Días</th><th class="num">Renta imponible</th><th>AFP</th><th class="num">Cotiz. AFP</th><th class="num">SIS y adicional</th><th>Salud</th><th class="num">Cotiz. salud</th><th class="num">AFC trab.</th><th class="num">AFC emp.</th><th class="num">Mutual</th><th>Movimiento</th></tr></thead>
+      <tbody>${fi.map((x) => `<tr><td>${esc(x.nombre)}<br><small class="ayuda">${esc(x.rut)}</small></td><td class="num">${x.dias}</td><td class="num">${clp(x.imponible)}</td><td>${esc(x.afp)}</td><td class="num">${clp(x.cotAfp)}</td><td class="num">${x.sis ? clp(x.sis) : ""}</td><td>${esc(x.salud)}</td><td class="num">${clp(x.cotSalud)}</td><td class="num">${x.afcT ? clp(x.afcT) : ""}</td><td class="num">${x.afcE ? clp(x.afcE) : ""}</td><td class="num">${x.mutual ? clp(x.mutual) : ""}</td><td>${esc(x.mov)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="caja vacio"><p>No hay liquidaciones calculadas en ${nombrePeriodo(periodo)}. Calcúlalas en «Liquidaciones» para armar el borrador.</p></div>`;
+  const form = lista.length && S.puedeEscribir ? `<form class="caja" data-form="previred-borr"><h2>Guardar el borrador y registrar la declaración</h2>
+      <div class="form"><label class="check"><input type="checkbox" id="pb-declarado" ${d?.declarado ? "checked" : ""}> Ya lo declaré en Previred</label>
+        <label>Folio de la planilla<input id="pb-folio" inputmode="numeric" value="${esc(d?.folio || pago?.folio || "")}"></label>
+        <label>Fecha de declaración<input type="date" id="pb-fecha" value="${esc(d?.fecha_declaracion || pago?.fecha_pago || "")}"></label>
+        <label>Observaciones<input id="pb-obs" value="${esc(d?.observacion || "")}"></label></div>
+      <div class="acciones"><button class="btn" type="submit">Guardar</button><button class="btn sec" type="button" data-n="prvd-ir-pago">Ir a registrar el pago</button>${S.descargas ? `<button class="btn sec" type="button" data-n="txt-previred">Archivo de Previred (borrador TXT)</button>` : ""}${botonesExportar()}</div></form>` : "";
+  return `${cab}<div class="barra"><label>Mes<input type="month" id="lq-periodo" value="${periodo}"></label></div>${estado}${avisos}${resumen}${form}
+  <p class="ayuda">Es un borrador calculado desde las liquidaciones del mes. El impuesto único retenido no va en Previred: se paga en el F29. Guarda el borrador, registra el folio cuando declares y el pago en «Libro y Previred» para dejarlo con su asiento.</p>`;
+}
+async function guardarBorradorPrevired() {
+  const periodo = periodoLiquidaciones(), lista = liquidacionesMesRrhh(periodo), est = estructuraPrevired(lista);
+  const declarado = $("#pb-declarado").checked, folio = $("#pb-folio").value.trim().replace(/\D/g, ""), fecha = $("#pb-fecha").value, obs = $("#pb-obs").value.trim();
+  if (!lista.length) return aviso("No hay liquidaciones calculadas en este mes.");
+  if (declarado && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return aviso("Para dejarlo declarado, ingresa la fecha de declaración.");
+  if (fecha && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return aviso("La fecha de declaración no es válida.");
+  await ocupado(async () => {
+    await S.almacen.set(`empresas/${S.eid}/previred_borr/${periodo}`, { periodo, declarado, fecha_declaracion: fecha, folio, observacion: obs, total: est.neto, trabajadores: lista.length, instituciones: est.instituciones.map((i) => [i.nombre, i.total]), guardado_en: new Date().toISOString() });
+    render(); aviso(declarado ? `Previred de ${nombrePeriodo(periodo)} guardado como declarado.` : `Borrador de Previred de ${nombrePeriodo(periodo)} guardado.`);
+  }, "No se pudo guardar el borrador");
+}
+function historialPrevired() {
+  const lista = S.previred_borr.slice().sort((a, b) => (a.id < b.id ? 1 : -1));
+  return lista.length ? `<div class="tabla"><table><thead><tr><th>Mes</th><th class="num">Trabajadores</th><th class="num">Total a pagar</th><th>Estado</th><th>Planilla</th><th>Declarado el</th><th>Pago</th><th></th></tr></thead><tbody>
+    ${lista.map((d) => { const pg = S.previred.find((x) => x.id === d.id); return `<tr class="clic"><td>${esc(nombrePeriodo(d.id))}</td><td class="num">${d.trabajadores ?? ""}</td><td class="num">${clp(d.total)}</td><td>${d.declarado ? '<span class="etiqueta">declarado</span>' : '<span class="etiqueta cerrado">borrador</span>'}</td>
+      <td class="cod">${esc(d.folio || "")}</td><td>${d.fecha_declaracion ? fmtFecha(d.fecha_declaracion) : ""}</td><td>${pg ? `pagado el ${fmtFecha(pg.fecha_pago)}` : '<span class="ayuda">sin pagar</span>'}</td><td><button class="btn enlace" type="button" data-n="prvd-abrir" data-id="${esc(d.id)}">Abrir</button></td></tr>`; }).join("")}</tbody>
+    <tfoot><tr class="total"><td>Total</td><td></td><td class="num">${clp(lista.reduce((t, d) => t + (d.total || 0), 0))}</td><td colspan="5"></td></tr></tfoot></table></div>`
+    : `<div class="caja vacio"><p>Aún no hay borradores de Previred guardados. Guarda el de un mes desde la pestaña «Borrador».</p></div>`;
+}
 
 /* ---------- vacaciones ---------- */
 const anosEntre = (desde, hasta) => (new Date(hasta) - new Date(desde)) / (365.25 * 86400000);
@@ -6814,6 +6914,8 @@ document.addEventListener("click", (ev) => {
     case "anexo-cancelar": S.anexoEdit = null; render(); break;
     case "pdf-certificado": { const tr = trabajadorPorId(id); ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`certificado_trabajo_${nombreSeguro(tr.nombre)}.pdf`, await pdfCertificado(tr), "Certificado descargado."); }, "No se pudo generar el certificado"); break; }
     case "previred-pagar": registrarPagoPrevired(); break;
+    case "prvd-ir-pago": S.pestana.rrhh = "libro"; render(); window.scrollTo(0, 0); break;
+    case "prvd-abrir": S.liqPeriodo = id; S.liqPeriodoEid = S.eid; S.pestana.prvd = "borrador"; render(); window.scrollTo(0, 0); break;
     case "asis-pincel": S.asisPincel = t.dataset.c; render(); break;
     case "asis-rango-todos": { const b = S.asisBorrador, n = diasCalendario(b.periodo), desde = Number($("#as-r-desde").value), hasta = Number($("#as-r-hasta").value || $("#as-r-desde").value), cod = $("#as-r-cod").value;
       if (!Number.isInteger(desde) || !Number.isInteger(hasta) || desde < 1 || hasta > n || desde > hasta) { aviso(`Indica un rango de días válido, entre 1 y ${n}.`); break; }
@@ -7050,7 +7152,7 @@ function cambiarEmpresa(id) {
   S.desuscribirF29?.(); S.desuscribirF29 = null; S.f29Borradores = []; S.f29 = null;
   S.desuscribirRem.forEach((f) => f?.()); S.desuscribirRem = []; S.socios = []; S.sueldos = []; S.honorarios = []; S.remPeriodo = null;
   S.desuscribirNx.forEach((f) => f?.()); S.desuscribirNx = [];
-  S.activos = []; S.depreciaciones = []; S.trabajadores = []; S.liquidaciones = []; S.finiquitos = []; S.caja = []; S.finiqEdit = null; S.vacFecha = null; S.vacTrab = null; S.resPeriodo = null; S.renta = []; S.f22 = []; S.previred = []; S.asistencia = []; S.asisBorrador = null;
+  S.activos = []; S.depreciaciones = []; S.trabajadores = []; S.liquidaciones = []; S.finiquitos = []; S.caja = []; S.finiqEdit = null; S.vacFecha = null; S.vacTrab = null; S.resPeriodo = null; S.renta = []; S.f22 = []; S.previred = []; S.previred_borr = []; S.asistencia = []; S.asisBorrador = null;
   S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null; S.rentaEdit = null; S.afPeriodo = null; S.liqPeriodo = null;
   S.periodosAnio = null; S.cierreAnio = null; S.apertura = null;
   S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
@@ -7075,7 +7177,7 @@ function cambiarEmpresa(id) {
     S[col] = lista;
     if (["sueldos", "honorarios", "f29"].includes(S.vista) && !S.ocupado) render();
   }, () => {}));
-  const vistasNx = { activos: ["activos"], depreciaciones: ["activos"], trabajadores: ["rrhh", "dj"], liquidaciones: ["rrhh", "dj", "renta"], finiquitos: ["rrhh", "dj"], caja: ["caja", "inicio", "resumen"], renta: [], f22: ["renta"], previred: ["rrhh"], asistencia: ["rrhh"] };
+  const vistasNx = { activos: ["activos"], depreciaciones: ["activos"], trabajadores: ["rrhh", "dj"], liquidaciones: ["rrhh", "dj", "renta"], finiquitos: ["rrhh", "dj"], caja: ["caja", "inicio", "resumen"], renta: [], f22: ["renta"], previred: ["rrhh"], previred_borr: ["rrhh"], asistencia: ["rrhh"] };
   S.desuscribirNx = Object.keys(vistasNx).map((col) => S.almacen.onCol(`empresas/${id}/${col}`, (lista) => {
     if (id !== S.eid) return;
     S[col] = lista;
@@ -7235,6 +7337,7 @@ document.addEventListener("submit", (ev) => {
     case "cuenta-rapida": crearCuentaRapida(); break;
     case "empresa": guardarEmpresa(); break;
     case "anexo": generarAnexo(); break;
+    case "previred-borr": guardarBorradorPrevired(); break;
     case "f22": guardarF22(); break;
     case "propietario": guardarPropietario(); break;
     case "nueva-empresa": crearEmpresa(); break;
