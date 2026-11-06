@@ -374,7 +374,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.76.1";
+const VERSION = "1.77.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -422,7 +422,7 @@ async function reintentar(fn) {
 }
 
 /* Subcolecciones de cada empresa (se borran junto con ella). */
-const SUBCOLECCIONES = ["asientos", "cambios", "rcv", "f29", "socios", "sueldos", "honorarios", "activos", "depreciaciones", "trabajadores", "liquidaciones", "finiquitos", "caja", "renta", "f22", "bitacora"];
+const SUBCOLECCIONES = ["asientos", "cambios", "rcv", "f29", "socios", "sueldos", "honorarios", "activos", "depreciaciones", "trabajadores", "liquidaciones", "finiquitos", "caja", "renta", "f22", "previred", "bitacora"];
 
 /* Acceso a datos por ruta («empresas/e1/asientos/a1»). Dos implementaciones con la misma interfaz:
    memoria (archivo abierto fuera del artefacto, para probar) y la base del artefacto de Claude. */
@@ -971,10 +971,11 @@ async function guardarAsiento(confirmado = false) {
     if (ed.liquidacionIds) await marcarContabilizados("liquidaciones", ed.liquidacionIds, id);
     if (ed.finiquitoIds) await marcarContabilizados("finiquitos", ed.finiquitoIds, id);
     if (ed.depItems) await marcarDepreciacion(ed.depPeriodo, ed.depItems, id);
+    if (ed.previredPeriodo) await S.almacen.set(`empresas/${S.eid}/previred/${ed.previredPeriodo}`, { periodo: ed.previredPeriodo, fecha_pago: ed.fecha, folio: ed.previredFolio || "", cotizaciones: ed.previredCot, recargos: ed.previredMultas || 0, total: ed.previredCot + (ed.previredMultas || 0), asiento: id, guardado_en: new Date().toISOString() });
     S.confirmar = null;
     S.filtros.anio = ed.fecha.slice(0, 4);
     S.edit = null;
-    ir(ed.rcvIds ? "rcv" : ed.sueldoIds ? "sueldos" : ed.honorarioIds ? "honorarios" : (ed.liquidacionIds || ed.finiquitoIds) ? "rrhh" : ed.depItems ? "activos" : "asientos");
+    ir(ed.rcvIds ? "rcv" : ed.sueldoIds ? "sueldos" : ed.honorarioIds ? "honorarios" : (ed.liquidacionIds || ed.finiquitoIds || ed.previredPeriodo) ? "rrhh" : ed.depItems ? "activos" : "asientos");
     aviso(`Asiento N° ${nuevo} guardado.`);
   }, "No se pudo guardar el asiento");
 }
@@ -1857,13 +1858,15 @@ const CONCEPTOS = {
   rem_indemnizaciones: ["Indemnizaciones por término de contrato (gasto; si no se configura, va a sueldos)", ["GASTO"], [/indemnizaci/i]],
   rem_anticipos: ["Anticipos y préstamos al personal (activo)", ["ACTIVO"], [/anticipos? (al )?personal/i, /pr[eé]stamos? (al )?personal/i, /deudores varios/i]],
   rem_liquido: ["Remuneraciones: cuenta del líquido (remuneraciones por pagar o banco)", ["ACTIVO", "PASIVO"], [/remuneraciones por pagar/i, /^banco/i]],
+  rem_multas: ["Multas e intereses previsionales por pagar tarde en Previred (gasto)", ["GASTO"], [/multas? previsional/i, /multas? e intereses/i, /intereses? por mora/i]],
+  previred_pago: ["Previred: cuenta desde la que se pagan las cotizaciones (banco)", ["ACTIVO"], [/^banco/i]],
 };
 const GRUPOS_CONCEPTOS = [
   ["Centralización de compras", ["compras_neto", "compras_activo_fijo", "iva_credito", "compras_otros_impuestos", "proveedores"]],
   ["Centralización de ventas", ["ventas_neto", "ventas_exento", "iva_debito", "ventas_otros_impuestos", "clientes", "ventas_boletas"]],
   ["Borrador del F29", ["remanente_iva", "retencion_honorarios", "impuesto_unico"]],
   ["Sueldo empresarial y honorarios", ["sueldo_empresarial", "pago_sueldos", "afp_por_pagar", "salud_por_pagar", "honorarios_gasto", "honorarios_pago"]],
-  ["Remuneraciones del personal", ["rem_sueldos", "rem_gratificacion", "rem_no_imponibles", "rem_leyes_sociales", "rem_cotizaciones", "rem_asig_familiar", "rem_otros_descuentos", "rem_indemnizaciones", "rem_anticipos", "rem_liquido"]],
+  ["Remuneraciones del personal", ["rem_sueldos", "rem_gratificacion", "rem_no_imponibles", "rem_leyes_sociales", "rem_cotizaciones", "rem_asig_familiar", "rem_otros_descuentos", "rem_indemnizaciones", "rem_anticipos", "rem_liquido", "rem_multas", "previred_pago"]],
   ["Activo fijo", ["depreciacion_gasto", "depreciacion_acumulada"]],
 ];
 
@@ -3183,6 +3186,7 @@ async function marcarContabilizados(coleccion, ids, asientoId) {
   for (const id of ids) { const x = lista.find((y) => y.id === id); if (x && !contabilizado(x)) await S.almacen.set(`empresas/${S.eid}/${coleccion}/${id}`, { ...x, asiento: asientoId }); }
 }
 async function liberarRemuneraciones(asientoId) {
+  for (const x of S.previred.filter((y) => y.asiento === asientoId)) await S.almacen.del(`empresas/${S.eid}/previred/${x.id}`);
   for (const [coleccion, lista] of [["sueldos", S.sueldos], ["honorarios", S.honorarios], ["liquidaciones", S.liquidaciones], ["finiquitos", S.finiquitos]])
     for (const x of lista.filter((y) => y.asiento === asientoId)) await S.almacen.set(`empresas/${S.eid}/${coleccion}/${x.id}`, { ...x, asiento: "" });
 }
@@ -4328,7 +4332,7 @@ function informeHistorialHonorarios(lista) {
 /* ================================================================== activo fijo, personal y remuneraciones, renta anual */
 Object.assign(S, {
   bitacora: [], bitCargada: false, bitAbierta: false, bitFiltro: "pend", bitEdit: null, bitConfirmar: null, bitAviso: null, bitBorrador: null, bitVista: { texto: "", tipo: "", hechas: false },
-  f22: [], activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], finiquitos: [], finiqEdit: null, vacFecha: null, vacTrab: null, resPeriodo: null, resEid: null, presentando: false, migra: null, cartera: { cargando: false, filas: [], actualizado: null, fecha: null }, caja: [], cajaAnio: null, cajaMes: "", cajaDiario: false, cajaImp: null, cajaPago: null, renta: [], desuscribirNx: [],
+  f22: [], previred: [], activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], finiquitos: [], finiqEdit: null, vacFecha: null, vacTrab: null, resPeriodo: null, resEid: null, presentando: false, migra: null, cartera: { cargando: false, filas: [], actualizado: null, fecha: null }, caja: [], cajaAnio: null, cajaMes: "", cajaDiario: false, cajaImp: null, cajaPago: null, renta: [], desuscribirNx: [],
   prev: { uf: {}, parametros: [] },
   activoEdit: null, afPeriodo: null, afPeriodoEid: null, afAnio: null,
   trabEdit: null, contratoVer: null, liqVer: null, liqPeriodo: null, liqPeriodoEid: null, prevEdit: null,
@@ -5441,8 +5445,47 @@ function vistaLibroRem() {
     <h2>Cotizaciones y retenciones del mes</h2>
     <div class="tabla"><table><thead><tr><th>Concepto</th><th class="num">Monto</th></tr></thead><tbody>${resumen.map(([n, v]) => `<tr><td>${esc(n)}</td><td class="num">${clp(v)}</td></tr>`).join("")}
       <tr class="sub"><td>Aportes del empleador</td><td class="num">${clp(sumaDe(lista, "aportes_empleador"))}</td></tr><tr class="total"><td>Costo total para la empresa</td><td class="num">${clp(costo)}</td></tr></tbody></table></div>
+    ${panelPagoPrevired(periodo, lista)}
     <p class="ayuda">Usa este resumen y la planilla de apoyo (CSV) para declarar y pagar en Previred; la planilla no es el archivo oficial de Previred. El impuesto único retenido se paga en el F29 (código 48). La asignación familiar pagada a los trabajadores se descuenta del pago de cotizaciones.</p>`
     : `<div class="caja vacio"><p>No hay liquidaciones calculadas en ${nombrePeriodo(periodo)}.</p></div>`}`;
+}
+
+/* ---------- pago de las cotizaciones en Previred: detalle a pagar, asiento y registro del pago ---------- */
+const totalPreviredMes = (lista) => lista.reduce((t, l) => t + l.afp + l.salud + l.cesantia + v0(l.trabajo_pesado) + v0(l.apv) + l.aportes_empleador, 0);
+function panelPagoPrevired(periodo, lista) {
+  const cot = totalPreviredMes(lista), asig = sumaDe(lista, "asig_familiar"), neto = cot - asig, pv = S.previred.find((x) => x.id === periodo), a = pv && S.lista.find((x) => x.id === pv.asiento);
+  const detalle = resumenCotizaciones(lista).filter(([n, v]) => v && !/^Impuesto único/.test(n) && !/^Asignación familiar/.test(n));
+  const tabla = `<div class="tabla"><table><thead><tr><th>Institución y concepto</th><th class="num">A pagar en Previred</th></tr></thead><tbody>${detalle.map(([n, v]) => `<tr><td>${esc(n)}</td><td class="num">${clp(v)}</td></tr>`).join("")}
+    ${asig ? `<tr><td>(−) Asignación familiar pagada, que Previred compensa</td><td class="num">−${clp(asig)}</td></tr>` : ""}<tr class="total"><td>Total a pagar en Previred</td><td class="num">${clp(neto)}</td></tr></tbody></table></div>`;
+  let estado;
+  if (pv) {
+    estado = `<div class="caja"><p><span class="etiqueta">pagado</span> el ${fmtFecha(pv.fecha_pago)}${pv.folio ? ` · planilla N° ${esc(pv.folio)}` : ""}: cotizaciones $${clp(pv.cotizaciones)}${pv.recargos ? ` más multas e intereses $${clp(pv.recargos)}` : ""}, en total $${clp(pv.total)}.
+      ${a ? `<button class="btn enlace" type="button" data-asiento="${esc(a.id)}">Asiento N° ${a.numero}</button>` : ""}</p></div>
+      ${pv.cotizaciones !== neto ? `<div class="aviso">Las cotizaciones registradas como pagadas ($${clp(pv.cotizaciones)}) difieren de las que salen hoy de las liquidaciones ($${clp(neto)}): revisa si cambió alguna liquidación o si el pago fue otro.</div>` : ""}`;
+  } else if (esSimplificada()) estado = `<p class="ayuda">En contabilidad simplificada el pago de Previred se anota en el Libro de caja.</p>`;
+  else if (!S.puedeEscribir || !neto) estado = "";
+  else estado = `<div class="barra"><label>Fecha de pago<input type="date" id="pv-fecha" value="${esc(periodoSiguiente(periodo) + "-10")}"></label>
+      <label>Folio de la planilla<input id="pv-folio" placeholder="Opcional"></label>
+      <label>Multas, intereses y reajustes ($)<input id="pv-multas" inputmode="numeric" placeholder="0"><small>Si pagaste atrasado: lo que cobró Previred sobre las cotizaciones.</small></label>
+      <button class="btn" type="button" data-n="previred-pagar">Registrar el pago en la contabilidad</button></div>
+      <p class="ayuda">El asiento carga las cotizaciones por pagar (y las multas, si las hay) y abona el banco. Se abre para que lo revises antes de guardarlo.</p>`;
+  return `<h2>Pago en Previred</h2>${tabla}${estado}`;
+}
+function registrarPagoPrevired() {
+  const periodo = periodoLiquidaciones(), lista = liquidacionesMesRrhh(periodo), fecha = $("#pv-fecha").value, folio = $("#pv-folio").value.trim(), multas = parseMonto($("#pv-multas").value || "0");
+  if (!lista.length) return aviso("No hay liquidaciones calculadas en este mes.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return aviso("Ingresa la fecha de pago.");
+  if (Number.isNaN(multas) || multas < 0) return aviso("Multas e intereses: ingresa un monto en pesos enteros, sin decimales.");
+  try {
+    const ct = cuentasTributarias(), cot = totalPreviredMes(lista), asig = sumaDe(lista, "asig_familiar");
+    if (!cot) throw new ErrorRcv("Las liquidaciones del mes no tienen cotizaciones por pagar.");
+    const lineas = [{ cuenta: cuentaConcepto(ct, "rem_cotizaciones"), debe: cot, haber: 0 }];
+    if (multas) lineas.push({ cuenta: cuentaConcepto(ct, "rem_multas"), debe: multas, haber: 0 });
+    if (asig) lineas.push({ cuenta: cuentaConcepto(ct, "rem_asig_familiar"), debe: 0, haber: asig });
+    lineas.push({ cuenta: cuentaConcepto(ct, "previred_pago"), debe: 0, haber: cot + multas - asig });
+    S.pestana.rrhh = "libro";
+    abrirPropuesta(fecha, `PAGO PREVIRED ${mesMayus(periodo)}${folio ? " - PLANILLA N° " + folio : ""}`, lineas, `Pago de las cotizaciones de ${nombrePeriodo(periodo)} en Previred.`, { previredPeriodo: periodo, previredFolio: folio, previredCot: cot - asig, previredMultas: multas });
+  } catch (e) { if (e instanceof ErrorRcv) aviso(e.message); else throw e; }
 }
 
 /* ---------- vacaciones ---------- */
@@ -6597,6 +6640,7 @@ document.addEventListener("click", (ev) => {
     case "anexo-abrir": S.anexoEdit = { trabajador: id }; render(); break;
     case "anexo-cancelar": S.anexoEdit = null; render(); break;
     case "pdf-certificado": { const tr = trabajadorPorId(id); ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`certificado_trabajo_${nombreSeguro(tr.nombre)}.pdf`, await pdfCertificado(tr), "Certificado descargado."); }, "No se pudo generar el certificado"); break; }
+    case "previred-pagar": registrarPagoPrevired(); break;
     case "ver-liquidacion": S.liqVer = id; render(); window.scrollTo(0, 0); break;
     case "volver-liquidaciones": S.liqVer = null; render(); break;
     case "liquidar-mes": liquidarMes(); break;
@@ -6821,7 +6865,7 @@ function cambiarEmpresa(id) {
   S.desuscribirF29?.(); S.desuscribirF29 = null; S.f29Borradores = []; S.f29 = null;
   S.desuscribirRem.forEach((f) => f?.()); S.desuscribirRem = []; S.socios = []; S.sueldos = []; S.honorarios = []; S.remPeriodo = null;
   S.desuscribirNx.forEach((f) => f?.()); S.desuscribirNx = [];
-  S.activos = []; S.depreciaciones = []; S.trabajadores = []; S.liquidaciones = []; S.finiquitos = []; S.caja = []; S.finiqEdit = null; S.vacFecha = null; S.vacTrab = null; S.resPeriodo = null; S.renta = []; S.f22 = [];
+  S.activos = []; S.depreciaciones = []; S.trabajadores = []; S.liquidaciones = []; S.finiquitos = []; S.caja = []; S.finiqEdit = null; S.vacFecha = null; S.vacTrab = null; S.resPeriodo = null; S.renta = []; S.f22 = []; S.previred = [];
   S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null; S.rentaEdit = null; S.afPeriodo = null; S.liqPeriodo = null;
   S.periodosAnio = null; S.cierreAnio = null; S.apertura = null;
   S.lista = []; S.cargandoAsientos = !!id; S.periodo = null; S.filtros = { anio: null, mes: "", texto: "" }; S.mayorCuenta = "";
@@ -6846,7 +6890,7 @@ function cambiarEmpresa(id) {
     S[col] = lista;
     if (["sueldos", "honorarios", "f29"].includes(S.vista) && !S.ocupado) render();
   }, () => {}));
-  const vistasNx = { activos: ["activos"], depreciaciones: ["activos"], trabajadores: ["rrhh", "dj"], liquidaciones: ["rrhh", "dj", "renta"], finiquitos: ["rrhh", "dj"], caja: ["caja", "inicio", "resumen"], renta: [], f22: ["renta"] };
+  const vistasNx = { activos: ["activos"], depreciaciones: ["activos"], trabajadores: ["rrhh", "dj"], liquidaciones: ["rrhh", "dj", "renta"], finiquitos: ["rrhh", "dj"], caja: ["caja", "inicio", "resumen"], renta: [], f22: ["renta"], previred: ["rrhh"] };
   S.desuscribirNx = Object.keys(vistasNx).map((col) => S.almacen.onCol(`empresas/${id}/${col}`, (lista) => {
     if (id !== S.eid) return;
     S[col] = lista;
