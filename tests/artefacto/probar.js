@@ -1945,6 +1945,36 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("los descuentos por licencia, ausencia y atraso salen como líneas aparte", tir.neg, ["3 días de licencia médica", "2 días de ausencia", "2 h de atraso"]);
   ok("la tira se imprime en las tres variantes (carta con dos copias, hojas separadas y solo original)", Object.values(tir.pdf).every((n) => n > 2000) && tir.pdf.tira > tir.pdf["tira-original"], JSON.stringify(tir.pdf));
 
+  console.log("Borrador de Previred");
+  const bpv = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((r) => setTimeout(r, ms)), r = {};
+    const base = { ...trabajadorVacio(), nombre: "Ana Borrador", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2025-01-01", tipo: "indefinido", fecha_nac: "1990-01-01", jornada: 44, sueldo_base: 600000, gratificacion: "ninguna", afp: "Provida", afp_comision: 1.45 };
+    await S.almacen.set(`empresas/${S.eid}/trabajadores/wb1`, { ...base, id: undefined }); await S.almacen.set(`empresas/${S.eid}/trabajadores/wb2`, { ...base, id: undefined, nombre: "Luis Sin Liquidar", rut: "7.654.321-6" }); await w(300);
+    const t1 = S.trabajadores.find((x) => x.nombre === "Ana Borrador"), l = calcularLiquidacionTrabajador(t1, "2026-04", { dias: 30, dias_licencia: 0, festivos: 0 });
+    await S.almacen.set(`empresas/${S.eid}/liquidaciones/${t1.id}_2026-04`, l); await w(300);
+    S.liqPeriodo = "2026-04"; S.liqPeriodoEid = S.eid; S.pestana.rrhh = "borrador_previred"; S.pestana.prvd = "borrador"; S.vista = "rrhh"; render(); await w();
+    const est = estructuraPrevired([l]), esperado = totalPreviredMes([l]);
+    r.est = [est.neto === esperado, est.instituciones.map((i) => i.nombre), est.instituciones.reduce((t, i) => t + i.total, 0) === est.total];
+    r.pantalla = /Resumen por institución/.test(document.body.innerText) && /Detalle por trabajador/.test(document.body.innerText) && /Total a pagar en Previred/.test(document.body.innerText);
+    r.alerta = /Falta la liquidación de Luis Sin Liquidar/.test(document.body.innerText);
+    r.informe = S.informe().filas.length > 3 && S.csv.filas.flat().join("|").includes(String(esperado));
+    document.querySelector("#pb-declarado").checked = true; document.querySelector("#pb-folio").value = "2005202604384538"; document.querySelector("#pb-fecha").value = "2026-05-08";
+    document.querySelector('[data-form="previred-borr"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(400);
+    const d = S.previred_borr.find((x) => x.id === "2026-04"); r.doc = d && [d.declarado, d.folio, d.fecha_declaracion, d.total === esperado, d.trabajadores];
+    S.vista = "rrhh"; render(); await w(); r.estado = /declarado/.test(document.body.innerText) && /2005202604384538/.test(document.body.innerText);
+    S.pestana.prvd = "historial"; render(); await w(); r.historial = /Abril 2026|abril 2026/i.test(document.body.innerText) && /2005202604384538/.test(document.body.innerText);
+    await S.almacen.set(`empresas/${S.eid}/liquidaciones/${t1.id}_2026-04`, { ...l, sueldo: l.sueldo }); await S.almacen.del(`empresas/${S.eid}/liquidaciones/${t1.id}_2026-04`); await w(300);
+    S.pestana.prvd = "borrador"; render(); await w(); r.sinLiq = /No hay liquidaciones calculadas/.test(document.body.innerText);
+    await S.almacen.del(`empresas/${S.eid}/previred_borr/2026-04`); await S.almacen.del(`empresas/${S.eid}/trabajadores/wb1`); await S.almacen.del(`empresas/${S.eid}/trabajadores/wb2`); await w(300); S.pestana.prvd = "borrador"; ir("inicio");
+    return r;
+  });
+  ok("el borrador arma las instituciones y el total a pagar de las liquidaciones", bpv.est[0] && bpv.est[2] && bpv.est[1].some((n) => /AFP/.test(n)) && bpv.est[1].some((n) => /Fonasa/.test(n)), JSON.stringify(bpv.est));
+  ok("la pantalla muestra el resumen, el detalle y avisa de la liquidación que falta", bpv.pantalla && bpv.alerta, JSON.stringify(bpv));
+  ok("el borrador se exporta (informe y CSV)", bpv.informe, JSON.stringify(bpv));
+  igual("se guarda como declarado con folio, fecha y total", bpv.doc, [true, "2005202604384538", "2026-05-08", true, 1]);
+  ok("el mes aparece declarado y en el historial", bpv.estado && bpv.historial, JSON.stringify(bpv));
+  ok("sin liquidaciones el borrador lo indica", bpv.sinLiq, JSON.stringify(bpv));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
