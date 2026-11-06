@@ -1798,6 +1798,26 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el informe y el CSV traen el F22, y el respaldo lo incluye", f22t.informe && f22t.respaldo === 1, JSON.stringify(f22t));
   ok("el F22 declarado se puede eliminar", f22t.tras === 0, JSON.stringify(f22t));
 
+  console.log("Pensionado que cotiza la AFP de forma voluntaria");
+  const pens = await page.evaluate(async () => {
+    const r = {}, base = { ...trabajadorVacio(), nombre: "Pensionado Prueba", rut: "7.552.434-K", fecha_nac: "1958-09-04", fecha_ingreso: "2025-11-01", tipo: "plazo_fijo", fecha_termino: "2025-11-30", jornada: 44, sueldo_base: 529000, gratificacion: "ninguna", afp: "Provida", afp_comision: 1.45, pensionado: true, id: "wpv" };
+    const e = { dias: 30, festivos: 0 };
+    const sin = calcularLiquidacionTrabajador({ ...base, afp_voluntaria: false }, "2026-01", e), con = calcularLiquidacionTrabajador({ ...base, afp_voluntaria: true }, "2026-01", e);
+    r.sinAfp = [sin.afp, sin.cesantia, sin.emp_sis, sin.emp_cesantia]; r.conAfp = [con.afp, con.cesantia, con.emp_sis, con.emp_cesantia, con.salud, con.liquido];
+    r.aviso = con.avisos.some((a) => /voluntaria/.test(a)) && sin.avisos.some((a) => /sin cotización de AFP/.test(a));
+    S.trabEdit = { ...base, id: null }; S.vista = "rrhh"; S.pestana.rrhh = "trabajadores"; render(); await new Promise((x) => setTimeout(x, 150));
+    r.casilla = !!document.querySelector("#tb-afp_voluntaria");
+    document.querySelector("#tb-afp_voluntaria").checked = true; document.querySelector("#tb-pensionado").checked = true;
+    r.leido = [leerTrabajador().pensionado, leerTrabajador().afp_voluntaria];
+    document.querySelector("#tb-pensionado").checked = false; r.sinPensionado = leerTrabajador().afp_voluntaria;
+    S.trabEdit = null; ir("inicio");
+    return r;
+  });
+  igual("un pensionado sin AFP voluntaria no descuenta AFP ni cesantía", pens.sinAfp, [0, 0, 0, 0]);
+  igual("un pensionado con AFP voluntaria descuenta la AFP (11,45 % de $529.000) y sigue sin SIS ni cesantía", pens.conAfp, [60571, 0, 0, 0, 37030, 431399]);
+  ok("la liquidación avisa si la AFP es voluntaria", pens.aviso, JSON.stringify(pens));
+  ok("la ficha tiene la casilla y solo vale si es pensionado", pens.casilla && pens.leido[0] && pens.leido[1] && pens.sinPensionado === false, JSON.stringify(pens));
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);

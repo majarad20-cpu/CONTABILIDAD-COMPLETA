@@ -374,7 +374,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.74.0";
+const VERSION = "1.75.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -4672,7 +4672,7 @@ function trabajadorVacio() {
     lugar: [e.direccion, e.comuna].filter(Boolean).join(", "), fecha_ingreso: hoy(), tipo: "indefinido", fecha_termino: "", obra: "",
     jornada: 42, distribucion: distribucionSugerida(42), sueldo_base: 0, gratificacion: "legal", gratificacion_monto: 0, colacion: 0, movilizacion: 0, semana_corrida: false,
     forma_pago: "Mensualmente, por período vencido, mediante transferencia electrónica a la cuenta bancaria que el trabajador indique",
-    afp: "Habitat", afp_comision: AFPS.Habitat, salud: "fonasa", isapre: "", plan_uf: 0, sin_cesantia: false, pensionado: false, cargas: 0, trabajo_pesado: "ninguno", apv_monto: 0, apv_regimen: "B",
+    afp: "Habitat", afp_comision: AFPS.Habitat, salud: "fonasa", isapre: "", plan_uf: 0, sin_cesantia: false, pensionado: false, afp_voluntaria: false, cargas: 0, trabajo_pesado: "ninguno", apv_monto: 0, apv_regimen: "B",
     haberes_fijos: [], descuentos_fijos: [], anios_previos: 0, vacaciones: [], activo: true, fecha_finiquito: "" };
 }
 const trabajadorPorId = (id) => S.trabajadores.find((t) => t.id === id);
@@ -4723,7 +4723,8 @@ function calcularLiquidacionTrabajador(t, periodo, e) {
   /* Con menos de 30 días trabajados los topes imponibles se prorratean por los días del mes. */
   const factorTope = Math.min(Math.max(e.dias, 0), 30) / 30, topeAfp = uf ? r(pr.tope_afp_uf * uf * factorTope) : Infinity, topeAfc = uf ? r(pr.tope_afc_uf * uf * factorTope) : Infinity;
   const impAfp = Math.min(imponible, topeAfp), impAfc = Math.min(imponible, topeAfc);
-  const afp = pensionado ? 0 : r((impAfp * (TASA_AFP + (t.afp_comision || 0))) / 100);
+  const cotizaAfp = !pensionado || !!t.afp_voluntaria; /* el pensionado no está obligado a cotizar en la AFP, pero puede hacerlo voluntariamente */
+  const afp = cotizaAfp ? r((impAfp * (TASA_AFP + (t.afp_comision || 0))) / 100) : 0;
   const saludLegal = r((impAfp * TASA_SALUD) / 100);
   let salud = saludLegal;
   if (t.salud === "isapre") {
@@ -4753,7 +4754,7 @@ function calcularLiquidacionTrabajador(t, periodo, e) {
   if (t.sueldo_base && t.sueldo_base < minimo - 1) avisos.push(`Sueldo base bajo el ingreso mínimo proporcional a la jornada ($${clp(r(minimo))}).`);
   const voluntarios = anticipos + otrosDesc + descuentosFijos;
   if (voluntarios > 0.45 * (haberes - descuentosLegales)) avisos.push("Los descuentos voluntarios superan el 45 % de la remuneración (art. 58 del Código del Trabajo).");
-  if (pensionado) avisos.push("Pensionado: sin cotización de AFP, SIS ni seguro de cesantía."); else if (mayor65) avisos.push("Mayor de 65 años: el empleador no paga la parte del SIS.");
+  if (pensionado) avisos.push(t.afp_voluntaria ? "Pensionado: sin SIS ni seguro de cesantía; cotiza la AFP de forma voluntaria." : "Pensionado: sin cotización de AFP, SIS ni seguro de cesantía."); else if (mayor65) avisos.push("Mayor de 65 años: el empleador no paga la parte del SIS.");
   if (once && cotizaCesantia && indefinido) avisos.push("Con 11 años o más de servicio: el trabajador no cotiza cesantía y el empleador aporta 0,8 %.");
   return { trabajador: t.id, periodo, dias: e.dias, festivos: e.festivos || 0, horas_extra: e.horas_extra || 0, horas_extra_100: e.horas_extra_100 || 0, sueldo, horas_extra_monto: horasExtra, horas_extra_100_monto: horasExtra100, avisos, edad, comisiones, semana_corrida: semana, bonos, vacaciones_pago: vacaciones,
     haberes_fijos_imp: fijosImp, gratificacion, imponible, colacion, movilizacion, no_imponibles: otrosNoImp, haberes_fijos_no_imp: fijosNoImp, no_imponible: noImponible,
@@ -4850,7 +4851,8 @@ function formularioTrabajador(te) {
       <label>Trabajo pesado (cotización adicional)<select id="tb-trabajo_pesado">${Object.entries(TRABAJO_PESADO).map(([k, v]) => `<option value="${k}" ${te.trabajo_pesado === k ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
       ${m("apv_monto", "Ahorro previsional voluntario (APV) mensual", te.apv_monto)}
       <label>Régimen del APV<select id="tb-apv_regimen"><option value="B" ${te.apv_regimen !== "A" ? "selected" : ""}>B (rebaja la base del impuesto)</option><option value="A" ${te.apv_regimen === "A" ? "selected" : ""}>A (bonificación fiscal)</option></select></label>
-      <label class="check"><input type="checkbox" id="tb-pensionado" ${te.pensionado ? "checked" : ""}> Pensionado: no cotiza AFP, SIS ni seguro de cesantía (sí salud)</label>
+      <label class="check"><input type="checkbox" id="tb-pensionado" ${te.pensionado ? "checked" : ""}> Pensionado: no cotiza SIS ni seguro de cesantía (sí salud)</label>
+      <label class="check"><input type="checkbox" id="tb-afp_voluntaria" ${te.afp_voluntaria ? "checked" : ""}> Pensionado que cotiza la AFP de forma voluntaria (si no, no cotiza AFP)</label>
       <label class="check"><input type="checkbox" id="tb-sin_cesantia" ${te.sin_cesantia ? "checked" : ""}> No cotiza seguro de cesantía por otro motivo</label>
       <label>Años de trabajo con otros empleadores (feriado progresivo, máx. 10)<input id="tb-anios_previos" inputmode="numeric" value="${te.anios_previos || ""}" placeholder="0"></label></div>
     ${te.id ? `<div class="form"><label class="check"><input type="checkbox" id="tb-activo" ${te.activo !== false ? "checked" : ""}> Trabajador activo</label>
@@ -4886,7 +4888,7 @@ function leerTrabajador() {
     lugar: v("lugar").trim(), fecha_ingreso: v("fecha_ingreso"), tipo: v("tipo"), fecha_termino: v("fecha_termino"), obra: v("obra").trim(), jornada: Number(v("jornada")), distribucion: v("distribucion").trim(),
     sueldo_base: parseMonto(v("sueldo_base") || "0"), gratificacion: v("gratificacion"), gratificacion_monto: parseMonto(v("gratificacion_monto") || "0"), colacion: parseMonto(v("colacion") || "0"), movilizacion: parseMonto(v("movilizacion") || "0"),
     semana_corrida: !!$("#tb-semana_corrida")?.checked, cargas: Number(v("cargas") || 0), forma_pago: v("forma_pago").trim(), afp: v("afp"), afp_comision: decimal(v("afp_comision")), salud: v("salud"), isapre: v("isapre").trim(), plan_uf: decimal(v("plan_uf")) || 0,
-    trabajo_pesado: v("trabajo_pesado") || "ninguno", apv_monto: parseMonto(v("apv_monto") || "0"), apv_regimen: v("apv_regimen") || "B", sin_cesantia: !!$("#tb-sin_cesantia")?.checked, pensionado: !!$("#tb-pensionado")?.checked, sexo: v("sexo") || "", anios_previos: Number(v("anios_previos") || 0),
+    trabajo_pesado: v("trabajo_pesado") || "ninguno", apv_monto: parseMonto(v("apv_monto") || "0"), apv_regimen: v("apv_regimen") || "B", sin_cesantia: !!$("#tb-sin_cesantia")?.checked, pensionado: !!$("#tb-pensionado")?.checked, afp_voluntaria: !!$("#tb-pensionado")?.checked && !!$("#tb-afp_voluntaria")?.checked, sexo: v("sexo") || "", anios_previos: Number(v("anios_previos") || 0),
     haberes_fijos: haberes, descuentos_fijos: descuentos, vacaciones: te.vacaciones || [], activo: te.id ? !!$("#tb-activo")?.checked : true, fecha_finiquito: te.id ? v("fecha_finiquito") : "" };
   return d;
 }
@@ -5201,7 +5203,7 @@ function archivoPrevired(periodo, lista) {
     const cot7 = mm(des, 3143);
     const cotCcaf = fonasa && ccaf ? Math.round((baseAfp * 4.2) / 100) : 0, cotFonasa = fonasa ? cot7 - cotCcaf : 0;
     const accidentes = mm(apo, 4152), tp = t.trabajo_pesado && t.trabajo_pesado !== "ninguno" ? TRABAJO_PESADO[t.trabajo_pesado] : null;
-    const afpC = AFP_CODIGOS[t.afp] ? AFP_CODIGOS[t.afp][0] : "00", apvi = mm(des, 3155) + mm(des, 3156), conAfp = !pensionado && afpC !== "00";
+    const afpC = AFP_CODIGOS[t.afp] ? AFP_CODIGOS[t.afp][0] : "00", apvi = mm(des, 3155) + mm(des, 3156), conAfp = (!pensionado || !!t.afp_voluntaria) && afpC !== "00";
     const f = new Array(106).fill("");
     f[1] = rut.slice(0, -1); f[2] = rut.slice(-1); f[3] = textoPlano(nom.paterno).toUpperCase().slice(0, 30); f[4] = textoPlano(nom.materno).toUpperCase().slice(0, 30); f[5] = textoPlano(nom.nombres).toUpperCase().slice(0, 30);
     f[6] = t.sexo === "F" ? "F" : "M"; f[7] = /^chil/i.test(t.nacionalidad || "Chilena") ? 0 : 1; f[8] = "01"; f[9] = `${String(m).padStart(2, "0")}${y}`; f[11] = conAfp ? "AFP" : "SIP";
@@ -5243,7 +5245,7 @@ function archivoLre(periodo, lista) {
     const { hab, des, apo, fin: fq } = montosLiquidacion(t, l), rut = limpiarRut(t.rut), termino = fq ? fq.fecha : t.fecha_finiquito, afc = mm(des, 3151) || mm(apo, 4151), apvi = mm(des, 3155) + mm(des, 3156);
     const isapre = t.salud === "isapre", sc = isapre ? SALUD_CODIGOS.find(([re]) => re.test(t.isapre || "")) : null, tp = t.trabajo_pesado && t.trabajo_pesado !== "ninguno";
     const v = { 1101: `${rut.slice(0, -1)}-${rut.slice(-1)}`, 1102: dmy(t.fecha_ingreso), 1103: dmy(termino), 1104: termino && fq ? CAUSAL_LRE[fq.causal] ?? "" : "", 1105: rc.region || 13, 1106: rc.comuna_codigo || 13101, 1170: 1, 1146: 0, 1107: (t.jornada || 42) <= 30 ? 201 : 101, 1108: 0, 1109: t.pensionado ? 1 : 0,
-      1141: !t.pensionado && AFP_CODIGOS[t.afp] ? AFP_CODIGOS[t.afp][1] : 100, 1142: 0, 1143: sc ? sc[2] : 102, 1151: afc ? 1 : 0, 1110: ccaf, 1152: MUTUAL_CODIGOS[mut][1], 1111: t.cargas || 0, 1112: 0, 1113: 0, 1114: tramoAsig(t, l), 1115: l.dias, 1116: 0, 1117: 0, 1118: 0, 1154: tp ? textoPlano(t.cargo).slice(0, 20) : "", 1155: apvi ? 1 : 0, 1157: 0, 1131: 0, 1132: "" };
+      1141: (!t.pensionado || t.afp_voluntaria) && AFP_CODIGOS[t.afp] ? AFP_CODIGOS[t.afp][1] : 100, 1142: 0, 1143: sc ? sc[2] : 102, 1151: afc ? 1 : 0, 1110: ccaf, 1152: MUTUAL_CODIGOS[mut][1], 1111: t.cargas || 0, 1112: 0, 1113: 0, 1114: tramoAsig(t, l), 1115: l.dias, 1116: 0, 1117: 0, 1118: 0, 1154: tp ? textoPlano(t.cargo).slice(0, 20) : "", 1155: apvi ? 1 : 0, 1157: 0, 1131: 0, 1132: "" };
     for (const [c] of LRE_COLUMNAS) if (c >= 2000 && c < 3000) v[c] = mm(hab, c); else if (c >= 3000 && c < 4000) v[c] = mm(des, c); else if (c >= 4000 && c < 5000) v[c] = mm(apo, c);
     if (fq) { v[2313] = fq.vacaciones ? 0 : 0; v[2314] = (fq.indemnizacion || 0) + (fq.recargo || 0) - (fq.afc || 0); v[2315] = fq.aviso || 0; }
     const aportes = Object.values(apo).reduce((a, b) => a + b, 0), cotTrab = mm(des, 3141) + mm(des, 3143) + mm(des, 3144) + mm(des, 3151) + mm(des, 3154);
