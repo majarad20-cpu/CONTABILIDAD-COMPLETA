@@ -392,7 +392,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.88.0";
+const VERSION = "1.89.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -6529,13 +6529,21 @@ async function guardarF22() {
 /* ---------- borrador del F22 (formulario) ---------- */
 /* Datos que el programa no puede deducir de la contabilidad: el incentivo al ahorro (art. 14 letra E) y el reajuste del art. 72 de la LIR. */
 function manualF22(anio) {
-  if (!S.f22bMan || S.f22bMan.anio !== anio || S.f22bMan.eid !== S.eid) { const g = S.f22_borr.find((x) => x.id === String(anio)); S.f22bMan = { anio, eid: S.eid, incentivo: g?.manual?.incentivo ?? null, reaj: g?.manual?.reaj ?? 0 }; }
+  if (!S.f22bMan || S.f22bMan.anio !== anio || S.f22bMan.eid !== S.eid) { const g = S.f22_borr.find((x) => x.id === String(anio)); S.f22bMan = { anio, eid: S.eid, incentivo: g?.manual?.incentivo ?? null, reaj: g?.manual?.reaj ?? 0, decl: { ...(g?.declarado || {}) }, coment: { ...(g?.comentarios || {}) } }; }
   return S.f22bMan;
 }
 function leerManualF22() {
   const man = manualF22(Number(S.rentaAnio || empresa().ejercicio)), a = $("#f22b-inc")?.value.trim() ?? "", b = $("#f22b-reaj")?.value.trim() ?? "";
   const inc = a ? parseMonto(a) : null, reaj = b ? parseMonto(b) : 0;
   if (Number.isNaN(inc) || Number.isNaN(reaj)) { aviso("El incentivo y el reajuste deben ser montos en pesos enteros."); return false; }
+  const cod = f22Declarado(man.anio)?.codigos || {};
+  for (const el of document.querySelectorAll('[id^="f22b-d-"]')) {
+    const cd = el.id.slice(7), t = el.value.trim();
+    if (!t) { delete man.decl[cd]; continue; }
+    const n = parseMonto(t); if (Number.isNaN(n)) { aviso(`El valor declarado del código ${cd} debe ser un monto en pesos enteros.`); return false; }
+    if (cod[cd] === n) delete man.decl[cd]; else man.decl[cd] = n;
+  }
+  for (const el of document.querySelectorAll('[id^="f22b-c-"]')) { const cd = el.id.slice(7), t = el.value.trim(); if (t) man.coment[cd] = t; else delete man.coment[cd]; }
   man.incentivo = inc; man.reaj = reaj; return true;
 }
 /* Estructura del F22 AT2026 para la Pro Pyme general, tal como la publica el SII: glosa, código y signo de cada línea de los recuadros 17, 18 y 19. */
@@ -6622,22 +6630,23 @@ function calcularBorradorF22(r, c, man) {
 }
 function cuerpoBorradorF22(r, c) {
   const man = manualF22(r.anio), b = calcularBorradorF22(r, c, man), k = b.codigos, d = f22Declarado(r.anio), cod = d?.codigos || {}, g = S.f22_borr.find((x) => x.id === String(r.anio));
-  const dif = (cd) => (cod[cd] != null && k[cd] != null ? k[cd] - cod[cd] : null);
-  const comunes = Object.keys(cod).filter((cd) => k[cd] != null && dif(cd));
+  const dec = (cd) => (man.decl[cd] != null ? man.decl[cd] : cod[cd] != null ? cod[cd] : null);
+  const dif = (cd) => (dec(cd) != null ? (k[cd] || 0) - dec(cd) : null);
+  const comunes = [...new Set([...Object.keys(cod), ...Object.keys(man.decl)])].filter((cd) => dif(cd));
   const avisos = [...c.alertas];
   if (r.regimen !== "d3") avisos.unshift("El borrador del F22 está pensado para la Pro Pyme general (14 D N° 3); en otro régimen sirve solo de referencia.");
   if (k[1729] > 0 && man.incentivo == null) avisos.push(`Falta decidir el incentivo al ahorro (código 1432). Como referencia, el 50 % de la base es $${clp(b.sugerenciaIncentivo)}; el máximo legal depende de tu caso.`);
-  if (d && comunes.length) avisos.push(`El borrador difiere del F22 declarado en ${comunes.length} código(s): ${comunes.join(", ")}.`);
+  if (comunes.length) avisos.push(`El borrador difiere de lo declarado o por declarar en ${comunes.length} código(s): ${comunes.join(", ")}.`);
   if (Math.abs(k.dif_cpts) > 1) avisos.push(`El CPTS final del balance difiere en $${clp(k.dif_cpts)} de la suma de las partidas del recuadro 19: corresponde a partidas que el programa no separa (utilidades no distribuidas, ingresos no renta u otras). Revísalas con las líneas 1377, 1378, 1380 y 1381.`);
   const mostrar = (cd) => { const v = k[cd]; return v == null || (v === 0 && !F22_SIEMPRE.includes(cd)) ? "" : clp(v); };
-  const celdaDec = (cd) => (d ? `<td class="num">${cod[cd] != null ? clp(cod[cd]) : ""}</td><td class="num">${dif(cd) == null ? "" : dif(cd) ? clp(dif(cd)) : "✓"}</td>` : "");
-  const cab = `<thead><tr><th>Glosa</th><th>Código</th><th class="num">Borrador</th>${d ? `<th class="num">F22 declarado</th><th class="num">Diferencia</th>` : ""}<th></th></tr></thead>`;
+  const celdaDec = (cd) => { const v = dec(cd), df = dif(cd); return `<td class="num"><input id="f22b-d-${cd}" class="monto" inputmode="numeric" style="width:8.5em;text-align:right" value="${v == null ? "" : clp(v)}" ${inputRo()} aria-label="Declarado o por declarar, código ${cd}"></td><td class="num">${df == null ? "" : df ? `<strong>${clp(df)}</strong>` : "✓"}</td><td><input id="f22b-c-${cd}" style="width:100%;min-width:14em" value="${esc(man.coment[cd] || "")}" placeholder="Comentario" ${inputRo()} aria-label="Comentario, código ${cd}"></td>`; };
+  const cab = `<thead><tr><th>Glosa</th><th>Código</th><th class="num">Contabilidad</th><th class="num">Declarado o por declarar</th><th class="num">Diferencia</th><th>Comentarios</th><th></th></tr></thead>`;
   const lineas = (lista) => `<div class="tabla"><table>${cab}<tbody>${lista.map(([cd, gl, sg]) => `<tr class="${sg === "=" ? "sub" : ""}"><td>${esc(gl)}${b.origen[cd] && mostrar(cd) ? `<br><small class="ayuda">${esc(b.origen[cd])}</small>` : ""}</td><td class="cod">${cd}</td><td class="num">${mostrar(cd)}</td>${celdaDec(cd)}<td>${sg}</td></tr>`).join("")}</tbody></table></div>`;
-  const matriz = (m) => `<div class="tabla"><table><thead><tr><th>Glosa</th>${m.cols.map((x) => `<th class="num"><small>${esc(x)}</small></th>`).join("")}<th></th></tr></thead><tbody>${m.filas.map(([gl, sg, cs]) => `<tr class="${sg === "=" ? "sub" : ""}"><td>${esc(gl)}</td>${cs.map((cd) => (cd == null ? "<td></td>" : `<td class="num"><small class="cod">${cd}</small><br>${mostrar(cd)}${d && cod[cd] != null ? `<br><small class="ayuda">declarado ${clp(cod[cd])}</small>` : ""}</td>`)).join("")}<td>${sg}</td></tr>`).join("")}</tbody></table></div>`;
-  const impuestos = `<div class="tabla"><table><thead><tr><th>Línea</th><th>Glosa</th><th>Código</th><th class="num">Borrador</th>${d ? `<th class="num">F22 declarado</th><th class="num">Diferencia</th>` : ""}<th></th></tr></thead><tbody>${F22_IMPUESTOS.map(([ln, gl, cd, sg]) => `<tr class="${sg === "=" ? "sub" : ""}"><td>${ln}</td><td>${esc(gl)}${b.origen[cd] && mostrar(cd) ? `<br><small class="ayuda">${esc(b.origen[cd])}</small>` : ""}</td><td class="cod">${cd}</td><td class="num">${mostrar(cd)}</td>${celdaDec(cd)}<td>${sg}</td></tr>`).join("")}</tbody></table></div>`;
+  const matriz = (m) => `<div class="tabla"><table><thead><tr><th>Glosa</th>${m.cols.map((x) => `<th class="num"><small>${esc(x)}</small></th>`).join("")}<th></th></tr></thead><tbody>${m.filas.map(([gl, sg, cs]) => `<tr class="${sg === "=" ? "sub" : ""}"><td>${esc(gl)}</td>${cs.map((cd) => (cd == null ? "<td></td>" : `<td class="num"><small class="cod">${cd}</small><br>${mostrar(cd)}${dec(cd) != null ? `<br><small class="ayuda">declarado ${clp(dec(cd))}${dif(cd) ? ` · dif. ${clp(dif(cd))}` : ""}</small>` : ""}</td>`)).join("")}<td>${sg}</td></tr>`).join("")}</tbody></table></div>`;
+  const impuestos = `<div class="tabla"><table><thead><tr><th>Línea</th><th>Glosa</th><th>Código</th><th class="num">Contabilidad</th><th class="num">Declarado o por declarar</th><th class="num">Diferencia</th><th>Comentarios</th><th></th></tr></thead><tbody>${F22_IMPUESTOS.map(([ln, gl, cd, sg]) => `<tr class="${sg === "=" ? "sub" : ""}"><td>${ln}</td><td>${esc(gl)}${b.origen[cd] && mostrar(cd) ? `<br><small class="ayuda">${esc(b.origen[cd])}</small>` : ""}</td><td class="cod">${cd}</td><td class="num">${mostrar(cd)}</td>${celdaDec(cd)}<td>${sg}</td></tr>`).join("")}</tbody></table></div>`;
   const caja = (tit, cuerpo, nota = "") => `<section class="caja"><h3>${tit}</h3>${cuerpo}${nota ? `<p class="ayuda">${nota}</p>` : ""}</section>`;
   return `<section class="caja"><h2>Borrador del F22 · año comercial ${r.anio} (año tributario ${r.anio + 1})</h2>
-    <p class="ayuda">Formulario 22 de la Pro Pyme general ordenado como el del SII (año tributario 2026): recuadros, glosas, códigos y signos. Cada cifra sale de la contabilidad: ingresos percibidos y egresos pagados, más los registros de la pestaña Registros. Los dos datos de abajo no se pueden deducir de los libros: ingrésalos y recalcula. ${d ? `Se compara con el F22 declarado${d.folio ? ` (folio ${esc(d.folio)})` : ""}.` : "Aún no hay un F22 declarado de este año para comparar."}</p>
+    <p class="ayuda">Formulario 22 de la Pro Pyme general ordenado como el del SII (año tributario 2026): recuadros, glosas, códigos y signos. Cada cifra sale de la contabilidad: ingresos percibidos y egresos pagados, más los registros de la pestaña Registros. Los dos datos de abajo no se pueden deducir de los libros: ingrésalos y recalcula. Al lado de cada cifra tienes tres columnas: lo declarado o por declarar (si hay un F22 declarado se llena solo; si no, lo anotas tú), la diferencia y tus comentarios. ${d ? `Hay un F22 declarado${d.folio ? ` (folio ${esc(d.folio)})` : ""} de este año.` : "Aún no hay un F22 declarado de este año."} Escribe y pulsa Recalcular o Guardar borrador.</p>
     ${avisos.length ? `<div class="aviso"><ul style="margin:.2em 0;padding-left:1.2em">${avisos.map((a) => `<li>${esc(a)}</li>`).join("")}</ul></div>` : `<div class="aviso ok">Sin observaciones.</div>`}
     <div class="form"><label>Incentivo al ahorro, art. 14 letra E <small>(código 1432)</small><input id="f22b-inc" inputmode="numeric" placeholder="${b.sugerenciaIncentivo ? clp(b.sugerenciaIncentivo) : ""}" value="${man.incentivo == null ? "" : clp(man.incentivo)}" ${inputRo()}></label>
       <label>Reajuste art. 72 LIR <small>(código 39)</small><input id="f22b-reaj" inputmode="numeric" value="${man.reaj ? clp(man.reaj) : ""}" ${inputRo()}></label></div>
@@ -6655,13 +6664,14 @@ function cuerpoBorradorF22(r, c) {
 async function guardarBorradorF22() {
   if (!leerManualF22()) return;
   const r = rentaActual(), c = calcularRenta(r), man = manualF22(r.anio), b = calcularBorradorF22(r, c, man), codigos = Object.fromEntries(Object.entries(b.codigos).filter(([cd]) => /^\d+$/.test(cd)));
-  await ocupado(async () => { await S.almacen.set(`empresas/${S.eid}/f22_borr/${r.anio}`, { anio: r.anio, codigos, manual: { incentivo: man.incentivo, reaj: man.reaj }, guardado_en: new Date().toISOString() }); render(); aviso(`Borrador del F22 del año comercial ${r.anio} guardado.`); }, "No se pudo guardar el borrador");
+  await ocupado(async () => { await S.almacen.set(`empresas/${S.eid}/f22_borr/${r.anio}`, { anio: r.anio, codigos, manual: { incentivo: man.incentivo, reaj: man.reaj }, declarado: man.decl, comentarios: man.coment, guardado_en: new Date().toISOString() }); render(); aviso(`Borrador del F22 del año comercial ${r.anio} guardado.`); }, "No se pudo guardar el borrador");
 }
 function informeBorradorF22(r) {
   const c = calcularRenta(r), man = manualF22(r.anio), b = calcularBorradorF22(r, c, man), k = b.codigos, d = f22Declarado(r.anio), cod = d?.codigos || {};
-  const inf = new Informe("BORRADOR DEL F22", `AÑO COMERCIAL ${r.anio} · AÑO TRIBUTARIO ${r.anio + 1}`, [col("Código", 9), col("Glosa", 62), col("Borrador", 16, "monto"), col("Declarado", 16, "monto"), col("Diferencia", 14, "monto")], `f22_borrador_${r.anio}`, { firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
-  const fila = (cd, gl) => inf.agregar([String(cd), gl, k[cd] ?? null, cod[cd] ?? null, cod[cd] != null && k[cd] != null ? k[cd] - cod[cd] : null]);
-  const lineas = (tit, lista) => { inf.agregar([tit], { estilo: "seccion", abarca: 0 }); for (const [cd, gl] of lista) if (k[cd] != null && (k[cd] || F22_SIEMPRE.includes(cd))) fila(cd, gl); };
+  const inf = new Informe("BORRADOR DEL F22", `AÑO COMERCIAL ${r.anio} · AÑO TRIBUTARIO ${r.anio + 1}`, [col("Código", 9), col("Glosa", 50), col("Contabilidad", 15, "monto"), col("Declarado o por declarar", 15, "monto"), col("Diferencia", 13, "monto"), col("Comentarios", 40)], `f22_borrador_${r.anio}`, { firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  const dec = (cd) => (man.decl[cd] != null ? man.decl[cd] : cod[cd] != null ? cod[cd] : null);
+  const fila = (cd, gl) => inf.agregar([String(cd), gl, k[cd] ?? null, dec(cd), dec(cd) != null ? (k[cd] || 0) - dec(cd) : null, man.coment[cd] || ""]);
+  const lineas = (tit, lista) => { inf.agregar([tit], { estilo: "seccion", abarca: 0 }); for (const [cd, gl] of lista) if ((k[cd] != null && (k[cd] || F22_SIEMPRE.includes(cd))) || dec(cd) != null || man.coment[cd]) fila(cd, gl); };
   lineas("RECUADRO N° 6 · DATOS DE BALANCE", F22_BALANCE); lineas("RECUADRO N° 17 · BASE IMPONIBLE RÉGIMEN PRO PYME", F22_R17); lineas("RECUADRO N° 18 · DETERMINACIÓN DEL RAI", F22_R18); lineas("RECUADRO N° 19 · CPTS RÉGIMEN PRO PYME", F22_R19);
   for (const [tit, m] of [["RECUADRO N° 20 · REGISTRO TRIBUTARIO DE RENTAS EMPRESARIALES", F22_R20], ["RECUADRO N° 21 · REGISTRO SAC", F22_R21]]) lineas(tit, m.filas.flatMap(([gl, , cs]) => cs.filter(Boolean).map((cd) => [cd, gl])));
   lineas("IMPUESTOS ANUALES A LA RENTA", F22_IMPUESTOS.map(([, gl, cd]) => [cd, gl]));
