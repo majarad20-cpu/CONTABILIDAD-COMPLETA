@@ -1896,6 +1896,24 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("al lado de cada cifra se ve lo declarado, la diferencia y el comentario", bf.difFila, JSON.stringify(bf));
   ok("el informe trae los códigos y el respaldo incluye el borrador", bf.informe && bf.respaldo === 1, JSON.stringify(bf));
 
+  console.log("Filtro del historial de F22");
+  const flt = await page.evaluate(async () => {
+    const w = (ms = 120) => new Promise((x) => setTimeout(x, ms)), r = {}, sf = S.f22, anio = 2060;
+    S.f22 = [{ id: "2060", folio: "111", fecha_presentacion: "2061-04-20", codigos: { 1410: 5000000 } }, { id: "2061", folio: "222", fecha_presentacion: "2062-04-20", codigos: { 1410: 6000000 } }];
+    S.pestana.renta = "declarado"; S.rentaAnio = String(anio); S.rentaEdit = null; S.f22Filtro = "todos"; S.vista = "renta"; render(); await w();
+    const filas = () => [...document.querySelectorAll('tr[data-n="f22-ver"]')].map((x) => x.dataset.id);
+    r.todos = [...new Set(filas())].join();
+    const sel = document.querySelector("#f22-filtro"); sel.value = "2061"; sel.dispatchEvent(new Event("change", { bubbles: true })); await w();
+    r.uno = [...new Set(filas())].join(); r.opciones = [...document.querySelector("#f22-filtro").options].map((o) => o.value).join();
+    sel.value = "todos"; document.querySelector("#f22-filtro").value = "todos"; document.querySelector("#f22-filtro").dispatchEvent(new Event("change", { bubbles: true })); await w();
+    r.vuelve = [...new Set(filas())].join();
+    S.f22 = sf; S.f22Filtro = "todos"; S.rentaEdit = null; S.pestana.renta = "rli"; ir("inicio");
+    return r;
+  });
+  igual("el historial muestra todos los años por defecto", flt.todos, "2060,2061");
+  igual("el filtro deja solo el año elegido y ofrece todos los años", [flt.uno, flt.opciones], ["2061", "todos,2060,2061"]);
+  igual("al elegir todos los años vuelven a verse", flt.vuelve, "2060,2061");
+
   console.log("F22 declarado");
   const f22t = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {};
