@@ -394,7 +394,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.94.0";
+const VERSION = "1.95.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -4360,7 +4360,7 @@ function informeHistorialHonorarios(lista) {
 /* ================================================================== activo fijo, personal y remuneraciones, renta anual */
 Object.assign(S, {
   bitacora: [], bitCargada: false, bitAbierta: false, bitFiltro: "pend", bitEdit: null, bitConfirmar: null, bitAviso: null, bitBorrador: null, bitVista: { texto: "", tipo: "", hechas: false },
-  f22: [], f22_borr: [], f22bMan: null, f22Filtro: "todos", previred: [], previred_borr: [], previred_plan: [], dj_decl: [], djBorrador: null, asistencia: [], asisBorrador: null, asisPincel: "A", asisPintando: false, activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], finiquitos: [], finiqEdit: null, vacFecha: null, vacTrab: null, resPeriodo: null, resEid: null, presentando: false, migra: null, cartera: { cargando: false, filas: [], actualizado: null, fecha: null }, caja: [], cajaAnio: null, cajaMes: "", cajaDiario: false, cajaImp: null, cajaPago: null, renta: [], desuscribirNx: [],
+  f22: [], f22_borr: [], f22bMan: null, f22Filtro: "todos", f22Editar: false, previred: [], previred_borr: [], previred_plan: [], dj_decl: [], djBorrador: null, asistencia: [], asisBorrador: null, asisPincel: "A", asisPintando: false, activos: [], depreciaciones: [], trabajadores: [], liquidaciones: [], finiquitos: [], finiqEdit: null, vacFecha: null, vacTrab: null, resPeriodo: null, resEid: null, presentando: false, migra: null, cartera: { cargando: false, filas: [], actualizado: null, fecha: null }, caja: [], cajaAnio: null, cajaMes: "", cajaDiario: false, cajaImp: null, cajaPago: null, renta: [], desuscribirNx: [],
   prev: { uf: {}, parametros: [] },
   activoEdit: null, afPeriodo: null, afPeriodoEid: null, afAnio: null,
   trabEdit: null, contratoVer: null, liqVer: null, liqPeriodo: null, liqPeriodoEid: null, prevEdit: null,
@@ -6513,18 +6513,24 @@ function cuerpoF22(r) {
   const ficha = d ? `<section class="caja"><h2>F22 del año comercial ${r.anio}: detalle por línea</h2>
     <p class="ayuda">Folio ${esc(d.folio || "sin folio")}${d.fecha_presentacion ? ` · presentado el ${fmtFecha(d.fecha_presentacion)}` : ""} · ${p.fecha ? `pagado el ${fmtFecha(p.fecha)}${p.monto != null ? ` por $${clp(p.monto)}` : ""}${p.comprobante ? ` (${esc(p.comprobante)})` : ""}` : (cod[305] ?? 0) < 0 ? "con saldo a favor" : "pago aún sin registrar"}.${d.observacion ? ` Observaciones: ${esc(d.observacion)}` : ""}</p>
     ${camposF22().map(([t, l]) => { const f = l.filter(([k]) => cod[k] != null); return f.length ? `<h3>${t}</h3><div class="tabla"><table><thead><tr><th>Código</th><th>Concepto</th><th class="num">Declarado</th></tr></thead><tbody>${f.map(([k, n]) => `<tr><td class="cod">${k}</td><td>${esc(n)}</td><td class="num">${clp(cod[k])}</td></tr>`).join("")}</tbody></table></div>` : ""; }).join("")}</section>` : "";
-  return `${historial}${ficha}
-  <form class="caja" data-form="f22">
+  const boton = puedeEditar(`<section class="caja"><div class="acciones"><button class="btn" type="button" data-n="f22-editar">${d ? `Editar el F22 del año comercial ${r.anio}` : `Registrar el F22 del año comercial ${r.anio}`}</button></div>
+    <p class="ayuda">Elige el año comercial arriba. El formulario se abre solo al pulsar el botón.</p></section>`);
+  const formulario = S.f22Editar ? `<form class="caja" data-form="f22">
     <h2>${d ? "Editar" : "Registrar"} el F22 del año comercial ${r.anio} (año tributario ${r.anio + 1})</h2>
-    <div class="form"><label>Folio del F22<input id="f22-folio" inputmode="numeric" value="${esc(d?.folio || "")}" ${inputRo()}></label>
-      <label>Fecha de presentación<input type="date" id="f22-fecha" value="${esc(d?.fecha_presentacion || "")}" ${inputRo()}></label></div>
-    <h3>Pago</h3><div class="form"><label>Fecha de pago<input type="date" id="f22-pfecha" value="${esc(p.fecha || "")}" ${inputRo()}></label>
-      <label>Monto pagado<input id="f22-pmonto" inputmode="numeric" value="${p.monto != null ? clp(p.monto) : ""}" ${inputRo()}></label>
-      <label>Comprobante o folio de pago (TGR)<input id="f22-pcomp" value="${esc(p.comprobante || "")}" ${inputRo()}></label></div>
-    ${camposF22().map(([t, l]) => `<h3>${t}</h3><div class="form">${l.map(([k, n]) => `<label>${esc(n)} <small>(código ${k})</small><input id="f22-${k}" inputmode="numeric" value="${cod[k] != null ? clp(cod[k]) : ""}" ${inputRo()}></label>`).join("")}</div>`).join("")}
-    <label>Observaciones<input id="f22-obs" value="${esc(d?.observacion || "")}" ${inputRo()}></label>
-    ${puedeEditar(`<div class="acciones"><button class="btn" type="submit">Guardar F22 declarado</button>${d ? (S.confirmar === "f22" ? `<button class="btn peligro" type="button" data-accion="f22-eliminar">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button>` : `<button class="btn sec" type="button" data-accion="f22-pedir-eliminar">Eliminar</button>`) : ""}</div>`)}
-  </form>`;
+    <div class="tabla"><table><thead><tr><th>Dato</th><th>Código</th><th>Valor</th></tr></thead><tbody>
+      <tr class="titulo"><td colspan="3">Presentación</td></tr>
+      <tr><td>Folio del F22</td><td></td><td><input id="f22-folio" inputmode="numeric" value="${esc(d?.folio || "")}" ${inputRo()}></td></tr>
+      <tr><td>Fecha de presentación</td><td></td><td><input type="date" id="f22-fecha" value="${esc(d?.fecha_presentacion || "")}" ${inputRo()}></td></tr>
+      <tr class="titulo"><td colspan="3">Pago</td></tr>
+      <tr><td>Fecha de pago</td><td></td><td><input type="date" id="f22-pfecha" value="${esc(p.fecha || "")}" ${inputRo()}></td></tr>
+      <tr><td>Monto pagado</td><td></td><td><input id="f22-pmonto" class="monto" inputmode="numeric" value="${p.monto != null ? clp(p.monto) : ""}" ${inputRo()}></td></tr>
+      <tr><td>Comprobante o folio de pago (TGR)</td><td></td><td><input id="f22-pcomp" value="${esc(p.comprobante || "")}" ${inputRo()}></td></tr>
+      ${camposF22().map(([t, l]) => `<tr class="titulo"><td colspan="3">${esc(t)}</td></tr>${l.map(([k, n]) => `<tr><td>${esc(n)}</td><td class="cod">${k}</td><td><input id="f22-${k}" class="monto" inputmode="numeric" value="${cod[k] != null ? clp(cod[k]) : ""}" ${inputRo()}></td></tr>`).join("")}`).join("")}
+      <tr class="titulo"><td colspan="3">Observaciones</td></tr>
+      <tr><td colspan="3"><input id="f22-obs" style="width:100%" value="${esc(d?.observacion || "")}" ${inputRo()}></td></tr></tbody></table></div>
+    ${puedeEditar(`<div class="acciones"><button class="btn" type="submit">Guardar F22 declarado</button><button class="btn sec" type="button" data-n="f22-cancelar-edicion">Cancelar</button>${d ? (S.confirmar === "f22" ? `<button class="btn peligro" type="button" data-accion="f22-eliminar">Sí, eliminar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">No</button>` : `<button class="btn sec" type="button" data-accion="f22-pedir-eliminar">Eliminar</button>`) : ""}</div>`)}
+  </form>` : "";
+  return `${historial}${ficha}${S.f22Editar ? "" : boton}${formulario}`;
 }
 async function guardarF22() {
   const anio = Number(S.rentaAnio || empresa().ejercicio), fecha = $("#f22-fecha").value, codigos = {};
@@ -6539,7 +6545,7 @@ async function guardarF22() {
   if (pf || pm || pc) { const m = pm ? parseMonto(pm) : null; if (Number.isNaN(m)) return aviso("El monto pagado debe ser un monto en pesos enteros."); if (pf && !/^\d{4}-\d{2}-\d{2}$/.test(pf)) return aviso("La fecha de pago no es válida."); pago = { fecha: pf, monto: m, comprobante: pc }; }
   await ocupado(async () => {
     await S.almacen.set(`empresas/${S.eid}/f22/${anio}`, { folio: $("#f22-folio").value.trim().replace(/\D/g, ""), fecha_presentacion: fecha, codigos, ...(pago ? { pago } : {}), observacion: $("#f22-obs").value.trim(), guardado_en: new Date().toISOString() });
-    render(); aviso(`F22 del año comercial ${anio} guardado.`);
+    S.f22Editar = false; render(); aviso(`F22 del año comercial ${anio} guardado.`);
   }, "No se pudo guardar el F22");
 }
 
@@ -7354,7 +7360,9 @@ document.addEventListener("click", (ev) => {
     case "rn-traer-previos": { const q = rentaPrevia(r.anio); if (q) { r.cpt.inicial = q.cpt_final ?? null; r.capital.inicial = q.capital_final ?? null; r.registros.rai_inicial = q.rai_final ?? null; r.registros.rex_inicial = q.rex_final ?? null; r.registros.sac_inicial = q.sac_final ?? null; r.perdida_anterior = q.perdida_siguiente || 0; } render(); break; }
     case "rn-guardar": guardarRenta(); break;
     case "rn-descartar": S.rentaEdit = null; render(); break;
-    case "f22-ver": S.rentaAnio = id; S.rentaEdit = null; S.confirmar = null; render(); break;
+    case "f22-ver": S.rentaAnio = id; S.rentaEdit = null; S.confirmar = null; S.f22Editar = false; render(); break;
+    case "f22-editar": S.f22Editar = true; render(); break;
+    case "f22-cancelar-edicion": S.f22Editar = false; S.confirmar = null; render(); break;
     case "f22b-recalcular": if (leerManualF22()) render(); break;
     case "f22b-guardar": guardarBorradorF22(); break;
     case "f22b-quitar": ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/f22_borr/${Number(S.rentaAnio || empresa().ejercicio)}`); S.f22bMan = null; render(); aviso("Borrador del F22 quitado."); }, "No se pudo quitar el borrador"); break;
@@ -7398,7 +7406,7 @@ document.addEventListener("change", (ev) => {
   else if (id === "vac-fecha" && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) { S.vacFecha = el.value; render(); }
   else if (id.startsWith("fq-") && id !== "fq-trabajador" && S.finiqEdit) { leerFiniquito(); render(); }
   else if (id === "dj-anio") { S.djAnio = el.value; render(); }
-  else if (id === "rn-anio") { S.rentaAnio = el.value; S.rentaEdit = null; render(); }
+  else if (id === "rn-anio") { S.rentaAnio = el.value; S.rentaEdit = null; S.f22Editar = false; render(); }
   else if (id === "f22-filtro") { S.f22Filtro = el.value; render(); }
   else if (id === "rn-regimen" && S.rentaEdit) { leerFormularioRenta(); S.rentaEdit.tasa = REGIMENES_RENTA[S.rentaEdit.regimen][1](S.rentaEdit.anio); render(); }
   else if (el.closest?.("#form-renta") && S.rentaEdit) actualizarRenta();
