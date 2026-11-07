@@ -431,7 +431,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("régimen 14 A: reajuste del capital propio inicial", rr.cm && rr.cm.tipo === "deduccion" && rr.cm.monto === 30000, JSON.stringify(rr.cm));
   ok("régimen 14 A no usa base de caja", rr.baseCajaA === false);
   igual("DDAN: depreciación acelerada menos normal", rr.ddan, 1200000);
-  igual("los saldos del año anterior pasan al siguiente (pérdida reajustada y CPT)", rr.previa, [1247899, 1310294, 9683333, 10167500]);
+  igual("los saldos del año anterior pasan al siguiente (pérdida a valor histórico y CPT)", rr.previa, [1247899, 1247899, 9683333, 10167500]);
   const vistasRenta = await page.evaluate(() => { const o = []; for (const t of ["rli", "cpt", "registros"]) { S.pestana.renta = t; S.rentaEdit = null; ir("renta"); o.push([t, document.querySelector("main").innerText.length > 200, !!document.querySelector("#form-renta")]); } return o; });
   ok("las tres pestañas de renta se dibujan", vistasRenta.every((x) => x[1] && x[2]), JSON.stringify(vistasRenta));
   const edicionRenta = await page.evaluate(async () => {
