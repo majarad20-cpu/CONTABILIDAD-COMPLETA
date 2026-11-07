@@ -394,7 +394,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.2.1";
+const VERSION = "2.2.2";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -6401,9 +6401,11 @@ function calcularRenta(r) {
     const otrasD3 = r.regimen === "d3" ? r.otras.monto || 0 : 0; /* rentas percibidas de otras empresas: suman al CPTS (letra j), no a la base */
     const exentos = r.regimen === "d3" ? autoOn.filter((a) => a.key === "no_renta" && a.tipo === "deduccion").reduce((t, a) => t + a.monto, 0) : 0; /* código 1377: rentas exentas e ingresos no renta generados, que van al CPTS y al REX */
     const resultado = antes - multasAuto - rechazadosMan + otrasD3 + exentos, aportes = r.capital.movimientos.reduce((t, m) => t + (m.monto || 0), 0), retirosNom = r.retiros.reduce((t, x) => t + (x.monto || 0), 0);
-    const final = cpt.inicial + aportes - retirosNom + resultado;
+    /* Código 1374: en el año de inicio de actividades el capital aportado es parte del CPTS (la empresa parte sin CPTS inicial). */
+    const capitalInicio = String(empresa()?.inicio_actividades || "").startsWith(String(anio)) ? Math.max(+r.capital.inicial || 0, 0) : 0;
+    const final = cpt.inicial + capitalInicio + aportes - retirosNom + resultado;
     /* El F22 informa el CPTS negativo (códigos 1546 y 1719) y lo resta en el RAI. */
-    cptRegla = { ...cpt, balance: cpt.cpt, cpt: final, rexAuto: exentos, simplificado: { inicial: cpt.inicial, aportes, retiros: retirosNom, resultado, otras: otrasD3, exentos, final, negativo: final < 0 } };
+    cptRegla = { ...cpt, balance: cpt.cpt, cpt: final, rexAuto: exentos, simplificado: { inicial: cpt.inicial, aportes, retiros: retirosNom, resultado, otras: otrasD3, exentos, capitalInicio, final, negativo: final < 0 } };
   }
   const reg = calcularRegistros(r, cptRegla, idpc);
   const c = { er, cpt: cptRegla, auto, autoOn, agregadosAuto, deduccionesAuto, agregados, deducciones, antes, perdidaReaj, perdidaUsada, rli, incentivo, tope, uta, exentaUta, baseAfecta, perdidaSiguiente, idpc, ppm, ppmReaj, ppmMonto, otros, creditos,
@@ -6581,7 +6583,7 @@ function htmlFinalRenta(r, c) {
 function htmlResumenCpt(r, c) {
   const k = c.cpt, f = (t, v, cls = "") => `<tr class="${cls}"><td>${t}</td><td class="num">${clp(v)}</td></tr>`;
   const sm = k.simplificado, V = (r.vipc || 0) / 100, variacion = (sm ? k.balance : k.cpt) - k.inicialReaj;
-  const simple = sm ? `<h3>Capital propio tributario simplificado (Pro Pyme)</h3><div class="tabla"><table><tbody>${f("Capital propio tributario simplificado inicial", sm.inicial)}${f("(+/−) Aportes y disminuciones de capital del año", sm.aportes)}
+  const simple = sm ? `<h3>Capital propio tributario simplificado (Pro Pyme)</h3><div class="tabla"><table><tbody>${f("Capital propio tributario simplificado inicial", sm.inicial)}${sm.capitalInicio ? f("(+) Capital aportado por la empresa que inicia actividades en el año (1374)", sm.capitalInicio) : ""}${f("(+/−) Aportes y disminuciones de capital del año", sm.aportes)}
     ${f("(+) Ingresos percibidos menos egresos pagados del año, sin los gastos rechazados", sm.resultado - (sm.otras || 0) - (sm.exentos || 0))}${sm.otras ? f("(+) Rentas percibidas de otras empresas (1726)", sm.otras) : ""}${sm.exentos ? f("(+) Rentas exentas e ingresos no renta generados en el año (1377)", sm.exentos) : ""}${f("(−) Retiros del año (valor nominal)", -sm.retiros)}${f(`Capital propio tributario simplificado al 31/12/${r.anio} ${sm.final < 0 ? "(negativo: se informa en 1546)" : "(positivo)"}`, sm.final, "total")}
     ${f("Control: capital propio según el balance", k.balance)}${f("Diferencia con el balance", sm.final - k.balance)}</tbody></table></div><h3>Referencia según el balance</h3>` : "";
   return `${simple}<div class="tabla"><table><tbody>${f("Activos a valor contable (cuentas de balance)", k.activosLibro)}${f("(−) Pasivos a valor contable", k.pasivosLibro)}${f("Patrimonio contable", k.patrimonioContable, "sub")}
@@ -6631,7 +6633,7 @@ function camposF22() {
     1496: "SAC: remanente del ejercicio anterior o saldo inicial", 1513: "SAC: IDPC e IPE base imponible generada en el ejercicio", 1540: "SAC: asignado a remesas, retiros o dividendos", 1564: "SAC: remanente del ejercicio siguiente", 18: "IDPC Pro Pyme: base imponible", 20: "IDPC Pro Pyme: impuesto de primera categoría", 31: "Total de impuestos determinados",
     36: "PPM y remanente (total)", 1904: "PPM arts. 84 letras a), c), e) y h) y 14 D N° 3 letra (k) LIR", 305: "Resultado de la liquidación anual", 85: "Saldo a favor", 90: "Impuesto adeudado", 39: "Reajuste art. 72 LIR", 91: "Total a pagar (códigos 90 + 39)" });
   const sec = [["Recuadro 17 · Ingresos", [1400, 1817, 1588, 1410]], ["Recuadro 17 · Egresos", [1409, 1818, 1411, 1412, 1413, 1415, 1419, 1421, 1422, 1424, 1426, 1428, 1430]], ["Recuadro 17 · Base imponible", [1431, 1729, 1432, 1433, 1440]],
-    ["Recuadro 18 · Determinación del RAI", [1703, 1719, 1492, 1704, 1720, 1493, 1494, 1500]], ["Recuadro 19 · CPTS", [1445, 1446, 1375, 1376, 1705, 1706, 1707, 1377, 1378, 1726, 1479, 1708, 1710, 1545, 1546]],
+    ["Recuadro 18 · Determinación del RAI", [1703, 1719, 1492, 1704, 1720, 1493, 1494, 1500]], ["Recuadro 19 · CPTS", [1445, 1446, 1374, 1375, 1376, 1705, 1706, 1707, 1377, 1378, 1726, 1479, 1708, 1710, 1545, 1546]],
     ["Recuadro 20 · Registro RAI", [1451, 1459, 1463, 1475, 1484]], ["Recuadro 21 · Registro SAC", [1496, 1513, 1540, 1564]], ["Datos de balance", [122, 123]], ["Impuestos anuales a la renta", [18, 20, 31, 36, 1904, 305, 85, 90, 39, 91]]];
   return sec.map(([t, ks]) => [t, ks.map((cd) => [String(cd), g[cd] || String(cd)])]);
 }
@@ -6882,8 +6884,8 @@ function calcularBorradorF22(r, c, man) {
   k[1445] = Math.max(c.cpt.inicial, 0); k[1446] = Math.max(-c.cpt.inicial, 0);
   k[1375] = movs.filter((m) => m.monto > 0).reduce((t, m) => t + m.monto, 0); k[1376] = movs.filter((m) => m.monto < 0).reduce((t, m) => t - m.monto, 0);
   k[1705] = k[18]; k[1706] = k[1440] < 0 ? -k[1440] : 0; k[1707] = k[1426]; k[1479] = k[1704]; k[1708] = k[1431]; k[1710] = k[1432]; k[1545] = k[1703]; k[1546] = k[1719];
-  k[1377] = c.cpt.simplificado?.exentos || 0; k[1726] = r.regimen === "d3" ? r.otras.monto || 0 : 0; k[1546] = Math.max(-cp, 0);
-  const suma = k[1726] + k[1377] + k[1445] - k[1446] + k[1375] - k[1376] + k[1705] - k[1706] + k[1707] - k[1479] - k[1708] + k[1710];
+  k[1374] = c.cpt.simplificado?.capitalInicio || 0; k[1377] = c.cpt.simplificado?.exentos || 0; k[1726] = r.regimen === "d3" ? r.otras.monto || 0 : 0; k[1546] = Math.max(-cp, 0);
+  const suma = k[1726] + k[1377] + k[1374] + k[1445] - k[1446] + k[1375] - k[1376] + k[1705] - k[1706] + k[1707] - k[1479] - k[1708] + k[1710];
   k.dif_cpts = cp - suma;
   k[1451] = reg.raiIniReaj; k[1459] = reg.raiIniReaj; k[1463] = reg.rai0; k[1475] = reg.total; k[1484] = reg.raiFinal;
   k[1496] = reg.sacIniReaj; k[1513] = k[20]; k[1540] = reg.creditos; k[1564] = reg.sacFinal;
