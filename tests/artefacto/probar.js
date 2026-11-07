@@ -1918,10 +1918,14 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   const f22t = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {};
     S.pestana.renta = "declarado"; S.rentaAnio = String(empresa().ejercicio); S.vista = "renta"; render(); await w();
-    r.pestana = /Registrar el F22 del año comercial/.test(document.body.innerText);
+    r.cerrado = !document.querySelector("#f22-folio") && !!document.querySelector('[data-n="f22-editar"]');
+    document.querySelector('[data-n="f22-editar"]').click(); await w();
+    r.pestana = /Registrar el F22 del año comercial/.test(document.body.innerText) && !!document.querySelector("#f22-folio");
     const poner = (id, v) => { document.querySelector(id).value = v; };
     poner("#f22-folio", "321 270 106"); poner("#f22-fecha", "2047-04-29"); poner("#f22-pfecha", "2047-04-30"); poner("#f22-pmonto", "167.772"); poner("#f22-pcomp", "TGR 123"); poner("#f22-1400", "106.484.169"); poner("#f22-1440", "16.997.331"); poner("#f22-20", "2.124.666"); poner("#f22-91", "167.772");
     document.querySelector('[data-form="f22"]').dispatchEvent(new Event("submit", { cancelable: true, bubbles: true })); await w(400);
+    r.cierra = !S.f22Editar && !document.querySelector("#f22-folio");
+    document.querySelector('[data-n="f22-editar"]').click(); await w();
     const d = S.f22.find((x) => x.id === String(empresa().ejercicio));
     r.guardado = d && [d.folio, d.fecha_presentacion, d.codigos["1400"], d.codigos["1440"], d.codigos["20"], d.codigos["91"]];
     r.pago = d && d.pago && [d.pago.fecha, d.pago.monto, d.pago.comprobante];
@@ -1934,7 +1938,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     r.tras = S.f22.length; S.pestana.renta = "rli"; ir("inicio");
     return r;
   });
-  ok("la pestaña F22 declarado se abre", f22t.pestana, JSON.stringify(f22t));
+  ok("el formulario del F22 solo se abre al pulsar el botón y se cierra al guardar", f22t.cerrado && f22t.pestana && f22t.cierra, JSON.stringify(f22t));
   igual("se guarda el F22 con folio, fecha y cifras", f22t.guardado, ["321270106", "2047-04-29", 106484169, 16997331, 2124666, 167772]);
   ok("el F22 guardado aparece en el historial con su pago y su detalle, y la pestaña se llama Historial de F22", f22t.tabla && f22t.pestanaNombre, JSON.stringify(f22t));
   ok("el historial ya no trae la comparación con el borrador", f22t.sinComparacion, JSON.stringify(f22t));
