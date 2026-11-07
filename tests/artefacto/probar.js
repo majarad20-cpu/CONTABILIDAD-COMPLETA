@@ -1029,6 +1029,26 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("la pestaña Fichas ofrece crear las fichas", afc.bloque);
   igual("crear la ficha usa el neto como costo y deja de ofrecer la compra", [afc.ficha, afc.nuevas, afc.despues], [[5000000, "2032-06-03", "activo", 84, true], 1, []]);
 
+  console.log("Rejilla de las tablas");
+  const rj = await page.evaluate(() => {
+    const lum = (c) => { const k = c.startsWith("color(") ? 255 : 1; const m = c.match(/[\d.]+/g).slice(0, 3).map(Number).map((v) => { v *= k; v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]; };
+    const r = {}, el = document.documentElement, ant = el.dataset.theme, antB = el.dataset.bordes;
+    const caja = document.createElement("div"); caja.className = "tabla"; caja.innerHTML = "<table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>"; document.body.appendChild(caja);
+    const td = caja.querySelector("td"), th = caja.querySelector("th");
+    for (const tema of ["light", "dark", "menta", "marfil", "niebla"]) {
+      el.dataset.theme = tema;
+      const cs = getComputedStyle(td), fondo = getComputedStyle(caja).backgroundColor, a = lum(cs.borderLeftColor), b = lum(fondo);
+      r[tema] = [cs.borderLeftWidth, cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, +((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toFixed(2)];
+    }
+    el.dataset.theme = "light"; el.dataset.bordes = "sutil"; const sutil = lum(getComputedStyle(td).borderLeftColor); el.dataset.bordes = "marcado"; const marcado = lum(getComputedStyle(td).borderLeftColor);
+    r.encabezado = getComputedStyle(th).borderBottomWidth;
+    r.mas = Math.abs(marcado - lum(getComputedStyle(caja).backgroundColor)) > Math.abs(sutil - lum(getComputedStyle(caja).backgroundColor));
+    if (ant === undefined) delete el.dataset.theme; else el.dataset.theme = ant; if (antB === undefined) delete el.dataset.bordes; else el.dataset.bordes = antB; caja.remove();
+    return r;
+  });
+  ok("las celdas muestran sus cuatro divisiones en cualquier tema, con contraste suficiente contra el fondo", ["light", "dark", "menta", "marfil", "niebla"].every((k) => rj[k].slice(0, 4).every((w) => w === "1px") && rj[k][4] >= 1.6), JSON.stringify(rj));
+  ok("el encabezado lleva una línea más gruesa y los bordes marcados contrastan más que los sutiles", rj.encabezado === "2px" && rj.mas, JSON.stringify(rj));
+
   console.log("Apariencia");
   await page.evaluate(() => ir("apariencia")); await espera();
   ok("la pantalla de apariencia se dibuja con estilos, temas y colores", await page.evaluate(() => document.querySelectorAll("[data-estilo]").length >= 8 && document.querySelectorAll('[data-ap="tema"]').length >= 8 && document.querySelectorAll('[data-ap="acento"]').length >= 9));
