@@ -1948,7 +1948,9 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     r.regimen = "d8"; const c8 = calcularRenta(r); r0.d8 = c8.rli;
     r.regimen = "a"; r.tasa = 27; const ca = calcularRenta(r); r0.a = [ca.reg.movs[0].reaj > 1000000, ca.reg.retiros[0].reaj > 300000];
     r.regimen = "d3"; r.tasa = 25; r.vipc = 0;
-    r.otras = { monto: 400000, credito: 100000 }; c = calcularRenta(r); r0.otras = [c.rli, c.cpt.simplificado.otras]; r.regimen = "d8"; r0.otras8 = calcularRenta(r).rli; r.regimen = "d3"; r.otras = { monto: 0, credito: 0 };
+    { const base = calcularRenta(r).rli; r.clasif = { [ven]: { t: "normal", m: 9000000 } }; const c1 = calcularRenta(r), k1 = calcularBorradorF22(r, c1, r.f22).codigos; r.clasif = { [cos]: { t: "rechazado", m: null } }; const c2 = calcularRenta(r), k2 = calcularBorradorF22(r, c2, r.f22).codigos; r.clasif = {};
+      S.pestana.renta = "rli"; S.vista = "renta"; render(); await w(); r0.clasif = [base, c1.rli, k1[1400], k1[1440] === c1.baseAfecta, c2.rli, k2[1440] === c2.baseAfecta, !!document.querySelector('[id^="rn-cl-t-"]') && /Clasificación de ingresos y gastos/.test(document.body.innerText)]; }
+        r.otras = { monto: 400000, credito: 100000 }; c = calcularRenta(r); r0.otras = [c.rli, c.cpt.simplificado.otras]; r.regimen = "d8"; r0.otras8 = calcularRenta(r).rli; r.regimen = "d3"; r.otras = { monto: 0, credito: 0 };
     r.f22.incentivo = 9000000; c = calcularRenta(r); r0.tope = [c.rli, c.incentivo, c.tope, c.alertas.some((a) => /supera el máximo legal/.test(a))]; r.f22.incentivo = null;
     const antesCpt = r.cpt.inicial; r.cpt.inicial = 0; r.retiros[0].monto = 20000000; c = calcularRenta(r); r0.neg = [c.cpt.simplificado.negativo, c.cpt.cpt, calcularBorradorF22(r, c, r.f22).codigos[1546], c.alertas.some((a) => /se informa como CPTS negativo/.test(a))]; r.retiros[0].monto = 300000; r.cpt.inicial = antesCpt;
     { const e = empresa(), antesIni = e.inicio_actividades, capAnt = r.capital.inicial; const base0 = calcularRenta(r).cpt.cpt; e.inicio_actividades = `${anio}-01-15`; r.capital.inicial = 5000000; r.cpt.inicial = 0; const ci = calcularRenta(r); r.capital.inicial = capAnt; r.cpt.inicial = antesCpt; r0.inicio = [ci.cpt.simplificado.capitalInicio, calcularBorradorF22(r, ci, r.f22).codigos[1374], 0]; e.inicio_actividades = antesIni; r0.inicio[2] = calcularRenta(r).cpt.simplificado.capitalInicio; }
@@ -1961,6 +1963,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   });
   igual("14 D N° 3: el reajuste del remanente de IVA es ingreso, las rentas exentas se deducen y los registros quedan a valor histórico", c62.d3, [6500000, 1000000, 300000, true, true]);
   igual("14 D N° 8: la base incluye los ingresos exentos; el 14 A sí reajusta capital y retiros", [c62.d8, c62.a], [6700000, [true, true]]);
+  igual("la clasificación de ingresos y gastos (percibido, pagado y rechazado) mueve la renta y el borrador por igual", c62.clasif, [6500000, 5500000, 9000000, true, 10500000, true, true]);
   igual("las rentas de otras empresas suman al CPTS en el N° 3 y a la base, con su crédito, en el N° 8", [c62.otras, c62.otras8], [[6500000, 400000], 7200000]);
   igual("el incentivo se limita al 50 % de la base y avisa", c62.tope, [6500000, 3250000, 3250000, true]);
   igual("en el año de inicio de actividades el capital aportado suma al CPTS y se informa en 1374", c62.inicio, [5000000, 5000000, 0]);
