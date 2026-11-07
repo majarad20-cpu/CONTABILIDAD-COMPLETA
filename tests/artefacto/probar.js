@@ -1828,6 +1828,33 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("no deja repetir el RUT, agrega al segundo socio y deja de avisar al sumar 100 %", prop.dup === 1 && prop.dos === 2 && prop.suma100, JSON.stringify(prop));
   ok("los socios van en el respaldo y se pueden eliminar", prop.respaldo === 2 && prop.tras === 1, JSON.stringify(prop));
 
+  console.log("Información previa al F22");
+  const ip = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2051, sr = S.rcv, sf = S.f29Borradores, e0 = empresa();
+    const base = { periodo: anio + "-03", fecha: anio + "-03-10", tipo_doc: 33, exento: 0, cantidad: 1, iva_no_recuperable: 0, otros_impuestos: 0, activo_fijo: false, asiento: "", rut: "76.111.111-1", razon_social: "P" };
+    S.rcv = [{ ...base, id: "pv1", registro: "VENTA", folio: "1", neto: 1000000, iva: 190000, total: 1190000 }, { ...base, id: "pv2", registro: "VENTA", folio: "2", tipo_doc: 61, neto: 100000, iva: 19000, total: 119000 },
+      { ...base, id: "pc1", registro: "COMPRA", folio: "3", neto: 400000, iva: 76000, total: 476000 }, { ...base, id: "pc2", registro: "COMPRA", folio: "4", neto: 500000, iva: 95000, total: 595000, activo_fijo: true }];
+    S.f29Borradores = [{ id: anio + "-03", declarado: true, codigos: { 502: 190000, 510: 19000, 563: 900000, 511: 171000, 62: 9000, 151: 50000 } }];
+    S.honorarios = [{ id: "h1", periodo: anio + "-03", bruto: 300000, retencion: 45750 }]; S.rentaAnio = String(anio); S.rentaEdit = null;
+    const r = rentaActual(), c = calcularRenta(r), P = infoPreviaF22(anio, r, c), fila = (sec, txt) => P.secciones[sec].filas.find((x) => x.nombre.startsWith(txt));
+    r0.ventas = [fila(0, "Registro de ventas: neto").total, fila(0, "F29 declarado: ventas netas").total, fila(0, "Registro de ventas menos F29").total];
+    r0.mes = [fila(0, "Registro de ventas: neto").meses[2], fila(0, "Registro de ventas: neto").meses[3], fila(0, "F29 declarado: ventas netas").meses[3]];
+    r0.compras = [fila(1, "Registro de compras: neto").total, fila(1, "Registro de compras: IVA crédito fiscal").total, fila(1, "IVA del registro de compras menos F29").total];
+    r0.ppm = fila(3, "PPM declarado").total; r0.hon = [fila(5, "Boletas de honorarios: retención").total, fila(5, "Retención de boletas menos F29").total]; r0.af = fila(6, "Registro de compras: activo fijo").total;
+    r0.prop = P.propuesta[1400];
+    S.pestana.renta = "previa"; S.vista = "renta"; render(); await w();
+    const tx = document.body.innerText; r0.pantalla = /información previa al f22/i.test(tx) && /registro de ventas/i.test(tx) && /propuesta del sii/i.test(tx) && /saldos iniciales/i.test(tx);
+    r0.informe = S.informe().filas.length > 20 && S.csv.filas.flat().join("|").includes("Registro de ventas");
+    S.rcv = sr; S.f29Borradores = sf; S.honorarios = []; S.rentaEdit = null; S.pestana.renta = "rli"; ir("inicio");
+    return r0;
+  });
+  igual("el registro de ventas del año (con la nota de crédito restada) se compara con el F29 en fórmula del SII", ip.ventas, [900000, 900000, 0]);
+  igual("las cifras se separan por mes: marzo en el RCV, abril sin F29", ip.mes, [900000, 0, null]);
+  igual("las compras traen su IVA y la diferencia con el crédito del F29", ip.compras, [900000, 171000, 0]);
+  ok("el PPM, la retención de honorarios y el activo fijo se leen de sus fuentes", ip.ppm === 9000 && ip.hon[0] === 45750 && ip.hon[1] === -4250 && ip.af === 500000, JSON.stringify(ip));
+  ok("la propuesta del SII para los ingresos es el mayor entre el registro de ventas y el F29", ip.prop === 900000, JSON.stringify(ip));
+  ok("la pestaña muestra la propuesta, los saldos y las secciones, y el informe sale con filas", ip.pantalla && ip.informe, JSON.stringify(ip));
+
   console.log("Borrador del F22");
   const bf = await page.evaluate(async () => {
     const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2049, e0 = empresa();

@@ -394,7 +394,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.90.0";
+const VERSION = "1.91.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -6453,7 +6453,7 @@ function htmlRegistros(r, c) {
     ${g.retiros.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Beneficiario</th><th class="num">Retiro reajustado</th><th class="num">A RAI</th>${r.regimen === "a" ? '<th class="num">A DDAN</th>' : ""}<th class="num">A REX</th><th class="num">Exceso</th><th class="num">Crédito sugerido</th></tr></thead><tbody>
       ${g.retiros.map((x) => `<tr><td>${fmtFecha(x.fecha)}</td><td>${esc(x.nombre)}</td><td class="num">${clp(x.reaj)}</td><td class="num">${clp(x.aRai)}</td>${r.regimen === "a" ? `<td class="num">${clp(x.aDdan)}</td>` : ""}<td class="num">${clp(x.aRex)}</td><td class="num">${x.exceso ? `<span class="neg">${clp(x.exceso)}</span>` : "0"}</td><td class="num">${clp(x.sugerido)}</td></tr>`).join("")}</tbody></table></div>` : ""}`;
 }
-const PESTANAS_RENTA = [["rli", "Renta líquida imponible"], ["cpt", "Capital propio tributario"], ["registros", "Registros de rentas empresariales"], ["borrador", "Borrador F22"], ["declarado", "F22 declarado"]];
+const PESTANAS_RENTA = [["rli", "Renta líquida imponible"], ["cpt", "Capital propio tributario"], ["registros", "Registros de rentas empresariales"], ["previa", "Información previa"], ["borrador", "Borrador F22"], ["declarado", "F22 declarado"]];
 function encabezadoRenta(r, c, t) {
   const anios = aniosDesde(S.lista.map((a) => a.fecha), empresa().ejercicio, S.renta.map((x) => x.id));
   if (!anios.includes(String(r.anio))) anios.unshift(String(r.anio));
@@ -6526,6 +6526,84 @@ async function guardarF22() {
     await S.almacen.set(`empresas/${S.eid}/f22/${anio}`, { folio: $("#f22-folio").value.trim().replace(/\D/g, ""), fecha_presentacion: fecha, codigos, observacion: $("#f22-obs").value.trim(), guardado_en: new Date().toISOString() });
     render(); aviso(`F22 del año comercial ${anio} guardado.`);
   }, "No se pudo guardar el F22");
+}
+
+/* ---------- información previa al F22: lo que tiene el SII (RCV, F29 y DJ cargados) contra lo que tiene el sistema (libros), por mes y por año ---------- */
+/* Fórmula con que el SII propone los ingresos del giro (código 1400) desde los F29: [20]+[502]+[717]+[501]+[142]+[715]+[732]+[587]+[720]+[111]+[759]-[510]-[709]-[734]+[513]; los códigos a valor de IVA débito se pasan a neto. */
+const F29_VENTAS_NETO = [20, 142, 111], F29_VENTAS_DEBITO = [502, 717, 501, 715, 732, 587, 720, 759, 513], F29_VENTAS_MENOS = [510, 709, 734], F29_PPM_SII = [62, 66, 70, 122, 123, 703];
+function infoPreviaF22(anio, r, c) {
+  const y = String(anio), per = (m) => `${y}-${String(m).padStart(2, "0")}`, ct = cuentasTributarias(), MS = Array.from({ length: 12 }, (_, i) => i + 1);
+  const suma = (a) => a.reduce((t, v) => t + (v || 0), 0), arr = (f) => MS.map((m) => f(m, per(m)));
+  const f29 = (m) => S.f29Borradores.find((b) => b.id === per(m)) || null, cod = (m, k) => +f29(m)?.codigos?.[k] || 0;
+  const conF29 = (f) => arr((m) => (f29(m) ? f(m) : null)), rcv = (registro, f) => arr((m, p) => docsPeriodo(p, registro).reduce((t, d) => t + signoDoc(d.tipo_doc) * f(d), 0));
+  const datos = arr((m, p) => saldosPeriodo(`${p}-01`, ultimoDia(p)).cuentas), mov = (id, lado) => datos.map((cs) => { const x = id ? cs.find((q) => q.cuenta.id === id) : null; return x ? (lado === "debe" ? x.debe : lado === "haber" ? x.haber : x.debe - x.haber) : 0; });
+  const movVarias = (ids, lado) => ids.filter(Boolean).map((id) => mov(id, lado)).reduce((a, b) => a.map((v, i) => v + b[i]), Array(12).fill(0));
+  const diferencia = (a, b) => a.map((v, i) => (v == null || b[i] == null ? null : v - b[i]));
+  const f = (nombre, fuente, meses, o = {}) => ({ nombre, fuente, meses, total: o.total !== undefined ? o.total : suma(meses), ...o });
+  const dif = (nombre, a, b) => f(nombre, "Diferencia", diferencia(a.meses, b.meses), { dif: true });
+  const ventasRcv = f("Registro de ventas: neto (facturas, boletas y notas, con NC restadas)", "SII", rcv("VENTA", (d) => d.neto));
+  const f29neto = f("F29 declarado: ventas netas según la fórmula del SII", "SII", conF29((m) => Math.round(suma(F29_VENTAS_NETO.map((k) => cod(m, k))) + (suma(F29_VENTAS_DEBITO.map((k) => cod(m, k))) - suma(F29_VENTAS_MENOS.map((k) => cod(m, k)))) / TASA_IVA)));
+  const ventasLib = f("Ventas contabilizadas (cuenta de ventas)", "Sistema", mov(ct.ventas_neto, "neto").map((v) => -v));
+  const cobros = f("Cobros de clientes del año (abonos a Clientes, con IVA)", "Sistema", mov(ct.clientes, "haber"));
+  const secciones = [];
+  secciones.push({ titulo: "1. Ingresos del giro (código 1400)", nota: "El SII propone el mayor valor entre el neto del registro de ventas y el neto de los F29 del año. Los códigos del F29 a valor de IVA débito se pasan a neto dividiendo por 0,19.", filas: [
+    ventasRcv, f("Registro de ventas: exento", "SII", rcv("VENTA", (d) => d.exento)), f29neto, f("F29 declarado: base imponible del PPM (código 563)", "SII", conF29((m) => cod(m, 563))), dif("Registro de ventas menos F29", ventasRcv, f29neto),
+    ventasLib, dif("Sistema menos registro de ventas", ventasLib, ventasRcv), cobros, f("Cobros de clientes: neto estimado sin IVA (percibido)", "Sistema", cobros.meses.map((v) => Math.round(v / (1 + TASA_IVA))))] });
+  const compRcv = f("Registro de compras: neto", "SII", rcv("COMPRA", (d) => d.neto)), ivaRcv = f("Registro de compras: IVA crédito fiscal", "SII", rcv("COMPRA", (d) => d.iva)), totRcv = f("Registro de compras: total", "SII", rcv("COMPRA", (d) => d.total));
+  const iva511 = f("F29 declarado: crédito fiscal del mes (código 511)", "SII", conF29((m) => cod(m, 511))), ivaLib = f("IVA crédito contabilizado", "Sistema", mov(ct.iva_credito, "debe")), provLib = f("Compras a proveedores contabilizadas, con IVA (abonos a Proveedores)", "Sistema", mov(ct.proveedores, "haber"));
+  secciones.push({ titulo: "2. Compras e insumos (código 1409 y siguientes)", nota: "Lo que el SII tiene en el registro de compras, contra el F29 y los libros. El IVA de las compras de activo fijo va en el mismo crédito.", filas: [
+    compRcv, f("Registro de compras: exento", "SII", rcv("COMPRA", (d) => d.exento)), ivaRcv, f("Registro de compras: IVA no recuperable", "SII", rcv("COMPRA", (d) => d.iva_no_recuperable)), f("Registro de compras: otros impuestos (combustibles, etc.)", "SII", rcv("COMPRA", (d) => d.otros_impuestos)), totRcv,
+    iva511, dif("IVA del registro de compras menos F29", ivaRcv, iva511), ivaLib, dif("IVA contabilizado menos registro de compras", ivaLib, ivaRcv), provLib, dif("Proveedores contabilizado menos registro de compras (total)", provLib, totRcv),
+    f("Pagos a proveedores (cargos a Proveedores)", "Sistema", mov(ct.proveedores, "debe"))] });
+  secciones.push({ titulo: "3. Declaraciones mensuales de IVA (F29)", nota: "Cada mes con F29 guardado; un mes sin F29 queda en blanco.", filas: [
+    f("Estado: 1 = declarado en el SII, 0 = solo borrador", "SII", conF29((m) => (f29(m).declarado ? 1 : 0))), f("IVA débito fiscal (código 538)", "SII", conF29((m) => cod(m, 538))), f("IVA débito contabilizado", "Sistema", mov(ct.iva_debito, "haber")), f("Remanente de crédito fiscal que pasa al mes siguiente (código 77)", "SII", conF29((m) => cod(m, 77))),
+    f("IVA a pagar (código 89)", "SII", conF29((m) => cod(m, 89))), f("Total pagado en el F29 (código 91)", "SII", conF29((m) => cod(m, 91)))] });
+  const ppmF29 = f("PPM declarado en el F29 (códigos 62, 66, 70, 122, 123 y 703)", "SII", conF29((m) => suma(F29_PPM_SII.map((k) => cod(m, k))))), ctaPpm = S.cuentas.find((x) => x.imputable && /^(ppm|pagos provisionales)/i.test(x.nombre));
+  const ppmLib = f("PPM provisionado o pagado (cargos a la cuenta PPM)", "Sistema", mov(ctaPpm?.id, "debe"));
+  secciones.push({ titulo: "4. PPM (código 1904)", nota: "El SII propone el PPM del F22 con los F29 del año. En los libros el cargo de la cuenta PPM incluye también el reajuste del PPM al cierre.", filas: [ppmF29, ppmLib, dif("Libros menos F29", ppmLib, ppmF29)] });
+  const dj = S.dj_decl.find((x) => x.id === `1887_${anio}`), djMes = MS.map((m) => (dj ? (dj.perceptores || []).reduce((t, p) => t + (+p.meses?.[m] || 0), 0) : null));
+  const tribSis = MS.map((m) => filas1887(anio).filter((x) => +x.periodo.slice(5) === m).reduce((t, x) => t + x.tributable, 0)), djF = f("DJ 1887 declarada: renta neta tributable pagada", "SII", djMes, { total: dj ? suma(djMes) : null }), sisF = f("Remuneraciones y sueldo empresarial del sistema (tributable)", "Sistema", tribSis);
+  const prevM = arr((m, p) => S.previred.filter((x) => x.periodo === p).reduce((t, x) => t + (x.cotizaciones || 0), 0)), prevR = arr((m, p) => S.previred.filter((x) => x.periodo === p).reduce((t, x) => t + (x.recargos || 0), 0));
+  secciones.push({ titulo: "5. Remuneraciones (código 1411)", nota: "La DJ 1887 lleva el monto tributable de cada mes (no el imponible ni el líquido). Si aún no se carga la DJ del año, esa fila queda en blanco.", filas: [
+    djF, sisF, dif("DJ 1887 menos sistema", djF, sisF), f("Remuneraciones brutas contabilizadas (sueldo empresarial, remuneraciones y aporte patronal)", "Sistema", movVarias([ct.sueldo_empresarial, ct.rem_sueldos, ct.rem_leyes_sociales], "debe")),
+    f("Imponible de las liquidaciones del mes", "Sistema", arr((m, p) => S.liquidaciones.filter((x) => x.periodo === p).reduce((t, x) => t + (x.imponible || 0), 0))), f("Cotizaciones pagadas en Previred (según el mes de la remuneración)", "SII", prevM), f("Multas e intereses pagados en Previred", "SII", prevR)] });
+  const honBr = f("Boletas de honorarios: monto bruto", "SII", arr((m, p) => S.honorarios.filter((b) => b.periodo === p).reduce((t, b) => t + (b.bruto || 0), 0))), honRet = f("Boletas de honorarios: retención", "SII", arr((m, p) => S.honorarios.filter((b) => b.periodo === p).reduce((t, b) => t + (b.retencion || 0), 0)));
+  const f151 = f("F29 declarado: retención de honorarios (código 151)", "SII", conF29((m) => cod(m, 151)));
+  secciones.push({ titulo: "6. Honorarios (código 1412)", nota: "Las boletas de honorarios recibidas y la retención que se declara en el F29.", filas: [honBr, honRet, f151, dif("Retención de boletas menos F29", honRet, f151), f("Honorarios contabilizados", "Sistema", mov(ct.honorarios_gasto, "debe"))] });
+  const afRcv = f("Registro de compras: activo fijo (neto)", "SII", rcv("COMPRA", (d) => (d.activo_fijo ? d.neto + d.exento : 0))), afFic = f("Fichas de activo fijo adquiridas en el mes (costo)", "Sistema", arr((m, p) => S.activos.filter((a) => a.fecha_adq.slice(0, 7) === p).reduce((t, a) => t + a.costo, 0)));
+  secciones.push({ titulo: "7. Activo fijo (código 1413)", nota: "Las fichas pueden incluir costos que no vienen en la factura, como derechos de transferencia o inscripción.", filas: [afRcv, afFic, dif("Fichas menos registro de compras", afFic, afRcv), f("Activo fijo contabilizado (cargos a la cuenta de maquinarias)", "Sistema", mov(ct.compras_activo_fijo, "debe"))] });
+  const previo = f22Declarado(anio - 1)?.codigos || {}, perdidaPrev = (previo[1440] || 0) < 0 ? -previo[1440] : 0;
+  const saldos = [[1445, "CPT o CPTS positivo inicial", previo[1545] ?? null, c.cpt.inicial], [1426, "Pérdidas tributarias de ejercicios anteriores", Object.keys(previo).length ? perdidaPrev : null, r.perdida_anterior || 0],
+    [1451, "RAI: saldo inicial", previo[1484] ?? null, c.reg.raiIni], [1496, "SAC: saldo inicial", previo[1564] ?? null, c.reg.sacIni]];
+  const propuesta = {
+    1400: Math.max(ventasRcv.total, f29neto.total), 1904: ppmF29.total, 1445: previo[1545] ?? null, 1426: Object.keys(previo).length ? perdidaPrev : null };
+  return { secciones, saldos, propuesta, previo: Object.keys(previo).length > 0, ventasRcv, f29neto, ppmF29 };
+}
+function cuerpoPreviaF22(r, c) {
+  const P = infoPreviaF22(r.anio, r, c), man = manualF22(r.anio), b = calcularBorradorF22(r, c, man), k = b.codigos, d = f22Declarado(r.anio), cod = d?.codigos || {};
+  const MS = MESES_CORTOS, num = (v) => (v == null ? "" : clp(v));
+  const celda = (v, fila) => (fila.dif ? (v == null ? "" : v ? `<strong>${clp(v)}</strong>` : "✓") : v ? clp(v) : "");
+  const tabla = (sec) => `<div class="tabla ancha"><table><thead><tr><th>Concepto</th><th>Fuente</th>${MS.map((m) => `<th class="num">${m}</th>`).join("")}<th class="num">Total año</th></tr></thead><tbody>
+    ${sec.filas.map((fila) => `<tr class="${fila.dif ? "sub" : ""}"><td>${esc(fila.nombre)}</td><td>${esc(fila.fuente)}</td>${fila.meses.map((v) => `<td class="num">${celda(v, fila)}</td>`).join("")}<td class="num"><strong>${fila.total == null ? "" : fila.dif ? (fila.total ? clp(fila.total) : "✓") : clp(fila.total)}</strong></td></tr>`).join("")}</tbody></table></div>`;
+  const resumen = [[1400, "Ingresos del giro percibidos: el mayor entre el registro de ventas y el F29", P.propuesta[1400]], [1904, "PPM: F29 del año", P.propuesta[1904]], [1445, "CPT o CPTS positivo inicial: el final del F22 anterior", P.propuesta[1445]], [1426, "Pérdidas de ejercicios anteriores: la del F22 anterior", P.propuesta[1426]]];
+  const sinF29 = Array.from({ length: 12 }, (_, i) => `${r.anio}-${String(i + 1).padStart(2, "0")}`).filter((p) => !S.f29Borradores.some((x) => x.id === p)).map((p) => mesCap(p));
+  return `<section class="caja"><h2>Información previa al F22 · año comercial ${r.anio} (año tributario ${r.anio + 1})</h2>
+    <p class="ayuda">Antes de armar el borrador: qué información tiene el SII sobre la empresa (registro de ventas y compras, F29, DJ 1887, boletas y Previred, según lo que cargaste) y qué dicen los libros, mes a mes y totalizado por año. Las filas «SII» salen de lo cargado desde el SII; las filas «Sistema», de la contabilidad. Las filas de diferencia marcan ✓ cuando coinciden.</p>
+    ${sinF29.length ? `<div class="aviso">No hay F29 guardado para: ${sinF29.join(", ")}. Esos meses quedan en blanco en las filas del F29.</div>` : `<div class="aviso ok">Los 12 F29 del año están guardados.</div>`}
+    ${esSimplificada() ? `<div class="aviso">Contabilidad simplificada: las filas «Sistema» salen de los asientos, que esta empresa no lleva; usa el libro de caja.</div>` : ""}</section>
+  <section class="caja"><h3>Propuesta del SII para el F22, con la información cargada</h3><div class="tabla"><table><thead><tr><th>Código</th><th>Concepto</th><th class="num">Propuesta del SII</th><th class="num">Borrador del sistema</th><th class="num">Diferencia</th><th class="num">F22 declarado</th></tr></thead><tbody>
+    ${resumen.map(([cd, gl, v]) => `<tr><td class="cod">${cd}</td><td>${esc(gl)}</td><td class="num">${num(v)}</td><td class="num">${num(k[cd])}</td><td class="num">${v == null ? "" : (k[cd] || 0) - v ? `<strong>${clp((k[cd] || 0) - v)}</strong>` : "✓"}</td><td class="num">${cod[cd] != null ? clp(cod[cd]) : ""}</td></tr>`).join("")}</tbody></table></div>
+    <p class="ayuda">${P.previo ? "Los saldos iniciales vienen del F22 declarado del año anterior." : "No hay un F22 declarado del año anterior: los saldos iniciales quedan en blanco."} El SII no propone los gastos (1409, 1411, 1412, 1413); esas filas se comparan abajo con sus fuentes.</p></section>
+  <section class="caja"><h3>Saldos iniciales según el F22 anterior y según el sistema</h3><div class="tabla"><table><thead><tr><th>Código</th><th>Concepto</th><th class="num">F22 anterior (propuesta SII)</th><th class="num">Sistema</th><th class="num">Diferencia</th></tr></thead><tbody>
+    ${P.saldos.map(([cd, gl, a, s]) => `<tr><td class="cod">${cd}</td><td>${esc(gl)}</td><td class="num">${num(a)}</td><td class="num">${num(s)}</td><td class="num">${a == null ? "" : (s || 0) - a ? `<strong>${clp((s || 0) - a)}</strong>` : "✓"}</td></tr>`).join("")}</tbody></table></div></section>
+  ${P.secciones.map((sec) => `<section class="caja"><h3>${esc(sec.titulo)}</h3>${tabla(sec)}${sec.nota ? `<p class="ayuda">${esc(sec.nota)}</p>` : ""}</section>`).join("")}`;
+}
+function informePreviaF22(r) {
+  const c = calcularRenta(r), P = infoPreviaF22(r.anio, r, c);
+  const inf = new Informe("INFORMACIÓN PREVIA AL F22", `AÑO COMERCIAL ${r.anio} · AÑO TRIBUTARIO ${r.anio + 1}`, [col("Concepto", 46), col("Fuente", 10), ...MESES_CORTOS.map((m) => col(m, 10, "monto")), col("Total año", 13, "monto")], `f22_informacion_previa_${r.anio}`, { horizontal: true, firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  for (const sec of P.secciones) { inf.agregar([sec.titulo], { estilo: "seccion", abarca: 0 }); for (const fila of sec.filas) inf.agregar([fila.nombre, fila.fuente, ...fila.meses, fila.total]); }
+  inf.notas.push("Las filas «SII» salen de lo cargado desde el SII (registro de compras y ventas, F29, DJ y Previred); las filas «Sistema», de la contabilidad.");
+  return inf;
 }
 
 /* ---------- borrador del F22 (formulario) ---------- */
@@ -6701,8 +6779,9 @@ function informeF22(r) {
 function vistaRenta() {
   const r = rentaActual(), c = calcularRenta(r), t = pestanaActual("renta", "rli");
   r._autoClaves = c.auto.map((a) => a.key); r._cajaIds = c.caja.map((x) => x.cuenta.id); r._cptIds = c.cpt.filas.map((x) => x.cuenta.id);
-  const inf = () => ({ rli: informeRenta, cpt: informeCpt, registros: informeRegistros, borrador: informeBorradorF22, declarado: informeF22 }[t] || informeRenta)(r);
+  const inf = () => ({ rli: informeRenta, cpt: informeCpt, registros: informeRegistros, previa: informePreviaF22, borrador: informeBorradorF22, declarado: informeF22 }[t] || informeRenta)(r);
   S.informe = inf; S.csv = csvDeInforme(inf());
+  if (t === "previa") return encabezadoF22(r) + cuerpoPreviaF22(r, c);
   if (t === "borrador") return encabezadoF22(r) + cuerpoBorradorF22(r, c);
   if (t === "declarado") return encabezadoF22(r) + cuerpoF22(r, c);
   return encabezadoRenta(r, c, t) + (t === "cpt" ? cuerpoCpt(r, c) : t === "registros" ? cuerpoRegistros(r, c) : cuerpoRli(r, c)) + pieRenta(r)
