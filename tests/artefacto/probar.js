@@ -1950,7 +1950,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     r.regimen = "d3"; r.tasa = 25; r.vipc = 0;
     r.otras = { monto: 400000, credito: 100000 }; c = calcularRenta(r); r0.otras = [c.rli, c.cpt.simplificado.otras]; r.regimen = "d8"; r0.otras8 = calcularRenta(r).rli; r.regimen = "d3"; r.otras = { monto: 0, credito: 0 };
     r.f22.incentivo = 9000000; c = calcularRenta(r); r0.tope = [c.rli, c.incentivo, c.tope, c.alertas.some((a) => /supera el máximo legal/.test(a))]; r.f22.incentivo = null;
-    const antesCpt = r.cpt.inicial; r.cpt.inicial = 0; r.retiros[0].monto = 20000000; c = calcularRenta(r); r0.neg = [c.cpt.simplificado.negativo, c.cpt.cpt, c.alertas.some((a) => /no se considera para ningún efecto/.test(a))]; r.retiros[0].monto = 300000; r.cpt.inicial = antesCpt;
+    const antesCpt = r.cpt.inicial; r.cpt.inicial = 0; r.retiros[0].monto = 20000000; c = calcularRenta(r); r0.neg = [c.cpt.simplificado.negativo, c.cpt.cpt, calcularBorradorF22(r, c, r.f22).codigos[1546], c.alertas.some((a) => /se informa como CPTS negativo/.test(a))]; r.retiros[0].monto = 300000; r.cpt.inicial = antesCpt;
     S.utm[`${anio}-12`] = 1000000; r.individual = true; c = calcularRenta(r); r0.uta = [c.exentaUta, c.idpc, c.uta]; r.individual = false; c = calcularRenta(r); r0.noUta = [c.exentaUta, c.idpc > 0]; delete S.utm[`${anio}-12`];
     S.pestana.renta = "registros"; S.vista = "renta"; render(); await w(); r0.sinPct = !document.querySelector('[id^="rn-rt-pct-"]') && !document.querySelector("#rn-vipc");
     cm.nombre = nomCm; ex.nombre = nomEx; for (const id of ["c62a", "c62b", "c62c", "c62d"]) await S.almacen.del(`empresas/${S.eid}/asientos/${id}`);
@@ -1961,7 +1961,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("14 D N° 8: la base incluye los ingresos exentos; el 14 A sí reajusta capital y retiros", [c62.d8, c62.a], [6700000, [true, true]]);
   igual("las rentas de otras empresas suman al CPTS en el N° 3 y a la base, con su crédito, en el N° 8", [c62.otras, c62.otras8], [[6500000, 400000], 7200000]);
   igual("el incentivo se limita al 50 % de la base y avisa", c62.tope, [6500000, 3250000, 3250000, true]);
-  igual("el CPTS negativo no se considera para ningún efecto", c62.neg, [true, 0, true]);
+  igual("el CPTS negativo se informa (1546) y se resta en el RAI, como en el F22", c62.neg, [true, -12300000, 12300000, true]);
   igual("el empresario individual con base hasta 1 UTA queda exento de IDPC", [c62.uta, c62.noUta, c62.sinPct], [[true, 0, 12000000], [false, true], true]);
 
   console.log("Selector de régimen de la empresa");
