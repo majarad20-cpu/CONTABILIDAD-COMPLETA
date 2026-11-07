@@ -1808,6 +1808,45 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("no deja repetir el RUT, agrega al segundo socio y deja de avisar al sumar 100 %", prop.dup === 1 && prop.dos === 2 && prop.suma100, JSON.stringify(prop));
   ok("los socios van en el respaldo y se pueden eliminar", prop.respaldo === 2 && prop.tras === 1, JSON.stringify(prop));
 
+  console.log("Borrador del F22");
+  const bf = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2049, e0 = empresa();
+    const cu = (re) => S.cuentas.find((x) => x.imputable && re.test(x.nombre))?.id;
+    const ids = { cli: cu(/^clientes$/i), ven: cu(/^ventas$/i), ivd: cu(/^iva d[eé]bito/i), ban: cu(/^banco$/i), cos: cu(/^costo de ventas$/i), ivc: cu(/^iva cr[eé]dito/i), pro: cu(/^proveedores$/i), rem: cu(/^remuneraciones$/i), hon: cu(/^honorarios$/i), oin: cu(/^otros ingresos$/i) };
+    r0.ids = Object.values(ids).every(Boolean);
+    const as = (id, fecha, lineas) => S.almacen.set(`empresas/${S.eid}/asientos/${id}`, { apertura: false, cierre: false, creado: 9000 + Math.random(), fecha, glosa: id, lineas: lineas.map(([cuenta, debe, haber]) => ({ cuenta, debe, haber, glosa: "" })) });
+    await as("bf1", `${anio}-03-10`, [[ids.cli, 119000, 0], [ids.ven, 0, 100000], [ids.ivd, 0, 19000]]);
+    await as("bf2", `${anio}-03-20`, [[ids.ban, 59500, 0], [ids.cli, 0, 59500]]);
+    await as("bf3", `${anio}-04-10`, [[ids.cos, 40000, 0], [ids.ivc, 7600, 0], [ids.pro, 0, 47600]]);
+    await as("bf4", `${anio}-04-20`, [[ids.pro, 23800, 0], [ids.ban, 0, 23800]]);
+    await as("bf5", `${anio}-05-31`, [[ids.rem, 10000, 0], [ids.ban, 0, 10000]]);
+    await as("bf6", `${anio}-06-30`, [[ids.hon, 5000, 0], [ids.ban, 0, 5000]]);
+    await as("bf7", `${anio}-12-31`, [[ids.ban, 300, 0], [ids.oin, 0, 300]]);
+    await w(500);
+    S.rentaAnio = String(anio); S.rentaEdit = null; const r = rentaActual(); r.regimen = "d3"; r.tasa = 25; r.vipc = 0;
+    S.f22bMan = null; const man = manualF22(anio); man.incentivo = 5000;
+    const c = calcularRenta(r), b = calcularBorradorF22(r, c, man), k = b.codigos;
+    r0.k = [k[1400], k[1588], k[1410], k[1409], k[1411], k[1412], k[1430], k[1729], k[1432], k[1440], k[20], k[1904], k[305], k[91]];
+    S.pestana.renta = "borrador"; S.vista = "renta"; render(); await w();
+    r0.pestana = /borrador del f22/i.test(document.body.innerText) && /de dónde sale/i.test(document.body.innerText) && /incentivo al ahorro/i.test(document.body.innerText);
+    document.querySelector("#f22b-inc").value = "4.000"; document.querySelector("#f22b-reaj").value = "100";
+    document.querySelector('[data-n="f22b-recalcular"]').click(); await w();
+    r0.manual = [S.f22bMan.incentivo, S.f22bMan.reaj];
+    document.querySelector('[data-n="f22b-guardar"]').click(); await w(400);
+    const g = S.f22_borr.find((x) => x.id === String(anio)); r0.guardado = g && [g.codigos[1440], g.codigos[39], g.manual.incentivo];
+    r0.informe = S.informe().filas.length > 10 && S.csv.filas.flat().join("|").includes("1729");
+    r0.respaldo = (await datosRespaldo()).colecciones.f22_borr?.length;
+    await S.almacen.del(`empresas/${S.eid}/f22_borr/${anio}`);
+    for (const id of ["bf1", "bf2", "bf3", "bf4", "bf5", "bf6", "bf7"]) await S.almacen.del(`empresas/${S.eid}/asientos/${id}`);
+    await w(400); S.f22bMan = null; S.rentaEdit = null; S.pestana.renta = "rli"; ir("inicio");
+    return r0;
+  });
+  ok("el plan trae las cuentas que usa el borrador del F22", bf.ids, JSON.stringify(bf));
+  igual("el borrador calcula ingresos percibidos, egresos pagados, base, impuesto y PPM desde los libros", bf.k, [50000, 300, 50300, 20000, 10000, 5000, 35000, 15300, 5000, 10300, 2575, 0, 2575, 2575]);
+  ok("la pestaña Borrador F22 se abre y se puede recalcular con el incentivo y el reajuste", bf.pestana && bf.manual[0] === 4000 && bf.manual[1] === 100, JSON.stringify(bf));
+  igual("se guarda el borrador con los códigos y los datos ingresados", bf.guardado, [11300, 100, 4000]);
+  ok("el informe trae los códigos y el respaldo incluye el borrador", bf.informe && bf.respaldo === 1, JSON.stringify(bf));
+
   console.log("F22 declarado");
   const f22t = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {};
