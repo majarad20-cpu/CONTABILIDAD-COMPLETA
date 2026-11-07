@@ -1931,6 +1931,25 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("los ajustes manuales pasan a los códigos del recuadro 17 y la base queda igual que en la renta líquida", [am.antes, am.k, am.igual], [[10000000, 6000000], [10050000, 50000, 100000, 50000, 500000, 4150000, 6400000, 6400000], true]);
   ok("la base del borrador coincide con la de la renta líquida y el código se elige en la pestaña", am.igual && am.rli[1] === am.k[7] && am.campo === 5 && am.cod === "1588", JSON.stringify(am));
 
+  console.log("Borrador del F22 en empresas simplificadas");
+  const bs = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2065, e = empresa(), antes = e.tipo_contabilidad, cajaAntes = S.caja;
+    e.tipo_contabilidad = "simplificada";
+    const m = (id, fecha, tipo, categoria, base) => ({ id, fecha, tipo, categoria, base, monto: base, glosa: id });
+    S.caja = [m("s1", `${anio}-03-10`, 1, "Ventas", 5000000), m("s2", `${anio}-04-10`, 1, "Otros ingresos", 100000), m("s3", `${anio}-05-10`, 2, "Compras y gastos", 1500000), m("s4", `${anio}-06-10`, 2, "Remuneraciones", 800000),
+      m("s5", `${anio}-07-10`, 2, "Honorarios", 200000), m("s6", `${anio}-08-10`, 2, "Arriendo", 300000), m("s7", `${anio}-09-10`, 2, "Compra de activo fijo", 400000), m("s8", `${anio}-10-10`, 2, "Otros egresos", 50000), m("s9", `${anio}-11-10`, 2, "Retiros de socios", 0)];
+    S.rentaAnio = String(anio); S.rentaEdit = null; const r = rentaActual(); r.regimen = "d3"; r.tasa = 25; r.vipc = 0;
+    const c = calcularRenta(r), b = calcularBorradorF22(r, c, r.f22), k = b.codigos;
+    r0.k = [k[1400], k[1588], k[1410], k[1409], k[1411], k[1412], k[1415], k[1413], k[1424], k[1430], k[1729], k[1440]]; r0.rli = c.rli;
+    S.pestana.renta = "borrador"; S.vista = "renta"; render(); await w();
+    r0.aviso = /Contabilidad simplificada: el borrador se arma con el libro de caja/.test(document.body.innerText);
+    r0.cpIni = cptInicialAnio(anio, r) === c.cpt.inicial; r0.perdida = perdidaInicialAnio(anio, r) === (r.perdida_anterior || 0);
+    S.caja = cajaAntes; e.tipo_contabilidad = antes; S.rentaEdit = null; S.pestana.renta = "rli"; ir("inicio");
+    return r0;
+  });
+  igual("en simplificada el borrador del F22 sale del libro de caja por categoría", bs.k, [5000000, 100000, 5100000, 1500000, 800000, 200000, 300000, 400000, 50000, 3250000, 1850000, 1850000]);
+  ok("el borrador simplificado cuadra con la renta líquida, avisa su origen y comparte el CPT inicial y la pérdida", bs.rli === 1850000 && bs.aviso && bs.cpIni && bs.perdida, JSON.stringify(bs));
+
   console.log("Borrador del F22");
   const bf = await page.evaluate(async () => {
     const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2049, e0 = empresa();
