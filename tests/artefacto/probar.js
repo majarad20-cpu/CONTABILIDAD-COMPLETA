@@ -432,7 +432,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("régimen 14 A: reajuste del capital propio inicial", rr.cm && rr.cm.tipo === "deduccion" && rr.cm.monto === 30000, JSON.stringify(rr.cm));
   ok("régimen 14 A no usa base de caja", rr.baseCajaA === false);
   igual("DDAN: depreciación acelerada menos normal", rr.ddan, 1200000);
-  igual("los saldos del año anterior pasan al siguiente (pérdida a valor histórico y CPT)", rr.previa, [1247899, 1247899, 9683333, 10167500]);
+  igual("los saldos del año anterior pasan al siguiente (pérdida a valor histórico y CPT)", rr.previa, [1247899, 1247899, 9683333, 9683333]);
   const vistasRenta = await page.evaluate(() => { const o = []; for (const t of ["rli", "cpt", "registros"]) { S.pestana.renta = t; S.rentaEdit = null; ir("renta"); o.push([t, document.querySelector("main").innerText.length > 200, !!document.querySelector("#form-renta")]); } return o; });
   ok("las tres pestañas de renta se dibujan", vistasRenta.every((x) => x[1] && x[2]), JSON.stringify(vistasRenta));
   const edicionRenta = await page.evaluate(async () => {
@@ -1931,6 +1931,38 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("cada ajuste manual se sugiere a un código del F22 según su concepto", am.sug, [1431, 1588, 1428, "i1588", 1415]);
   igual("los ajustes manuales pasan a los códigos del recuadro 17 y la base queda igual que en la renta líquida", [am.antes, am.k, am.igual], [[10000000, 6000000], [10050000, 50000, 100000, 50000, 500000, 4150000, 6400000, 6400000], true]);
   ok("la base del borrador coincide con la de la renta líquida y el código se elige en la pestaña", am.igual && am.rli[1] === am.k[7] && am.campo === 5 && am.cod === "1588", JSON.stringify(am));
+
+  console.log("Circular 62 de 2020: Pro Pyme");
+  const c62 = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2066;
+    const cu = (re) => S.cuentas.find((x) => x.imputable && re.test(x.nombre));
+    const ban = cu(/^banco$/i).id, ven = cu(/^ventas$/i).id, cos = cu(/^costo de ventas$/i).id, cm = cu(/^otros ingresos$/i), ex = cu(/^intereses ganados$/i), nomCm = cm.nombre, nomEx = ex.nombre;
+    cm.nombre = "Corrección monetaria remanente IVA"; ex.nombre = "Rentas exentas";
+    const as = (id, fecha, lineas) => S.almacen.set(`empresas/${S.eid}/asientos/${id}`, { apertura: false, cierre: false, creado: 9700 + Math.random(), fecha, glosa: id, lineas: lineas.map(([cuenta, debe, haber]) => ({ cuenta, debe, haber, glosa: "" })) });
+    await as("c62a", `${anio}-03-10`, [[ban, 10000000, 0], [ven, 0, 10000000]]); await as("c62b", `${anio}-04-10`, [[cos, 4000000, 0], [ban, 0, 4000000]]);
+    await as("c62c", `${anio}-05-10`, [[ban, 500000, 0], [cm.id, 0, 500000]]); await as("c62d", `${anio}-06-10`, [[ban, 200000, 0], [ex.id, 0, 200000]]);
+    await w(500);
+    S.rentaAnio = String(anio); S.rentaEdit = null; const r = rentaActual(); r.regimen = "d3"; r.tasa = 25; r.vipc = 5;
+    r.capital.movimientos = [{ fecha: `${anio}-06-30`, concepto: "Aporte", monto: 1000000, pct: null }]; r.retiros = [{ fecha: `${anio}-07-31`, nombre: "S", rut: "1-9", monto: 300000, pct: null, credito: 0 }]; r.cpt.inicial = 1000000;
+    let c = calcularRenta(r); r0.d3 = [c.rli, c.reg.movs[0].reaj, c.reg.retiros[0].reaj, c.cpt.inicialReaj === c.cpt.inicial, c.reg.sacIniReaj === c.reg.sacIni];
+    r.regimen = "d8"; const c8 = calcularRenta(r); r0.d8 = c8.rli;
+    r.regimen = "a"; r.tasa = 27; const ca = calcularRenta(r); r0.a = [ca.reg.movs[0].reaj > 1000000, ca.reg.retiros[0].reaj > 300000];
+    r.regimen = "d3"; r.tasa = 25; r.vipc = 0;
+    r.otras = { monto: 400000, credito: 100000 }; c = calcularRenta(r); r0.otras = [c.rli, c.cpt.simplificado.otras]; r.regimen = "d8"; r0.otras8 = calcularRenta(r).rli; r.regimen = "d3"; r.otras = { monto: 0, credito: 0 };
+    r.f22.incentivo = 9000000; c = calcularRenta(r); r0.tope = [c.rli, c.incentivo, c.tope, c.alertas.some((a) => /supera el máximo legal/.test(a))]; r.f22.incentivo = null;
+    const antesCpt = r.cpt.inicial; r.cpt.inicial = 0; r.retiros[0].monto = 20000000; c = calcularRenta(r); r0.neg = [c.cpt.simplificado.negativo, c.cpt.cpt, c.alertas.some((a) => /no se considera para ningún efecto/.test(a))]; r.retiros[0].monto = 300000; r.cpt.inicial = antesCpt;
+    S.utm[`${anio}-12`] = 1000000; r.individual = true; c = calcularRenta(r); r0.uta = [c.exentaUta, c.idpc, c.uta]; r.individual = false; c = calcularRenta(r); r0.noUta = [c.exentaUta, c.idpc > 0]; delete S.utm[`${anio}-12`];
+    S.pestana.renta = "registros"; S.vista = "renta"; render(); await w(); r0.sinPct = !document.querySelector('[id^="rn-rt-pct-"]') && !document.querySelector("#rn-vipc");
+    cm.nombre = nomCm; ex.nombre = nomEx; for (const id of ["c62a", "c62b", "c62c", "c62d"]) await S.almacen.del(`empresas/${S.eid}/asientos/${id}`);
+    await w(400); S.rentaEdit = null; S.pestana.renta = "rli"; ir("inicio");
+    return r0;
+  });
+  igual("14 D N° 3: el reajuste del remanente de IVA es ingreso, las rentas exentas se deducen y los registros quedan a valor histórico", c62.d3, [6500000, 1000000, 300000, true, true]);
+  igual("14 D N° 8: la base incluye los ingresos exentos; el 14 A sí reajusta capital y retiros", [c62.d8, c62.a], [6700000, [true, true]]);
+  igual("las rentas de otras empresas suman al CPTS en el N° 3 y a la base, con su crédito, en el N° 8", [c62.otras, c62.otras8], [[6500000, 400000], 7200000]);
+  igual("el incentivo se limita al 50 % de la base y avisa", c62.tope, [6500000, 3250000, 3250000, true]);
+  igual("el CPTS negativo no se considera para ningún efecto", c62.neg, [true, 0, true]);
+  igual("el empresario individual con base hasta 1 UTA queda exento de IDPC", [c62.uta, c62.noUta, c62.sinPct], [[true, 0, 12000000], [false, true], true]);
 
   console.log("Selector de régimen de la empresa");
   const selReg = await page.evaluate(() => {

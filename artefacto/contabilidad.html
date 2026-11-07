@@ -394,7 +394,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -6143,7 +6143,7 @@ const REGIMENES_RENTA = {
 };
 const baseCaja = (regimen) => regimen === "d3" || regimen === "d8";
 /* Criterios únicos para la renta líquida y para el borrador del F22: ingresos que no son renta (corrección monetaria del remanente de IVA, ingresos no renta, exentos, de fuente extranjera) y reajuste del art. 72, que no es gasto. */
-const RE_INGRESO_NO_RENTA = /remanente iva|no renta|exent|extranjer/i, RE_REAJUSTE_72 = /reajuste art/i, RE_REAJUSTE_PPM = /reajuste ppm/i;
+const RE_INGRESO_NO_RENTA = /no renta|exent|extranjer/i, RE_REAJUSTE_72 = /reajuste art/i, RE_REAJUSTE_PPM = /reajuste ppm/i;
 const AJUSTES_SUGERIDOS = {
   agregado: ["Gastos rechazados (art. 21 y art. 33 N° 1)", "Gastos sin documentación o no necesarios para producir la renta", "Provisiones no aceptadas tributariamente", "Retiros o gastos personales del propietario", "Intereses y reajustes de préstamos a relacionados", "Ingresos percibidos no contabilizados"],
   deduccion: ["Ingresos no constitutivos de renta", "Rentas exentas", "Gastos por inversión en investigación y desarrollo certificados por Corfo", "Dividendos o rentas de otras sociedades ya tributadas", "Castigo de deudas incobrables aceptado tributariamente"],
@@ -6241,6 +6241,7 @@ function completarRenta(r) {
   r.ajustes ||= []; r.auto_off ||= []; r.creditos ||= []; r.propietarios ||= []; r.retiros ||= [];
   r.vipc ??= null; r.perdida_anterior ||= 0; r.ppm_manual ??= null; r.observacion ||= "";
   if (!r.f22) { const g = (typeof S !== "undefined" ? S.f22_borr : []).find((x) => x.id === String(r.anio)); r.f22 = { incentivo: g?.manual?.incentivo ?? null, reaj: g?.manual?.reaj ?? 0, decl: { ...(g?.declarado || {}) }, coment: { ...(g?.comentarios || {}) } }; }
+  r.otras ||= {}; r.otras.monto ||= 0; r.otras.credito ||= 0; r.individual ??= false;
   r.f22.incentivo ??= null; r.f22.reaj ??= 0; r.f22.decl ||= {}; r.f22.coment ||= {};
   r.caja ||= { cuentas: {}, extra: [] }; r.caja.cuentas ||= {}; r.caja.extra ||= [];
   r.cpt ||= {}; r.cpt.trat ||= {}; r.cpt.inicial ??= null; r.cpt.af_auto ??= true;
@@ -6294,7 +6295,7 @@ function calcularCpt(r) {
   const afAjuste = r.cpt.af_auto ? ajusteActivoFijo(r.anio) : 0;
   const cpt = activos + afAjuste - pasivos;
   const previa = rentaPrevia(r.anio), inicial = cptInicialAnio(r.anio, r);
-  const V = (r.vipc || 0) / 100;
+  const V = baseCaja(r.regimen) ? 0 : (r.vipc || 0) / 100; /* el 14 D no tiene corrección monetaria: valores históricos */
   return { filas, activosLibro, pasivosLibro, patrimonioContable: activosLibro - pasivosLibro, activos, pasivos, afAjuste, cpt, inicial, inicialReaj: Math.round(inicial * (1 + V)),
     inicialPrevio: cptInicialEmpresa(r.anio) ?? previa?.cpt_final ?? null };
 }
@@ -6312,13 +6313,20 @@ function cuentasCaja(r) {
   }
   return filas;
 }
+/* Incentivo al ahorro (art. 14 letra E): hasta el 50 % de la base imponible, con tope de 5.000 UF (Circular 62 de 2020, ap. 1.6.1.1 y nota 42). */
+function topeIncentivo(anio, base) {
+  const uf = valorUf(`${anio}-12`), tope = uf ? Math.round(5000 * uf) : Infinity;
+  return Math.max(Math.min(Math.round(Math.max(base, 0) / 2), tope), 0);
+}
+/* UTA del año: 12 veces la UTM de diciembre. El empresario individual con base hasta 1 UTA está exento de IDPC (art. 40 N° 6). */
+function utaAnio(anio) { const u = utm(`${anio}-12`); return u ? Math.round(u * 12) : null; }
 function ajustesAuto(r, cpt) {
   const lineas = [], anio = r.anio, V = (r.vipc || 0) / 100;
   const add = (key, concepto, ref, monto) => { if (monto) lineas.push({ key, tipo: monto > 0 ? "agregado" : "deduccion", concepto, ref, monto: Math.abs(monto), activo: !r.auto_off.includes(key) }); };
   add("idpc", "Impuesto a la renta contabilizado como gasto", "No es gasto necesario para producir la renta (art. 31 LIR).", cuentasGastoPor(/impuesto a la renta|impuesto de primera categor/i).reduce((s, c) => s + movimientoAnio(c.id, anio), 0));
   add("multas", "Multas e intereses fiscales contabilizados", "Gasto rechazado (art. 21 y art. 33 N° 1 LIR).", cuentasGastoPor(/multas/i).reduce((s, c) => s + movimientoAnio(c.id, anio), 0));
   add("reaj72", "Reajuste del art. 72 LIR contabilizado como gasto", "Es parte del impuesto: no es gasto necesario para producir la renta.", cuentasGastoPor(RE_REAJUSTE_72).reduce((s, c) => s + movimientoAnio(c.id, anio), 0));
-  add("no_renta", "Ingresos que no son renta (corrección monetaria del remanente de IVA y similares)", "Se deducen: no forman parte de la renta del ejercicio.", S.cuentas.filter((c) => c.imputable && c.tipo === "INGRESO" && RE_INGRESO_NO_RENTA.test(c.nombre)).reduce((s, c) => s + movimientoAnio(c.id, anio), 0));
+  add("no_renta", "Ingresos que no son renta ni rentas exentas", "Se deducen: no forman parte de la base imponible (en el 14 D N° 8 sí se incluyen, por lo que no se deducen).", r.regimen === "d8" ? 0 : S.cuentas.filter((c) => c.imputable && c.tipo === "INGRESO" && RE_INGRESO_NO_RENTA.test(c.nombre)).reduce((s, c) => s + movimientoAnio(c.id, anio), 0));
   const ct = cuentasTributarias(), fichas = activosDelAnio(anio);
   add("dep_contable", "Depreciación contable del ejercicio", "Se agrega y se reemplaza por la depreciación tributaria de las fichas.", ct.depreciacion_gasto ? movimientoAnio(ct.depreciacion_gasto, anio) : 0);
   if (fichas.length) add("dep_trib", "Depreciación tributaria del ejercicio (según fichas de activo fijo)", "Art. 31 N° 5 y N° 5 bis LIR; en Pro Pyme, depreciación instantánea.", -fichas.reduce((s, a) => s + depTribAnio(a, anio), 0));
@@ -6336,12 +6344,12 @@ function ajustesAuto(r, cpt) {
 
 /* ---------- registros de rentas empresariales ---------- */
 function calcularRegistros(r, cpt, idpc) {
-  const V = (r.vipc || 0) / 100, previa = rentaPrevia(r.anio), g = r.registros, d = (m, clave) => m ?? previa?.[clave] ?? 0;
+  const hist = baseCaja(r.regimen), V = hist ? 0 : (r.vipc || 0) / 100, previa = rentaPrevia(r.anio), g = r.registros, d = (m, clave) => m ?? previa?.[clave] ?? 0;
   const capitalIni = d(r.capital.inicial, "capital_final"), capitalIniReaj = Math.round(capitalIni * (1 + V));
-  const movs = r.capital.movimientos.map((m) => { const pct = m.pct ?? pctPorMes(r.vipc, m.fecha); return { ...m, pct, reaj: reajustado(m.monto || 0, pct) }; });
+  const movs = r.capital.movimientos.map((m) => { const pct = hist ? 0 : m.pct ?? pctPorMes(r.vipc, m.fecha); return { ...m, pct, reaj: reajustado(m.monto || 0, pct) }; });
   const capitalFinal = capitalIniReaj + movs.reduce((s, m) => s + m.reaj, 0);
-  const retiros = r.retiros.map((x, i) => { const pct = x.pct ?? pctPorMes(r.vipc, x.fecha); return { ...x, i, pct, reaj: reajustado(x.monto || 0, pct) }; });
-  const rexIni = d(g.rex_inicial, "rex_final"), rexIniReaj = g.reajusta_rex ? Math.round(rexIni * (1 + V)) : rexIni;
+  const retiros = r.retiros.map((x, i) => { const pct = hist ? 0 : x.pct ?? pctPorMes(r.vipc, x.fecha); return { ...x, i, pct, reaj: reajustado(x.monto || 0, pct) }; });
+  const rexIni = d(g.rex_inicial, "rex_final"), rexIniReaj = g.reajusta_rex && !hist ? Math.round(rexIni * (1 + V)) : rexIni;
   const rexAntes = rexIniReaj + g.rex_ingresos.reduce((s, x) => s + (x.monto || 0), 0);
   const ddan = r.regimen === "a" ? (g.ddan_manual ?? ddanFichas(r.anio)) : 0;
   const total = retiros.reduce((s, x) => s + x.reaj, 0);
@@ -6372,14 +6380,16 @@ function calcularRenta(r) {
   const suma = (lista, tipo) => lista.filter((a) => a.tipo === tipo).reduce((s, a) => s + (a.monto || 0), 0);
   const autoOn = auto.filter((a) => a.activo);
   const agregadosAuto = suma(autoOn, "agregado"), deduccionesAuto = suma(autoOn, "deduccion");
-  const agregados = agregadosAuto + suma(r.ajustes, "agregado"), deducciones = deduccionesAuto + suma(r.ajustes, "deduccion");
+  const otrasD8 = r.regimen === "d8" ? (r.otras.monto || 0) + (r.otras.credito || 0) : 0; /* en la transparencia las rentas de otras empresas forman parte de la base, con el crédito por IDPC (Circ. 62, ap. 2.3.1) */
+  const agregados = agregadosAuto + otrasD8 + suma(r.ajustes, "agregado"), deducciones = deduccionesAuto + suma(r.ajustes, "deduccion");
   const antes = er.resultado + agregados - deducciones;
   const perdidaReaj = Math.round(r.perdida_anterior || 0); /* la pérdida se imputa y se arrastra a valor histórico, sin reajuste */
   const perdidaUsada = antes > 0 ? Math.min(perdidaReaj, antes) : 0;
   const rli = Math.max(antes - perdidaUsada, 0);
   const perdidaSiguiente = perdidaReaj - perdidaUsada + (antes < 0 ? -antes : 0);
-  const incentivo = r.regimen === "d3" ? Math.min(Math.max(+r.f22.incentivo || 0, 0), rli) : 0, baseAfecta = rli - incentivo;
-  const idpc = r.regimen === "d8" ? 0 : Math.round((baseAfecta * Math.round(r.tasa * 100)) / 10000);
+  const tope = topeIncentivo(anio, rli), incentivo = r.regimen === "d3" ? Math.min(Math.max(+r.f22.incentivo || 0, 0), rli, tope) : 0, baseAfecta = rli - incentivo;
+  const uta = utaAnio(anio), exentaUta = r.regimen === "d3" && r.individual && uta != null && baseAfecta <= uta;
+  const idpc = r.regimen === "d8" || exentaUta ? 0 : Math.round((baseAfecta * Math.round(r.tasa * 100)) / 10000);
   const ppm = ppmDelAnio(anio), ppmReaj = esSimplificada() ? 0 : Math.max(-S.cuentas.filter((x) => x.imputable && x.tipo === "INGRESO" && RE_REAJUSTE_PPM.test(x.nombre)).reduce((t, x) => t + movimientoAnio(x.id, anio), 0), 0), ppmMonto = r.ppm_manual ?? ppm.total + ppmReaj;
   const otros = r.creditos.reduce((s, c) => s + (c.monto || 0), 0), creditos = ppmMonto + otros;
   const atribuida = r.propietarios.map((p) => ({ ...p, monto: Math.round((rli * Math.round((p.porcentaje || 0) * 100)) / 10000) }));
@@ -6388,12 +6398,14 @@ function calcularRenta(r) {
   if (baseCaja(r.regimen)) {
     const multasAuto = autoOn.filter((a) => a.key === "multas" && a.tipo === "agregado").reduce((t, a) => t + a.monto, 0);
     const rechazadosMan = r.ajustes.filter((a) => a.tipo === "agregado" && codigoAjusteF22(a) === 1431).reduce((t, a) => t + (a.monto || 0), 0);
-    const resultado = antes - multasAuto - rechazadosMan, aportes = r.capital.movimientos.reduce((t, m) => t + (m.monto || 0), 0), retirosNom = r.retiros.reduce((t, x) => t + (x.monto || 0), 0);
+    const otrasD3 = r.regimen === "d3" ? r.otras.monto || 0 : 0; /* rentas percibidas de otras empresas: suman al CPTS (letra j), no a la base */
+    const resultado = antes - multasAuto - rechazadosMan + otrasD3, aportes = r.capital.movimientos.reduce((t, m) => t + (m.monto || 0), 0), retirosNom = r.retiros.reduce((t, x) => t + (x.monto || 0), 0);
     const final = cpt.inicial + aportes - retirosNom + resultado;
-    cptRegla = { ...cpt, balance: cpt.cpt, cpt: final, simplificado: { inicial: cpt.inicial, aportes, retiros: retirosNom, resultado, final } };
+    /* Un CPTS negativo no se considera para ningún efecto tributario (letra j). */
+    cptRegla = { ...cpt, balance: cpt.cpt, cpt: Math.max(final, 0), simplificado: { inicial: cpt.inicial, aportes, retiros: retirosNom, resultado, otras: otrasD3, final, negativo: final < 0 } };
   }
   const reg = calcularRegistros(r, cptRegla, idpc);
-  const c = { er, cpt: cptRegla, auto, autoOn, agregadosAuto, deduccionesAuto, agregados, deducciones, antes, perdidaReaj, perdidaUsada, rli, incentivo, baseAfecta, perdidaSiguiente, idpc, ppm, ppmReaj, ppmMonto, otros, creditos,
+  const c = { er, cpt: cptRegla, auto, autoOn, agregadosAuto, deduccionesAuto, agregados, deducciones, antes, perdidaReaj, perdidaUsada, rli, incentivo, tope, uta, exentaUta, baseAfecta, perdidaSiguiente, idpc, ppm, ppmReaj, ppmMonto, otros, creditos,
     resultado: idpc - creditos, atribuida, reg, caja: baseCaja(r.regimen) && !esSimplificada() ? cuentasCaja(r) : [] };
   c.alertas = alertasRenta(r, c);
   return c;
@@ -6487,6 +6499,10 @@ function alertasRenta(r, c) {
     if (conc && conc.auxiliar !== conc.contable) a.push(`La depreciación acumulada contabilizada ($${clp(-conc.contable)}) difiere de la de las fichas ($${clp(-conc.auxiliar)}): el ajuste de activo fijo a valor tributario supone que la contabilidad sigue las fichas. Contabiliza la depreciación pendiente.`);
   }
   if (c.er.gastos.total && !c.er.ingresos.total) a.push("El ejercicio tiene gastos pero ningún ingreso registrado.");
+  if (c.cpt.simplificado?.negativo) a.push(`El capital propio tributario simplificado sale negativo ($${clp(c.cpt.simplificado.final)}): no se considera para ningún efecto tributario (art. 14 D N° 3 letra j). Revisa el CPTS inicial y los aportes.`);
+  if (r.regimen === "d3" && +r.f22.incentivo > c.tope && c.tope > 0) a.push(`El incentivo al ahorro ingresado ($${clp(r.f22.incentivo)}) supera el máximo legal de $${clp(c.tope)} (50 % de la base, tope de 5.000 UF); se aplica el máximo.`);
+  if (c.exentaUta) a.push(`Empresario individual con base afecta de $${clp(c.baseAfecta)}, que no excede de 1 UTA ($${clp(c.uta)}): exenta de IDPC (art. 40 N° 6).`);
+  if (r.regimen === "d8" && (r.otras.monto || r.otras.credito)) a.push("Rentas de otras empresas incluidas en la base, incrementadas con su crédito por IDPC (14 D N° 8).");
   if (c.cpt.cpt < 0) a.push("El capital propio tributario es negativo: revisa el tratamiento de las cuentas y los ajustes a valor tributario.");
   if (c.reg.rai0 < 0 && r.regimen !== "d8") a.push("El saldo del RAI sale negativo: el capital propio es menor que el capital aportado más el REX. Revisa los ajustes del capital propio, el capital aportado y los saldos iniciales.");
   if (c.reg.exceso > 0) a.push(`Hay retiros por $${clp(c.reg.exceso)} que superan los saldos de los registros: se imputan al capital aportado o se tratan como retiros en exceso, según corresponda.`);
@@ -6510,6 +6526,9 @@ function leerFormularioRenta() {
   r.ajustes = r.ajustes.map((a, i) => ({ tipo: a.tipo, concepto: tx(`#rn-aj-con-${i}`, a.concepto), monto: m(`#rn-aj-monto-${i}`) ?? a.monto, codigo: $(`#rn-aj-cod-${i}`) ? $(`#rn-aj-cod-${i}`).value : a.codigo || "" }));
   r.creditos = r.creditos.map((x, i) => ({ concepto: tx(`#rn-cr-con-${i}`, x.concepto), monto: m(`#rn-cr-monto-${i}`) ?? x.monto }));
   r.propietarios = r.propietarios.map((p, i) => ({ nombre: tx(`#rn-pr-nom-${i}`, p.nombre), rut: tx(`#rn-pr-rut-${i}`, p.rut), porcentaje: dc(`#rn-pr-pct-${i}`) ?? (p.porcentaje || 0) }));
+  if ($("#rn-otras-monto")) r.otras.monto = m("#rn-otras-monto") || 0;
+  if ($("#rn-otras-cred")) r.otras.credito = m("#rn-otras-cred") || 0;
+  if ($("#rn-individual")) r.individual = $("#rn-individual").checked;
   if ($("#rn-ppm")) r.ppm_manual = opt("#rn-ppm", null);
   if ($("#rn-incentivo")) r.f22.incentivo = opt("#rn-incentivo", r.f22.incentivo);
   if ($("#rn-obs")) r.observacion = $("#rn-obs").value;
@@ -6562,7 +6581,7 @@ function htmlResumenCpt(r, c) {
   const k = c.cpt, f = (t, v, cls = "") => `<tr class="${cls}"><td>${t}</td><td class="num">${clp(v)}</td></tr>`;
   const sm = k.simplificado, V = (r.vipc || 0) / 100, variacion = (sm ? k.balance : k.cpt) - k.inicialReaj;
   const simple = sm ? `<h3>Capital propio tributario simplificado (Pro Pyme)</h3><div class="tabla"><table><tbody>${f("Capital propio tributario simplificado inicial", sm.inicial)}${f("(+/−) Aportes y disminuciones de capital del año", sm.aportes)}
-    ${f("(+) Ingresos percibidos menos egresos pagados del año, sin los gastos rechazados", sm.resultado)}${f("(−) Retiros del año (valor nominal)", -sm.retiros)}${f(`Capital propio tributario simplificado al 31/12/${r.anio} ${sm.final < 0 ? "(negativo)" : "(positivo)"}`, sm.final, "total")}
+    ${f("(+) Ingresos percibidos menos egresos pagados del año, sin los gastos rechazados", sm.resultado - (sm.otras || 0))}${sm.otras ? f("(+) Rentas percibidas de otras empresas", sm.otras) : ""}${f("(−) Retiros del año (valor nominal)", -sm.retiros)}${f(`Capital propio tributario simplificado al 31/12/${r.anio} ${sm.final < 0 ? "(negativo: no se considera para ningún efecto tributario)" : "(positivo)"}`, sm.final, "total")}
     ${f("Control: capital propio según el balance", k.balance)}${f("Diferencia con el balance", sm.final - k.balance)}</tbody></table></div><h3>Referencia según el balance</h3>` : "";
   return `${simple}<div class="tabla"><table><tbody>${f("Activos a valor contable (cuentas de balance)", k.activosLibro)}${f("(−) Pasivos a valor contable", k.pasivosLibro)}${f("Patrimonio contable", k.patrimonioContable, "sub")}
     ${f("Activos que representan inversión efectiva, con ajustes", k.activos)}${k.afAjuste ? f("(±) Ajuste de activo fijo a valor tributario (según fichas)", k.afAjuste) : ""}${f("(−) Pasivo exigible, con ajustes", k.pasivos)}
@@ -6596,8 +6615,9 @@ function encabezadoRenta(r, c, t) {
   <form id="form-renta" data-form="n-renta" class="caja">
     <div class="form"><label>Régimen tributario<input id="rn-regimen" value="${esc(REGIMENES_RENTA[r.regimen]?.[0] || "")}" readonly><small>${String(empresa()?.regimen || "").trim() ? `Según los datos de la empresa («${esc(empresa().regimen)}»). Para cambiarlo, edita Administración → Datos de la empresa.` : "La empresa no tiene régimen en sus datos: se supone Pro Pyme general. Indícalo en Administración → Datos de la empresa."}</small></label>
       <label>Tasa del impuesto de primera categoría (%)<input id="rn-tasa" inputmode="decimal" value="${comaDecimal(r.tasa)}" ${S.puedeEscribir ? "" : "readonly"}></label>
-      <label>VIPC anual del año comercial (%)<input id="rn-vipc" inputmode="decimal" placeholder="Ej. 3,5" value="${r.vipc == null ? "" : comaDecimal(r.vipc)}" ${S.puedeEscribir ? "" : "readonly"}>
-        <small>Variación del IPC entre noviembre del año anterior y noviembre de ${r.anio}. Reajusta el capital propio, la pérdida y los registros.</small></label></div>`;
+      ${r.regimen === "d3" ? `<label class="check"><input type="checkbox" id="rn-individual" ${r.individual ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Empresario individual (exento de IDPC si la base no excede 1 UTA)</label>` : ""}
+      ${baseCaja(r.regimen) ? "" : `<label>VIPC anual del año comercial (%)<input id="rn-vipc" inputmode="decimal" placeholder="Ej. 3,5" value="${r.vipc == null ? "" : comaDecimal(r.vipc)}" ${S.puedeEscribir ? "" : "readonly"}>
+        <small>Variación del IPC entre noviembre del año anterior y noviembre de ${r.anio}. Reajusta el capital propio y los registros.</small></label>`}</div>`;
 }
 const pieRenta = (r) => `${puedeEditar(`<div class="acciones"><button class="btn" type="button" data-n="rn-guardar">Guardar borrador</button><button class="btn sec" type="submit">Recalcular</button>${S.renta.some((x) => x.id === String(r.anio)) ? `<button class="btn sec" type="button" data-n="rn-descartar">Volver a lo guardado</button>` : ""}</div>`)}
   ${S.renta.find((x) => x.id === String(r.anio))?.guardado_en ? `<p class="ayuda">Último borrador guardado el ${fechaHora(S.renta.find((x) => x.id === String(r.anio)).guardado_en)}.</p>` : ""}</form>`;
@@ -6828,7 +6848,7 @@ function calcularBorradorF22(r, c, man) {
     }
   }
   for (const x of simple ? [] : cuentas) {
-    if (x.tipo === "INGRESO") { const v = -mov(x.id); if (!v) continue; if (/^4\.1\./.test(x.codigo)) giro += v; else if (!RE_INGRESO_NO_RENTA.test(x.nombre)) otrosIng += v; continue; }
+    if (x.tipo === "INGRESO") { const v = -mov(x.id); if (!v) continue; if (/^4\.1\./.test(x.codigo)) giro += v; else if (r.regimen === "d8" || !RE_INGRESO_NO_RENTA.test(x.nombre)) otrosIng += v; continue; }
     if (x.tipo !== "GASTO") continue;
     const v = mov(x.id); if (!v) continue;
     if ([ct.sueldo_empresarial, ct.rem_sueldos, ct.rem_leyes_sociales].includes(x.id) || /finiquito|gratificaci|remuneraci/i.test(x.nombre)) rem += v;
@@ -6850,9 +6870,9 @@ function calcularBorradorF22(r, c, man) {
   const agregadosMan = mj[1431] || 0, sinPerdida = k[1409] + k[1411] + k[1412] + k[1413] + k[1422] + [1415, 1418, 1419, 1423, 1424, 1427, 1428].reduce((t, cd) => t + (k[cd] || 0), 0), antes0 = k[1410] - sinPerdida + multas + agregadosMan;
   k[1426] = antes0 > 0 ? Math.min(c.perdidaReaj, antes0) : 0;
   k[1430] = sinPerdida + k[1426]; k[1431] = multas + agregadosMan; k[1729] = k[1410] - k[1430] + k[1431];
-  const inc = man.incentivo ?? 0; k[1432] = k[1729] > 0 ? Math.min(inc, k[1729]) : 0;
+  const inc = man.incentivo ?? 0; k[1432] = k[1729] > 0 ? Math.min(inc, k[1729], topeIncentivo(anio, k[1729])) : 0;
   k[1440] = k[1729] > 0 ? k[1729] - k[1432] : k[1729];
-  k[18] = Math.max(k[1440], 0); k[20] = r.regimen === "d8" ? 0 : Math.round((k[18] * Math.round(r.tasa * 100)) / 10000); k[31] = k[20];
+  k[18] = Math.max(k[1440], 0); k[20] = r.regimen === "d8" || (r.individual && utaAnio(anio) != null && k[18] <= utaAnio(anio)) ? 0 : Math.round((k[18] * Math.round(r.tasa * 100)) / 10000); k[31] = k[20];
   k[1904] = c.ppmMonto; k[36] = k[1904]; k[305] = k[31] - k[36]; k[85] = Math.max(-k[305], 0); k[87] = k[85]; k[90] = Math.max(k[305], 0); k[39] = man.reaj || 0; k[91] = k[90] + k[39];
   const reg = c.reg, cp = c.cpt.cpt, movs = r.capital.movimientos;
   k[122] = c.cpt.activosLibro; k[123] = c.cpt.pasivosLibro;
@@ -6861,7 +6881,7 @@ function calcularBorradorF22(r, c, man) {
   k[1445] = Math.max(c.cpt.inicial, 0); k[1446] = Math.max(-c.cpt.inicial, 0);
   k[1375] = movs.filter((m) => m.monto > 0).reduce((t, m) => t + m.monto, 0); k[1376] = movs.filter((m) => m.monto < 0).reduce((t, m) => t - m.monto, 0);
   k[1705] = k[18]; k[1706] = k[1440] < 0 ? -k[1440] : 0; k[1707] = k[1426]; k[1479] = k[1704]; k[1708] = k[1431]; k[1710] = k[1432]; k[1545] = k[1703]; k[1546] = k[1719];
-  const suma = k[1445] - k[1446] + k[1375] - k[1376] + k[1705] - k[1706] + k[1707] - k[1479] - k[1708] + k[1710];
+  const suma = (r.regimen === "d3" ? r.otras.monto || 0 : 0) + k[1445] - k[1446] + k[1375] - k[1376] + k[1705] - k[1706] + k[1707] - k[1479] - k[1708] + k[1710];
   k.dif_cpts = cp - suma;
   k[1451] = reg.raiIniReaj; k[1459] = reg.raiIniReaj; k[1463] = reg.rai0; k[1475] = reg.total; k[1484] = reg.raiFinal;
   k[1496] = reg.sacIniReaj; k[1513] = k[20]; k[1540] = reg.creditos; k[1564] = reg.sacFinal;
@@ -6873,7 +6893,7 @@ function calcularBorradorF22(r, c, man) {
     1904: "PPM de los F29 más el reajuste del PPM", 39: "Lo ingresas tú: reajuste de enero a abril", 1445: "Capital propio tributario del cierre anterior", 1703: "CPTS final: inicial + aportes − retiros + resultado de caja (pestaña Capital propio tributario)", 1704: "Retiros del año (históricos) de la pestaña Registros",
     1494: "Capital aportado de la pestaña Registros", 1500: "RAI según la pestaña Registros", 1545: "Capital propio tributario simplificado: inicial + aportes − retiros + ingresos percibidos menos egresos pagados", 122: "Activos del balance", 123: "Pasivos del balance",
     1451: "Saldo inicial reajustado de la pestaña Registros", 1459: "Reverso del saldo inicial", 1463: "RAI antes de retiros", 1475: "Retiros imputados según Registros", 1484: "RAI al cierre", 1496: "SAC inicial reajustado", 1513: "IDPC del año", 1540: "Créditos asignados a retiros", 1564: "SAC al cierre" };
-  return { codigos: k, origen, perdUsada: k[1426], sugerenciaIncentivo: k[1729] > 0 ? Math.round(k[1729] / 2) : 0 };
+  return { codigos: k, origen, perdUsada: k[1426], sugerenciaIncentivo: k[1729] > 0 ? topeIncentivo(anio, k[1729]) : 0 };
 }
 function cuerpoBorradorF22(r, c) {
   const man = manualF22(r.anio), b = calcularBorradorF22(r, c, man), k = b.codigos, d = f22Declarado(r.anio), cod = d?.codigos || {}, g = man.guardado_en ? { guardado_en: man.guardado_en } : null;
@@ -6884,7 +6904,7 @@ function cuerpoBorradorF22(r, c) {
   if (esSimplificada()) avisos.unshift("Contabilidad simplificada: el borrador se arma con el libro de caja (ingresos percibidos y egresos pagados que afectan la base), por categoría. No hay balance: el capital propio, los registros y el SAC dependen de lo que ingreses en las pestañas respectivas.");
   if (r.anio < 2025) avisos.unshift(`La estructura de códigos del Borrador es la del F22 AT2026 (año comercial 2025). Para el año comercial ${r.anio} el formulario pudo ser distinto: compara con el F22 de ese año antes de usar los códigos.`);
   if (r.regimen !== "d3") avisos.unshift("El borrador del F22 está pensado para la Pro Pyme general (14 D N° 3); en otro régimen sirve solo de referencia.");
-  if (k[1729] > 0 && man.incentivo == null) avisos.push(`Falta decidir el incentivo al ahorro (código 1432). Como referencia, el 50 % de la base es $${clp(b.sugerenciaIncentivo)}; el máximo legal depende de tu caso.`);
+  if (k[1729] > 0 && man.incentivo == null) avisos.push(`Falta decidir el incentivo al ahorro (código 1432). Como referencia, el máximo legal (50 % de la base, con tope de 5.000 UF) es $${clp(b.sugerenciaIncentivo)}.`);
   if (Math.abs(c.baseAfecta - Math.max(k[1440], 0)) > 1) avisos.push(`La base afecta del borrador ($${clp(Math.max(k[1440], 0))}) difiere de la de la pestaña Renta líquida imponible ($${clp(c.baseAfecta)}) en $${clp(Math.max(k[1440], 0) - c.baseAfecta)}: revisa los ajustes automáticos y la conversión a base de caja de esa pestaña.`);
   if (comunes.length) avisos.push(`El borrador difiere de lo declarado o por declarar en ${comunes.length} código(s): ${comunes.join(", ")}.`);
   if (Math.abs(k.dif_cpts) > 1) avisos.push(`El CPTS final del balance difiere en $${clp(k.dif_cpts)} de la suma de las partidas del recuadro 19: corresponde a partidas que el programa no separa (utilidades no distribuidas, ingresos no renta u otras). Revísalas con las líneas 1377, 1378, 1380 y 1381.`);
@@ -7031,6 +7051,8 @@ function cuerpoCpt(r, c) {
     <p class="ayuda">${pro ? "Referencia según el balance. " : ""}Capital propio tributario = activos que representan inversión efectiva, a valor tributario, menos el pasivo exigible (art. 41 N° 1 LIR). Quedan fuera los valores intangibles, nominales, transitorios y de orden. El programa parte del balance, propone el tratamiento de cada cuenta por su nombre y calcula el ajuste de los bienes del activo fijo con las fichas. Si una cuenta tiene otro valor tributario, anota la diferencia en «Ajuste». Si es negativo, se informa como CPT negativo.</p>
     ${k.filas.length ? `<div class="tabla"><table><thead><tr><th>Código</th><th>Cuenta</th><th>Tipo</th><th class="num">Saldo contable</th><th>Tratamiento</th><th class="num">Ajuste a valor tributario</th><th class="num">Valor tributario</th></tr></thead><tbody>${filas}</tbody></table></div>`
       : `<div class="caja vacio"><p>No hay saldos de balance en ${r.anio}.</p></div>`}
+    ${pro ? `<div class="form"><label>Rentas percibidas de otras empresas ($)<input id="rn-otras-monto" class="monto" inputmode="numeric" value="${r.otras.monto ? clp(r.otras.monto) : ""}" ${inputRo()}><small>Retiros, dividendos o participaciones de otras empresas, a valor nominal. ${r.regimen === "d3" ? "No forman parte de la base, pero suman al capital propio simplificado (letra j)." : "En la transparencia forman parte de la base imponible."}</small></label>
+      ${r.regimen === "d8" ? `<label>Crédito por IDPC de esas rentas ($)<input id="rn-otras-cred" class="monto" inputmode="numeric" value="${r.otras.credito ? clp(r.otras.credito) : ""}" ${inputRo()}><small>Incrementa la base imponible y se imputa contra los impuestos finales (arts. 56 N° 3 y 63).</small></label>` : ""}</div>` : ""}
     <div class="form"><label class="check"><input type="checkbox" id="rn-cpt-af" ${r.cpt.af_auto ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Ajustar el activo fijo a valor tributario según las fichas (depreciación tributaria)</label>
       <label>Capital propio tributario inicial ($, valor al 31/12/${r.anio - 1})<input id="rn-cpt-ini" inputmode="numeric" placeholder="${k.inicialPrevio != null ? clp(k.inicialPrevio) : "0"}" value="${r.cpt.inicial == null ? "" : clp(r.cpt.inicial)}" ${inputRo()}>
         <small>${k.inicialPrevio != null ? `Si lo dejas vacío se usa el registrado en la empresa o el del borrador guardado de ${r.anio - 1}.` : `No hay borrador de ${r.anio - 1}: ingrésalo a mano (negativo si el capital propio era negativo).`}</small></label></div>
@@ -7039,7 +7061,7 @@ function cuerpoCpt(r, c) {
 }
 
 function cuerpoRegistros(r, c) {
-  const g = c.reg, ro = inputRo();
+  const g = c.reg, ro = inputRo(), sinPct = (h) => (baseCaja(r.regimen) ? h.replace(/<td class="num"><input id="rn-(cm|rt)-pct-[^>]*><\/td>/, "") : h);
   const previa = rentaPrevia(r.anio);
   const mov = (x, i) => `<tr><td><input type="date" id="rn-cm-fecha-${i}" value="${esc(x.fecha || "")}" ${ro}></td><td><input id="rn-cm-con-${i}" value="${esc(x.concepto || "")}" placeholder="Aporte, aumento o devolución de capital" style="width:100%" ${ro}></td>
     <td class="num"><input id="rn-cm-monto-${i}" class="monto" inputmode="numeric" value="${x.monto ? clp(x.monto) : ""}" ${ro}></td><td class="num"><input id="rn-cm-pct-${i}" class="monto" style="width:5.5em" inputmode="decimal" placeholder="${comaDecimal((g.movs[i]?.pct ?? 0).toFixed(2))}" value="${x.pct == null ? "" : comaDecimal(x.pct)}" ${ro}></td>
@@ -7058,20 +7080,20 @@ function cuerpoRegistros(r, c) {
       <label>SAC inicial ($)<input id="rn-sac-ini" inputmode="numeric" placeholder="${clp(previa?.sac_final ?? 0)}" value="${r.registros.sac_inicial == null ? "" : clp(r.registros.sac_inicial)}" ${ro}></label>
       ${r.regimen === "a" ? `<label>DDAN ($)<input id="rn-ddan" inputmode="numeric" placeholder="${clp(ddanFichas(r.anio))}" value="${r.registros.ddan_manual == null ? "" : clp(r.registros.ddan_manual)}" ${ro}><small>Vacío: según las fichas con depreciación acelerada.</small></label>` : ""}
       <label>Otros saldos a deducir para el RAI ($)<input id="rn-otros-rai" inputmode="numeric" value="${r.registros.otros_rai ? clp(r.registros.otros_rai) : ""}" ${ro}><small>Solo si las instrucciones del F22 piden restar otras partidas.</small></label>
-      <label class="check"><input type="checkbox" id="rn-rex-reaj" ${r.registros.reajusta_rex ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Reajustar el REX inicial con la VIPC</label></div>
+      ${baseCaja(r.regimen) ? "" : `<label class="check"><input type="checkbox" id="rn-rex-reaj" ${r.registros.reajusta_rex ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Reajustar el REX inicial con la VIPC</label>`}</div>
     ${previa ? puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-traer-previos">Usar los saldos finales de ${r.anio - 1}</button></div>`) : ""}
     <h3>Capital aportado</h3>
     <div class="form"><label>Capital aportado inicial ($)<input id="rn-cap-ini" inputmode="numeric" placeholder="${clp(previa?.capital_final ?? 0)}" value="${r.capital.inicial == null ? "" : clp(r.capital.inicial)}" ${ro}></label></div>
-    ${r.capital.movimientos.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Concepto</th><th class="num">Monto (aumento +, disminución −)</th><th class="num">Reajuste %</th><th></th></tr></thead><tbody>${r.capital.movimientos.map(mov).join("")}</tbody></table></div>` : ""}
+    ${r.capital.movimientos.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Concepto</th><th class="num">Monto (aumento +, disminución −)</th>${baseCaja(r.regimen) ? "" : `<th class="num">Reajuste %</th>`}<th></th></tr></thead><tbody>${r.capital.movimientos.map((x, i) => sinPct(mov(x, i))).join("")}</tbody></table></div>` : ""}
     ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-capital">+ Aumento o disminución de capital</button></div>`)}
     <h3>Ingresos del año para el REX</h3>
     ${r.registros.rex_ingresos.length ? `<div class="tabla"><table><tbody>${r.registros.rex_ingresos.map(rex).join("")}</tbody></table></div>` : `<p class="ayuda">Sin ingresos no constitutivos de renta ni rentas exentas en el año.</p>`}
     ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-rex">+ Ingreso para el REX</button></div>`)}
     <h3>Retiros, remesas y distribuciones del año</h3>
-    ${r.retiros.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Beneficiario</th><th>RUT</th><th class="num">Monto</th><th class="num">Reajuste %</th><th class="num">Crédito del SAC ($)</th><th></th></tr></thead><tbody>${r.retiros.map(ret).join("")}</tbody></table></div>` : `<p class="ayuda">Sin retiros en el año.</p>`}
+    ${r.retiros.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Beneficiario</th><th>RUT</th><th class="num">Monto</th>${baseCaja(r.regimen) ? "" : `<th class="num">Reajuste %</th>`}<th class="num">Crédito del SAC ($)</th><th></th></tr></thead><tbody>${r.retiros.map((x, i) => sinPct(ret(x, i))).join("")}</tbody></table></div>` : `<p class="ayuda">Sin retiros en el año.</p>`}
     ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-retiro">+ Retiro o distribución</button>${retirosFaltantes(r).length ? `<button class="btn sec" type="button" data-n="rn-traer-retiros">Traer retiros de la contabilidad (${retirosFaltantes(r).length})</button>` : ""}</div>`)}
     <p class="ayuda">En la contabilidad hay $${clp(sumaDe(retirosContables(r.anio), "monto"))} retirados en ${r.anio}; en esta lista, $${clp(sumaDe(r.retiros, "monto"))}. Esta lista es la que alimenta la DJ 1948.</p>
-    <p class="ayuda">El reajuste de cada retiro y de cada movimiento de capital va con la variación del IPC entre el mes anterior al movimiento y el mes anterior al cierre; si lo dejas vacío se estima proporcional a los meses restantes con la VIPC anual. El crédito del SAC por cada retiro se calcula con las reglas de los arts. 56 y 63 de la LIR; el valor sugerido es proporcional (saldo del SAC ÷ RAI) y debes confirmarlo.</p>
+    <p class="ayuda">${baseCaja(r.regimen) ? "En el régimen Pro Pyme (14 D) no hay corrección monetaria: los registros RAI, REX y SAC, el capital, los retiros y las disminuciones de capital se anotan a valor histórico (Circular 62 de 2020, ap. 1.9.3). " : "El reajuste de cada retiro y de cada movimiento de capital va con la variación del IPC entre el mes anterior al movimiento y el mes anterior al cierre; si lo dejas vacío se estima proporcional a los meses restantes con la VIPC anual. "}El crédito del SAC por cada retiro se calcula con las reglas de los arts. 56 y 63 de la LIR; el valor sugerido es proporcional (saldo del SAC ÷ RAI) y debes confirmarlo.</p>
     <h3>Saldos al cierre</h3><div id="rn-registros">${htmlRegistros(r, c)}</div>`;
 }
 
