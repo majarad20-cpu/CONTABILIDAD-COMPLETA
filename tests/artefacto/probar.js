@@ -1968,6 +1968,21 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("el CPTS negativo se informa (1546) y se resta en el RAI, como en el F22", c62.neg, [true, -12300000, 12300000, true]);
   igual("el empresario individual con base hasta 1 UTA queda exento de IDPC", [c62.uta, c62.noUta, c62.sinPct], [[true, 0, 12000000], [false, true], true]);
 
+  console.log("Operación renta");
+  const op = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {};
+    S.rentaAnio = String(new Date().getFullYear()); S.rentaEdit = null; S.pestana.renta = "operacion"; S.vista = "renta"; render(); await w();
+    const tx = document.body.innerText;
+    r0.pantalla = /Operación renta/.test(tx) && /Saldos de partida/.test(tx) && /Declaraciones del año anterior/.test(tx) && /Avance del año comercial/.test(tx) && /Pendientes/.test(tx);
+    const r = rentaActual(), c = calcularRenta(r), d = datosOperacionRenta(r, c);
+    r0.datos = [d.meses.length, d.saldos.length, d.dj.length, Array.isArray(d.pend)];
+    r0.informe = informeOperacionRenta(r).filas.length > 20;
+    S.rentaEdit = null; S.pestana.renta = "rli"; ir("inicio");
+    return r0;
+  });
+  ok("la pestaña Operación renta muestra saldos, declaraciones, avance por mes y pendientes", op.pantalla, JSON.stringify(op));
+  igual("la operación renta arma 12 meses, 6 saldos y 4 declaraciones, y se exporta", [op.datos, op.informe], [[12, 6, 4, true], true]);
+
   console.log("Selector de régimen de la empresa");
   const selReg = await page.evaluate(() => {
     const r0 = {}, host = document.createElement("div"); host.innerHTML = formularioEmpresa({ regimen: "Transparente antiguo" }, false); const s1 = host.querySelector("#e-regimen");
