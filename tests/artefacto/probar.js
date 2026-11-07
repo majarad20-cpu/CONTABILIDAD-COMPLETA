@@ -1828,7 +1828,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const c = calcularRenta(r), b = calcularBorradorF22(r, c, man), k = b.codigos;
     r0.k = [k[1400], k[1588], k[1410], k[1409], k[1411], k[1412], k[1430], k[1729], k[1432], k[1440], k[20], k[1904], k[305], k[91]];
     S.pestana.renta = "borrador"; S.vista = "renta"; render(); await w();
-    r0.pestana = /borrador del f22/i.test(document.body.innerText) && /de dónde sale/i.test(document.body.innerText) && /incentivo al ahorro/i.test(document.body.innerText);
+    const tx = document.body.innerText; r0.pestana = /borrador del f22/i.test(tx) && /recuadro n° 17/i.test(tx) && /recuadro n° 20/i.test(tx) && /recuadro n° 21/i.test(tx) && /impuestos anuales a la renta/i.test(tx) && /existencias, insumos y servicios del negocio, pagados/i.test(tx);
     document.querySelector("#f22b-inc").value = "4.000"; document.querySelector("#f22b-reaj").value = "100";
     document.querySelector('[data-n="f22b-recalcular"]').click(); await w();
     r0.manual = [S.f22bMan.incentivo, S.f22bMan.reaj];
