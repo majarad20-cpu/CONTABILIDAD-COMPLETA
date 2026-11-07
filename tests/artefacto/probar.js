@@ -1906,6 +1906,31 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("se traen a la renta repartidos entre los socios según su participación, sin duplicar", [rt.falta, rt.lista, rt.sinDuplicar, rt.faltaDespues], [1, [["ANA", 360000], ["LUIS", 240000]], 2, 0]);
   ok("la DJ 1948 agrupa por beneficiario, cuadra con la contabilidad y avisa del RUT que falta", rt.dj[0] === 2 && rt.dj[1] === 600000 && rt.dj[2] === 600000 && rt.dj[3] === 0 && rt.dj[4] && rt.pantalla, JSON.stringify(rt));
 
+  console.log("Ajustes manuales en el borrador del F22");
+  const am = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2064;
+    const cu = (re) => S.cuentas.find((x) => x.imputable && re.test(x.nombre))?.id;
+    const ids = { ban: cu(/^banco$/i), ven: cu(/^ventas$/i), cos: cu(/^costo de ventas$/i) };
+    const as = (id, fecha, lineas) => S.almacen.set(`empresas/${S.eid}/asientos/${id}`, { apertura: false, cierre: false, creado: 9600 + Math.random(), fecha, glosa: id, lineas: lineas.map(([cuenta, debe, haber]) => ({ cuenta, debe, haber, glosa: "" })) });
+    await as("am1", `${anio}-03-10`, [[ids.ban, 10000000, 0], [ids.ven, 0, 10000000]]); await as("am2", `${anio}-04-10`, [[ids.cos, 4000000, 0], [ids.ban, 0, 4000000]]);
+    await w(500);
+    S.rentaAnio = String(anio); S.rentaEdit = null; const r = rentaActual(); r.regimen = "d3"; r.tasa = 25; r.vipc = 0;
+    const base = calcularBorradorF22(r, calcularRenta(r), r.f22).codigos;
+    r.ajustes = [{ tipo: "agregado", concepto: "Gastos rechazados (art. 21)", monto: 500000 }, { tipo: "agregado", concepto: "Ingresos percibidos no contabilizados", monto: 200000 }, { tipo: "deduccion", concepto: "Gastos por donaciones", monto: 100000 }, { tipo: "deduccion", concepto: "Rentas exentas", monto: 150000 }, { tipo: "deduccion", concepto: "Otro", monto: 50000, codigo: "1415" }];
+    r0.sug = r.ajustes.map(codigoAjusteF22);
+    const c = calcularRenta(r), k = calcularBorradorF22(r, c, r.f22).codigos;
+    r0.antes = [base[1410], base[1729]]; r0.k = [k[1410], k[1588], k[1428], k[1415], k[1431], k[1430], k[1729], k[1440]]; r0.rli = [c.rli, c.baseAfecta]; r0.igual = k[1440] === c.baseAfecta;
+    S.pestana.renta = "rli"; S.vista = "renta"; render(); await w();
+    r0.campo = document.querySelectorAll('[id^="rn-aj-cod-"]').length;
+    document.querySelector("#rn-aj-cod-0").value = "1588"; leerFormularioRenta(); r0.cod = r.ajustes[0].codigo;
+    for (const id of ["am1", "am2"]) await S.almacen.del(`empresas/${S.eid}/asientos/${id}`);
+    await w(400); S.rentaEdit = null; S.pestana.renta = "rli"; ir("inicio");
+    return r0;
+  });
+  igual("cada ajuste manual se sugiere a un código del F22 según su concepto", am.sug, [1431, 1588, 1428, "i1588", 1415]);
+  igual("los ajustes manuales pasan a los códigos del recuadro 17 y la base queda igual que en la renta líquida", [am.antes, am.k, am.igual], [[10000000, 6000000], [10050000, 50000, 100000, 50000, 500000, 4150000, 6400000, 6400000], true]);
+  ok("la base del borrador coincide con la de la renta líquida y el código se elige en la pestaña", am.igual && am.rli[1] === am.k[7] && am.campo === 5 && am.cod === "1588", JSON.stringify(am));
+
   console.log("Borrador del F22");
   const bf = await page.evaluate(async () => {
     const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2049, e0 = empresa();
