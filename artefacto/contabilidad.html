@@ -394,7 +394,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "1.96.0";
+const VERSION = "1.97.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -6358,6 +6358,81 @@ function calcularRenta(r) {
   c.alertas = alertasRenta(r, c);
   return c;
 }
+/* ---------- retiros de los socios: de la contabilidad (cuenta Retiros) o del libro de caja (categoría «Retiros de socios») a la renta y a la DJ 1948 ---------- */
+const RE_CUENTA_RETIROS = /^retiros?\b/i;
+function retirosContables(anio) {
+  const out = [];
+  if (esSimplificada()) {
+    for (const m of cajaDe(anio)) if (m.categoria === "Retiros de socios" && m.monto) out.push({ fecha: m.fecha, monto: m.monto, glosa: m.glosa || "", origen: "caja", ref: `caja:${m.id}` });
+    return out;
+  }
+  const ids = new Set(S.cuentas.filter((x) => x.imputable && RE_CUENTA_RETIROS.test(x.nombre)).map((x) => x.id));
+  for (const a of S.lista) {
+    if (a.apertura || a.cierre || !String(a.fecha).startsWith(String(anio))) continue;
+    a.lineas.forEach((l, k) => { const monto = (l.debe || 0) - (l.haber || 0); if (ids.has(l.cuenta) && monto) out.push({ fecha: a.fecha, monto, glosa: l.glosa || a.glosa || "", origen: "contabilidad", ref: `as:${a.id}:${k}` }); });
+  }
+  return out.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
+}
+/* Retiros de la contabilidad que aún no están en la lista de la renta (se reconocen por su referencia). */
+function retirosFaltantes(r) { const ya = new Set(r.retiros.map((x) => x.ref).filter(Boolean)); return retirosContables(r.anio).filter((x) => !ya.has(x.ref)); }
+function traerRetirosContables() {
+  const r = rentaActual(), falta = retirosFaltantes(r), socios = propietarios().filter((p) => (p.porcentaje || 0) > 0);
+  if (!falta.length) { aviso("No hay retiros nuevos en la contabilidad."); return; }
+  for (const x of falta) {
+    if (socios.length < 2) { r.retiros.push({ fecha: x.fecha, nombre: socios[0]?.nombre || "", rut: socios[0]?.rut || "", monto: x.monto, pct: null, credito: 0, ref: x.ref, glosa: x.glosa }); continue; }
+    const tot = socios.reduce((t, p) => t + p.porcentaje, 0); let resto = x.monto;
+    socios.forEach((p, i) => { const parte = i === socios.length - 1 ? resto : Math.round((x.monto * p.porcentaje) / tot); resto -= parte; r.retiros.push({ fecha: x.fecha, nombre: p.nombre, rut: p.rut, monto: parte, pct: null, credito: 0, ref: x.ref, glosa: x.glosa }); });
+  }
+  render(); aviso(`Se trajeron ${falta.length} retiro(s) de la contabilidad${socios.length > 1 ? ", repartidos entre los socios según su participación" : ""}. Revisa los beneficiarios y confirma el crédito.`);
+}
+/* Renta del año pedido (la que se está editando, si es la misma) para las declaraciones juradas. */
+function rentaParaAnio(anio) {
+  if (S.rentaEdit && S.rentaEdit.anio === anio && S.rentaEditEid === S.eid) return S.rentaEdit;
+  const g = S.renta.find((x) => x.id === String(anio));
+  return g ? completarRenta(JSON.parse(JSON.stringify({ ...g, anio }))) : nuevaRenta(anio);
+}
+/* DJ 1948: retiros, remesas y distribuciones por beneficiario, con su imputación a los registros y el crédito del SAC. */
+function datosDj1948(anio) {
+  const r = rentaParaAnio(anio), c = calcularRenta(r), g = c.reg, por = new Map();
+  for (const x of g.retiros) {
+    const clave = (x.rut ? limpiarRut(x.rut) : (x.nombre || "").toUpperCase()) || "(sin beneficiario)";
+    if (!por.has(clave)) por.set(clave, { rut: x.rut ? formatoRut(x.rut) : "", nombre: x.nombre || "", n: 0, nominal: 0, reaj: 0, aRai: 0, aDdan: 0, aRex: 0, exceso: 0, credito: 0, sugerido: 0 });
+    const f = por.get(clave); f.n++; f.nominal += x.monto || 0; f.reaj += x.reaj; f.aRai += x.aRai; f.aDdan += x.aDdan; f.aRex += x.aRex; f.exceso += x.exceso; f.credito += x.credito || 0; f.sugerido += x.sugerido || 0;
+  }
+  const filas = [...por.values()].sort((a, b) => a.nombre.localeCompare(b.nombre)), contable = retirosContables(anio), totContable = sumaDe(contable, "monto"), totLista = sumaDe(filas, "nominal");
+  const avisos = [];
+  if (filas.some((f) => !f.rut)) avisos.push("Hay retiros sin RUT del beneficiario: la DJ 1948 lo exige.");
+  if (filas.some((f) => !f.credito && f.sugerido)) avisos.push("Hay retiros con crédito del SAC sin confirmar: el valor sugerido es proporcional; confírmalo en Renta anual → Registros.");
+  if (filas.some((f) => f.exceso)) avisos.push("Hay retiros que exceden los saldos de los registros: se declaran como retiros en exceso.");
+  if (totContable !== totLista) avisos.push(`Los retiros de la lista de la renta ($${clp(totLista)}) no coinciden con los de la contabilidad ($${clp(totContable)}).`);
+  return { r, c, g, filas, contable, totContable, totLista, dif: totContable - totLista, avisos, ddan: r.regimen === "a" };
+}
+function informeDj1948(anio, d) {
+  const cols = [col("Beneficiario", 26), col("RUT", 11), col("Retiros", 6, "numero"), col("Monto histórico", 12, "monto"), col("Reajustado", 12, "monto"), col("Imputado a RAI", 12, "monto"), ...(d.ddan ? [col("Imputado a DDAN", 12, "monto")] : []), col("Imputado a REX", 12, "monto"), col("Retiro en exceso", 12, "monto"), col("Crédito IDPC", 12, "monto")];
+  const inf = new Informe("PLANILLA DE APOYO DJ 1948", `RETIROS, REMESAS Y DISTRIBUCIONES · AÑO COMERCIAL ${anio} · AÑO TRIBUTARIO ${anio + 1}`, cols, `planilla_dj1948_${anio}`, { horizontal: true, firmas: ["CONTADOR GENERAL", "REPRESENTANTE LEGAL"] });
+  const fila = (x) => [x.nombre || "(sin beneficiario)", x.rut, x.n, x.nominal, x.reaj, x.aRai, ...(d.ddan ? [x.aDdan] : []), x.aRex, x.exceso, x.credito];
+  for (const x of d.filas) inf.agregar(fila(x));
+  const tot = { nombre: "TOTAL", rut: null, n: sumaDe(d.filas, "n") }; for (const k of ["nominal", "reaj", "aRai", "aDdan", "aRex", "exceso", "credito"]) tot[k] = sumaDe(d.filas, k);
+  inf.agregar(fila(tot), { estilo: "total" });
+  inf.notas.push(`Retiros en la contabilidad: ${pesosTexto(d.totContable)}. Retiros en la lista de la renta: ${pesosTexto(d.totLista)}.`);
+  for (const a of d.avisos) inf.notas.push(a);
+  inf.notas.push("Planilla de apoyo para la DJ 1948; no es el formulario del SII. Los retiros se imputan en orden cronológico a RAI, DDAN y REX.");
+  return inf;
+}
+function vistaDj1948(anio) {
+  let d; try { d = datosDj1948(anio); } catch (e) { return `<div class="caja vacio"><p>No se pudo calcular la renta del año: ${esc(e.message || e)}</p></div>`; }
+  S.informe = () => informeDj1948(anio, d);
+  S.csv = { archivo: `planilla_dj1948_${slug()}_${anio}.csv`, filas: [["Beneficiario", "RUT", "Retiros", "Monto histórico", "Reajustado", "A RAI", ...(d.ddan ? ["A DDAN"] : []), "A REX", "Exceso", "Crédito IDPC"], ...d.filas.map((x) => [x.nombre, x.rut, x.n, x.nominal, x.reaj, x.aRai, ...(d.ddan ? [x.aDdan] : []), x.aRex, x.exceso, x.credito])] };
+  const tot = (k) => clp(sumaDe(d.filas, k));
+  return `<p class="ayuda">Retiros, remesas y distribuciones de utilidades a los socios, por beneficiario. Los montos salen de la lista de retiros de Renta anual → Registros, que se alimenta de la cuenta Retiros de la contabilidad (o de «Retiros de socios» del libro de caja). La imputación a RAI, DDAN y REX y el crédito del SAC son los del registro de rentas empresariales.</p>
+  <div class="caja"><p><strong>Contabilidad:</strong> $${clp(d.totContable)} en ${d.contable.length} movimiento(s) · <strong>Lista de la renta:</strong> $${clp(d.totLista)} · <strong>Diferencia:</strong> ${d.dif ? `<span class="neg">$${clp(d.dif)}</span>` : "0"}</p>
+  ${d.avisos.map((a) => `<p class="ayuda">⚠ ${esc(a)}</p>`).join("")}</div>
+  <div class="barra">${d.filas.length ? botonesExportar() : ""}</div>
+  ${d.filas.length ? `<div class="tabla"><table><thead><tr><th>Beneficiario</th><th>RUT</th><th class="num">Retiros</th><th class="num">Monto histórico</th><th class="num">Reajustado</th><th class="num">A RAI</th>${d.ddan ? `<th class="num">A DDAN</th>` : ""}<th class="num">A REX</th><th class="num">En exceso</th><th class="num">Crédito IDPC</th></tr></thead>
+    <tbody>${d.filas.map((x) => `<tr><td>${esc(x.nombre || "(sin beneficiario)")}</td><td class="cod">${esc(x.rut)}</td><td class="num">${x.n}</td><td class="num">${clp(x.nominal)}</td><td class="num">${clp(x.reaj)}</td><td class="num">${clp(x.aRai)}</td>${d.ddan ? `<td class="num">${clp(x.aDdan)}</td>` : ""}<td class="num">${clp(x.aRex)}</td><td class="num">${x.exceso ? `<span class="neg">${clp(x.exceso)}</span>` : "0"}</td><td class="num">${clp(x.credito)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr class="total"><td colspan="2">Total</td><td class="num">${tot("n")}</td><td class="num">${tot("nominal")}</td><td class="num">${tot("reaj")}</td><td class="num">${tot("aRai")}</td>${d.ddan ? `<td class="num">${tot("aDdan")}</td>` : ""}<td class="num">${tot("aRex")}</td><td class="num">${tot("exceso")}</td><td class="num">${tot("credito")}</td></tr></tfoot></table></div>`
+    : `<div class="caja vacio"><p>No hay retiros en ${anio}. Si los socios retiraron dinero, regístralos en la cuenta Retiros de la contabilidad y tráelos en Renta anual → Registros.</p></div>`}`;
+}
 function alertasRenta(r, c) {
   const a = esSimplificada() ? ["Contabilidad simplificada: la renta líquida se calcula con los montos del Libro de caja que afectan la base imponible (ingresos percibidos menos egresos pagados). Revisa la columna «Afecta base» de cada movimiento."] : [], necesitaVipc = c.cpt.inicial || r.perdida_anterior || c.reg.capitalIni || c.reg.rexIni || c.reg.raiIni || c.reg.sacIni || r.capital.movimientos.length || r.retiros.length;
   if (necesitaVipc && r.vipc == null) a.push("Falta la VIPC anual del año comercial (variación del IPC entre noviembre del año anterior y noviembre del año). Sin ella no se reajustan el capital propio inicial, la pérdida de arrastre ni los saldos de los registros: se asume 0 %.");
@@ -6375,6 +6450,7 @@ function alertasRenta(r, c) {
   if (c.cpt.cpt < 0) a.push("El capital propio tributario es negativo: revisa el tratamiento de las cuentas y los ajustes a valor tributario.");
   if (c.reg.rai0 < 0 && r.regimen !== "d8") a.push("El saldo del RAI sale negativo: el capital propio es menor que el capital aportado más el REX. Revisa los ajustes del capital propio, el capital aportado y los saldos iniciales.");
   if (c.reg.exceso > 0) a.push(`Hay retiros por $${clp(c.reg.exceso)} que superan los saldos de los registros: se imputan al capital aportado o se tratan como retiros en exceso, según corresponda.`);
+  { const rc = sumaDe(retirosContables(r.anio), "monto"), rl = sumaDe(r.retiros, "monto"); if (rc && rc !== rl) a.push(`Los retiros de la contabilidad ($${clp(rc)}) no coinciden con los de la lista de este año ($${clp(rl)}). Usa «Traer retiros de la contabilidad» en Registros.`); }
   if (r.regimen === "a" && S.activos.some((x) => x.dep_trib === "instantanea")) a.push("La depreciación instantánea de bienes del activo fijo se permite en el régimen Pro Pyme; en el 14 A revisa que corresponda.");
   return a;
 }
@@ -6411,7 +6487,7 @@ function leerFormularioRenta() {
   if ($("#rn-cap-ini")) r.capital.inicial = opt("#rn-cap-ini", r.capital.inicial);
   r.capital.movimientos = r.capital.movimientos.map((x, i) => ({ fecha: tx(`#rn-cm-fecha-${i}`, x.fecha), concepto: tx(`#rn-cm-con-${i}`, x.concepto), monto: m(`#rn-cm-monto-${i}`) ?? x.monto, pct: $(`#rn-cm-pct-${i}`) ? dc(`#rn-cm-pct-${i}`) : x.pct ?? null }));
   r.retiros = r.retiros.map((x, i) => ({ fecha: tx(`#rn-rt-fecha-${i}`, x.fecha), nombre: tx(`#rn-rt-nom-${i}`, x.nombre), rut: tx(`#rn-rt-rut-${i}`, x.rut), monto: m(`#rn-rt-monto-${i}`) ?? x.monto,
-    pct: $(`#rn-rt-pct-${i}`) ? dc(`#rn-rt-pct-${i}`) : x.pct ?? null, credito: m(`#rn-rt-cred-${i}`) ?? (x.credito || 0) }));
+    pct: $(`#rn-rt-pct-${i}`) ? dc(`#rn-rt-pct-${i}`) : x.pct ?? null, credito: m(`#rn-rt-cred-${i}`) ?? (x.credito || 0), ref: x.ref, glosa: x.glosa }));
   r.registros.rex_ingresos = r.registros.rex_ingresos.map((x, i) => ({ concepto: tx(`#rn-rx-con-${i}`, x.concepto), monto: m(`#rn-rx-monto-${i}`) ?? x.monto }));
   if ($("#rn-rai-ini")) r.registros.rai_inicial = opt("#rn-rai-ini", r.registros.rai_inicial);
   if ($("#rn-rex-ini")) r.registros.rex_inicial = opt("#rn-rex-ini", r.registros.rex_inicial);
@@ -6930,7 +7006,8 @@ function cuerpoRegistros(r, c) {
     ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-rex">+ Ingreso para el REX</button></div>`)}
     <h3>Retiros, remesas y distribuciones del año</h3>
     ${r.retiros.length ? `<div class="tabla"><table><thead><tr><th>Fecha</th><th>Beneficiario</th><th>RUT</th><th class="num">Monto</th><th class="num">Reajuste %</th><th class="num">Crédito del SAC ($)</th><th></th></tr></thead><tbody>${r.retiros.map(ret).join("")}</tbody></table></div>` : `<p class="ayuda">Sin retiros en el año.</p>`}
-    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-retiro">+ Retiro o distribución</button></div>`)}
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-n="rn-add-retiro">+ Retiro o distribución</button>${retirosFaltantes(r).length ? `<button class="btn sec" type="button" data-n="rn-traer-retiros">Traer retiros de la contabilidad (${retirosFaltantes(r).length})</button>` : ""}</div>`)}
+    <p class="ayuda">En la contabilidad hay $${clp(sumaDe(retirosContables(r.anio), "monto"))} retirados en ${r.anio}; en esta lista, $${clp(sumaDe(r.retiros, "monto"))}. Esta lista es la que alimenta la DJ 1948.</p>
     <p class="ayuda">El reajuste de cada retiro y de cada movimiento de capital va con la variación del IPC entre el mes anterior al movimiento y el mes anterior al cierre; si lo dejas vacío se estima proporcional a los meses restantes con la VIPC anual. El crédito del SAC por cada retiro se calcula con las reglas de los arts. 56 y 63 de la LIR; el valor sugerido es proporcional (saldo del SAC ÷ RAI) y debes confirmarlo.</p>
     <h3>Saldos al cierre</h3><div id="rn-registros">${htmlRegistros(r, c)}</div>`;
 }
@@ -7064,14 +7141,14 @@ function prestadores1879(anio) {
 }
 
 function vistaDj() {
-  const anios = aniosDesde(S.liquidaciones.map((l) => l.periodo), S.finiquitos.map((q) => q.fecha), S.sueldos.map((l) => l.periodo), S.honorarios.map((b) => b.fecha), empresa().ejercicio);
+  const anios = aniosDesde(S.liquidaciones.map((l) => l.periodo), S.finiquitos.map((q) => q.fecha), S.sueldos.map((l) => l.periodo), S.honorarios.map((b) => b.fecha), S.renta.map((x) => x.id), empresa().ejercicio);
   const anio = +(S.djAnio || empresa().ejercicio);
   if (!anios.includes(String(anio))) anios.unshift(String(anio));
   const t = pestanaActual("dj", "1887");
-  return `${pestanasDe("dj", [["1887", "DJ 1887 · Sueldos"], ["1879", "DJ 1879 · Honorarios"]])}
-  ${cabecera(t === "1879" ? "Declaración jurada 1879: retenciones de honorarios" : "Declaración jurada 1887: sueldos y otras rentas", `Año comercial ${anio} · Año tributario ${anio + 1}`)}
+  return `${pestanasDe("dj", [["1887", "DJ 1887 · Sueldos"], ["1879", "DJ 1879 · Honorarios"], ["1948", "DJ 1948 · Retiros"]])}
+  ${cabecera(t === "1879" ? "Declaración jurada 1879: retenciones de honorarios" : t === "1948" ? "Declaración jurada 1948: retiros, remesas y distribuciones" : "Declaración jurada 1887: sueldos y otras rentas", `Año comercial ${anio} · Año tributario ${anio + 1}`)}
   <div class="barra"><label>Año comercial<select id="dj-anio">${opcionesAnio(anios, anio)}</select></label></div>
-  ${t === "1879" ? vistaDj1879(anio) : vistaDj1887(anio)}`;
+  ${t === "1879" ? vistaDj1879(anio) : t === "1948" ? vistaDj1948(anio) : vistaDj1887(anio)}`;
 }
 /* ---------- DJ 1887 declarada ante el SII: se carga lo que muestra el SII y se compara, por persona y por mes, con lo que sale de las remuneraciones ---------- */
 function compararDj1887(anio) {
@@ -7375,6 +7452,7 @@ document.addEventListener("click", (ev) => {
     case "rn-add-caja": { const v = $("#rn-caja-extra")?.value; if (v && !r.caja.extra.includes(v)) r.caja.extra.push(v); render(); break; }
     case "rn-add-capital": r.capital.movimientos.push({ fecha: "", concepto: "", monto: 0, pct: null }); render(); break;
     case "rn-del-capital": r.capital.movimientos.splice(+id, 1); render(); break;
+    case "rn-traer-retiros": traerRetirosContables(); break;
     case "rn-add-retiro": r.retiros.push({ fecha: "", nombre: "", rut: "", monto: 0, pct: null, credito: 0 }); render(); break;
     case "rn-del-retiro": r.retiros.splice(+id, 1); render(); break;
     case "rn-add-rex": r.registros.rex_ingresos.push({ concepto: "", monto: 0 }); render(); break;
