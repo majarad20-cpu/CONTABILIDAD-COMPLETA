@@ -1931,6 +1931,16 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("los ajustes manuales pasan a los códigos del recuadro 17 y la base queda igual que en la renta líquida", [am.antes, am.k, am.igual], [[10000000, 6000000], [10050000, 50000, 100000, 50000, 500000, 4150000, 6400000, 6400000], true]);
   ok("la base del borrador coincide con la de la renta líquida y el código se elige en la pestaña", am.igual && am.rli[1] === am.k[7] && am.campo === 5 && am.cod === "1588", JSON.stringify(am));
 
+  console.log("Selector de régimen de la empresa");
+  const selReg = await page.evaluate(() => {
+    const r0 = {}, host = document.createElement("div"); host.innerHTML = formularioEmpresa({ regimen: "Transparente antiguo" }, false); const s1 = host.querySelector("#e-regimen");
+    r0.legado = [s1?.tagName, [...s1.options].map((o) => o.value).slice(0, 2), s1.value];
+    host.innerHTML = formularioEmpresa({ regimen: "Pro Pyme transparente (14 D N° 8)" }, false); r0.d8 = host.querySelector("#e-regimen").value;
+    host.innerHTML = formularioEmpresa(null, true); r0.nueva = host.querySelector("#e-regimen").value;
+    return r0;
+  });
+  igual("el régimen de la empresa es una lista desplegable que conserva el texto antiguo y propone Pro Pyme general al crear", [selReg.legado, selReg.d8, selReg.nueva], [["SELECT", ["Transparente antiguo", "Pro Pyme general (14 D N° 3)"], "Transparente antiguo"], "Pro Pyme transparente (14 D N° 8)", "Pro Pyme general (14 D N° 3)"]);
+
   console.log("Borrador del F22 en empresas simplificadas");
   const bs = await page.evaluate(async () => {
     const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2065, e = empresa(), antes = e.tipo_contabilidad, cajaAntes = S.caja;
