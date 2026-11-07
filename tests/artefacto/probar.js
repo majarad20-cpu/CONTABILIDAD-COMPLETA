@@ -1829,11 +1829,12 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     r0.k = [k[1400], k[1588], k[1410], k[1409], k[1411], k[1412], k[1430], k[1729], k[1432], k[1440], k[20], k[1904], k[305], k[91]];
     S.pestana.renta = "borrador"; S.vista = "renta"; render(); await w();
     const tx = document.body.innerText; r0.pestana = /borrador del f22/i.test(tx) && /recuadro n° 17/i.test(tx) && /recuadro n° 20/i.test(tx) && /recuadro n° 21/i.test(tx) && /impuestos anuales a la renta/i.test(tx) && /existencias, insumos y servicios del negocio, pagados/i.test(tx);
-    document.querySelector("#f22b-inc").value = "4.000"; document.querySelector("#f22b-reaj").value = "100";
+    document.querySelector("#f22b-inc").value = "4.000"; document.querySelector("#f22b-reaj").value = "100"; document.querySelector("#f22b-d-1440").value = "10.000"; document.querySelector("#f22b-c-1440").value = "prueba";
     document.querySelector('[data-n="f22b-recalcular"]').click(); await w();
     r0.manual = [S.f22bMan.incentivo, S.f22bMan.reaj];
+    r0.difFila = (() => { const tr = document.querySelector("#f22b-d-1440").closest("tr"); return /1\.300/.test(tr.innerText) && document.querySelector("#f22b-c-1440").value === "prueba"; })();
     document.querySelector('[data-n="f22b-guardar"]').click(); await w(400);
-    const g = S.f22_borr.find((x) => x.id === String(anio)); r0.guardado = g && [g.codigos[1440], g.codigos[39], g.manual.incentivo];
+    const g = S.f22_borr.find((x) => x.id === String(anio)); r0.guardado = g && [g.codigos[1440], g.codigos[39], g.manual.incentivo, g.declarado?.[1440], g.comentarios?.[1440]];
     r0.informe = S.informe().filas.length > 10 && S.csv.filas.flat().join("|").includes("1729");
     r0.respaldo = (await datosRespaldo()).colecciones.f22_borr?.length;
     await S.almacen.del(`empresas/${S.eid}/f22_borr/${anio}`);
@@ -1844,7 +1845,8 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el plan trae las cuentas que usa el borrador del F22", bf.ids, JSON.stringify(bf));
   igual("el borrador calcula ingresos percibidos, egresos pagados, base, impuesto y PPM desde los libros", bf.k, [50000, 300, 50300, 20000, 10000, 5000, 35000, 15300, 5000, 10300, 2575, 0, 2575, 2575]);
   ok("la pestaña Borrador F22 se abre y se puede recalcular con el incentivo y el reajuste", bf.pestana && bf.manual[0] === 4000 && bf.manual[1] === 100, JSON.stringify(bf));
-  igual("se guarda el borrador con los códigos y los datos ingresados", bf.guardado, [11300, 100, 4000]);
+  igual("se guarda el borrador con los códigos, los datos ingresados, lo declarado y los comentarios", bf.guardado, [11300, 100, 4000, 10000, "prueba"]);
+  ok("al lado de cada cifra se ve lo declarado, la diferencia y el comentario", bf.difFila, JSON.stringify(bf));
   ok("el informe trae los códigos y el respaldo incluye el borrador", bf.informe && bf.respaldo === 1, JSON.stringify(bf));
 
   console.log("F22 declarado");
