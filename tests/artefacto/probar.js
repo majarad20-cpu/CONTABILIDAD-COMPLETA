@@ -402,7 +402,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     await as("b3", "2026-04-10", "Gasto", [["5.2.12", 300000, 0], ["2.1.01", 0, 300000]], false, 4);
     await S.almacen.set("empresas/e2/activos/f1", { codigo: "AF-001", nombre: "Notebook", cat: 5, fecha_adq: "2026-02-01", costo: 1200000, residual: 0, vida_normal_meses: 72, vida_meses: 72, acelerada: false, cuenta: c("1.2.06"), documento: "", estado: "activo", fecha_baja: "", dep_trib: "instantanea" });
     await new Promise((r) => setTimeout(r, 100));
-    S.rentaAnio = "2026"; S.rentaEdit = null; const r = rentaActual(); r.vipc = 0; r.capital.inicial = 9000000;
+    S.rentaAnio = "2026"; S.rentaEdit = null; const r = rentaActual(); r.vipc = 0; r.capital.inicial = 9000000; r.cpt.inicial = 11000000;
     r.retiros.push({ fecha: "2026-06-30", nombre: "Socio", rut: "1-9", monto: 300000, pct: 0, credito: 0 });
     const k = calcularRenta(r);
     const claves = k.auto.map((a) => a.key);
@@ -416,7 +416,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     await S.almacen.set("empresas/e2/renta/2026", { calculo: { perdida_siguiente: 1247899, cpt_final: 9683333, capital_final: 9000000, rai_final: 383333, rex_final: 0, sac_final: 0 }, guardado_en: new Date().toISOString() });
     await new Promise((r) => setTimeout(r, 80));
     const n27 = nuevaRenta(2027); n27.vipc = 5; const k27 = calcularRenta(n27);
-    return { claves, resultado: k.er.resultado, antes: k.antes, perdidaSig: k.perdidaSiguiente, rli: k.rli, cpt: k.cpt.cpt, patrimonio: k.cpt.patrimonioContable, af: k.cpt.afAjuste, capital: k.reg.capitalFinal, rai: [k.reg.rai0, k.reg.aRai, k.reg.raiFinal],
+    return { claves, resultado: k.er.resultado, antes: k.antes, perdidaSig: k.perdidaSiguiente, rli: k.rli, cpt: k.cpt.cpt, balance: k.cpt.balance, simp: k.cpt.simplificado, simpA: ka.cpt.simplificado === undefined && ka.cpt.balance === undefined, patrimonio: k.cpt.patrimonioContable, af: k.cpt.afAjuste, capital: k.reg.capitalFinal, rai: [k.reg.rai0, k.reg.aRai, k.reg.raiFinal],
       cm: ka.auto.find((a) => a.key === "cm"), ddan, previa: [n27.perdida_anterior, k27.perdidaReaj, k27.cpt.inicial, k27.cpt.inicialReaj], baseCajaA: ka.auto.some((a) => a.key.startsWith("caja")), tabs: null };
   });
   ok("el CPT parte del patrimonio contable", rr.patrimonio === 10700000, String(rr.patrimonio));
@@ -425,9 +425,10 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("renta líquida antes de la pérdida (caja y depreciación instantánea)", rr.antes, -1247899);
   igual("la pérdida del año se arrastra", [rr.rli, rr.perdidaSig], [0, 1247899]);
   igual("el activo fijo se ajusta a valor tributario", rr.af, -1016667);
-  igual("capital propio tributario", rr.cpt, 9683333);
+  igual("capital propio tributario simplificado (14 D): inicial + aportes − retiros + resultado de caja", [rr.cpt, rr.simp.inicial, rr.simp.aportes, rr.simp.retiros, rr.simp.resultado], [9452101, 11000000, 0, 300000, -1247899]);
+  igual("el balance queda solo como control y en el 14 A el capital propio sale del balance", [rr.balance, rr.simpA], [9683333, true]);
   igual("capital aportado sin reajuste", rr.capital, 9000000);
-  igual("el RAI se determina con el capital propio y los retiros", rr.rai, [983333, 300000, 683333]);
+  igual("el RAI se determina con el capital propio y los retiros", rr.rai, [752101, 300000, 452101]);
   ok("régimen 14 A: reajuste del capital propio inicial", rr.cm && rr.cm.tipo === "deduccion" && rr.cm.monto === 30000, JSON.stringify(rr.cm));
   ok("régimen 14 A no usa base de caja", rr.baseCajaA === false);
   igual("DDAN: depreciación acelerada menos normal", rr.ddan, 1200000);

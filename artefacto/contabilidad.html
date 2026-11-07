@@ -394,7 +394,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.0.2";
+const VERSION = "2.1.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -6383,8 +6383,17 @@ function calcularRenta(r) {
   const ppm = ppmDelAnio(anio), ppmReaj = esSimplificada() ? 0 : Math.max(-S.cuentas.filter((x) => x.imputable && x.tipo === "INGRESO" && RE_REAJUSTE_PPM.test(x.nombre)).reduce((t, x) => t + movimientoAnio(x.id, anio), 0), 0), ppmMonto = r.ppm_manual ?? ppm.total + ppmReaj;
   const otros = r.creditos.reduce((s, c) => s + (c.monto || 0), 0), creditos = ppmMonto + otros;
   const atribuida = r.propietarios.map((p) => ({ ...p, monto: Math.round((rli * Math.round((p.porcentaje || 0) * 100)) / 10000) }));
-  const reg = calcularRegistros(r, cpt, idpc);
-  const c = { er, cpt, auto, autoOn, agregadosAuto, deduccionesAuto, agregados, deducciones, antes, perdidaReaj, perdidaUsada, rli, incentivo, baseAfecta, perdidaSiguiente, idpc, ppm, ppmReaj, ppmMonto, otros, creditos,
+  /* Pro Pyme (14 D N° 3 y N° 8): capital propio tributario SIMPLIFICADO = CPTS inicial + aportes − retiros + ingresos percibidos menos egresos pagados (sin los gastos rechazados). En el 14 A el capital propio sale del balance. */
+  let cptRegla = cpt;
+  if (baseCaja(r.regimen)) {
+    const multasAuto = autoOn.filter((a) => a.key === "multas" && a.tipo === "agregado").reduce((t, a) => t + a.monto, 0);
+    const rechazadosMan = r.ajustes.filter((a) => a.tipo === "agregado" && codigoAjusteF22(a) === 1431).reduce((t, a) => t + (a.monto || 0), 0);
+    const resultado = antes - multasAuto - rechazadosMan, aportes = r.capital.movimientos.reduce((t, m) => t + (m.monto || 0), 0), retirosNom = r.retiros.reduce((t, x) => t + (x.monto || 0), 0);
+    const final = cpt.inicial + aportes - retirosNom + resultado;
+    cptRegla = { ...cpt, balance: cpt.cpt, cpt: final, simplificado: { inicial: cpt.inicial, aportes, retiros: retirosNom, resultado, final } };
+  }
+  const reg = calcularRegistros(r, cptRegla, idpc);
+  const c = { er, cpt: cptRegla, auto, autoOn, agregadosAuto, deduccionesAuto, agregados, deducciones, antes, perdidaReaj, perdidaUsada, rli, incentivo, baseAfecta, perdidaSiguiente, idpc, ppm, ppmReaj, ppmMonto, otros, creditos,
     resultado: idpc - creditos, atribuida, reg, caja: baseCaja(r.regimen) && !esSimplificada() ? cuentasCaja(r) : [] };
   c.alertas = alertasRenta(r, c);
   return c;
@@ -6533,7 +6542,7 @@ function htmlTarjetasRenta(r, c) {
     <div class="tarjeta ${c.er.resultado < 0 ? "neg" : ""}"><span>Resultado contable</span><strong>$${clp(c.er.resultado)}</strong></div>
     <div class="tarjeta"><span>Renta líquida imponible</span><strong>$${clp(c.rli)}</strong></div>
     <div class="tarjeta"><span>Impuesto ${comaDecimal(r.tasa)} %</span><strong>$${clp(c.idpc)}</strong></div>
-    <div class="tarjeta ${c.cpt.cpt < 0 ? "neg" : ""}"><span>Capital propio tributario</span><strong>$${clp(c.cpt.cpt)}</strong></div>
+    <div class="tarjeta ${c.cpt.cpt < 0 ? "neg" : ""}"><span>${c.cpt.simplificado ? "Capital propio tributario simplificado" : "Capital propio tributario"}</span><strong>$${clp(c.cpt.cpt)}</strong></div>
     <div class="tarjeta ${c.resultado < 0 ? "" : "neg"}"><span>${c.resultado < 0 ? "Devolución estimada" : "Saldo a pagar"}</span><strong>$${clp(Math.abs(c.resultado))}</strong></div></div>
   ${c.alertas.map((a) => `<div class="aviso">${esc(a)}</div>`).join("")}`;
 }
@@ -6551,11 +6560,14 @@ function htmlFinalRenta(r, c) {
 }
 function htmlResumenCpt(r, c) {
   const k = c.cpt, f = (t, v, cls = "") => `<tr class="${cls}"><td>${t}</td><td class="num">${clp(v)}</td></tr>`;
-  const variacion = k.cpt - k.inicialReaj, V = (r.vipc || 0) / 100;
-  return `<div class="tabla"><table><tbody>${f("Activos a valor contable (cuentas de balance)", k.activosLibro)}${f("(−) Pasivos a valor contable", k.pasivosLibro)}${f("Patrimonio contable", k.patrimonioContable, "sub")}
+  const sm = k.simplificado, V = (r.vipc || 0) / 100, variacion = (sm ? k.balance : k.cpt) - k.inicialReaj;
+  const simple = sm ? `<h3>Capital propio tributario simplificado (Pro Pyme)</h3><div class="tabla"><table><tbody>${f("Capital propio tributario simplificado inicial", sm.inicial)}${f("(+/−) Aportes y disminuciones de capital del año", sm.aportes)}
+    ${f("(+) Ingresos percibidos menos egresos pagados del año, sin los gastos rechazados", sm.resultado)}${f("(−) Retiros del año (valor nominal)", -sm.retiros)}${f(`Capital propio tributario simplificado al 31/12/${r.anio} ${sm.final < 0 ? "(negativo)" : "(positivo)"}`, sm.final, "total")}
+    ${f("Control: capital propio según el balance", k.balance)}${f("Diferencia con el balance", sm.final - k.balance)}</tbody></table></div><h3>Referencia según el balance</h3>` : "";
+  return `${simple}<div class="tabla"><table><tbody>${f("Activos a valor contable (cuentas de balance)", k.activosLibro)}${f("(−) Pasivos a valor contable", k.pasivosLibro)}${f("Patrimonio contable", k.patrimonioContable, "sub")}
     ${f("Activos que representan inversión efectiva, con ajustes", k.activos)}${k.afAjuste ? f("(±) Ajuste de activo fijo a valor tributario (según fichas)", k.afAjuste) : ""}${f("(−) Pasivo exigible, con ajustes", k.pasivos)}
-    ${f(`Capital propio tributario al 31/12/${r.anio} ${k.cpt < 0 ? "(negativo)" : "(positivo)"}`, k.cpt, "total")}
-    ${f("Diferencia con el patrimonio contable", k.cpt - k.patrimonioContable)}${f("Capital propio tributario inicial", k.inicial)}${f(`Reajuste con la VIPC (${comaDecimal((V * 100).toFixed(2))} %)`, k.inicialReaj - k.inicial)}
+    ${f(`Capital propio tributario al 31/12/${r.anio} ${(sm ? k.balance : k.cpt) < 0 ? "(negativo)" : "(positivo)"}${sm ? ", según el balance" : ""}`, sm ? k.balance : k.cpt, "total")}
+    ${f("Diferencia con el patrimonio contable", (sm ? k.balance : k.cpt) - k.patrimonioContable)}${f("Capital propio tributario inicial", k.inicial)}${f(`Reajuste con la VIPC (${comaDecimal((V * 100).toFixed(2))} %)`, k.inicialReaj - k.inicial)}
     ${f("Capital propio inicial reajustado", k.inicialReaj, "sub")}${f("Variación del capital propio en el año", variacion)}</tbody></table></div>`;
 }
 function filaRegistro(nombre, ini, mas, menos, fin, nota) {
@@ -6858,8 +6870,8 @@ function calcularBorradorF22(r, c, man) {
     1409: "Compras, insumos y servicios del año menos lo aún por pagar (variación de proveedores, sin IVA)", 1411: "Sueldos, sueldo empresarial, aporte patronal y finiquitos", 1412: "Honorarios del año",
     1413: "Fichas de activo fijo adquiridas en el año (depreciación instantánea); en simplificada, compras de activo fijo del libro de caja", 1424: "Gastos financieros, comisiones, depreciación tributaria de bienes no instantáneos y deducciones manuales sin otro código", 1422: "Multas e intereses fiscales y previsionales",
     1426: "Pérdida de años anteriores a valor histórico, hasta la base positiva (Renta anual → Renta líquida)", 1431: "Multas agregadas de vuelta más los agregados manuales de la pestaña Renta líquida", 1432: "Lo ingresas tú (art. 14 letra E), hasta la base positiva",
-    1904: "PPM de los F29 más el reajuste del PPM", 39: "Lo ingresas tú: reajuste de enero a abril", 1445: "Capital propio tributario del cierre anterior", 1703: "CPTS final del recuadro 19", 1704: "Retiros del año (históricos) de la pestaña Registros",
-    1494: "Capital aportado de la pestaña Registros", 1500: "RAI según la pestaña Registros", 1545: "Capital propio tributario simplificado calculado desde el balance", 122: "Activos del balance", 123: "Pasivos del balance",
+    1904: "PPM de los F29 más el reajuste del PPM", 39: "Lo ingresas tú: reajuste de enero a abril", 1445: "Capital propio tributario del cierre anterior", 1703: "CPTS final: inicial + aportes − retiros + resultado de caja (pestaña Capital propio tributario)", 1704: "Retiros del año (históricos) de la pestaña Registros",
+    1494: "Capital aportado de la pestaña Registros", 1500: "RAI según la pestaña Registros", 1545: "Capital propio tributario simplificado: inicial + aportes − retiros + ingresos percibidos menos egresos pagados", 122: "Activos del balance", 123: "Pasivos del balance",
     1451: "Saldo inicial reajustado de la pestaña Registros", 1459: "Reverso del saldo inicial", 1463: "RAI antes de retiros", 1475: "Retiros imputados según Registros", 1484: "RAI al cierre", 1496: "SAC inicial reajustado", 1513: "IDPC del año", 1540: "Créditos asignados a retiros", 1564: "SAC al cierre" };
   return { codigos: k, origen, perdUsada: k[1426], sugerenciaIncentivo: k[1729] > 0 ? Math.round(k[1729] / 2) : 0 };
 }
@@ -7013,8 +7025,10 @@ function cuerpoCpt(r, c) {
   const filas = k.filas.map((x) => `<tr class="${x.trat === "excluir" ? "inactiva" : ""}"><td class="cod">${esc(x.cuenta.codigo)}</td><td>${esc(x.cuenta.nombre)}</td><td>${x.cuenta.tipo === "ACTIVO" ? "Activo" : "Pasivo"}</td><td class="num">${clp(x.final)}</td>
     <td><select id="rn-cpt-t-${x.cuenta.id}" ${S.puedeEscribir ? "" : "disabled"} aria-label="Tratamiento de ${esc(x.cuenta.nombre)}"><option value="incluir" ${x.trat === "incluir" ? "selected" : ""}>${x.cuenta.tipo === "ACTIVO" ? "Inversión efectiva" : "Pasivo exigible"}</option><option value="excluir" ${x.trat === "excluir" ? "selected" : ""}>Excluir (intangible, nominal o transitorio)</option></select></td>
     <td class="num"><input id="rn-cpt-aj-${x.cuenta.id}" class="monto" inputmode="numeric" value="${x.ajuste ? clp(x.ajuste) : ""}" ${inputRo()} aria-label="Ajuste a valor tributario"></td><td class="num" id="rn-cpt-valor-${x.cuenta.id}">${clp(x.valor)}</td></tr>`).join("");
-  return `<h2>Capital propio tributario al 31/12/${r.anio}</h2>
-    <p class="ayuda">Capital propio tributario = activos que representan inversión efectiva, a valor tributario, menos el pasivo exigible (art. 41 N° 1 LIR). Quedan fuera los valores intangibles, nominales, transitorios y de orden. El programa parte del balance, propone el tratamiento de cada cuenta por su nombre y calcula el ajuste de los bienes del activo fijo con las fichas. Si una cuenta tiene otro valor tributario, anota la diferencia en «Ajuste». Si es negativo, se informa como CPT negativo.</p>
+  const pro = !!k.simplificado;
+  return `<h2>${pro ? "Capital propio tributario simplificado" : "Capital propio tributario"} al 31/12/${r.anio}</h2>
+    ${pro ? `<p class="ayuda">En el régimen Pro Pyme (14 D N° 3 y N° 8) el capital propio tributario es <strong>simplificado</strong>: no se determina con el balance sino con el capital inicial, los aportes y retiros del año y los ingresos percibidos menos los egresos pagados (base de caja). Es el valor que va al recuadro 19 del F22 y el que se usa para el RAI. Más abajo queda el balance solo como control; en el régimen 14 A el capital propio sí sale del balance.</p>` : ""}
+    <p class="ayuda">${pro ? "Referencia según el balance. " : ""}Capital propio tributario = activos que representan inversión efectiva, a valor tributario, menos el pasivo exigible (art. 41 N° 1 LIR). Quedan fuera los valores intangibles, nominales, transitorios y de orden. El programa parte del balance, propone el tratamiento de cada cuenta por su nombre y calcula el ajuste de los bienes del activo fijo con las fichas. Si una cuenta tiene otro valor tributario, anota la diferencia en «Ajuste». Si es negativo, se informa como CPT negativo.</p>
     ${k.filas.length ? `<div class="tabla"><table><thead><tr><th>Código</th><th>Cuenta</th><th>Tipo</th><th class="num">Saldo contable</th><th>Tratamiento</th><th class="num">Ajuste a valor tributario</th><th class="num">Valor tributario</th></tr></thead><tbody>${filas}</tbody></table></div>`
       : `<div class="caja vacio"><p>No hay saldos de balance en ${r.anio}.</p></div>`}
     <div class="form"><label class="check"><input type="checkbox" id="rn-cpt-af" ${r.cpt.af_auto ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Ajustar el activo fijo a valor tributario según las fichas (depreciación tributaria)</label>
@@ -7114,7 +7128,9 @@ function informeCpt(r) {
   if (k.afAjuste) inf.agregar([null, "Ajuste de activo fijo a valor tributario (según fichas)", null, null, null, null, k.afAjuste]);
   inf.agregar([null, "ACTIVOS A VALOR TRIBUTARIO", null, null, null, null, k.activos + k.afAjuste], { estilo: "subtotal", derecha: true });
   inf.agregar([null, "PASIVO EXIGIBLE", null, null, null, null, k.pasivos], { estilo: "subtotal", derecha: true });
-  inf.agregar([null, `CAPITAL PROPIO TRIBUTARIO ${k.cpt < 0 ? "NEGATIVO" : "POSITIVO"}`, null, null, null, null, k.cpt], { estilo: "total", derecha: true });
+  inf.agregar([null, `CAPITAL PROPIO TRIBUTARIO ${(k.balance ?? k.cpt) < 0 ? "NEGATIVO" : "POSITIVO"}${k.simplificado ? " SEGÚN EL BALANCE" : ""}`, null, null, null, null, k.balance ?? k.cpt], { estilo: "total", derecha: true });
+  if (k.simplificado) inf.agregar([null, `CAPITAL PROPIO TRIBUTARIO SIMPLIFICADO ${k.cpt < 0 ? "NEGATIVO" : "POSITIVO"}`, null, null, null, null, k.cpt], { estilo: "total", derecha: true });
+  if (k.simplificado) { const sm = k.simplificado; inf.notas.unshift(`CAPITAL PROPIO TRIBUTARIO SIMPLIFICADO (Pro Pyme): inicial ${pesosTexto(sm.inicial)} + aportes ${pesosTexto(sm.aportes)} + ingresos percibidos menos egresos pagados ${pesosTexto(sm.resultado)} − retiros ${pesosTexto(sm.retiros)} = ${pesosTexto(sm.final)}. Según el balance: ${pesosTexto(k.balance)} (diferencia ${pesosTexto(sm.final - k.balance)}).`); }
   inf.notas.push(`Patrimonio contable: ${pesosTexto(k.patrimonioContable)}. Capital propio inicial: ${pesosTexto(k.inicial)}, reajustado ${pesosTexto(k.inicialReaj)} con la VIPC. Variación del año: ${pesosTexto(k.cpt - k.inicialReaj)}.`);
   inf.notas.push("Valores intangibles, nominales, transitorios y de orden excluidos según el art. 41 N° 1 de la LIR. Borrador referencial.");
   return inf;
