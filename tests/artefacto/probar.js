@@ -1952,6 +1952,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     r.f22.incentivo = 9000000; c = calcularRenta(r); r0.tope = [c.rli, c.incentivo, c.tope, c.alertas.some((a) => /supera el máximo legal/.test(a))]; r.f22.incentivo = null;
     const antesCpt = r.cpt.inicial; r.cpt.inicial = 0; r.retiros[0].monto = 20000000; c = calcularRenta(r); r0.neg = [c.cpt.simplificado.negativo, c.cpt.cpt, calcularBorradorF22(r, c, r.f22).codigos[1546], c.alertas.some((a) => /se informa como CPTS negativo/.test(a))]; r.retiros[0].monto = 300000; r.cpt.inicial = antesCpt;
     { const e = empresa(), antesIni = e.inicio_actividades, capAnt = r.capital.inicial; const base0 = calcularRenta(r).cpt.cpt; e.inicio_actividades = `${anio}-01-15`; r.capital.inicial = 5000000; r.cpt.inicial = 0; const ci = calcularRenta(r); r.capital.inicial = capAnt; r.cpt.inicial = antesCpt; r0.inicio = [ci.cpt.simplificado.capitalInicio, calcularBorradorF22(r, ci, r.f22).codigos[1374], 0]; e.inicio_actividades = antesIni; r0.inicio[2] = calcularRenta(r).cpt.simplificado.capitalInicio; }
+    { const base1 = calcularRenta(r).cpt.cpt; r.cptOtras = { agregar: 300000, deducir: 100000 }; const co = calcularRenta(r); r0.otrasPartidas = [co.cpt.simplificado.otrasAgregar, co.cpt.simplificado.otrasDeducir, co.cpt.cpt - base1, calcularBorradorF22(r, co, r.f22).codigos[1380], calcularBorradorF22(r, co, r.f22).codigos[1381]]; r.cptOtras = { agregar: 0, deducir: 0 }; }
     S.utm[`${anio}-12`] = 1000000; r.individual = true; c = calcularRenta(r); r0.uta = [c.exentaUta, c.idpc, c.uta]; r.individual = false; c = calcularRenta(r); r0.noUta = [c.exentaUta, c.idpc > 0]; delete S.utm[`${anio}-12`];
     S.pestana.renta = "registros"; S.vista = "renta"; render(); await w(); r0.sinPct = !document.querySelector('[id^="rn-rt-pct-"]') && !document.querySelector("#rn-vipc");
     cm.nombre = nomCm; ex.nombre = nomEx; for (const id of ["c62a", "c62b", "c62c", "c62d"]) await S.almacen.del(`empresas/${S.eid}/asientos/${id}`);
@@ -1963,6 +1964,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("las rentas de otras empresas suman al CPTS en el N° 3 y a la base, con su crédito, en el N° 8", [c62.otras, c62.otras8], [[6500000, 400000], 7200000]);
   igual("el incentivo se limita al 50 % de la base y avisa", c62.tope, [6500000, 3250000, 3250000, true]);
   igual("en el año de inicio de actividades el capital aportado suma al CPTS y se informa en 1374", c62.inicio, [5000000, 5000000, 0]);
+  igual("las otras partidas a agregar (1380) y a deducir (1381) mueven el CPTS y salen en el borrador", c62.otrasPartidas, [300000, 100000, 200000, 300000, 100000]);
   igual("el CPTS negativo se informa (1546) y se resta en el RAI, como en el F22", c62.neg, [true, -12300000, 12300000, true]);
   igual("el empresario individual con base hasta 1 UTA queda exento de IDPC", [c62.uta, c62.noUta, c62.sinPct], [[true, 0, 12000000], [false, true], true]);
 
