@@ -1855,6 +1855,36 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("la propuesta del SII para los ingresos es el mayor entre el registro de ventas y el F29", ip.prop === 900000, JSON.stringify(ip));
   ok("la pestaña muestra la propuesta, los saldos y las secciones, y el informe sale con filas", ip.pantalla && ip.informe, JSON.stringify(ip));
 
+  console.log("Un solo motor para la renta y el borrador del F22");
+  const mo = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2062;
+    r0.tasas = [2022, 2023, 2024, 2025, 2027, 2028, 2029].map((a) => REGIMENES_RENTA.d3[1](a));
+    const cu = (re) => S.cuentas.find((x) => x.imputable && re.test(x.nombre))?.id;
+    const ids = { ban: cu(/^banco$/i), ven: cu(/^ventas$/i), cos: cu(/^costo de ventas$/i), oin: cu(/^otros ingresos$/i) };
+    const as = (id, fecha, lineas) => S.almacen.set(`empresas/${S.eid}/asientos/${id}`, { apertura: false, cierre: false, creado: 9500 + Math.random(), fecha, glosa: id, lineas: lineas.map(([cuenta, debe, haber]) => ({ cuenta, debe, haber, glosa: "" })) });
+    await as("mo1", `${anio}-03-10`, [[ids.ban, 10000000, 0], [ids.ven, 0, 10000000]]); await as("mo2", `${anio}-04-10`, [[ids.cos, 4000000, 0], [ids.ban, 0, 4000000]]);
+    await w(500);
+    S.rentaAnio = String(anio); S.rentaEdit = null; const r = rentaActual(); r.regimen = "d3"; r.tasa = 25; r.vipc = 0;
+    let c = calcularRenta(r); const sin = [c.rli, c.baseAfecta, c.idpc];
+    r.f22.incentivo = 1500000; c = calcularRenta(r); const b = calcularBorradorF22(r, c, r.f22), k = b.codigos;
+    r0.sin = sin; r0.con = [c.rli, c.incentivo, c.baseAfecta, c.idpc, k[1440], k[20], k[1432]];
+    r0.sac = [k[1513], c.reg.sacAntes - (c.reg.sacIniReaj || 0)];
+    S.pestana.renta = "rli"; S.vista = "renta"; render(); await w();
+    r0.campo = !!document.querySelector("#rn-incentivo") && /Incentivo al ahorro/.test(document.body.innerText);
+    document.querySelector("#rn-incentivo").value = "2.000.000"; document.querySelector("#rn-incentivo").dispatchEvent(new Event("input", { bubbles: true })); leerFormularioRenta(); await w();
+    r0.desdeRli = r.f22.incentivo;
+    const dec = S.f22; S.f22 = [{ id: String(anio - 1), codigos: { 1545: 7000000, 1494: 2000000, 1484: 1000000, 1564: 300000, 1440: -50000 } }];
+    const pv = rentaPrevia(anio); r0.previa = [pv.cpt_final, pv.capital_final, pv.rai_final, pv.sac_final, pv.perdida_siguiente, pv.fuente]; S.f22 = dec;
+    for (const id of ["mo1", "mo2"]) await S.almacen.del(`empresas/${S.eid}/asientos/${id}`);
+    await w(400); S.rentaEdit = null; S.pestana.renta = "rli"; ir("inicio");
+    return r0;
+  });
+  igual("la tasa del IDPC por año coincide con lo declarado: 10 % hasta 2023, 12,5 % en 2024 a 2027, 15 % en 2028 y 25 % desde 2029", mo.tasas, [10, 10, 12.5, 12.5, 12.5, 15, 25]);
+  igual("con incentivo, la RLI y el borrador comparten base afecta e impuesto", [mo.sin, mo.con], [[6000000, 6000000, 1500000], [6000000, 1500000, 4500000, 1125000, 4500000, 1125000, 1500000]]);
+  ok("el SAC y el IDPC generado del borrador salen del mismo impuesto", mo.sac[0] === 1125000, JSON.stringify(mo));
+  ok("el incentivo se ingresa también en la pestaña de renta líquida y es el mismo dato del borrador", mo.campo && mo.desdeRli === 2000000, JSON.stringify(mo));
+  igual("los saldos del año anterior salen primero del F22 declarado", mo.previa, [7000000, 2000000, 1000000, 300000, 50000, "F22 declarado"]);
+
   console.log("Borrador del F22");
   const bf = await page.evaluate(async () => {
     const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2049, e0 = empresa();
@@ -1871,20 +1901,20 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     await as("bf7", `${anio}-12-31`, [[ids.ban, 300, 0], [ids.oin, 0, 300]]);
     await w(500);
     S.rentaAnio = String(anio); S.rentaEdit = null; const r = rentaActual(); r.regimen = "d3"; r.tasa = 25; r.vipc = 0;
-    S.f22bMan = null; const man = manualF22(anio); man.incentivo = 5000;
+    const man = manualF22(anio); man.incentivo = 5000;
     const c = calcularRenta(r), b = calcularBorradorF22(r, c, man), k = b.codigos;
     r0.k = [k[1400], k[1588], k[1410], k[1409], k[1411], k[1412], k[1430], k[1729], k[1432], k[1440], k[20], k[1904], k[305], k[91]];
     S.pestana.renta = "borrador"; S.vista = "renta"; render(); await w();
     const tx = document.body.innerText; r0.pestana = /borrador del f22/i.test(tx) && /recuadro n° 17/i.test(tx) && /recuadro n° 20/i.test(tx) && /recuadro n° 21/i.test(tx) && /impuestos anuales a la renta/i.test(tx) && /existencias, insumos y servicios del negocio, pagados/i.test(tx);
     document.querySelector("#f22b-inc").value = "4.000"; document.querySelector("#f22b-reaj").value = "100"; document.querySelector("#f22b-d-1440").value = "10.000"; document.querySelector("#f22b-c-1440").value = "prueba";
     document.querySelector('[data-n="f22b-recalcular"]').click(); await w();
-    r0.manual = [S.f22bMan.incentivo, S.f22bMan.reaj];
+    { const mm = manualF22(anio); r0.manual = [mm.incentivo, mm.reaj]; }
     r0.difFila = (() => { const tr = document.querySelector("#f22b-d-1440").closest("tr"); return /1\.300/.test(tr.innerText) && document.querySelector("#f22b-c-1440").value === "prueba"; })();
     document.querySelector('[data-n="f22b-guardar"]').click(); await w(400);
-    const g = S.f22_borr.find((x) => x.id === String(anio)); r0.guardado = g && [g.codigos[1440], g.codigos[39], g.manual.incentivo, g.declarado?.[1440], g.comentarios?.[1440]];
+    const g = S.renta.find((x) => x.id === String(anio))?.f22; r0.guardado = g && [g.codigos[1440], g.codigos[39], g.incentivo, g.decl?.[1440], g.coment?.[1440]];
     r0.informe = S.informe().filas.length > 10 && S.csv.filas.flat().join("|").includes("1729");
-    r0.respaldo = (await datosRespaldo()).colecciones.f22_borr?.length;
-    await S.almacen.del(`empresas/${S.eid}/f22_borr/${anio}`);
+    r0.respaldo = (await datosRespaldo()).colecciones.renta?.length;
+    await S.almacen.del(`empresas/${S.eid}/renta/${anio}`);
     for (const id of ["bf1", "bf2", "bf3", "bf4", "bf5", "bf6", "bf7"]) await S.almacen.del(`empresas/${S.eid}/asientos/${id}`);
     await w(400); S.f22bMan = null; S.rentaEdit = null; S.pestana.renta = "rli"; ir("inicio");
     return r0;
