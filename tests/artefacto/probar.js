@@ -1885,6 +1885,27 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el incentivo se ingresa también en la pestaña de renta líquida y es el mismo dato del borrador", mo.campo && mo.desdeRli === 2000000, JSON.stringify(mo));
   igual("los saldos del año anterior salen primero del F22 declarado", mo.previa, [7000000, 2000000, 1000000, 300000, 50000, "F22 declarado"]);
 
+  console.log("Retiros y DJ 1948");
+  const rt = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2063, e = empresa(), antes = e.propietarios;
+    S.cuentas.push({ id: "cRetTest", nombre: "RETIROS", imputable: true });
+    S.lista.push({ id: "rtT1", fecha: `${anio}-06-10`, glosa: "Retiro de utilidades", apertura: false, cierre: false, lineas: [{ cuenta: "cRetTest", debe: 600000, haber: 0 }, { cuenta: S.cuentas[0].id, debe: 0, haber: 600000 }] });
+    e.propietarios = [{ nombre: "ANA", rut: "11111111-1", porcentaje: 60 }, { nombre: "LUIS", rut: "", porcentaje: 40 }];
+    r0.contable = retirosContables(anio).map((x) => [x.fecha, x.monto]);
+    S.rentaAnio = String(anio); S.rentaEdit = null; const r = rentaActual(); r.regimen = "d3"; r.vipc = 0;
+    r0.falta = retirosFaltantes(r).length; traerRetirosContables(); r0.lista = r.retiros.map((x) => [x.nombre, x.monto]); traerRetirosContables(); r0.sinDuplicar = r.retiros.length;
+    r0.faltaDespues = retirosFaltantes(r).length;
+    r0.aviso = alertasRenta(r, calcularRenta(r)).some((a) => /no coinciden/.test(a));
+    const d = datosDj1948(anio); r0.dj = [d.filas.length, d.totLista, d.totContable, d.dif, d.avisos.some((a) => /sin RUT/.test(a))];
+    S.vista = "dj"; S.djAnio = String(anio); S.pestana.dj = "1948"; render(); await w();
+    r0.pantalla = /declaración jurada 1948/i.test(document.body.innerText) && /ANA/.test(document.body.innerText) && !!S.informe && S.informe().filas.length === 3;
+    e.propietarios = antes; S.cuentas.pop(); S.lista.pop(); S.rentaEdit = null; S.pestana.dj = "1887"; ir("inicio");
+    return r0;
+  });
+  igual("los retiros de la cuenta Retiros se leen de la contabilidad", rt.contable, [[`2063-06-10`, 600000]]);
+  igual("se traen a la renta repartidos entre los socios según su participación, sin duplicar", [rt.falta, rt.lista, rt.sinDuplicar, rt.faltaDespues], [1, [["ANA", 360000], ["LUIS", 240000]], 2, 0]);
+  ok("la DJ 1948 agrupa por beneficiario, cuadra con la contabilidad y avisa del RUT que falta", rt.dj[0] === 2 && rt.dj[1] === 600000 && rt.dj[2] === 600000 && rt.dj[3] === 0 && rt.dj[4] && rt.pantalla, JSON.stringify(rt));
+
   console.log("Borrador del F22");
   const bf = await page.evaluate(async () => {
     const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), r0 = {}, anio = 2049, e0 = empresa();
