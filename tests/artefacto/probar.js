@@ -1892,6 +1892,8 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     S.cuentas.push({ id: "cRetTest", nombre: "RETIROS", imputable: true });
     S.lista.push({ id: "rtT1", fecha: `${anio}-06-10`, glosa: "Retiro de utilidades", apertura: false, cierre: false, lineas: [{ cuenta: "cRetTest", debe: 600000, haber: 0 }, { cuenta: S.cuentas[0].id, debe: 0, haber: 600000 }] });
     e.propietarios = [{ nombre: "ANA", rut: "11111111-1", porcentaje: 60 }, { nombre: "LUIS", rut: "", porcentaje: 40 }];
+    const ua = S.cuentas.find((x) => x.imputable && /utilidades? acumuladas?/i.test(x.nombre)) || { id: "cUaT", nombre: "UTILIDADES ACUMULADAS", imputable: true, codigo: "3.9.99", tipo: "PATRIMONIO" }; if (ua.id === "cUaT") S.cuentas.push(ua);
+    S.lista.push({ id: "rtT2", fecha: `${anio}-12-31`, glosa: "Cierre de retiros", apertura: false, cierre: false, lineas: [{ cuenta: ua.id, debe: 600000, haber: 0 }, { cuenta: "cRetTest", debe: 0, haber: 600000 }] });
     r0.contable = retirosContables(anio).map((x) => [x.fecha, x.monto]);
     S.rentaAnio = String(anio); S.rentaEdit = null; const r = rentaActual(); r.regimen = "d3"; r.vipc = 0;
     r0.falta = retirosFaltantes(r).length; traerRetirosContables(); r0.lista = r.retiros.map((x) => [x.nombre, x.monto]); traerRetirosContables(); r0.sinDuplicar = r.retiros.length;
@@ -1900,7 +1902,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const d = datosDj1948(anio); r0.dj = [d.filas.length, d.totLista, d.totContable, d.dif, d.avisos.some((a) => /sin RUT/.test(a))];
     S.vista = "dj"; S.djAnio = String(anio); S.pestana.dj = "1948"; render(); await w();
     r0.pantalla = /declaración jurada 1948/i.test(document.body.innerText) && /ANA/.test(document.body.innerText) && !!S.informe && S.informe().filas.length === 3;
-    e.propietarios = antes; S.cuentas.pop(); S.lista.pop(); S.rentaEdit = null; S.pestana.dj = "1887"; ir("inicio");
+    e.propietarios = antes; if (S.cuentas.at(-1).id === "cUaT") S.cuentas.pop(); S.lista.pop(); S.lista.pop(); S.cuentas.pop(); S.rentaEdit = null; S.pestana.dj = "1887"; ir("inicio");
     return r0;
   });
   igual("los retiros de la cuenta Retiros se leen de la contabilidad", rt.contable, [[`2063-06-10`, 600000]]);
