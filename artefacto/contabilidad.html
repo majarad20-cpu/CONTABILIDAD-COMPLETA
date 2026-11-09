@@ -394,7 +394,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Mercaderías",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Anticipo a proveedores",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Documentos por pagar",1],["2.1.03","Acreedores varios",1],["2.1.04","IVA débito fiscal",1],["2.1.05","Impuesto único por pagar",1],["2.1.06","Retención de honorarios por pagar",1],["2.1.07","PPM por pagar",1],["2.1.08","Remuneraciones por pagar",1],["2.1.09","Cotizaciones previsionales por pagar",1],["2.1.10","Impuesto a la renta por pagar",1],["2.1.11","Préstamos bancarios de corto plazo",1],["2.1.12","Anticipo de clientes",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.4.0";
+const VERSION = "2.5.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -1374,6 +1374,7 @@ function vistaEmpresas() {
     <div class="acciones"><input type="file" id="archivo-json" accept=".json,application/json" aria-label="Archivo .json de la empresa"></div>
   </section>
   ${vistaPrevia}
+  ${panelRespaldoTodas()}
   ${panelRestauracion()}
   <form class="caja" data-form="nueva-empresa"><h2>Nueva empresa</h2>${formularioEmpresa(null, true)}
     <div class="acciones"><button class="btn" type="submit">Crear empresa</button></div>
@@ -7753,6 +7754,7 @@ async function descargarRespaldo() {
 function panelRespaldo() {
   return `<section class="caja"><h2>Respaldo</h2>
     <p class="ayuda">Descarga todos los datos de ${esc(empresa().razon_social)} (plan de cuentas, asientos, RCV, F29, remuneraciones, activo fijo y renta) en un archivo .json. Guárdalo en un lugar seguro: sirve para recuperar la empresa si se elimina por error o se modifica algo sin querer.</p>
+    <p class="ayuda">Para respaldar <strong>todas las empresas</strong> de una vez, en un archivo o en Google Drive, ve a «Empresas e importación».</p>
     <div class="acciones">${S.descargas ? `<button class="btn" type="button" data-n="descargar-respaldo">Descargar respaldo</button>` : `<span class="ayuda">La descarga de archivos no está disponible en esta vista.</span>`}</div></section>`;
 }
 
@@ -10485,5 +10487,297 @@ async function iniciar() {
     render();
   }, (e) => { aviso("No se pudo leer la lista de empresas. Recarga la página."); console.error(e); });
 }
+/* ------------------------------------------------------------------ respaldo de todas las empresas (archivo y Google Drive) */
+/* Un solo archivo con todas las empresas, sus subcolecciones y la configuración compartida.
+   En Drive va comprimido (gzip) en la carpeta «Contabilidad Completa - Respaldos» y, si pesa más de lo que
+   el conector acepta por llamada (1 MiB con el base64), se sube en partes que se vuelven a unir al restaurar.
+   La copia automática corre una vez por semana al abrir la app, solo después de una primera copia manual a Drive. */
+const FORMATO_TODAS = "contabilidad-completa-artefacto/todas/1";
+const GDRIVE = "Google Drive";
+const CARPETA_MIME = "application/vnd.google-apps.folder";
+const CARPETA_RESPALDOS = "Contabilidad Completa - Respaldos";
+const PREFIJO_RESPALDO = "cc-respaldo_";
+const PARTE_MAX = 520 * 1024; // bytes por parte: ~700 KB en base64, con margen bajo el límite de 1 MiB por llamada
+const DIAS_AUTO = 7;
+S.mcp = null; S.rt = { estado: "", error: false, lista: null, cargando: false, todas: null };
+
+const errDrive = {
+  needs_reauth: "Tu conexión con Google Drive caducó: vuelve a conectarla en claude.ai › Ajustes › Conectores.",
+  server_not_connected: "Google Drive no está conectado: agrégalo en claude.ai › Ajustes › Conectores.",
+  selection_required: "Tienes más de una cuenta de Google Drive conectada: elige una cuando Claude te lo pregunte.",
+  not_in_manifest: "Esta app no tiene permiso para usar Google Drive.",
+  not_granted: "No diste permiso para usar Google Drive: actívalo en el menú de permisos de la página.",
+  blocked_by_policy: "Tu organización no permite usar Google Drive desde aquí.",
+  approval_required: "Hace falta tu aprobación para usar Google Drive.",
+};
+const textoErrDrive = (e) => errDrive[e?.code] || `Google Drive respondió con un error${e?.message ? `: ${e.message}` : ""}.`;
+const gdrive = async (tool, input) => {
+  for (let i = 0; ; i++) {
+    try { const r = await S.mcp.callTool(GDRIVE, tool, input); return r?.payload ?? r ?? {}; }
+    catch (e) { if (!e?.retryable || i >= 2) throw e; await new Promise((ok) => setTimeout(ok, (e.retryAfterMs || 1500) + 500 * i)); }
+  }
+};
+const aB64 = (u8) => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+const deB64 = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+async function comprimir(texto) { return new Uint8Array(await new Response(new Blob([texto]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer()); }
+async function descomprimir(u8) {
+  if (u8[0] !== 0x1f || u8[1] !== 0x8b) return new TextDecoder().decode(u8);
+  return new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+}
+const sello = () => { const d = new Date(), z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}`; };
+let cfgRespaldo = {};
+const guardarCfgRespaldo = async (cambios) => { cfgRespaldo = { ...cfgRespaldo, ...cambios }; await S.almacen.set("config/respaldo", cfgRespaldo); };
+
+/* Lee todo desde el almacén (no desde la pantalla), empresa por empresa. */
+async function datosTodas() {
+  const empresas = [];
+  for (const e of S.empresas) {
+    const { id, ...empresaDoc } = e, colecciones = {};
+    for (const sub of SUBCOLECCIONES) colecciones[sub] = await S.almacen.leerCol(`empresas/${id}/${sub}`);
+    empresas.push({ id, empresa: empresaDoc, colecciones });
+  }
+  return { formato: FORMATO_TODAS, version: VERSION, creado: new Date().toISOString(), empresas,
+    config: { utm: S.utm, previsional: S.prev, contador: S.contador } };
+}
+const contarRegistros = (d) => d.empresas.reduce((s, x) => s + Object.values(x.colecciones).reduce((t, l) => t + l.length, 0), 0);
+
+async function descargarTodas({ silencioso = false } = {}) {
+  if (!S.descargas) { aviso("La descarga de archivos no está disponible en esta vista."); return false; }
+  try {
+    const d = await datosTodas();
+    await S.descargas.save({ filename: `respaldo_todas_${hoy()}.json`, data: JSON.stringify(d) });
+    if (!silencioso) aviso(`Respaldo descargado: ${d.empresas.length} empresas, ${contarRegistros(d)} registros.`);
+    return true;
+  } catch (e) { if (e?.code !== "declined") aviso("No se pudo generar el respaldo."); return false; }
+}
+
+async function carpetaDrive() {
+  if (cfgRespaldo.carpeta) return cfgRespaldo.carpeta;
+  const r = await gdrive("search_files", { query: `title = '${CARPETA_RESPALDOS}' and mimeType = '${CARPETA_MIME}' and owner = 'me'`, pageSize: 5, excludeContentSnippets: true });
+  let c = (r.files || []).find((f) => f.mimeType === CARPETA_MIME && !f.trashed);
+  if (!c) c = await gdrive("create_file", { title: CARPETA_RESPALDOS, contentMimeType: CARPETA_MIME });
+  if (!c?.id) throw new Error("no se pudo crear la carpeta en Drive");
+  await guardarCfgRespaldo({ carpeta: c.id, carpetaUrl: c.viewUrl || `https://drive.google.com/drive/folders/${c.id}` });
+  return c.id;
+}
+
+/* Sube el respaldo comprimido; devuelve { nombre, partes, bytes, empresas, registros }. */
+async function subirADrive(motivo = "") {
+  const d = await datosTodas();
+  const bytes = await comprimir(JSON.stringify(d));
+  const carpeta = await carpetaDrive();
+  const base = `${PREFIJO_RESPALDO}${sello()}${motivo ? "_" + motivo : ""}`;
+  const n = Math.max(1, Math.ceil(bytes.length / PARTE_MAX));
+  for (let i = 0; i < n; i++) {
+    const trozo = bytes.subarray(i * PARTE_MAX, (i + 1) * PARTE_MAX);
+    const title = n === 1 ? `${base}.json.gz` : `${base}.p${i + 1}de${n}.gz`;
+    S.rt.estado = n > 1 ? `Subiendo a Drive… parte ${i + 1} de ${n}` : "Subiendo a Drive…"; if (S.vista === "empresas") render();
+    await gdrive("create_file", { title, parentId: carpeta, base64Content: aB64(trozo), contentMimeType: "application/gzip", disableConversionToGoogleType: true });
+  }
+  await guardarCfgRespaldo({ ultimo: new Date().toISOString(), auto: cfgRespaldo.auto !== false });
+  return { nombre: base, partes: n, bytes: bytes.length, empresas: d.empresas.length, registros: contarRegistros(d) };
+}
+
+async function respaldarEnDrive() {
+  if (!S.mcp) return aviso("Google Drive no está disponible en esta vista.");
+  S.rt.cargando = true; S.rt.error = false; S.rt.estado = "Preparando el respaldo…"; render();
+  try {
+    const r = await subirADrive();
+    S.rt.estado = `Respaldo guardado en Drive: ${r.empresas} empresas, ${r.registros} registros (${Math.round(r.bytes / 1024)} KB${r.partes > 1 ? `, ${r.partes} partes` : ""}).`;
+    S.rt.lista = null;
+  } catch (e) { S.rt.error = true; S.rt.estado = `No se pudo guardar en Drive. ${textoErrDrive(e)}`; }
+  finally { S.rt.cargando = false; render(); }
+}
+
+/* Agrupa los archivos de la carpeta por respaldo (las partes de uno van juntas). */
+async function listarRespaldosDrive() {
+  if (!S.mcp) return aviso("Google Drive no está disponible en esta vista.");
+  S.rt.cargando = true; S.rt.error = false; S.rt.estado = "Buscando tus respaldos en Drive…"; render();
+  try {
+    const carpeta = await carpetaDrive(), archivos = []; let tok;
+    do {
+      const r = await gdrive("search_files", Object.assign({ query: `parentId = '${carpeta}' and title contains '${PREFIJO_RESPALDO}'`, pageSize: 100, excludeContentSnippets: true }, tok ? { pageToken: tok } : {}));
+      archivos.push(...(r.files || []).filter((f) => !f.trashed)); tok = r.nextPageToken;
+    } while (tok && archivos.length < 500);
+    const grupos = new Map();
+    for (const f of archivos) {
+      const m = String(f.title).match(/^(.*?)(?:\.p(\d+)de(\d+))?\.(?:json\.)?gz$/);
+      if (!m) continue;
+      const g = grupos.get(m[1]) || { nombre: m[1], partes: [], total: m[3] ? +m[3] : 1, fecha: f.createdTime || f.modifiedTime, bytes: 0 };
+      g.partes.push({ id: f.id, n: m[2] ? +m[2] : 1 }); g.bytes += +f.fileSize || 0;
+      grupos.set(m[1], g);
+    }
+    S.rt.lista = [...grupos.values()].map((g) => ({ ...g, completo: g.partes.length === g.total, partes: g.partes.sort((a, b) => a.n - b.n) }))
+      .sort((a, b) => String(b.nombre).localeCompare(String(a.nombre))).slice(0, 15);
+    S.rt.estado = S.rt.lista.length ? "" : "Todavía no hay respaldos en tu carpeta de Drive.";
+  } catch (e) { S.rt.error = true; S.rt.estado = `No se pudieron listar los respaldos. ${textoErrDrive(e)}`; }
+  finally { S.rt.cargando = false; render(); }
+}
+
+async function abrirRespaldoDrive(nombre) {
+  const g = (S.rt.lista || []).find((x) => x.nombre === nombre);
+  if (!g?.completo) return aviso("A ese respaldo le faltan partes: elige otro.");
+  S.rt.cargando = true; S.rt.error = false; render();
+  try {
+    const trozos = [];
+    for (const p of g.partes) {
+      S.rt.estado = g.partes.length > 1 ? `Descargando parte ${p.n} de ${g.partes.length}…` : "Descargando el respaldo…"; render();
+      const r = await gdrive("download_file_content", { fileId: p.id });
+      trozos.push(deB64(r.content || ""));
+    }
+    const todo = new Uint8Array(trozos.reduce((s, t) => s + t.length, 0)); let o = 0;
+    for (const t of trozos) { todo.set(t, o); o += t.length; }
+    S.rt.estado = ""; analizarTodas(await descomprimir(todo));
+  } catch (e) { S.rt.error = true; S.rt.estado = `No se pudo descargar el respaldo. ${textoErrDrive(e)}`; }
+  finally { S.rt.cargando = false; render(); }
+}
+
+/* Valida antes de tocar nada, igual que el respaldo de una empresa. */
+function analizarTodas(texto) {
+  let d; try { d = JSON.parse(texto); } catch (_) { S.rt.todas = { error: "El archivo no es un JSON válido." }; return; }
+  if (d?.formato !== FORMATO_TODAS || !Array.isArray(d.empresas)) { S.rt.todas = { error: "El archivo no es un respaldo de todas las empresas." }; return; }
+  const filas = [];
+  for (const x of d.empresas) {
+    if (!x?.empresa?.razon_social || !Array.isArray(x.empresa.cuentas) || typeof x.colecciones !== "object") { S.rt.todas = { error: "El respaldo está dañado: una empresa no tiene sus datos o su plan de cuentas." }; return; }
+    for (const sub of SUBCOLECCIONES) {
+      const l = x.colecciones[sub] ?? [];
+      if (!Array.isArray(l) || l.some((r) => !r || typeof r.id !== "string" || !ID_VALIDO.test(r.id))) { S.rt.todas = { error: `El respaldo está dañado en «${sub}» de ${x.empresa.razon_social}.` }; return; }
+      x.colecciones[sub] = l;
+    }
+    const suma = (a, k) => (a.lineas || []).reduce((s, l) => s + (+l[k] || 0), 0);
+    const desc = x.colecciones.asientos.filter((a) => suma(a, "debe") !== suma(a, "haber")).length;
+    const actual = x.empresa.rut ? S.empresas.find((e) => e.rut === x.empresa.rut) : null;
+    filas.push({ x, registros: Object.values(x.colecciones).reduce((s, l) => s + l.length, 0), desc, existente: actual?.id || null, sel: true });
+  }
+  S.rt.todas = { datos: d, filas, progreso: null };
+}
+
+/* Escribe primero todos los registros del respaldo y recién después borra los que sobran:
+   si algo se corta a mitad de camino, la empresa no queda vacía. */
+async function escribirEmpresa(eid, x, avanzar) {
+  await BD.setEmpresa(eid, { ...x.empresa, creado: x.empresa.creado || Date.now() });
+  for (const sub of SUBCOLECCIONES) {
+    const nuevos = x.colecciones[sub], ids = new Set(nuevos.map((r) => r.id));
+    for (const { id, ...doc } of nuevos) { await S.almacen.set(`empresas/${eid}/${sub}/${id}`, doc); avanzar(); }
+    for (const viejo of await S.almacen.leerCol(`empresas/${eid}/${sub}`)) if (!ids.has(viejo.id)) await S.almacen.del(`empresas/${eid}/${sub}/${viejo.id}`);
+  }
+}
+async function fusionarConfig(cfg = {}) {
+  const utmNuevas = Object.fromEntries(Object.entries(cfg.utm || {}).filter(([k, v]) => Number.isFinite(+v) && UTM_OFICIALES[k] !== +v && !S.utm[k]).map(([k, v]) => [k, +v]));
+  if (Object.keys(utmNuevas).length) { await S.almacen.set("config/utm", { valores: { ...S.utm, ...utmNuevas } }); S.utm = { ...S.utm, ...utmNuevas }; }
+  const uf = { ...(cfg.previsional?.uf || {}), ...S.prev.uf };
+  const propios = new Set((S.prev.parametros || []).map((x) => x.desde));
+  const parametros = [...(S.prev.parametros || []), ...(cfg.previsional?.parametros || []).filter((x) => x && /^\d{4}-\d{2}$/.test(x.desde) && !propios.has(x.desde))];
+  if (Object.keys(uf).length !== Object.keys(S.prev.uf).length || parametros.length !== (S.prev.parametros || []).length) { S.prev = { ...S.prev, uf, parametros }; await S.almacen.set("config/previsional", S.prev); }
+  if (!S.contador.nombre && !S.contador.firma && cfg.contador && (cfg.contador.nombre || cfg.contador.firma)) {
+    const c = { nombre: String(cfg.contador.nombre || ""), rut: String(cfg.contador.rut || ""), firma: String(cfg.contador.firma || "") };
+    await S.almacen.set("config/contador", c); S.contador = c;
+  }
+}
+
+async function restaurarTodas() {
+  const t = S.rt.todas, elegidas = t.filas.filter((f) => f.sel);
+  if (!elegidas.length) return aviso("Marca al menos una empresa.");
+  const reemplaza = elegidas.some((f) => f.existente);
+  // Antes de reemplazar algo, una copia del estado actual (en Drive o descargada).
+  if (reemplaza) {
+    S.rt.estado = "Guardando una copia del estado actual antes de restaurar…"; render();
+    let ok = false;
+    if (S.mcp) { try { await subirADrive("antes-de-restaurar"); ok = true; } catch (_) { ok = false; } }
+    if (!ok) ok = await descargarTodas({ silencioso: true });
+    if (!ok) { S.rt.estado = "No restauré nada: no se pudo guardar antes una copia del estado actual."; S.rt.error = true; render(); return; }
+  }
+  const total = elegidas.reduce((s, f) => s + f.registros, 0); let n = 0;
+  t.progreso = { n, total }; render();
+  try {
+    for (const f of elegidas) {
+      const eid = f.existente || "e" + nuevoId();
+      await escribirEmpresa(eid, f.x, () => { t.progreso.n = ++n; if (n % 25 === 0) render(); });
+    }
+    await fusionarConfig(t.datos.config);
+    S.rt.todas = null; S.rt.error = false;
+    S.rt.estado = `Restauradas ${elegidas.length} empresa${elegidas.length === 1 ? "" : "s"} (${n} registros).${reemplaza ? " Antes guardé una copia del estado anterior." : ""}`;
+  } catch (err) {
+    t.progreso = null; S.rt.error = true;
+    S.rt.estado = `La restauración se detuvo (${err?.code || err?.message || "error"}). Lo ya escrito quedó guardado y nada se borró: vuelve a restaurar el mismo respaldo para completarlo.`;
+  }
+  render();
+}
+
+function panelRespaldoTodas() {
+  const rt = S.rt, t = rt.todas, ult = cfgRespaldo.ultimo;
+  const drive = S.mcp
+    ? `<button class="btn" type="button" data-rt="drive" ${rt.cargando ? "disabled" : ""}>Respaldar todo en Google Drive</button>
+       <button class="btn sec" type="button" data-rt="listar" ${rt.cargando ? "disabled" : ""}>Restaurar desde Drive…</button>`
+    : `<span class="ayuda">Google Drive no está disponible en esta vista.</span>`;
+  const lista = rt.lista?.length ? `<div class="tabla"><table><thead><tr><th>Respaldo</th><th class="num">Tamaño</th><th></th></tr></thead><tbody>${rt.lista.map((g) => `<tr>
+      <td>${esc(fechaHora(g.fecha))}${/antes-de-restaurar/.test(g.nombre) ? ' <span class="etiqueta">antes de restaurar</span>' : ""}${g.completo ? "" : ' <span class="etiqueta cerrado">incompleto</span>'}</td>
+      <td class="num">${g.bytes ? Math.round(g.bytes / 1024) + " KB" : ""}${g.total > 1 ? ` · ${g.total} partes` : ""}</td>
+      <td><button class="btn sec" type="button" data-rt="abrir" data-nombre="${esc(g.nombre)}" ${g.completo && !rt.cargando ? "" : "disabled"}>Revisar</button></td></tr>`).join("")}</tbody></table></div>` : "";
+  const revisar = !t ? "" : t.error ? `<div class="aviso">${esc(t.error)}</div>` : `<div class="caja">
+      <h2>Revisar restauración</h2>
+      <p class="ayuda">Respaldo del ${esc(fechaHora(t.datos.creado))} (versión ${esc(t.datos.version || "?")}). Marca las empresas que quieres recuperar. Las que ya existen con el mismo RUT se reemplazan; antes guardo una copia del estado actual.</p>
+      <div class="tabla"><table><thead><tr><th></th><th>Empresa</th><th>RUT</th><th class="num">Registros</th><th>Acción</th></tr></thead><tbody>${t.filas.map((f, i) => `<tr>
+        <td class="c"><input type="checkbox" data-rt-sel="${i}" ${f.sel ? "checked" : ""} ${t.progreso ? "disabled" : ""} aria-label="Restaurar ${esc(f.x.empresa.razon_social)}"></td>
+        <td>${esc(f.x.empresa.razon_social)}${f.desc ? ` <span class="neg">· ${f.desc} asientos no cuadran</span>` : ""}</td><td>${esc(f.x.empresa.rut || "")}</td>
+        <td class="num">${f.registros}</td><td>${f.existente ? "Reemplaza la actual" : "Se agrega como nueva"}</td></tr>`).join("")}</tbody></table></div>
+      ${t.progreso ? `<p>Restaurando… ${t.progreso.n} de ${t.progreso.total} registros.</p>` : puedeEditar(`<div class="acciones">
+        ${S.confirmar === "restaurar-todas" ? `<span class="confirmar"><span>¿Restaurar ${t.filas.filter((f) => f.sel).length} empresa(s)? Lo registrado en ellas después de la fecha del respaldo se pierde.</span>
+          <button class="btn peligro" type="button" data-rt="confirmar">Sí, restaurar</button><button class="btn sec" type="button" data-accion="cancelar-confirmacion">Cancelar</button></span>`
+        : `<button class="btn" type="button" data-rt="pedir">Restaurar las marcadas…</button>`}
+        <button class="btn sec" type="button" data-rt="cerrar">Cerrar</button></div>`)}
+    </div>`;
+  return `<section class="caja"><h2>Respaldo de todas las empresas</h2>
+    <p class="ayuda">Un solo archivo con las ${S.empresas.length} empresas (plan de cuentas, asientos, RCV, F29, remuneraciones, activo fijo, renta y bitácora) y la configuración. En Drive queda comprimido en la carpeta «${esc(CARPETA_RESPALDOS)}»${cfgRespaldo.carpetaUrl ? ` (<a href="${esc(cfgRespaldo.carpetaUrl)}" target="_blank" rel="noopener">abrir</a>)` : ""}.</p>
+    <p class="ayuda">${ult ? `Último respaldo en Drive: <strong>${esc(fechaHora(ult))}</strong>.` : "Aún no hay respaldos en Drive."} ${cfgRespaldo.carpeta ? `<label class="chk"><input type="checkbox" data-rt="auto" ${cfgRespaldo.auto !== false ? "checked" : ""}> Copia automática semanal al abrir la app</label>` : "La copia automática semanal se activa después del primer respaldo en Drive."}</p>
+    <div class="acciones">${drive}
+      <button class="btn sec" type="button" data-rt="descargar" ${rt.cargando ? "disabled" : ""}>Descargar archivo</button>
+      ${puedeEditar(`<label class="btn sec" style="cursor:pointer">Restaurar desde archivo…<input type="file" id="archivo-todas" accept=".json,.gz,application/json,application/gzip" hidden></label>`)}</div>
+    ${rt.estado ? `<div class="aviso ${rt.error ? "" : "ok"}">${esc(rt.estado)}</div>` : ""}
+    ${lista}</section>${revisar}`;
+}
+
+document.addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-rt]");
+  if (!b || b.disabled || b.tagName === "INPUT") return;
+  switch (b.dataset.rt) {
+    case "drive": respaldarEnDrive(); break;
+    case "listar": listarRespaldosDrive(); break;
+    case "abrir": abrirRespaldoDrive(b.dataset.nombre); break;
+    case "descargar": descargarTodas(); break;
+    case "pedir": S.confirmar = "restaurar-todas"; render(); break;
+    case "confirmar": S.confirmar = null; restaurarTodas(); break;
+    case "cerrar": S.rt.todas = null; S.confirmar = null; render(); break;
+  }
+});
+document.addEventListener("change", async (ev) => {
+  const el = ev.target;
+  if (el.dataset?.rtSel != null && S.rt.todas?.filas) { S.rt.todas.filas[+el.dataset.rtSel].sel = el.checked; return; }
+  if (el.dataset?.rt === "auto") { await guardarCfgRespaldo({ auto: el.checked }); aviso(el.checked ? "Copia automática semanal activada." : "Copia automática desactivada."); return; }
+  if (el.id === "archivo-todas" && el.files[0]) {
+    const f = el.files[0];
+    if (f.size > 80 * 1024 * 1024) { S.rt.todas = { error: "El archivo es demasiado grande para un respaldo." }; render(); return; }
+    try { analizarTodas(await descomprimir(new Uint8Array(await f.arrayBuffer()))); } catch (_) { S.rt.todas = { error: "No se pudo leer el archivo." }; }
+    render();
+  }
+});
+
+/* Copia automática: una vez por semana, en segundo plano y sin bloquear la app. */
+async function respaldoAutomatico() {
+  if (!S.mcp || !cfgRespaldo.carpeta || cfgRespaldo.auto === false || !S.empresas.length || !S.puedeEscribir) return;
+  if (cfgRespaldo.ultimo && Date.now() - new Date(cfgRespaldo.ultimo).getTime() < DIAS_AUTO * 864e5) return;
+  try { const r = await subirADrive(); S.rt.estado = ""; aviso(`Respaldo semanal guardado en Drive: ${r.empresas} empresas.`); }
+  catch (e) { aviso(`No se pudo hacer el respaldo semanal en Drive. ${textoErrDrive(e)}`); }
+  if (S.vista === "empresas") render();
+}
+(async () => {
+  try { S.mcp = (await window.claude?.use?.("mcp")) || null; } catch (_) { S.mcp = null; }
+  for (let i = 0; i < 100 && (!S.almacen || !S.empresas.length); i++) await new Promise((ok) => setTimeout(ok, 300));
+  if (!S.almacen) return;
+  S.almacen.onDoc("config/respaldo", (d) => { const { id: _i, ...c } = d || {}; cfgRespaldo = c; if (S.vista === "empresas") render(); }, () => {});
+  if (S.vista === "empresas") render();
+  setTimeout(respaldoAutomatico, 8000);
+})();
+
 iniciar();
 </script>

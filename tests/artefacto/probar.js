@@ -2338,6 +2338,47 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("se compara por persona, por mes, las que faltan y las leyes sociales", dje.cmp, [2, 1000, true, 2, true, true, true]);
   ok("la pantalla muestra las diferencias y la persona que no está en las remuneraciones", dje.pantalla, JSON.stringify(dje));
 
+  console.log("Respaldo de todas las empresas (2.5.0)");
+  const rtt = await page.evaluate(async () => {
+    const w = (ms = 200) => new Promise((ok) => setTimeout(ok, ms));
+    const r = {}, mcp0 = S.mcp, desc0 = S.descargas, archivos = new Map(); let seq = 0;
+    // Drive simulado: carpeta, subida, búsqueda por carpeta y descarga en base64.
+    S.mcp = { callTool: async (_s, tool, inp) => {
+      if (tool === "search_files") return { payload: { files: /mimeType =/.test(inp.query) ? [...archivos.values()].filter((f) => f.mimeType === "application/vnd.google-apps.folder") : [...archivos.values()].filter((f) => f.parentId === inp.query.match(/parentId = '([^']+)'/)[1]) } };
+      if (tool === "create_file") { const f = { id: "d" + (++seq), title: inp.title, mimeType: inp.contentMimeType, parentId: inp.parentId, b64: inp.base64Content, createdTime: new Date(Date.now() + seq * 60000).toISOString() }; archivos.set(f.id, f); return { payload: f }; }
+      if (tool === "download_file_content") return { payload: { content: archivos.get(inp.fileId).b64 } };
+    } };
+    let descargado = null; S.descargas = { save: async (x) => { descargado = x; return true; } };
+    await S.almacen.set("empresas/e2", { razon_social: "SEGUNDA LTDA", rut: "11.111.111-1", ejercicio: 2026, creado: Date.now(), cuentas: planBase() }); await w(300);
+    await S.almacen.set("empresas/e2/asientos/rt1", { fecha: "2026-03-01", glosa: "respaldo", lineas: [{ debe: 100, haber: 0 }, { debe: 0, haber: 100 }] });
+    const antes = (await S.almacen.leerCol(`empresas/${S.eid}/asientos`)).length;
+    await descargarTodas({ silencioso: true });
+    const d = JSON.parse(descargado.data);
+    r.archivo = [d.formato, d.empresas.length === S.empresas.length, d.empresas.some((x) => x.colecciones.asientos.some((a) => a.id === "rt1"))];
+    await respaldarEnDrive();
+    r.drive = [!S.rt.error, [...archivos.values()].filter((f) => /\.json\.gz$/.test(f.title)).length, !!cfgRespaldo.carpeta];
+    // cambio posterior al respaldo que la restauración debe deshacer
+    await S.almacen.del("empresas/e2/asientos/rt1"); await S.almacen.set("empresas/e2/asientos/rt2", { fecha: "2026-04-01", lineas: [] });
+    await listarRespaldosDrive(); await abrirRespaldoDrive(S.rt.lista[0].nombre);
+    r.revision = [S.rt.todas.filas.length === S.empresas.length, S.rt.todas.filas.every((f) => !!f.existente)];
+    S.rt.todas.filas.forEach((f) => { f.sel = f.x.empresa.rut === "11.111.111-1"; });
+    await restaurarTodas();
+    const e2 = (await S.almacen.leerCol("empresas/e2/asientos")).map((a) => a.id);
+    r.restaurado = [e2.includes("rt1"), e2.includes("rt2"), (await S.almacen.leerCol(`empresas/${S.eid}/asientos`)).length === antes];
+    r.copiaPrevia = [...archivos.values()].some((f) => /antes-de-restaurar/.test(f.title));
+    analizarTodas('{"formato":"otro"}'); r.rechaza = !!S.rt.todas.error;
+    S.rt.todas = null; S.rt.estado = ""; S.rt.lista = null; S.mcp = mcp0; S.descargas = desc0;
+    for (const a of await S.almacen.leerCol("empresas/e2/asientos")) await S.almacen.del(`empresas/e2/asientos/${a.id}`);
+    await S.almacen.del("empresas/e2"); await S.almacen.del("config/respaldo"); await w(300);
+    return r;
+  });
+  igual("el archivo trae todas las empresas con sus registros", rtt.archivo, ["contabilidad-completa-artefacto/todas/1", true, true]);
+  igual("el respaldo se sube comprimido a una carpeta de Drive", rtt.drive, [true, 1, true]);
+  igual("al restaurar se reconocen las empresas existentes por RUT", rtt.revision, [true, true]);
+  igual("la restauración deja la empresa como en el respaldo y no toca las no marcadas", rtt.restaurado, [true, false, true]);
+  ok("antes de reemplazar se guarda una copia del estado actual", rtt.copiaPrevia);
+  ok("se rechaza un archivo que no es respaldo de todas las empresas", rtt.rechaza);
+
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
