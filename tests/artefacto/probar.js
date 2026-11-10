@@ -398,7 +398,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const as = async (id, fecha, glosa, lineas, ap = false, n = 1) => BD.setAsiento("e2", id, { fecha, glosa, apertura: ap, cierre: false, creado: n, lineas: lineas.map(([cod, d, h]) => ({ cuenta: c(cod), debe: d, haber: h })) });
     await as("b0", "2026-01-01", "Apertura", [["1.1.02", 10000000, 0], ["3.1.01", 0, 10000000]], true, 1);
     await as("b1", "2026-02-01", "Compra equipo", [["1.2.06", 1200000, 0], ["1.1.02", 0, 1200000]], false, 2);
-    await as("b2", "2026-03-10", "Venta", [["1.1.04", 1190000, 0], ["4.1.01", 0, 1000000], ["2.1.04", 0, 190000]], false, 3);
+    await as("b2", "2026-03-10", "Venta", [["1.1.04", 1190000, 0], ["4.1.01", 0, 1000000], ["2.1.10", 0, 190000]], false, 3);
     await as("b3", "2026-04-10", "Gasto", [["5.2.12", 300000, 0], ["2.1.01", 0, 300000]], false, 4);
     await S.almacen.set("empresas/e2/activos/f1", { codigo: "AF-001", nombre: "Notebook", cat: 5, fecha_adq: "2026-02-01", costo: 1200000, residual: 0, vida_normal_meses: 72, vida_meses: 72, acelerada: false, cuenta: c("1.2.06"), documento: "", estado: "activo", fecha_baja: "", dep_trib: "instantanea" });
     await new Promise((r) => setTimeout(r, 100));
