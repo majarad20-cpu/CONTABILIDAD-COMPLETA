@@ -2381,6 +2381,8 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("antes de reemplazar se guarda una copia del estado actual", rtt.copiaPrevia);
   ok("se rechaza un archivo que no es respaldo de todas las empresas", rtt.rechaza);
 
+  const ord = await page.evaluate(() => ["1.1.190.1", "1.1.20.1", "1.1.100.1", "1.1.30.1", "1.2", "1.1"].map((codigo) => ({ codigo })).sort(porCodigo).map((x) => x.codigo).join(" "));
+  ok("el plan de cuentas se ordena por código en forma natural (Banco antes que Remanente IVA)", ord === "1.1 1.1.20.1 1.1.30.1 1.1.100.1 1.1.190.1 1.2", ord);
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
