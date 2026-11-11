@@ -2285,6 +2285,17 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("se guarda como declarado con folio, fecha y total", bpv.doc, [true, "2005202604384538", "2026-05-08", true, 1]);
   ok("el mes aparece declarado y en el historial", bpv.estado && bpv.historial, JSON.stringify(bpv));
   ok("el historial de Previred genera informe PDF/Excel y CSV", bpv.histInf, JSON.stringify(bpv));
+  const fpv = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms));
+    S.previred_borr = [{ id: "2025-12", trabajadores: 1, total: 100, declarado: true, folio: "F1", fecha_declaracion: "2026-01-11" }, { id: "2026-01", trabajadores: 1, total: 200, declarado: true, folio: "F2", fecha_declaracion: "2026-02-11" }, { id: "2026-02", trabajadores: 1, total: 300, declarado: false }];
+    S.pestana.prvd = "historial"; S.pestana.rrhh = "borrador_previred"; S.vista = "rrhh"; S.historialAnio.prvd = ""; render(); await w();
+    const todas = document.querySelectorAll("button[data-n='prvd-abrir']").length, opts = [...document.querySelectorAll("#hist-prvd-anio option")].map((o) => o.textContent).join(",");
+    const sel = document.getElementById("hist-prvd-anio"); sel.value = "2026"; sel.dispatchEvent(new Event("change", { bubbles: true })); await w();
+    const f26 = document.querySelectorAll("button[data-n='prvd-abrir']").length, inf = S.informe(), csv = S.csv.archivo;
+    S.historialAnio.prvd = ""; S.pestana.prvd = "borrador";
+    return { todas, opts, f26, filas: inf.filas.length, csv };
+  });
+  ok("el historial de Previred se filtra por año y exporta solo ese año", fpv.todas === 3 && fpv.opts === "Todos,2026,2025" && fpv.f26 === 2 && fpv.filas === 3 && /_2026\.csv$/.test(fpv.csv), JSON.stringify(fpv));
   ok("sin liquidaciones el borrador lo indica", bpv.sinLiq, JSON.stringify(bpv));
 
   console.log("Comparación del borrador de Previred con la planilla pagada");
