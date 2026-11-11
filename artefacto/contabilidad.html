@@ -394,7 +394,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Anticipo a proveedores",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Mercaderías",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Préstamos bancarios de corto plazo",1],["2.1.03","Documentos por pagar",1],["2.1.04","Acreedores varios",1],["2.1.05","Anticipo de clientes",1],["2.1.06","Remuneraciones por pagar",1],["2.1.07","Cotizaciones previsionales por pagar",1],["2.1.08","Retención de honorarios por pagar",1],["2.1.09","Impuesto único por pagar",1],["2.1.10","IVA débito fiscal",1],["2.1.11","PPM por pagar",1],["2.1.12","Impuesto a la renta por pagar",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.6.0";
+const VERSION = "2.6.1";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -7758,6 +7758,7 @@ document.addEventListener("change", (ev) => {
 /* Cotizaciones y tarifario de la oficina contable. No dependen de ninguna empresa: se guardan en «config/cotizador» (tarifario, datos del prestador y correlativo)
    y en la colección «cotizaciones». Los valores del tarifario son sugeridos (referencias de mercado de 2026): se editan en «Tarifario y datos». */
 const COTIZADOR_BASE = {
+  logo: "",
   prestador: { nombre_fantasia: "", razon_social: "", rut: "", giro: "Servicios contables, tributarios y laborales", direccion: "", comuna: "", contacto: "", correo: "", telefono: "", web: "", exento_iva: true },
   vigencia_dias: 15, meses_pago_anual: 10, uf: { valor: 0, fecha: "" },
   planes: [
@@ -7995,7 +7996,91 @@ function informeCotizacion(q) {
   cfg.condiciones.forEach((x, i) => inf.notas.push(`${i + 1}. ${x}`));
   return inf;
 }
-async function cqPdf(q) { S.informe = () => informeCotizacion(q); await exportar("pdf"); }
+/* PDF propio de la cotización, armado con jsPDF y AutoTable: logo, datos del prestador, cliente, detalle, totales, condiciones y firmas. */
+async function aPdfCotizacion(q) {
+  await cargarScript("jspdf"); await cargarScript("autotable");
+  const { jsPDF } = window.jspdf, cfg = cqCfg(), p = cfg.prestador, t = cqCalcular(q), c = q.cliente || {}, T = textoPdf;
+  const doc = new jsPDF({ unit: "pt", format: "letter", compress: true }), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 40;
+  const ACENTO = [255, 189, 89], OSCURO = [26, 26, 26], GRIS = [100, 100, 100], CLARO = [255, 243, 222], LINEA = [226, 226, 226];
+  const fuente = (tam, estilo = "normal", color = OSCURO) => { doc.setFont("helvetica", estilo); doc.setFontSize(tam); doc.setTextColor(...color); };
+  const pesos = (x) => (t.uf ? (x < 0 ? "-$" : "$") + clp(Math.abs(Math.round(x * t.uf))) : "—");
+  doc.setProperties({ title: `Cotización ${q.nro || ""} – ${c.nombre || ""}`, author: p.razon_social || p.nombre_fantasia || "" });
+  /* encabezado: logo, prestador y datos de la cotización */
+  const y0 = 34; let xTxt = M, altoLogo = 0;
+  if (cfg.logo) {
+    try {
+      const pr = doc.getImageProperties(cfg.logo), k = Math.min(150 / pr.width, 78 / pr.height), w = pr.width * k, h = pr.height * k;
+      doc.addImage(cfg.logo, pr.fileType || "JPEG", M, y0, w, h); xTxt = M + w + 16; altoLogo = h;
+    } catch (_) { /* sin logo */ }
+  }
+  const anchoTxt = W - M - 170 - xTxt; let y = y0 + 10;
+  fuente(10.5, "bold"); for (const l of doc.splitTextToSize(T((p.razon_social || p.nombre_fantasia || "").toUpperCase()), anchoTxt)) { doc.text(l, xTxt, y); y += 12; }
+  fuente(8, "normal", GRIS);
+  for (const l of [p.nombre_fantasia && p.razon_social ? p.nombre_fantasia : "", p.rut ? `RUT ${p.rut}` : "", p.giro, [p.direccion, p.comuna].filter(Boolean).join(", "), [p.correo, p.telefono].filter(Boolean).join(" · "), p.web].filter(Boolean)) {
+    for (const x of doc.splitTextToSize(T(l), anchoTxt)) { doc.text(x, xTxt, y); y += 10.5; }
+  }
+  fuente(19, "bold"); doc.text("COTIZACIÓN", W - M, y0 + 16, { align: "right" });
+  fuente(11, "bold", [196, 120, 10]); doc.text(T(`N° ${q.nro || "(borrador)"}`), W - M, y0 + 34, { align: "right" });
+  fuente(8.5, "normal", GRIS); doc.text(`Emitida el ${fmtFecha(q.fecha)}`, W - M, y0 + 50, { align: "right" }); doc.text(`Válida hasta el ${fmtFecha(q.vigencia_hasta)}`, W - M, y0 + 62, { align: "right" });
+  const yBarra = Math.max(y, y0 + altoLogo) + 8; doc.setFillColor(...ACENTO); doc.rect(M, yBarra, W - 2 * M, 3, "F");
+  /* cliente */
+  y = yBarra + 22; fuente(7.5, "bold", [196, 120, 10]); doc.text("CLIENTE", M, y);
+  fuente(11.5, "bold"); y += 15; doc.text(T(c.nombre || ""), M, y);
+  const datos = [c.rut ? `RUT ${c.rut}` : "", c.contacto ? `Atención: ${c.contacto}` : "", c.giro ? `Giro: ${c.giro}` : "", c.regimen ? `Régimen: ${c.regimen}` : "", [c.correo, c.telefono].filter(Boolean).join(" · ")].filter(Boolean);
+  fuente(8.5, "normal", GRIS); y += 4; for (const d of datos) { y += 11; doc.text(T(d), M, y); }
+  /* detalle */
+  const cuerpo = [], seccion = (txt) => cuerpo.push([{ content: txt, colSpan: 6, styles: { fillColor: CLARO, fontStyle: "bold", textColor: OSCURO } }]);
+  const grupo = (per, titulo, etiqueta, total) => {
+    const ls = q.lineas.filter((l) => l.per === per); if (!ls.length) return;
+    seccion(titulo);
+    for (const l of ls) { const tot = (+l.uf || 0) * (+l.cant || 0); cuerpo.push([T(l.nombre), PER_COT[l.per], String(l.cant).replace(".", ","), ufTxt(l.uf), ufTxt(tot), pesos(tot)]); }
+    if (per === "mensual" && t.descuento) cuerpo.push([{ content: T(`Descuento ${String(t.desc).replace(".", ",")} %`), styles: { textColor: [180, 35, 24] } }, "", "", "", { content: ufTxt(-t.descuento), styles: { textColor: [180, 35, 24] } }, { content: pesos(-t.descuento), styles: { textColor: [180, 35, 24] } }]);
+    cuerpo.push([{ content: etiqueta, colSpan: 4, styles: { fontStyle: "bold", halign: "right" } }, { content: ufTxt(total), styles: { fontStyle: "bold" } }, { content: pesos(total), styles: { fontStyle: "bold" } }]);
+  };
+  grupo("mensual", "SERVICIOS MENSUALES", "Mensualidad", t.mensual); grupo("unica", "SERVICIOS ÚNICOS (SE COBRAN UNA VEZ)", "Total servicios únicos", t.unico); grupo("anual", "SERVICIOS ANUALES", "Total servicios anuales", t.anual);
+  doc.autoTable({ startY: y + 16, margin: { left: M, right: M, bottom: 70 }, head: [["Concepto", "Frecuencia", "Cant.", "UF c/u", "Total UF", "Total $"]], body: cuerpo, theme: "plain",
+    styles: { font: "helvetica", fontSize: 8.5, cellPadding: { top: 5, bottom: 5, left: 6, right: 6 }, textColor: OSCURO, lineColor: LINEA, lineWidth: { bottom: 0.5 }, valign: "middle" },
+    headStyles: { fillColor: OSCURO, textColor: [255, 255, 255], fontStyle: "bold", lineWidth: 0 },
+    columnStyles: { 0: { cellWidth: "auto" }, 1: { cellWidth: 56 }, 2: { cellWidth: 40, halign: "right" }, 3: { cellWidth: 48, halign: "right" }, 4: { cellWidth: 58, halign: "right" }, 5: { cellWidth: 70, halign: "right" } },
+    didParseCell: (d) => { if (d.section === "head" && d.column.index >= 2) d.cell.styles.halign = "right"; } });
+  /* totales */
+  const resumen = [];
+  if (q.modalidad === "anual" && t.mensual) resumen.push([T(`Mensualidades del año (pago anual: ${t.meses} de 12 meses)`), ufTxt(t.recurrente), pesos(t.recurrente)]);
+  if (t.unico) resumen.push(["Servicios únicos", ufTxt(t.unico), pesos(t.unico)]);
+  if (t.anual) resumen.push(["Servicios anuales", ufTxt(t.anual), pesos(t.anual)]);
+  const filaTotal = (txt, uf, pe) => [{ content: txt, styles: { fontStyle: "bold", fillColor: ACENTO } }, { content: uf, styles: { fontStyle: "bold", fillColor: ACENTO, halign: "right" } }, { content: pe, styles: { fontStyle: "bold", fillColor: ACENTO, halign: "right" } }];
+  resumen.push(filaTotal("TOTAL DEL PRIMER AÑO", ufTxt(t.primerAnio), pesos(t.primerAnio)));
+  if (t.tasaIva) { resumen.push(["IVA (19 %)", ufTxt(t.primerAnio * t.tasaIva), pesos(t.primerAnio * t.tasaIva)]); resumen.push(filaTotal("TOTAL CON IVA", ufTxt(t.primerAnio * (1 + t.tasaIva)), pesos(t.primerAnio * (1 + t.tasaIva)))); }
+  doc.autoTable({ startY: doc.lastAutoTable.finalY + 14, margin: { left: W - M - 270, right: M, bottom: 70 }, body: resumen, theme: "plain",
+    styles: { font: "helvetica", fontSize: 8.5, cellPadding: { top: 4, bottom: 4, left: 6, right: 6 }, textColor: OSCURO, lineColor: LINEA, lineWidth: { bottom: 0.5 } }, columnStyles: { 0: { cellWidth: 150 }, 1: { cellWidth: 55, halign: "right" }, 2: { cellWidth: 65, halign: "right" } } });
+  /* textos: qué incluye, notas y condiciones */
+  let yy = doc.lastAutoTable.finalY + 16; const espacio = (alto) => { if (yy + alto > H - 70) { doc.addPage(); yy = 50; } };
+  const titulo = (txt) => { espacio(30); fuente(8, "bold", [196, 120, 10]); doc.text(txt, M, yy); yy += 12; };
+  const parrafo = (txt) => { fuente(8, "normal", OSCURO); const ls = doc.splitTextToSize(T(txt), W - 2 * M); espacio(ls.length * 10 + 4); for (const l of ls) { doc.text(l, M, yy); yy += 10; } yy += 3; };
+  const incluyen = q.lineas.filter((l) => l.incluye?.length);
+  if (incluyen.length) { titulo("QUÉ INCLUYE"); for (const l of incluyen) parrafo(`${l.nombre}: ${l.incluye.join("; ")}.`); }
+  titulo("OBSERVACIONES"); parrafo(q.exento_iva === false ? "Valores netos, más IVA." : "Valores exentos de IVA."); if (t.uf) parrafo(`Valor de la UF utilizado: $${ufTxt(t.uf)}.`); if (q.notas) parrafo(q.notas);
+  titulo("CONDICIONES"); cfg.condiciones.forEach((x, i) => parrafo(`${i + 1}. ${x}`));
+  /* firmas */
+  espacio(90); yy += 34; doc.setDrawColor(...OSCURO); doc.setLineWidth(0.6);
+  doc.line(M + 10, yy, M + 200, yy); doc.line(W - M - 200, yy, W - M - 10, yy);
+  fuente(7.5, "bold"); doc.text(T((p.contacto || p.nombre_fantasia || "PRESTADOR DE SERVICIOS").toUpperCase()), M + 105, yy + 11, { align: "center" }); doc.text("ACEPTACIÓN DEL CLIENTE", W - M - 105, yy + 11, { align: "center" });
+  fuente(7, "normal", GRIS); doc.text(T(p.razon_social || ""), M + 105, yy + 21, { align: "center" }); doc.text(T(c.nombre || ""), W - M - 105, yy + 21, { align: "center" });
+  /* pie y numeración de páginas */
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) {
+    doc.setPage(i); doc.setDrawColor(...ACENTO); doc.setLineWidth(1.2); doc.line(M, H - 42, W - M, H - 42);
+    fuente(7.5, "normal", GRIS); doc.text(T([p.nombre_fantasia || p.razon_social, p.web].filter(Boolean).join("  ·  ")), M, H - 30); doc.text(`Página ${i} de ${n}`, W - M, H - 30, { align: "right" });
+  }
+  return { blob: doc.output("blob"), paginas: n };
+}
+async function cqPdf(q) {
+  await ocupado(async () => {
+    aviso("Generando PDF…");
+    const { blob } = await aPdfCotizacion(q);
+    if (await guardarArchivo(`Cotizacion_${q.nro || "borrador"}_${nombreSeguro(q.cliente?.nombre)}.pdf`, blob)) aviso("PDF descargado.");
+  }, "No se pudo generar el PDF");
+}
 
 /* ---- tarifario y datos del prestador ---- */
 function vistaTarifario() {
@@ -8010,6 +8095,9 @@ function vistaTarifario() {
     <div class="form">${campo("tp-razon", "Razón social", p.razon_social)}${campo("tp-fantasia", "Nombre de fantasía", p.nombre_fantasia)}${campo("tp-rut", "RUT", p.rut, "12.345.678-5")}${campo("tp-giro", "Giro", p.giro)}
       ${campo("tp-dir", "Dirección", p.direccion)}${campo("tp-comuna", "Comuna", p.comuna)}${campo("tp-contacto", "Nombre del contador (firma)", p.contacto)}${campo("tp-correo", "Correo", p.correo)}${campo("tp-tel", "Teléfono", p.telefono)}${campo("tp-web", "Sitio web o Instagram", p.web)}
       <label class="check"><input type="checkbox" id="tp-exento" ${p.exento_iva !== false ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Mis servicios están exentos de IVA</label></div>
+    <h2>Logo (sale en el PDF de la cotización)</h2>
+    <div class="form">${puedeEditar(`<label>Imagen del logo (PNG o JPG)<input type="file" id="tp-logo" accept="image/png,image/jpeg"><small>Se reduce a un tamaño liviano. Conviene un fondo blanco o transparente.</small></label>`)}</div>
+    ${T.logo ? `<div class="acciones"><img src="${esc(T.logo)}" alt="Logo actual" style="max-width:220px;max-height:110px;background:#fff;padding:6px;border:1px solid var(--borde, #ccc);border-radius:6px">${puedeEditar(`<button class="btn enlace" type="button" data-cq="t-quitar-logo">Quitar logo</button>`)}</div>` : ""}
     <h2>Parámetros</h2>
     <div class="form"><label>Valor de la UF ($)<input id="tp-uf" inputmode="decimal" value="${T.uf?.valor ? esc(String(T.uf.valor).replace(".", ",")) : ""}" placeholder="Ej.: 41.274,20" ${ro}></label>
       <label>Fecha de ese valor<input type="date" id="tp-uf-fecha" value="${esc(T.uf?.fecha || "")}" ${ro}></label>
@@ -8055,6 +8143,18 @@ async function guardarTarifario() {
     await S.almacen.set("config/cotizador", d); S.cotizador = d; S.cq.tar = null; render(); aviso("Tarifario guardado.");
   }, "No se pudo guardar el tarifario");
 }
+function cqCargarLogo(archivo) {
+  if (archivo.size > 5 * 1024 * 1024) return aviso("La imagen es demasiado grande (máximo 5 MB).");
+  const url = URL.createObjectURL(archivo), img = new Image();
+  img.onload = () => {
+    const k = Math.min(1, 700 / Math.max(img.width, img.height)), c = document.createElement("canvas"), g = c.getContext("2d");
+    c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+    g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+    cqLeerTar(); S.cq.tar.logo = c.toDataURL("image/jpeg", 0.92); URL.revokeObjectURL(url); render(); aviso("Logo cargado: guarda el tarifario para conservarlo.");
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); aviso("No se pudo leer la imagen."); };
+  img.src = url;
+}
 async function cqRespaldo() {
   const datos = { formato: "cotizador-creandogestion/1", version: VERSION, creado: new Date().toISOString(), tarifario: S.cotizador || cqCfg(), cotizaciones: S.cotizaciones };
   try { await S.descargas.save({ filename: `respaldo_cotizador_${hoy()}.json`, data: JSON.stringify(datos, null, 1) }); aviso("Respaldo descargado."); } catch (e) { if (e?.code !== "declined") aviso("No se pudo descargar el respaldo."); }
@@ -8079,6 +8179,7 @@ document.addEventListener("click", (ev) => {
   else if (a === "t-quitar") { cqLeerTar(); const g = t.dataset.grupo, i = +t.dataset.i, T = S.cq.tar; (g === "plan" ? T.planes : g === "extra" ? T.extras : T.servicios).splice(i, 1); render(); }
   else if (a === "t-pedir-restaurar") { cqLeerTar(); S.cq.confirmar = "restaurar"; render(); }
   else if (a === "t-restaurar") ocupado(async () => { const d = { ...cqCopia(COTIZADOR_BASE), prestador: cqCfg().prestador, correlativo: cqCfg().correlativo }; await S.almacen.set("config/cotizador", d); S.cotizador = d; S.cq.tar = null; S.cq.confirmar = null; render(); aviso("Tarifario restaurado a los valores sugeridos."); }, "No se pudo restaurar el tarifario");
+  else if (a === "t-quitar-logo") { cqLeerTar(); S.cq.tar.logo = ""; render(); }
   else if (a === "t-respaldo") cqRespaldo();
 });
 document.addEventListener("submit", (ev) => { const f = ev.target.closest("form[data-form]"); if (!f) return; if (f.dataset.form === "cq") guardarCotizacion(); else if (f.dataset.form === "tarifario") guardarTarifario(); });
@@ -8086,6 +8187,7 @@ document.addEventListener("change", (ev) => {
   const el = ev.target, id = el.id || "";
   if (id === "cq-f-estado" || id === "cq-f-anio") { S.cq.filtro = { estado: $("#cq-f-estado").value, anio: $("#cq-f-anio").value }; render(); }
   else if (el.classList?.contains("cq-estado-lista")) { const x = S.cotizaciones.find((z) => z.id === el.dataset.id); if (x) ocupado(async () => { const { id: _i, ...resto } = x; await S.almacen.set(`cotizaciones/${x.id}`, { ...resto, estado: el.value, actualizado: Date.now() }); aviso(`${x.nro}: ${ESTADOS_COT[el.value]}.`); }, "No se pudo cambiar el estado"); }
+  else if (id === "tp-logo" && el.files?.[0]) cqCargarLogo(el.files[0]);
   else if (id === "cq-modalidad" || id === "cq-exento" || id.startsWith("cq-per-")) { cqLeer(); render(); }
 });
 document.addEventListener("input", (ev) => {

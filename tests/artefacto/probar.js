@@ -2431,6 +2431,9 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     let pdf = null; try { pdf = await aPdf(inf); } catch (e) { pdf = "ERR " + e.message; } S.eid = eidAntes;
     r.informe = [inf.titulo, inf.emisor[0], /^Cotizacion_COT-\d{4}-001_cliente_de_prueba_spa$/.test(inf.archivo), JSON.stringify(inf.filas).includes("Cliente de Prueba SpA"), nombreArchivo(inf, "pdf").endsWith(".pdf")];
     r.pdf = pdf && pdf.blob ? pdf.blob.size > 1500 && pdf.paginas : pdf;
+    S.cotizador = { ...S.cotizador, logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" };
+    S.eid = "__ninguna__"; let pdf2 = null; try { pdf2 = await aPdfCotizacion(S.cotizaciones.find((x) => x.id === g.id)); } catch (e) { pdf2 = "ERR " + e.message; } S.eid = eidAntes;
+    r.pdfCot = pdf2 && pdf2.blob ? pdf2.blob.size > 2000 && pdf2.paginas >= 1 : pdf2;
     /* tarifario: se edita y conserva el correlativo */
     S.cq.tar = null; S.vista = "tarifario"; render(); await w(); r.tarVista = $("#t-plan-nom-0").value === "Plan Esencial" && $("#t-plan-nom-2").value === "Plan Gestión" && $("#t-plan-uf-1").value === "3";
     document.querySelector('[data-cq="t-agregar"][data-grupo="plan"]').click(); await w();
@@ -2438,7 +2441,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     $("#tp-razon").value = "Servicios de Prueba Ltda"; $("#tp-rut").value = "12.345.678-5";
     await guardarTarifario(); await w(400);
     const pl = S.cotizador.planes.find((x) => x.nombre === "Plan Prueba");
-    r.tarGuardado = !!pl && pl.uf === 2.5 && pl.incluye.length === 2 && S.cotizador.correlativo.n === 2 && S.cotizador.prestador.razon_social === "Servicios de Prueba Ltda";
+    r.logoConserva = S.cotizador.logo.startsWith("data:image/png"); r.tarGuardado = !!pl && pl.uf === 2.5 && pl.incluye.length === 2 && S.cotizador.correlativo.n === 2 && S.cotizador.prestador.razon_social === "Servicios de Prueba Ltda";
     for (const x of await S.almacen.leerCol("cotizaciones")) await S.almacen.del(`cotizaciones/${x.id}`);
     await S.almacen.del("config/cotizador"); S.cotizador = null; S.cq.tar = null; S.cq.edit = null; S.vista = "inicio"; render(); await w();
     return r;
@@ -2449,6 +2452,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("la lista de cotizaciones cambia de estado y avisa las vencidas", cot.enviada && cot.vencida && cot.lista, JSON.stringify(cot));
   ok("el PDF de la cotización sale con el encabezado del prestador, sin elegir empresa", cot.informe[0] === "COTIZACIÓN DE SERVICIOS" && cot.informe[1] === "SERVICIOS DE PRUEBA LTDA" && cot.informe[2] && cot.informe[3] && cot.informe[4] && cot.pdf >= 1, JSON.stringify([cot.informe, cot.pdf]));
   ok("el tarifario se edita, agrega planes y conserva el correlativo", cot.tarVista && cot.tarGuardado, JSON.stringify(cot));
+  ok("el PDF propio de la cotización se arma con logo, tablas y firmas, y el logo queda en el tarifario", cot.pdfCot === true && cot.logoConserva, JSON.stringify([cot.pdfCot, cot.logoConserva]));
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
