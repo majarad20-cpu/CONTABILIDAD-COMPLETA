@@ -2273,6 +2273,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     const d = S.previred_borr.find((x) => x.id === "2026-04"); r.doc = d && [d.declarado, d.folio, d.fecha_declaracion, d.total === esperado, d.trabajadores];
     S.vista = "rrhh"; render(); await w(); r.estado = /declarado/.test(document.body.innerText) && /2005202604384538/.test(document.body.innerText);
     S.pestana.prvd = "historial"; render(); await w(); r.historial = /Abril 2026|abril 2026/i.test(document.body.innerText) && /2005202604384538/.test(document.body.innerText);
+    { const inf = S.informe && S.informe(); r.histInf = !!inf && inf.titulo === "HISTORIAL DE PREVIRED" && inf.filas.length >= 2 && /^historial_previred_/.test(S.csv?.archivo || "") && S.csv.filas.length >= 2 && S.csv.filas[0][0] === "Mes"; }
     await S.almacen.set(`empresas/${S.eid}/liquidaciones/${t1.id}_2026-04`, { ...l, sueldo: l.sueldo }); await S.almacen.del(`empresas/${S.eid}/liquidaciones/${t1.id}_2026-04`); await w(300);
     S.pestana.prvd = "borrador"; render(); await w(); r.sinLiq = /No hay liquidaciones calculadas/.test(document.body.innerText);
     await S.almacen.del(`empresas/${S.eid}/previred_borr/2026-04`); await S.almacen.del(`empresas/${S.eid}/trabajadores/wb1`); await S.almacen.del(`empresas/${S.eid}/trabajadores/wb2`); await w(300); S.pestana.prvd = "borrador"; ir("inicio");
@@ -2283,6 +2284,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el borrador se exporta (informe y CSV)", bpv.informe, JSON.stringify(bpv));
   igual("se guarda como declarado con folio, fecha y total", bpv.doc, [true, "2005202604384538", "2026-05-08", true, 1]);
   ok("el mes aparece declarado y en el historial", bpv.estado && bpv.historial, JSON.stringify(bpv));
+  ok("el historial de Previred genera informe PDF/Excel y CSV", bpv.histInf, JSON.stringify(bpv));
   ok("sin liquidaciones el borrador lo indica", bpv.sinLiq, JSON.stringify(bpv));
 
   console.log("Comparación del borrador de Previred con la planilla pagada");
