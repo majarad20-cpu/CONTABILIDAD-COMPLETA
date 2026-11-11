@@ -2452,6 +2452,19 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("la lista de cotizaciones cambia de estado y avisa las vencidas", cot.enviada && cot.vencida && cot.lista, JSON.stringify(cot));
   ok("el PDF de la cotización sale con el encabezado del prestador, sin elegir empresa", cot.informe[0] === "COTIZACIÓN DE SERVICIOS" && cot.informe[1] === "SERVICIOS DE PRUEBA LTDA" && cot.informe[2] && cot.informe[3] && cot.informe[4] && cot.pdf >= 1, JSON.stringify([cot.informe, cot.pdf]));
   ok("el tarifario se edita, agrega planes y conserva el correlativo", cot.tarVista && cot.tarGuardado, JSON.stringify(cot));
+  const tema = await page.evaluate(async () => {
+    const w = (ms = 200) => new Promise((x) => setTimeout(x, ms)), r = {};
+    fijarApariencia(ESTILOS.find((x) => x[0] === "creando")[3], true); await w();
+    S.vista = "cotizador"; S.cq.edit = null; render(); await w();
+    const th = document.querySelector("th"), btn = document.querySelector(".btn:not(.sec)"), css = (el, p) => getComputedStyle(el)[p];
+    r.estilo = [document.documentElement.dataset.theme, apariencia().acento, apariencia().fuente, css(document.body, "fontFamily").includes("Helvetica")];
+    r.colores = [css(btn, "backgroundColor"), css(document.querySelector(".menu"), "borderBottomColor"), css(document.querySelector(".grupo.activo > .grupo-btn"), "color")];
+    S.cq.edit = cqNueva(); render(); await w(); r.th = css(document.querySelector("#cq-form th"), "backgroundColor"); S.cq.edit = null;
+    fijarApariencia({}, true); await w(); S.vista = "inicio"; render(); await w();
+    return r;
+  });
+  ok("el estilo CreandoGestión aplica tema, acento, tipografía y encabezados de tabla negros", tema.estilo[0] === "creando" && tema.estilo[1] === "creando" && tema.estilo[2] === "helvetica" && tema.estilo[3] && tema.th === "rgb(26, 26, 26)" && tema.colores[0] === "rgb(255, 189, 89)", JSON.stringify(tema));
+  ok("con el estilo CreandoGestión el menú lleva barra ámbar y el grupo activo texto ámbar oscuro", tema.colores[1] === "rgb(255, 189, 89)" && tema.colores[2] === "rgb(138, 79, 0)", JSON.stringify(tema));
   ok("el PDF propio de la cotización se arma con logo, tablas y firmas, y el logo queda en el tarifario", cot.pdfCot === true && cot.logoConserva, JSON.stringify([cot.pdfCot, cot.logoConserva]));
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
