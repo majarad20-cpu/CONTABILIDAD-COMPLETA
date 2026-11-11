@@ -213,6 +213,49 @@ Programa Flask (FastAPI y SQLite) con motor de cálculo puro, 12 pruebas que pas
 - **Lo que tiene la app y falta en rem:** centralización contable, Ley SANNA separada, semana corrida automática, contratos y PDF de liquidación y finiquito, DJ 1887 y 1879, varias empresas, haberes y descuentos fijos por trabajador.
 - **Cuidados del repositorio:** el `.rar` incluye `data/remuneraciones.db` (puede tener datos reales de trabajadores) aunque el `.gitignore` lo excluye; conviene sacarlo del repositorio. Sin respaldos automáticos ni usuarios.
 
+## Negocio y cumplimiento de la oficina (noviembre de 2026)
+
+Pendientes que salieron al revisar el programa, los precios del servicio y la normativa de 2026. No llevan datos de clientes.
+
+### Cotizador (versión 2.6.0 hecha; siguientes pasos)
+- **Hecho:** tarifario, cotizaciones con correlativo, estados, duplicar, filtros, PDF y respaldo en JSON, dentro del programa (menú «Comercial»).
+- **Siguiente:** versión en línea (formulario para que el cliente pida una cotización y la reciba), envío por correo, plantillas por régimen tributario, seguimiento del cobro de lo aceptado y conversión de una cotización aceptada en una empresa nueva.
+- **Antes de usarlo con clientes:** completar «Tarifario y datos» (razón social, RUT, giro, contacto, valor de la UF) y ajustar los precios sugeridos a los costos reales.
+
+### Análisis de rentabilidad por cliente (esperando datos del dueño)
+- **Ya entregado:** el cliente de maquinaria paga $60.000 al mes, $120.000 al año por trabajos anuales y pagó $200.000 por reconstruir 2021–2026; los demás clientes pagan de $20.000 a $30.000 al mes y desde $50.000 al año. Primera lectura: se cobra cerca de la mitad del piso publicado del mercado.
+- **Falta:** horas reales por cliente (documentos, remuneraciones y Previred, F29, cierre y consultas, trabajo anual, reconstrucción), meta de ingreso líquido, horas productivas al mes, costos fijos mensuales de la oficina, tasa de impuesto de la sociedad y cartera con cobro y horas por cliente.
+- **Resultado esperado:** valor por hora real, precio mínimo por cliente, tarifario de tres planes (Esencial, Pyme, Gestión) cobrado en UF y plan de ajuste por etapas con aviso de 30 días.
+
+### Ley 21.719 de datos personales (rige desde el 1 de diciembre de 2026)
+- Hoja de medidas mínimas del contador (quién accede, respaldos, aviso de filtraciones, devolver o borrar datos al terminar el servicio).
+- Texto del **encargo de tratamiento** para cada cliente, ya que el cliente es el responsable y el contador es el encargado.
+- Política de privacidad y atención de derechos de los titulares (acceso, rectificación, eliminación).
+- Respaldo mensual: «Respaldo de todas las empresas» y, desde 2.6.0, el respaldo del cotizador. Guardarlos fuera de la cuenta donde está el artefacto.
+
+### Normativa que hay que vigilar
+- **Ingreso mínimo desde el 1 de enero de 2027:** se reajusta por IPC (abril o mayo a diciembre de 2026) con decreto antes del 15 de enero. Cargar ingreso mínimo, asignación familiar y subsidio, topes en UF, UF y UTM.
+- **Ley 21.850 (rebaja del impuesto de primera categoría):** una fuente la da por publicada el 17-10-2026 (régimen general 25,5 % en 2027, 24 % en 2028 y 23 % desde 2029; Pro Pyme 23 % permanente desde 2029). Confirmar en el Diario Oficial o el SII y, si rige, actualizar `REGIMENES_RENTA` (hoy 27 % fijo en el régimen general y 25 % desde 2029 en Pro Pyme).
+- **Sala cuna universal:** en trámite (aprobada en la Comisión de Trabajo el 4-11-2026). Traería una cotización de 0,35 % compensada con baja del aporte del empleador al seguro de cesantía.
+- **Reforma de pensiones:** el aporte del empleador sube a 4,25 % en agosto de 2027 (ya está en el programa). **Jornada de 40 horas** en abril de 2028. **Guías de despacho:** nuevas exigencias desde el 1 de mayo de 2027.
+
+### Previred y libro de remuneraciones electrónico
+- Validar los archivos con los portales oficiales: el código los marca como borradores sin validar.
+- El campo 92 (renta imponible del mes anterior a una licencia médica) va fijo en cero: calcularlo cuando haya licencias.
+- Probar el aporte con rentabilidad protegida y el SIS con un trabajador activo (hoy el único trabajador es pensionado y no los genera).
+
+### Tributario
+- **PPM del régimen Pro Pyme:** confirmar en Mi SII qué tasa corresponde. Los F29 de 2025 usaron 2 %, y la Ley 21.755 rebaja a la mitad el PPM de las Pro Pyme.
+- **Proyección de renta y planificación del año comercial 2026:** sueldo empresarial de 2026 e incentivo al ahorro (código 1432) antes de abril de 2027.
+- **Pendientes de la empresa de maquinaria:** Previred de octubre ($116.689, vence el 13-11) y F29 de octubre (PPM $23.095, vence el 20-11); fecha de cobro de dos facturas de diciembre de 2024 ($4.645.000 netos) para saber si cabía declararlas; declaraciones juradas 1887 de 2022 a 2024; diferencias de egresos sin explicar de 2025 ($493.483 de activo fijo y $707.932 del código 1409) y de 2023 ($200.672 de IVA no recuperable); liquidaciones en PDF del sueldo empresarial de 2025.
+
+### Servicios y productos por desarrollar
+- Planes mensuales por régimen, número de documentos y trabajadores; plan anual (paga 10 meses de 12) y descuentos por combinar servicios.
+- Servicios únicos: reconstrucción o regularización, auditoría tributaria, informe ejecutivo con gráficos, proyección de renta, inicio de actividades, cambio de régimen, término de giro, finiquitos, pack de la Ley 21.719, rectificatorias.
+- Nicho posible: pymes agrícolas y de servicios agrícolas (IVA, combustible, activo fijo y depreciación).
+- Operación: carta de encargo estándar, checklist de incorporación de clientes, calendario de vencimientos por cliente y reporte mensual estandarizado.
+- Instagram: frase concreta y enlace al cotizador en la biografía, destacados de Planes, Casos y Preguntas, y un contenido semanal con un caso anonimizado y autorizado.
+
 ## Prioridad media (pospuesto por el dueño)
 
 Ideas evaluadas y aún no pedidas: conciliación bancaria por cartola, cuentas por cobrar y pagar con antigüedad y cobranza, flujo de caja proyectado, asistente de cierre mensual, asientos recurrentes y plantillas, centros de costo y presupuesto contra real, búsqueda global, inventario valorizado, papelera y deshacer.
