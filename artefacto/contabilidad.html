@@ -232,6 +232,22 @@ input[type="range"] { accent-color: var(--accent); }
 :root[data-resalte="marcado"] .tarjeta.neg { background: color-mix(in srgb, var(--neg) 10%, var(--surface)); border: 2px solid var(--neg); }
 :root[data-resalte="marcado"] .etiqueta.cerrado { box-shadow: 0 0 0 1px var(--warn-fg); }
 :root[data-theme="papel"] { --bg: #f1e9d6; --surface: #fbf6e9; --surface-2: #f0e6cc; --fg: #3b3226; --muted: #7a6c55; --line: #dccfb0; --warn-bg: #f7e6b8; color-scheme: light; }
+/* Tema «CreandoGestión»: blanco con negro y ámbar, como las cotizaciones (encabezados de tabla negros, filas de sección crema, totales en ámbar y barra ámbar bajo los encabezados). */
+:root[data-theme="creando"] { --bg: #faf7f1; --surface: #ffffff; --surface-2: #f5f0e6; --fg: #1a1a1a; --muted: #646464; --line: #e2e2e2; --neg: #b4231a; --warn-bg: #fff3de; --warn-fg: #7a4600; --ok-bg: #e7f3e8; --ok-fg: #1d5c33; --ambar: #ffbd59; --crema: #fff3de; --marron: #8a4f00; color-scheme: light; }
+:root[data-theme="creando"]:not([data-posmenu="lateral"]) .menu { border-bottom: 3px solid var(--ambar); }
+:root[data-theme="creando"][data-posmenu="lateral"] .menu { border-bottom: 0; border-right: 3px solid var(--ambar); }
+:root[data-theme="creando"] :is(nav button[aria-current="page"], .btn.enlace, tr.titulo td, .pestanas button[aria-selected="true"], .pagar-caja span, .pagar-caja strong, .etiqueta, .bit-tabs button[aria-pressed="true"], .ap-grupo button[aria-pressed="true"], .grupo.activo > .grupo-btn) { color: var(--marron); }
+:root[data-theme="creando"] nav button[aria-current="page"] { background: var(--crema); }
+:root[data-theme="creando"]:not([data-posmenu="lateral"]) .grupo.activo > .grupo-btn { color: var(--marron); box-shadow: inset 0 -3px 0 var(--ambar); }
+:root[data-theme="creando"] .btn.sec { color: var(--fg); border-color: var(--fg); }
+:root[data-theme="creando"] .btn.sec:hover { background: var(--crema); }
+:root[data-theme="creando"] .btn:not(.sec):not(.enlace):not(.peligro):hover { background: #ffad33; border-color: #ffad33; }
+:root[data-theme="creando"] th { background: #1a1a1a; color: #ffffff; border-color: #3a3a3a; border-bottom: 0; }
+:root[data-theme="creando"] tr.titulo td, :root[data-theme="creando"] tr.sub td { background: var(--crema); color: var(--fg); }
+:root[data-theme="creando"] tr.total td, :root[data-theme="creando"] tr.pagar td { background: var(--ambar); color: #1a1a1a; border-top: 0; }
+:root[data-theme="creando"] .cabecera { border-bottom: 3px solid var(--ambar); padding-bottom: 8px; }
+:root[data-theme="creando"] h1 { font-weight: 800; letter-spacing: -.02em; }
+:root[data-theme="creando"] .caja h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--marron); }
 :root[data-theme="nordico"] { --bg: #eceff4; --surface: #ffffff; --surface-2: #e5e9f0; --fg: #2e3440; --muted: #5e6b80; --line: #d3dae6; color-scheme: light; }
 :root[data-theme="medianoche"] { --bg: #0b1020; --surface: #111830; --surface-2: #19213f; --fg: #e6eaf7; --muted: #9aa5c6; --line: #263056; --neg: #f28b82; --warn-bg: #3a2f12; --warn-fg: #f3d58a; --ok-bg: #173226; --ok-fg: #9fdcbd; color-scheme: dark; }
 :root[data-theme="carbon"] { --bg: #111111; --surface: #1a1a1a; --surface-2: #242424; --fg: #eeeeee; --muted: #a0a0a0; --line: #343434; --neg: #f28b82; --warn-bg: #3a2f12; --warn-fg: #f3d58a; --ok-bg: #173226; --ok-fg: #9fdcbd; color-scheme: dark; }
@@ -394,7 +410,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Anticipo a proveedores",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Mercaderías",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Préstamos bancarios de corto plazo",1],["2.1.03","Documentos por pagar",1],["2.1.04","Acreedores varios",1],["2.1.05","Anticipo de clientes",1],["2.1.06","Remuneraciones por pagar",1],["2.1.07","Cotizaciones previsionales por pagar",1],["2.1.08","Retención de honorarios por pagar",1],["2.1.09","Impuesto único por pagar",1],["2.1.10","IVA débito fiscal",1],["2.1.11","PPM por pagar",1],["2.1.12","Impuesto a la renta por pagar",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.6.1";
+const VERSION = "2.6.2";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -10752,12 +10768,12 @@ document.addEventListener("change", (ev) => {
 
 /* ------------------------------------------------------------------ apariencia */
 /* [nombre, fondo, superficie, texto, ¿oscuro?] */
-const TEMAS = { light: ["Claro", "#f3f6f5", "#ffffff", "#16201c", false], dark: ["Oscuro", "#0e1412", "#151d1a", "#e3ebe8", true], papel: ["Papel", "#f1e9d6", "#fbf6e9", "#3b3226", false],
+const TEMAS = { creando: ["CreandoGestión", "#faf7f1", "#ffffff", "#1a1a1a", false], light: ["Claro", "#f3f6f5", "#ffffff", "#16201c", false], dark: ["Oscuro", "#0e1412", "#151d1a", "#e3ebe8", true], papel: ["Papel", "#f1e9d6", "#fbf6e9", "#3b3226", false],
   nordico: ["Nórdico", "#eceff4", "#ffffff", "#2e3440", false], medianoche: ["Medianoche", "#0b1020", "#111830", "#e6eaf7", true], carbon: ["Carbón", "#111111", "#1a1a1a", "#eeeeee", true], hc: ["Alto contraste", "#ffffff", "#ffffff", "#000000", false],
   menta: ["Menta suave", "#e4eee8", "#f4faf6", "#1e2c26", false], cielo: ["Cielo", "#e5eef7", "#f4f8fc", "#1b2938", false], lavanda: ["Lavanda", "#ebe8f3", "#f6f4fa", "#29253f", false], durazno: ["Durazno", "#f3e7df", "#fbf3ed", "#3a2920", false], niebla: ["Niebla", "#e6e8ea", "#f5f6f7", "#22262a", false], marfil: ["Marfil tenue", "#e8e6de", "#f3f1ea", "#2a2924", false] };
-const ACENTOS = { verde: ["Verde", "#1b6a55"], azul: ["Azul", "#1f5fae"], celeste: ["Celeste", "#0e7490"], violeta: ["Violeta", "#6b46c1"], rosa: ["Rosa", "#be185d"], rojo: ["Rojo", "#b91c1c"],
+const ACENTOS = { creando: ["CreandoGestión", "#ffbd59"], verde: ["Verde", "#1b6a55"], azul: ["Azul", "#1f5fae"], celeste: ["Celeste", "#0e7490"], violeta: ["Violeta", "#6b46c1"], rosa: ["Rosa", "#be185d"], rojo: ["Rojo", "#b91c1c"],
   terracota: ["Terracota", "#b4532a"], ambar: ["Ámbar", "#a16207"], grafito: ["Grafito", "#3b4752"] };
-const FUENTES_UI = { plex: ["IBM Plex Sans", '"IBM Plex Sans", "Segoe UI", system-ui, sans-serif'], inter: ["Inter", 'Inter, "Segoe UI", system-ui, sans-serif'], sourcesans: ["Source Sans", '"Source Sans 3", "Segoe UI", system-ui, sans-serif'],
+const FUENTES_UI = { helvetica: ["Helvetica / Arial", '"Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif'], plex: ["IBM Plex Sans", '"IBM Plex Sans", "Segoe UI", system-ui, sans-serif'], inter: ["Inter", 'Inter, "Segoe UI", system-ui, sans-serif'], sourcesans: ["Source Sans", '"Source Sans 3", "Segoe UI", system-ui, sans-serif'],
   atkinson: ["Atkinson (alta legibilidad)", '"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif'], serif: ["Source Serif (con serifa)", '"Source Serif 4", Georgia, serif'], sistema: ["Del sistema", 'system-ui, "Segoe UI", sans-serif'] };
 const FUENTES_NUM = { plex: ["IBM Plex Mono", '"IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace'], jetbrains: ["JetBrains Mono", '"JetBrains Mono", ui-monospace, Consolas, monospace'],
   sistema: ["Monoespaciada del sistema", 'ui-monospace, "Cascadia Mono", Consolas, monospace'], igual: ["Igual que el texto", "var(--font-ui)"] };
@@ -10766,6 +10782,7 @@ const MENUS = { estrecho: "Estrecho", normal: "Normal", ancho: "Ancho" };
 const APARIENCIA_BASE = { tema: "sistema", acento: "verde", acentoPersonal: "#1b6a55", fuente: "plex", fuenteNum: "plex", texto: 100, densidad: "normal", radio: "suave", ancho: "completo", menu: "normal", bordes: "sutil", sombras: "ninguna", cebra: "no", movimiento: "normal", brillo: 100, calido: 0, calidoAuto: "no", resalte: "suave" };
 const ESTILOS = [
   ["clasico", "Clásico", "El aspecto original: verde sereno y bordes suaves.", {}],
+  ["creando", "CreandoGestión", "Blanco con negro y ámbar, como las cotizaciones: encabezados de tabla negros, totales en ámbar y letra Helvetica.", { tema: "creando", acento: "creando", fuente: "helvetica", fuenteNum: "igual", radio: "suave" }],
   ["moderno", "Moderno", "Limpio y luminoso, con esquinas redondeadas y sombras suaves.", { tema: "light", acento: "azul", fuente: "inter", fuenteNum: "jetbrains", radio: "redondo", sombras: "suave" }],
   ["contable", "Libro contable", "Papel crema, letra con serifa y filas alternadas, como un libro impreso.", { tema: "papel", acento: "ambar", fuente: "serif", radio: "recto", cebra: "si", bordes: "marcado" }],
   ["ejecutivo", "Ejecutivo", "Sobrio en grises fríos, compacto y centrado.", { tema: "nordico", acento: "grafito", fuente: "sourcesans", densidad: "compacta", cebra: "si", ancho: "centrado" }],
