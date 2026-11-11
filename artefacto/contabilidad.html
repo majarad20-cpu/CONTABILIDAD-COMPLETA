@@ -394,7 +394,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Anticipo a proveedores",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Mercaderías",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Préstamos bancarios de corto plazo",1],["2.1.03","Documentos por pagar",1],["2.1.04","Acreedores varios",1],["2.1.05","Anticipo de clientes",1],["2.1.06","Remuneraciones por pagar",1],["2.1.07","Cotizaciones previsionales por pagar",1],["2.1.08","Retención de honorarios por pagar",1],["2.1.09","Impuesto único por pagar",1],["2.1.10","IVA débito fiscal",1],["2.1.11","PPM por pagar",1],["2.1.12","Impuesto a la renta por pagar",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.5.5";
+const VERSION = "2.6.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -674,6 +674,7 @@ const SECCIONES_SIMPLE = [
   ["Tributario", [["rcv", "Compras y ventas (RCV)"], ["sueldos", "Sueldo empresarial"], ["honorarios", "Honorarios"], ["f29", "Borrador F29"], ["renta", "Renta anual (F22)"], ["dj", "Declaraciones juradas"]]],
   ["Gestión", [["rrhh", "Personal y remuneraciones"], ["activos", "Activo fijo"]]],
   ["Informes", [["resumen", "Resumen ejecutivo"]]],
+  ["Comercial", [["cotizador", "Cotizaciones"], ["tarifario", "Tarifario y datos"]]],
   ["Administración", [["bitacora", "Bitácora"], ["revisor", "Revisor de datos"], ["empresa", "Datos de la empresa"], ["contador", "Contador y firma"], ["apariencia", "Apariencia"], ["empresas", "Empresas e importación"]]],
 ];
 const SECCIONES = [
@@ -683,14 +684,15 @@ const SECCIONES = [
   ["Gestión", [["rrhh", "Personal y remuneraciones"], ["activos", "Activo fijo"]]],
   ["Libros", [["diario", "Libro Diario"], ["mayor", "Libro Mayor"]]],
   ["Informes", [["resumen", "Resumen ejecutivo"], ["ocho", "Balance de 8 columnas"], ["resultados", "Estado de Resultados"], ["general", "Balance General"]]],
+  ["Comercial", [["cotizador", "Cotizaciones"], ["tarifario", "Tarifario y datos"]]],
   ["Administración", [["periodos", "Cierre de meses"], ["cierre", "Cierre de ejercicio"], ["apertura", "Apertura de ejercicio"],
     ["bitacora", "Bitácora"], ["revisor", "Revisor de datos"], ["empresa", "Datos de la empresa"], ["contador", "Contador y firma"], ["apariencia", "Apariencia"], ["empresas", "Empresas e importación"]]],
 ];
 
-const SIN_EMPRESA = ["empresas", "contador", "apariencia", "panel"];
+const SIN_EMPRESA = ["empresas", "contador", "apariencia", "panel", "cotizador", "tarifario"];
 function ir(vista) {
   if (vista === "nuevo") { abrirEditor(null); return; }
-  S.vista = vista; S.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.f29Pago = null; S.vincular = null; S.cuentaRapida = null; S.tribPend = null; S.docEdit = null; S.rcvMensajes = null; S.migra = null; S.migraCaja = null; S.socioEdit = null; S.propEdit = null; S.anexoEdit = null; S.boletaEdit = null;
+  S.vista = vista; S.confirmar = null; S.cq.edit = null; S.cq.tar = null; S.cq.confirmar = null; S.cuentaEdit = null; S.folioPendiente = false; S.f29Ver = null; S.f29Pago = null; S.vincular = null; S.cuentaRapida = null; S.tribPend = null; S.docEdit = null; S.rcvMensajes = null; S.migra = null; S.migraCaja = null; S.socioEdit = null; S.propEdit = null; S.anexoEdit = null; S.boletaEdit = null;
   S.activoEdit = null; S.trabEdit = null; S.contratoVer = null; S.liqVer = null; S.prevEdit = null;
   if (vista !== "editor") recordar("vista", vista);
   render();
@@ -758,10 +760,10 @@ function render() {
   let html;
   if (!e && !SIN_EMPRESA.includes(S.vista)) html = vistaSinEmpresa();
   else if (S.cargandoAsientos && ![...SIN_EMPRESA, "empresa", "cuentas"].includes(S.vista)) html = `<div class="vacio"><p>Cargando asientos de ${esc(e.razon_social)}…</p></div>`;
-  else if (esSimplificada() && !SECCIONES_SIMPLE.some(([, it]) => it.some(([v]) => v === S.vista))) html = vistaInicio();
+  else if (esSimplificada() && !SIN_EMPRESA.includes(S.vista) && !SECCIONES_SIMPLE.some(([, it]) => it.some(([v]) => v === S.vista))) html = vistaInicio();
   else html = ({ inicio: vistaInicio, asientos: vistaAsientos, editor: vistaEditor, cuentas: vistaCuentas, diario: vistaDiario, mayor: vistaMayor,
     ocho: vistaOcho, resultados: vistaResultados, general: vistaGeneral, empresa: vistaEmpresa, empresas: vistaEmpresas,
-    periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador, apariencia: vistaApariencia, resumen: vistaResumen, caja: vistaCaja, panel: vistaPanel, revisor: vistaRevisor, bitacora: vistaBitacora,
+    periodos: vistaPeriodos, cierre: vistaCierre, apertura: vistaApertura, contador: vistaContador, cotizador: vistaCotizador, tarifario: vistaTarifario, apariencia: vistaApariencia, resumen: vistaResumen, caja: vistaCaja, panel: vistaPanel, revisor: vistaRevisor, bitacora: vistaBitacora,
     rcv: vistaRcv, tributarias: vistaTributarias, f29: vistaF29, sueldos: vistaSueldos, honorarios: vistaHonorarios,
     rrhh: vistaRrhh, activos: vistaActivos, renta: vistaRenta, dj: vistaDj }[S.vista] || vistaInicio)();
   const banner = !S.almacen.enLinea
@@ -3570,8 +3572,8 @@ async function aPdf(inf, folioInicial = null) {
   const peso = inf.columnas.reduce((s, c) => s + c.ancho, 0);
   const anchos = inf.columnas.map((c) => (anchoUtil * c.ancho) / peso);
   const cuerpo = n >= 12 ? 5.8 : n > 7 ? 7 : 7.5, relleno = n >= 12 ? 1.5 : 4, vrelleno = inf.paneles ? 1.1 : 2.3;
-  const e = empresa();
-  doc.setProperties({ title: `${inf.titulo} – ${e.razon_social}`, author: e.razon_social });
+  const e = empresa() || {};
+  doc.setProperties({ title: `${inf.titulo} – ${inf.autor ?? e.razon_social}`, author: inf.autor ?? e.razon_social });
 
   const celdaDe = (f, j, c, v) => {
     const dentro = f.abarca === null || j < f.abarca;
@@ -3752,13 +3754,13 @@ async function aPdf(inf, folioInicial = null) {
     doc.setPage(p);
     const arriba = 1.2 * CM;
     doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "bold"); doc.setFontSize(6.5);
-    lineasEmpresa(e).forEach((t, k) => doc.text(doc.splitTextToSize(textoPdf(t), anchoUtil * 0.7)[0], margen, arriba + k * 0.28 * CM));
+    (inf.emisor || lineasEmpresa(e)).forEach((t, k) => doc.text(doc.splitTextToSize(textoPdf(t), anchoUtil * 0.7)[0], margen, arriba + k * 0.28 * CM));
     doc.setFontSize(11); doc.text(textoPdf(inf.titulo), W / 2, arriba + 1.55 * CM, { align: "center" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.text(doc.splitTextToSize(textoPdf(inf.subtitulo), anchoUtil)[0], W / 2, arriba + 1.9 * CM, { align: "center" });
     doc.setDrawColor(...GRIS_GRILLA); doc.setLineWidth(0.5);
     doc.line(margen, arriba + 2.1 * CM, W - margen, arriba + 2.1 * CM);
     doc.line(margen, H - 1.35 * CM, W - margen, H - 1.35 * CM);
-    doc.setFontSize(7); doc.text(nombrePrograma(), margen, H - 1.0 * CM);
+    doc.setFontSize(7); doc.text(inf.pie ?? nombrePrograma(), margen, H - 1.0 * CM);
     doc.text(`PÁGINA ${p} DE ${total}`, W - margen, H - 1.0 * CM, { align: "right" });
     if (folioInicial != null) { doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(`FOLIO: ${folioInicial + p - 1}`, W - margen, arriba, { align: "right" }); }
   }
@@ -3977,7 +3979,7 @@ async function guardarArchivo(nombre, blob) {
   try { await S.descargas.save({ filename: nombre, data: blob }); return true; }
   catch (err) { if (err?.code === "declined") return false; throw err; }
 }
-function nombreArchivo(inf, ext) { return `${nombreSeguro(empresa().razon_social)}_${inf.nombre}.${ext}`; }
+function nombreArchivo(inf, ext) { return inf.archivo ? `${inf.archivo}.${ext}` : `${nombreSeguro(empresa()?.razon_social)}_${inf.nombre}.${ext}`; }
 
 async function exportar(formato) {
   if (!S.informe) return;
@@ -7752,6 +7754,348 @@ document.addEventListener("change", (ev) => {
   else if (el.closest?.("#form-renta") && S.rentaEdit) actualizarRenta();
 });
 
+/* ------------------------------------------------------------------ cotizador (propio del contador, sin empresa) */
+/* Cotizaciones y tarifario de la oficina contable. No dependen de ninguna empresa: se guardan en «config/cotizador» (tarifario, datos del prestador y correlativo)
+   y en la colección «cotizaciones». Los valores del tarifario son sugeridos (referencias de mercado de 2026): se editan en «Tarifario y datos». */
+const COTIZADOR_BASE = {
+  prestador: { nombre_fantasia: "", razon_social: "", rut: "", giro: "Servicios contables, tributarios y laborales", direccion: "", comuna: "", contacto: "", correo: "", telefono: "", web: "", exento_iva: true },
+  vigencia_dias: 15, meses_pago_anual: 10, uf: { valor: 0, fecha: "" },
+  planes: [
+    { id: "esencial", nombre: "Plan Esencial", uf: 1.5, incluye: ["Declaración mensual de IVA (F29) y PPM", "Registro de compras y ventas", "Libros contables y balance de 8 columnas", "Hasta 20 documentos al mes, sin trabajadores", "Consultas por WhatsApp", "Declaración de renta anual (F22)"] },
+    { id: "pyme", nombre: "Plan Pyme", uf: 3, incluye: ["Todo lo del Plan Esencial", "Hasta 60 documentos al mes", "Remuneraciones, Previred y libro de remuneraciones electrónico hasta 3 trabajadores", "Contratos, anexos y finiquitos", "Reporte mensual de resultados"] },
+    { id: "gestion", nombre: "Plan Gestión", uf: 5.5, incluye: ["Todo lo del Plan Pyme", "Contabilidad completa con balance anual y libros foliados", "Resumen ejecutivo con gráficos", "Proyección de renta y PPM", "Reunión trimestral de seguimiento"] },
+  ],
+  extras: [
+    { id: "trab", nombre: "Trabajador adicional (liquidación, contrato y Previred)", uf: 0.3, unidad: "por trabajador al mes" },
+    { id: "docs", nombre: "Tramo adicional de 20 documentos al mes", uf: 0.4, unidad: "por tramo al mes" },
+    { id: "reunion", nombre: "Reunión mensual de seguimiento", uf: 1, unidad: "al mes" },
+  ],
+  servicios: [
+    { id: "inicio", nombre: "Inicio de actividades y constitución de empresa", uf: 3, per: "unica" },
+    { id: "recons", nombre: "Reconstrucción o regularización contable (por año reconstruido)", uf: 4, per: "unica" },
+    { id: "audit", nombre: "Auditoría tributaria: cuadre de F29, F22 y registro de compras y ventas", uf: 4, per: "unica" },
+    { id: "informe", nombre: "Informe ejecutivo con cifras y gráficos", uf: 2, per: "unica" },
+    { id: "proy", nombre: "Proyección de renta y planificación tributaria", uf: 3, per: "unica" },
+    { id: "balance", nombre: "Balance anual y libros foliados", uf: 5, per: "anual" },
+    { id: "renta", nombre: "Declaración de renta anual (F22)", uf: 2, per: "anual" },
+    { id: "regimen", nombre: "Cambio de régimen tributario", uf: 2, per: "unica" },
+    { id: "giro", nombre: "Término de giro", uf: 6, per: "unica" },
+    { id: "finiquito", nombre: "Finiquito de trabajador", uf: 1, per: "unica" },
+    { id: "datos", nombre: "Pack de cumplimiento de la Ley 21.719 (datos personales)", uf: 3, per: "unica" },
+    { id: "rectif", nombre: "Rectificatoria de F29 o F22", uf: 1.5, per: "unica" },
+  ],
+  condiciones: [
+    "Los valores están expresados en UF y se convierten a pesos con el valor de la UF del día de cada cobro.",
+    "Esta cotización es válida hasta la fecha indicada; pasada esa fecha los valores pueden cambiar.",
+    "No incluye multas, intereses ni reajustes del SII, la TGR ni Previred, que son de cargo del cliente.",
+    "El cliente entrega la información y los respaldos dentro de los plazos acordados para cumplir los vencimientos.",
+    "Los datos personales del cliente y de sus trabajadores se tratan solo para prestar el servicio y se resguardan conforme a la Ley 21.719.",
+  ],
+  correlativo: { anio: 0, n: 0 },
+};
+const ESTADOS_COT = { borrador: "Borrador", enviada: "Enviada", aceptada: "Aceptada", rechazada: "Rechazada" };
+const PER_COT = { mensual: "Mensual", unica: "Una vez", anual: "Anual" };
+S.cotizador = null; S.cotizaciones = []; S.cq = { edit: null, tar: null, filtro: { estado: "", anio: "" }, confirmar: null };
+
+const cqCopia = (x) => JSON.parse(JSON.stringify(x));
+function cqCfg() {
+  const c = S.cotizador || {}, b = COTIZADOR_BASE;
+  return { ...b, ...c, prestador: { ...b.prestador, ...(c.prestador || {}) }, uf: { ...b.uf, ...(c.uf || {}) }, planes: c.planes || b.planes, extras: c.extras || b.extras,
+    servicios: c.servicios || b.servicios, condiciones: c.condiciones || b.condiciones, correlativo: { ...b.correlativo, ...(c.correlativo || {}) } };
+}
+const cqUf = () => cqCfg().uf.valor || valorUf(hoy().slice(0, 7)) || 0;
+const ufTxt = (n) => { const v = Math.round((+n || 0) * 100) / 100, [e, d] = v.toFixed(2).split("."); return `${e.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${d}`; };
+/* Número escrito por una persona: «1,5», «1.5», «41.274,20» y «41.274» (puntos de miles) se leen bien. */
+function cqNum(t) {
+  let s = String(t ?? "").trim();
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+  const x = Number(s); return Number.isFinite(x) ? x : 0;
+}
+const cqSumarDias = (f, d) => { const x = new Date(f + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + d); return x.toISOString().slice(0, 10); };
+function cqSiguienteNumero() {
+  const c = cqCfg().correlativo, anio = +hoy().slice(0, 4), n = c.anio === anio ? (c.n || 0) + 1 : 1;
+  return { anio, n, nro: `COT-${anio}-${String(n).padStart(3, "0")}` };
+}
+function cqNueva() {
+  const cfg = cqCfg(), f = hoy();
+  return { nro: "", fecha: f, vigencia_hasta: cqSumarDias(f, cfg.vigencia_dias), estado: "borrador", cliente: { nombre: "", rut: "", contacto: "", correo: "", telefono: "", giro: "", regimen: "" },
+    lineas: [], desc_pct: 0, modalidad: "mensual", meses_pago: cfg.meses_pago_anual, uf_valor: cqUf(), exento_iva: cfg.prestador.exento_iva !== false, notas: "" };
+}
+/* Totales de una cotización: mensualidad con descuento, servicios únicos y anuales, y total del primer año, en UF y en pesos. */
+function cqCalcular(q) {
+  const suma = (per) => (q.lineas || []).filter((l) => l.per === per).reduce((s, l) => s + (+l.uf || 0) * (+l.cant || 0), 0), r2 = (x) => Math.round(x * 100) / 100;
+  const bruto = suma("mensual"), unico = suma("unica"), anual = suma("anual"), desc = Math.min(Math.max(+q.desc_pct || 0, 0), 100);
+  const descuento = (bruto * desc) / 100, mensual = bruto - descuento, meses = q.modalidad === "anual" ? Math.min(Math.max(+q.meses_pago || 10, 1), 12) : 12;
+  const recurrente = mensual * meses, primerAnio = recurrente + unico + anual, uf = +q.uf_valor || 0, tasaIva = q.exento_iva === false ? 0.19 : 0;
+  const pesos = (x) => Math.round(x * uf);
+  const t = { bruto: r2(bruto), desc, descuento: r2(descuento), mensual: r2(mensual), unico: r2(unico), anual: r2(anual), meses, recurrente: r2(recurrente), primerAnio: r2(primerAnio), uf, tasaIva };
+  for (const k of ["bruto", "descuento", "mensual", "unico", "anual", "recurrente", "primerAnio"]) t[k + "Clp"] = pesos(t[k]);
+  t.ivaPrimerAnioClp = Math.round(t.primerAnioClp * tasaIva); t.totalPrimerAnioClp = t.primerAnioClp + t.ivaPrimerAnioClp;
+  return t;
+}
+const cqEstadoVisible = (q) => (q.estado === "enviada" && q.vigencia_hasta && q.vigencia_hasta < hoy() ? "Enviada (vencida)" : ESTADOS_COT[q.estado] || q.estado);
+
+/* ---- lista de cotizaciones ---- */
+function vistaCotizador() {
+  if (S.cq.edit) return vistaCotizacionEditor();
+  const F = S.cq.filtro, todas = S.cotizaciones.slice().sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : String(b.nro).localeCompare(String(a.nro))));
+  const anios = [...new Set(todas.map((x) => (x.fecha || "").slice(0, 4)).filter(Boolean))].sort().reverse();
+  const lista = todas.filter((x) => (!F.estado || x.estado === F.estado) && (!F.anio || (x.fecha || "").startsWith(F.anio)));
+  const cuenta = (e) => todas.filter((x) => x.estado === e).length, acept = todas.filter((x) => x.estado === "aceptada");
+  const recurrente = acept.reduce((s, x) => s + cqCalcular(x).mensual, 0), cerradas = cuenta("aceptada") + cuenta("rechazada"), uf = cqUf();
+  return `${cabecera("Cotizaciones", `${todas.length} cotización${todas.length === 1 ? "" : "es"}`)}
+  <div class="caja"><p class="ayuda">Borradores: ${cuenta("borrador")} · Enviadas: ${cuenta("enviada")} · Aceptadas: ${cuenta("aceptada")} · Rechazadas: ${cuenta("rechazada")}${cerradas ? ` · Tasa de aceptación: ${Math.round((cuenta("aceptada") / cerradas) * 100)} %` : ""}.
+    Ingreso mensual de las cotizaciones aceptadas: <strong>${ufTxt(recurrente)} UF</strong>${uf ? ` (≈ $${clp(Math.round(recurrente * uf))} al valor de UF configurado)` : ""}.</p></div>
+  <div class="barra">
+    <label>Estado<select id="cq-f-estado"><option value="">Todos</option>${Object.entries(ESTADOS_COT).map(([k, v]) => `<option value="${k}" ${F.estado === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+    <label>Año<select id="cq-f-anio"><option value="">Todos</option>${anios.map((y) => `<option ${F.anio === y ? "selected" : ""}>${y}</option>`).join("")}</select></label>
+    ${puedeEditar(`<button class="btn" type="button" data-cq="nueva">+ Nueva cotización</button>`)}
+    <button class="btn sec" type="button" data-ir="tarifario">Tarifario y datos</button></div>
+  ${lista.length ? `<div class="tabla"><table><thead><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th class="num">Mensual (UF)</th><th class="num">Mensual ($)</th><th class="num">Únicos y anuales (UF)</th><th>Válida hasta</th><th>Estado</th><th></th></tr></thead><tbody>
+    ${lista.map((x) => { const t = cqCalcular(x); return `<tr class="clic"><td><strong>${esc(x.nro)}</strong></td><td>${fmtFecha(x.fecha)}</td><td>${esc(x.cliente?.nombre || "")}</td>
+      <td class="num">${ufTxt(t.mensual)}</td><td class="num">${clp(t.mensualClp)}</td><td class="num">${ufTxt(t.unico + t.anual)}</td><td>${fmtFecha(x.vigencia_hasta)}</td>
+      <td>${S.puedeEscribir ? `<select class="cq-estado-lista" data-id="${esc(x.id)}" aria-label="Estado de ${esc(x.nro)}">${Object.entries(ESTADOS_COT).map(([k, v]) => `<option value="${k}" ${x.estado === k ? "selected" : ""}>${v}</option>`).join("")}</select>` : esc(cqEstadoVisible(x))}${x.estado === "enviada" && x.vigencia_hasta < hoy() ? ' <span class="etiqueta cerrado">vencida</span>' : ""}</td>
+      <td style="white-space:nowrap"><button class="btn enlace" type="button" data-cq="abrir" data-id="${esc(x.id)}">Abrir</button> <button class="btn enlace" type="button" data-cq="pdf-lista" data-id="${esc(x.id)}">PDF</button>
+        ${puedeEditar(`<button class="btn enlace" type="button" data-cq="duplicar" data-id="${esc(x.id)}">Duplicar</button>`)}</td></tr>`; }).join("")}</tbody></table></div>`
+    : `<div class="caja vacio"><p>${todas.length ? "Ninguna cotización coincide con el filtro." : "Aún no hay cotizaciones. Pulsa «Nueva cotización» para crear la primera, o revisa antes el «Tarifario y datos»."}</p></div>`}`;
+}
+
+/* ---- editor de una cotización ---- */
+function vistaCotizacionEditor() {
+  const q = S.cq.edit, c = q.cliente || {}, ro = S.puedeEscribir ? "" : "readonly", cfg = cqCfg();
+  const opciones = `<option value="">Agregar al detalle…</option>
+    <optgroup label="Planes mensuales">${cfg.planes.map((p) => `<option value="plan:${esc(p.id)}">${esc(p.nombre)} · ${ufTxt(p.uf)} UF</option>`).join("")}</optgroup>
+    <optgroup label="Adicionales mensuales">${cfg.extras.map((p) => `<option value="extra:${esc(p.id)}">${esc(p.nombre)} · ${ufTxt(p.uf)} UF</option>`).join("")}</optgroup>
+    <optgroup label="Servicios únicos y anuales">${cfg.servicios.map((p) => `<option value="servicio:${esc(p.id)}">${esc(p.nombre)} · ${ufTxt(p.uf)} UF (${PER_COT[p.per || "unica"].toLowerCase()})</option>`).join("")}</optgroup>
+    <optgroup label="Otro"><option value="libre:">Línea libre (la describes tú)</option></optgroup>`;
+  return `${cabecera(q.id ? `Cotización ${q.nro}` : "Nueva cotización", q.id ? cqEstadoVisible(q) : "Borrador")}
+  <form class="caja" id="cq-form" data-form="cq">
+    <h2>Cliente</h2>
+    <div class="form">
+      <label>Nombre o razón social<input id="cq-nombre" value="${esc(c.nombre)}" required ${ro}></label>
+      <label>RUT<input id="cq-rut" value="${esc(c.rut)}" placeholder="12.345.678-5" ${ro}></label>
+      <label>Contacto<input id="cq-contacto" value="${esc(c.contacto)}" placeholder="Persona con quien se conversó" ${ro}></label>
+      <label>Correo<input id="cq-correo" value="${esc(c.correo)}" ${ro}></label>
+      <label>Teléfono<input id="cq-telefono" value="${esc(c.telefono)}" ${ro}></label>
+      <label>Giro o actividad<input id="cq-giro" value="${esc(c.giro)}" ${ro}></label>
+      <label>Régimen tributario<input id="cq-regimen" value="${esc(c.regimen)}" placeholder="Ej.: Pro Pyme general (14 D N° 3)" ${ro}></label></div>
+    <h2>Condiciones</h2>
+    <div class="form">
+      <label>Fecha<input type="date" id="cq-fecha" value="${esc(q.fecha)}" ${ro}></label>
+      <label>Válida hasta<input type="date" id="cq-vigencia" value="${esc(q.vigencia_hasta)}" ${ro}></label>
+      <label>Estado<select id="cq-estado" ${S.puedeEscribir ? "" : "disabled"}>${Object.entries(ESTADOS_COT).map(([k, v]) => `<option value="${k}" ${q.estado === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <label>Valor de la UF ($)<input id="cq-uf" inputmode="decimal" value="${q.uf_valor ? esc(String(q.uf_valor).replace(".", ",")) : ""}" placeholder="Ej.: 41.274,20" ${ro}></label>
+      <label>Descuento a la mensualidad (%)<input id="cq-desc" inputmode="decimal" value="${q.desc_pct ? esc(String(q.desc_pct).replace(".", ",")) : ""}" placeholder="0" ${ro}></label>
+      <label>Modalidad de pago<select id="cq-modalidad" ${S.puedeEscribir ? "" : "disabled"}><option value="mensual" ${q.modalidad === "mensual" ? "selected" : ""}>Mensual (12 pagos)</option><option value="anual" ${q.modalidad === "anual" ? "selected" : ""}>Anual anticipado (${esc(q.meses_pago || 10)} de 12 meses)</option></select></label>
+      <label class="check"><input type="checkbox" id="cq-exento" ${q.exento_iva !== false ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Servicios exentos de IVA</label></div>
+    <h2>Detalle</h2>
+    <div class="tabla"><table><thead><tr><th>Concepto</th><th>Frecuencia</th><th class="num">Cantidad</th><th class="num">UF c/u</th><th class="num">Total UF</th><th></th></tr></thead><tbody>
+      ${q.lineas.length ? q.lineas.map((l, i) => `<tr><td>${l.k === "libre" ? `<input id="cq-nom-${i}" value="${esc(l.nombre)}" placeholder="Descripción del servicio" ${ro}>` : esc(l.nombre)}</td>
+        <td>${l.k === "libre" ? `<select id="cq-per-${i}" ${S.puedeEscribir ? "" : "disabled"}>${Object.entries(PER_COT).map(([k, v]) => `<option value="${k}" ${l.per === k ? "selected" : ""}>${v}</option>`).join("")}</select>` : esc(PER_COT[l.per] || l.per)}</td>
+        <td class="num"><input id="cq-cant-${i}" class="monto" inputmode="decimal" value="${esc(String(l.cant).replace(".", ","))}" ${ro}></td>
+        <td class="num"><input id="cq-lu-${i}" class="monto" inputmode="decimal" value="${esc(String(l.uf).replace(".", ","))}" ${ro}></td>
+        <td class="num" id="cq-lt-${i}">${ufTxt((+l.uf || 0) * (+l.cant || 0))}</td>
+        <td>${puedeEditar(`<button class="btn enlace" type="button" data-cq="quitar" data-i="${i}">Quitar</button>`)}</td></tr>`).join("") : `<tr><td colspan="6" class="ayuda">Aún no hay conceptos. Agrega un plan, adicionales o servicios.</td></tr>`}</tbody></table></div>
+    ${puedeEditar(`<div class="barra"><label>Concepto<select id="cq-agregar">${opciones}</select></label><button class="btn sec" type="button" data-cq="agregar">Agregar</button></div>`)}
+    <div id="cq-totales">${cqTotalesHtml(q)}</div>
+    <label style="display:block">Notas para el cliente (opcional)<textarea id="cq-notas" rows="3" style="width:100%;margin-top:4px" ${ro}>${esc(q.notas)}</textarea></label>
+    <div class="acciones">
+      ${puedeEditar(`<button class="btn" type="submit">Guardar cotización</button>`)}
+      <button class="btn sec" type="button" data-cq="pdf">Descargar PDF</button>
+      <button class="btn sec" type="button" data-cq="volver">Volver a la lista</button>
+      ${q.id && S.puedeEscribir ? (S.cq.confirmar === q.id ? `<span class="confirmar"><span>¿Eliminar esta cotización?</span><button class="btn peligro" type="button" data-cq="eliminar">Sí, eliminar</button><button class="btn sec" type="button" data-cq="cancelar-eliminar">No</button></span>` : `<button class="btn enlace" type="button" data-cq="pedir-eliminar">Eliminar</button>`) : ""}
+    </div>
+  </form>`;
+}
+function cqTotalesHtml(q) {
+  const t = cqCalcular(q), sinUf = !t.uf;
+  const fila = (txt, uf, pesos, fuerte) => `<tr class="${fuerte ? "total" : ""}"><td>${txt}</td><td class="num">${ufTxt(uf)}</td><td class="num">${sinUf ? "—" : (pesos < 0 ? "-$" : "$") + clp(Math.abs(pesos))}</td></tr>`;
+  return `<div class="tabla"><table><thead><tr><th>Resumen</th><th class="num">UF</th><th class="num">Pesos</th></tr></thead><tbody>
+    ${t.bruto ? fila("Mensualidad antes del descuento", t.bruto, t.brutoClp) : ""}${t.descuento ? fila(`Descuento ${String(t.desc).replace(".", ",")} %`, -t.descuento, -t.descuentoClp) : ""}
+    ${fila("Mensualidad", t.mensual, t.mensualClp, true)}${t.unico ? fila("Servicios únicos (una vez)", t.unico, t.unicoClp) : ""}${t.anual ? fila("Servicios anuales", t.anual, t.anualClp) : ""}
+    ${q.modalidad === "anual" ? fila(`Mensualidades del año (paga ${t.meses} meses)`, t.recurrente, t.recurrenteClp) : ""}
+    ${fila("Total del primer año", t.primerAnio, t.primerAnioClp, true)}${t.tasaIva ? fila("IVA (19 %)", t.primerAnio * t.tasaIva, t.ivaPrimerAnioClp) + fila("Total del primer año con IVA", t.primerAnio * (1 + t.tasaIva), t.totalPrimerAnioClp, true) : ""}
+    </tbody></table></div>${sinUf ? `<p class="ayuda">Ingresa el valor de la UF para ver los montos en pesos.</p>` : ""}`;
+}
+/* Lee el formulario y lo pasa al borrador, para no perder lo escrito al agregar o quitar conceptos. */
+function cqLeer() {
+  const q = S.cq.edit; if (!q || !$("#cq-form")) return q;
+  const v = (id) => ($("#" + id)?.value ?? "").trim();
+  q.cliente = { nombre: v("cq-nombre"), rut: v("cq-rut"), contacto: v("cq-contacto"), correo: v("cq-correo"), telefono: v("cq-telefono"), giro: v("cq-giro"), regimen: v("cq-regimen") };
+  q.fecha = v("cq-fecha") || q.fecha; q.vigencia_hasta = v("cq-vigencia") || q.vigencia_hasta; q.estado = v("cq-estado") || q.estado;
+  q.uf_valor = cqNum(v("cq-uf")); q.desc_pct = cqNum(v("cq-desc")); q.modalidad = v("cq-modalidad") || "mensual"; q.exento_iva = !!$("#cq-exento")?.checked; q.notas = $("#cq-notas")?.value ?? q.notas;
+  q.lineas.forEach((l, i) => {
+    if ($("#cq-cant-" + i)) l.cant = cqNum($("#cq-cant-" + i).value); if ($("#cq-lu-" + i)) l.uf = cqNum($("#cq-lu-" + i).value);
+    if ($("#cq-nom-" + i)) l.nombre = $("#cq-nom-" + i).value; if ($("#cq-per-" + i)) l.per = $("#cq-per-" + i).value;
+  });
+  return q;
+}
+function cqAgregarLinea() {
+  const sel = $("#cq-agregar")?.value || ""; if (!sel) return aviso("Elige el concepto que quieres agregar.");
+  cqLeer(); const [tipo, id] = sel.split(":"), cfg = cqCfg(), q = S.cq.edit;
+  if (tipo === "plan") { const p = cfg.planes.find((x) => x.id === id); if (p) q.lineas.push({ k: "plan", id: p.id, nombre: p.nombre, uf: p.uf, cant: 1, per: "mensual", incluye: p.incluye || [] }); }
+  else if (tipo === "extra") { const p = cfg.extras.find((x) => x.id === id); if (p) q.lineas.push({ k: "extra", id: p.id, nombre: p.nombre, uf: p.uf, cant: 1, per: "mensual", unidad: p.unidad || "" }); }
+  else if (tipo === "servicio") { const p = cfg.servicios.find((x) => x.id === id); if (p) q.lineas.push({ k: "servicio", id: p.id, nombre: p.nombre, uf: p.uf, cant: 1, per: p.per || "unica" }); }
+  else q.lineas.push({ k: "libre", id: "", nombre: "", uf: 0, cant: 1, per: "unica" });
+  render();
+}
+async function guardarCotizacion() {
+  const q = cqLeer(); if (!q) return;
+  if (!q.cliente.nombre) return aviso("Escribe el nombre del cliente.");
+  if (q.cliente.rut && !rutValido(q.cliente.rut)) return aviso("El RUT del cliente no es válido (revisa el dígito verificador).");
+  if (!q.lineas.length) return aviso("Agrega al menos un concepto al detalle.");
+  if (q.lineas.some((l) => !String(l.nombre).trim())) return aviso("Describe todas las líneas libres.");
+  if (q.vigencia_hasta < q.fecha) return aviso("La fecha de vigencia no puede ser anterior a la fecha de la cotización.");
+  if (q.cliente.rut) q.cliente.rut = formatoRut(q.cliente.rut);
+  await ocupado(async () => {
+    const nueva = !q.id; let id = q.id, nro = q.nro;
+    if (nueva) { const s = cqSiguienteNumero(); nro = s.nro; id = nuevoId(); await S.almacen.set("config/cotizador", { ...cqCfg(), correlativo: { anio: s.anio, n: s.n } }); S.cotizador = { ...cqCfg(), correlativo: { anio: s.anio, n: s.n } }; }
+    const { id: _omitido, ...datos } = q;
+    const doc = { ...datos, nro, actualizado: Date.now(), creado: q.creado || Date.now() };
+    await S.almacen.set(`cotizaciones/${id}`, doc);
+    S.cq.edit = { ...doc, id }; S.cq.confirmar = null; render();
+    aviso(nueva ? `Cotización ${nro} guardada.` : "Cotización actualizada.");
+  }, "No se pudo guardar la cotización");
+}
+function cqDuplicar(id) {
+  const o = S.cotizaciones.find((x) => x.id === id); if (!o) return;
+  const cfg = cqCfg(), f = hoy(), { id: _x, nro: _n, creado: _c, actualizado: _a, ...resto } = cqCopia(o);
+  S.cq.edit = { ...resto, nro: "", fecha: f, vigencia_hasta: cqSumarDias(f, cfg.vigencia_dias), estado: "borrador" }; render();
+  aviso("Copia lista: revisa los datos y guárdala para darle un número nuevo.");
+}
+/* ---- PDF ---- */
+function informeCotizacion(q) {
+  const cfg = cqCfg(), p = cfg.prestador, t = cqCalcular(q), c = q.cliente || {};
+  const lineasEmisor = [(p.razon_social || p.nombre_fantasia || "").toUpperCase(), p.nombre_fantasia && p.razon_social ? `NOMBRE DE FANTASÍA: ${p.nombre_fantasia}`.toUpperCase() : "", p.rut ? `R.U.T.: ${p.rut}` : "", `GIRO: ${p.giro || ""}`.toUpperCase(),
+    [p.direccion, p.comuna].filter(Boolean).join(", ").toUpperCase(), [p.contacto, p.correo, p.telefono, p.web].filter(Boolean).join(" · ")].filter(Boolean).slice(0, 5);
+  const inf = new Informe("COTIZACIÓN DE SERVICIOS", `N° ${q.nro || "(BORRADOR)"} · EMITIDA EL ${fmtFecha(q.fecha)} · VÁLIDA HASTA EL ${fmtFecha(q.vigencia_hasta)}`,
+    [col("Concepto", 46), col("Frecuencia", 11), col("Cant.", 6), col("UF c/u", 10), col("Total UF", 11), col("Total $", 13, "monto")], `cotizacion_${q.nro || "borrador"}`,
+    { firmas: [(p.contacto || p.nombre_fantasia || "PRESTADOR DE SERVICIOS").toUpperCase(), "ACEPTACIÓN DEL CLIENTE"], emisor: lineasEmisor, pie: (p.nombre_fantasia || p.razon_social || "COTIZACIÓN").toUpperCase(),
+      archivo: `Cotizacion_${q.nro || "borrador"}_${nombreSeguro(c.nombre)}`, autor: p.razon_social || p.nombre_fantasia || "" });
+  const p0 = (x) => (t.uf ? Math.round(x * t.uf) : null), nota = (txt) => inf.agregar([txt], { estilo: "nota", abarca: 0 }), seccion = (txt) => inf.agregar([txt], { estilo: "seccion", abarca: 0 });
+  nota(`CLIENTE: ${c.nombre || ""}${c.rut ? ` · RUT ${c.rut}` : ""}`);
+  const dato = [c.contacto ? `Atención: ${c.contacto}` : "", c.correo, c.telefono, c.giro ? `Giro: ${c.giro}` : "", c.regimen ? `Régimen: ${c.regimen}` : ""].filter(Boolean).join(" · "); if (dato) nota(dato);
+  const grupo = (per, titulo, etiqueta, total) => {
+    const ls = q.lineas.filter((l) => l.per === per); if (!ls.length) return;
+    seccion(titulo);
+    for (const l of ls) { const tot = (+l.uf || 0) * (+l.cant || 0); inf.agregar([l.nombre, PER_COT[l.per], String(l.cant).replace(".", ","), ufTxt(l.uf), ufTxt(tot), p0(tot)]); }
+    if (per === "mensual" && t.descuento) inf.agregar([`Descuento ${String(t.desc).replace(".", ",")} %`, null, null, null, ufTxt(-t.descuento), p0(-t.descuento)]);
+    inf.agregar([etiqueta, null, null, null, ufTxt(total), p0(total)], { estilo: "subtotal" });
+  };
+  grupo("mensual", "SERVICIOS MENSUALES", "MENSUALIDAD", t.mensual); grupo("unica", "SERVICIOS ÚNICOS (SE COBRAN UNA VEZ)", "TOTAL SERVICIOS ÚNICOS", t.unico); grupo("anual", "SERVICIOS ANUALES", "TOTAL SERVICIOS ANUALES", t.anual);
+  seccion("RESUMEN");
+  if (t.uf) nota(`Valor de la UF utilizado: $${ufTxt(t.uf)}.`);
+  if (q.modalidad === "anual" && t.mensual) inf.agregar([`Mensualidades del año (pago anual anticipado: ${t.meses} meses de 12)`, null, null, null, ufTxt(t.recurrente), p0(t.recurrente)]);
+  inf.agregar(["TOTAL DEL PRIMER AÑO", null, null, null, ufTxt(t.primerAnio), p0(t.primerAnio)], { estilo: "total" });
+  if (t.tasaIva) { inf.agregar(["IVA (19 %)", null, null, null, ufTxt(t.primerAnio * t.tasaIva), t.uf ? t.ivaPrimerAnioClp : null]); inf.agregar(["TOTAL CON IVA", null, null, null, ufTxt(t.primerAnio * (1 + t.tasaIva)), t.uf ? t.totalPrimerAnioClp : null], { estilo: "total" }); }
+  for (const l of q.lineas.filter((x) => x.incluye?.length)) inf.notas.push(`${l.nombre} incluye: ${l.incluye.join("; ")}.`);
+  inf.notas.push(q.exento_iva === false ? "Valores netos, más IVA." : "Valores exentos de IVA.");
+  if (q.notas) inf.notas.push(q.notas);
+  cfg.condiciones.forEach((x, i) => inf.notas.push(`${i + 1}. ${x}`));
+  return inf;
+}
+async function cqPdf(q) { S.informe = () => informeCotizacion(q); await exportar("pdf"); }
+
+/* ---- tarifario y datos del prestador ---- */
+function vistaTarifario() {
+  if (!S.cq.tar) S.cq.tar = cqCopia(cqCfg());
+  const T = S.cq.tar, p = T.prestador, ro = S.puedeEscribir ? "" : "readonly";
+  const campo = (id, rotulo, valor, ph = "") => `<label>${rotulo}<input id="${id}" value="${esc(valor)}" placeholder="${esc(ph)}" ${ro}></label>`;
+  const fila = (grupo, x, i, extra) => `<tr><td><input id="t-${grupo}-nom-${i}" value="${esc(x.nombre)}" ${ro}></td><td class="num"><input id="t-${grupo}-uf-${i}" class="monto" inputmode="decimal" value="${esc(String(x.uf).replace(".", ","))}" ${ro}></td>${extra}<td>${puedeEditar(`<button class="btn enlace" type="button" data-cq="t-quitar" data-grupo="${grupo}" data-i="${i}">Quitar</button>`)}</td></tr>`;
+  return `${cabecera("Tarifario y datos", "Cotizador")}
+  <p class="ayuda">Estos datos y precios se usan en todas las cotizaciones nuevas. Las cotizaciones ya guardadas conservan los valores con que se hicieron. Los precios iniciales son referencias del mercado de 2026: ajústalos a tus costos.</p>
+  <form class="caja" id="tar-form" data-form="tarifario">
+    <h2>Datos del prestador (salen en el encabezado del PDF)</h2>
+    <div class="form">${campo("tp-razon", "Razón social", p.razon_social)}${campo("tp-fantasia", "Nombre de fantasía", p.nombre_fantasia)}${campo("tp-rut", "RUT", p.rut, "12.345.678-5")}${campo("tp-giro", "Giro", p.giro)}
+      ${campo("tp-dir", "Dirección", p.direccion)}${campo("tp-comuna", "Comuna", p.comuna)}${campo("tp-contacto", "Nombre del contador (firma)", p.contacto)}${campo("tp-correo", "Correo", p.correo)}${campo("tp-tel", "Teléfono", p.telefono)}${campo("tp-web", "Sitio web o Instagram", p.web)}
+      <label class="check"><input type="checkbox" id="tp-exento" ${p.exento_iva !== false ? "checked" : ""} ${S.puedeEscribir ? "" : "disabled"}> Mis servicios están exentos de IVA</label></div>
+    <h2>Parámetros</h2>
+    <div class="form"><label>Valor de la UF ($)<input id="tp-uf" inputmode="decimal" value="${T.uf?.valor ? esc(String(T.uf.valor).replace(".", ",")) : ""}" placeholder="Ej.: 41.274,20" ${ro}></label>
+      <label>Fecha de ese valor<input type="date" id="tp-uf-fecha" value="${esc(T.uf?.fecha || "")}" ${ro}></label>
+      <label>Vigencia de una cotización (días)<input id="tp-vig" inputmode="numeric" value="${esc(T.vigencia_dias)}" ${ro}></label>
+      <label>Pago anual anticipado: meses que se pagan de 12<input id="tp-meses" inputmode="numeric" value="${esc(T.meses_pago_anual)}" ${ro}></label></div>
+    <h2>Planes mensuales</h2>
+    <div class="tabla"><table><thead><tr><th>Plan</th><th class="num">UF al mes</th><th>Qué incluye (una línea por punto)</th><th></th></tr></thead><tbody>
+      ${T.planes.map((x, i) => fila("plan", x, i, `<td><textarea id="t-plan-inc-${i}" rows="4" ${ro}>${esc((x.incluye || []).join("\n"))}</textarea></td>`)).join("")}</tbody></table></div>
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-cq="t-agregar" data-grupo="plan">+ Agregar plan</button></div>`)}
+    <h2>Adicionales mensuales</h2>
+    <div class="tabla"><table><thead><tr><th>Concepto</th><th class="num">UF</th><th>Unidad</th><th></th></tr></thead><tbody>
+      ${T.extras.map((x, i) => fila("extra", x, i, `<td><input id="t-extra-uni-${i}" value="${esc(x.unidad || "")}" ${ro}></td>`)).join("")}</tbody></table></div>
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-cq="t-agregar" data-grupo="extra">+ Agregar adicional</button></div>`)}
+    <h2>Servicios únicos y anuales</h2>
+    <div class="tabla"><table><thead><tr><th>Servicio</th><th class="num">UF</th><th>Frecuencia</th><th></th></tr></thead><tbody>
+      ${T.servicios.map((x, i) => fila("servicio", x, i, `<td><select id="t-servicio-per-${i}" ${S.puedeEscribir ? "" : "disabled"}><option value="unica" ${x.per !== "anual" ? "selected" : ""}>Una vez</option><option value="anual" ${x.per === "anual" ? "selected" : ""}>Anual</option></select></td>`)).join("")}</tbody></table></div>
+    ${puedeEditar(`<div class="acciones"><button class="btn sec" type="button" data-cq="t-agregar" data-grupo="servicio">+ Agregar servicio</button></div>`)}
+    <h2>Condiciones que salen en el PDF</h2>
+    <label style="display:block">Una condición por línea<textarea id="tc-cond" rows="7" style="width:100%;margin-top:4px" ${ro}>${esc(T.condiciones.join("\n"))}</textarea></label>
+    <div class="acciones">${puedeEditar(`<button class="btn" type="submit">Guardar tarifario</button>`)}
+      <button class="btn sec" type="button" data-cq="t-respaldo">Descargar respaldo del cotizador</button>
+      ${S.puedeEscribir ? (S.cq.confirmar === "restaurar" ? `<span class="confirmar"><span>¿Volver a los valores sugeridos? Se pierden tus cambios del tarifario (las cotizaciones guardadas no se tocan).</span><button class="btn peligro" type="button" data-cq="t-restaurar">Sí, restaurar</button><button class="btn sec" type="button" data-cq="cancelar-eliminar">No</button></span>` : `<button class="btn enlace" type="button" data-cq="t-pedir-restaurar">Restaurar valores sugeridos</button>`) : ""}</div>
+  </form>`;
+}
+function cqLeerTar() {
+  const T = S.cq.tar; if (!T || !$("#tar-form")) return T;
+  const v = (id) => ($("#" + id)?.value ?? "").trim();
+  T.prestador = { razon_social: v("tp-razon"), nombre_fantasia: v("tp-fantasia"), rut: v("tp-rut"), giro: v("tp-giro"), direccion: v("tp-dir"), comuna: v("tp-comuna"), contacto: v("tp-contacto"), correo: v("tp-correo"), telefono: v("tp-tel"), web: v("tp-web"), exento_iva: !!$("#tp-exento")?.checked };
+  T.uf = { valor: cqNum(v("tp-uf")), fecha: v("tp-uf-fecha") }; T.vigencia_dias = Math.max(1, Math.round(cqNum(v("tp-vig")) || 15)); T.meses_pago_anual = Math.min(12, Math.max(1, Math.round(cqNum(v("tp-meses")) || 10)));
+  T.planes.forEach((x, i) => { x.nombre = v(`t-plan-nom-${i}`); x.uf = cqNum(v(`t-plan-uf-${i}`)); x.incluye = ($(`#t-plan-inc-${i}`)?.value || "").split("\n").map((s) => s.trim()).filter(Boolean); });
+  T.extras.forEach((x, i) => { x.nombre = v(`t-extra-nom-${i}`); x.uf = cqNum(v(`t-extra-uf-${i}`)); x.unidad = v(`t-extra-uni-${i}`); });
+  T.servicios.forEach((x, i) => { x.nombre = v(`t-servicio-nom-${i}`); x.uf = cqNum(v(`t-servicio-uf-${i}`)); x.per = v(`t-servicio-per-${i}`) || "unica"; });
+  T.condiciones = ($("#tc-cond")?.value || "").split("\n").map((s) => s.trim()).filter(Boolean);
+  return T;
+}
+async function guardarTarifario() {
+  const T = cqLeerTar(); if (!T) return;
+  if (T.prestador.rut && !rutValido(T.prestador.rut)) return aviso("El RUT del prestador no es válido (revisa el dígito verificador).");
+  for (const [g, ls] of [["plan", T.planes], ["adicional", T.extras], ["servicio", T.servicios]]) if (ls.some((x) => !x.nombre)) return aviso(`Hay un ${g} sin nombre.`);
+  if (T.prestador.rut) T.prestador.rut = formatoRut(T.prestador.rut);
+  await ocupado(async () => {
+    const d = { ...T, correlativo: cqCfg().correlativo };
+    await S.almacen.set("config/cotizador", d); S.cotizador = d; S.cq.tar = null; render(); aviso("Tarifario guardado.");
+  }, "No se pudo guardar el tarifario");
+}
+async function cqRespaldo() {
+  const datos = { formato: "cotizador-creandogestion/1", version: VERSION, creado: new Date().toISOString(), tarifario: S.cotizador || cqCfg(), cotizaciones: S.cotizaciones };
+  try { await S.descargas.save({ filename: `respaldo_cotizador_${hoy()}.json`, data: JSON.stringify(datos, null, 1) }); aviso("Respaldo descargado."); } catch (e) { if (e?.code !== "declined") aviso("No se pudo descargar el respaldo."); }
+}
+/* ---- eventos del cotizador ---- */
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-cq]"); if (!t) return;
+  const a = t.dataset.cq, id = t.dataset.id;
+  if (a === "nueva") { S.cq.edit = cqNueva(); S.cq.confirmar = null; render(); }
+  else if (a === "abrir") { const x = S.cotizaciones.find((z) => z.id === id); if (x) { S.cq.edit = cqCopia(x); S.cq.confirmar = null; render(); window.scrollTo(0, 0); } }
+  else if (a === "duplicar") cqDuplicar(id);
+  else if (a === "volver") { S.cq.edit = null; S.cq.confirmar = null; render(); }
+  else if (a === "agregar") cqAgregarLinea();
+  else if (a === "quitar") { cqLeer(); S.cq.edit.lineas.splice(+t.dataset.i, 1); render(); }
+  else if (a === "pdf") { const q = cqLeer(); if (q) cqPdf(q); }
+  else if (a === "pdf-lista") { const x = S.cotizaciones.find((z) => z.id === id); if (x) cqPdf(x); }
+  else if (a === "pedir-eliminar") { cqLeer(); S.cq.confirmar = S.cq.edit.id; render(); }
+  else if (a === "cancelar-eliminar") { S.cq.confirmar = null; render(); }
+  else if (a === "eliminar") ocupado(async () => { await S.almacen.del(`cotizaciones/${S.cq.edit.id}`); S.cq.edit = null; S.cq.confirmar = null; render(); aviso("Cotización eliminada."); }, "No se pudo eliminar la cotización");
+  else if (a === "t-agregar") { cqLeerTar(); const g = t.dataset.grupo, T = S.cq.tar, nuevoItem = { id: "n" + nuevoId().slice(-6), nombre: "", uf: 0 };
+    if (g === "plan") T.planes.push({ ...nuevoItem, incluye: [] }); else if (g === "extra") T.extras.push({ ...nuevoItem, unidad: "al mes" }); else T.servicios.push({ ...nuevoItem, per: "unica" }); render(); }
+  else if (a === "t-quitar") { cqLeerTar(); const g = t.dataset.grupo, i = +t.dataset.i, T = S.cq.tar; (g === "plan" ? T.planes : g === "extra" ? T.extras : T.servicios).splice(i, 1); render(); }
+  else if (a === "t-pedir-restaurar") { cqLeerTar(); S.cq.confirmar = "restaurar"; render(); }
+  else if (a === "t-restaurar") ocupado(async () => { const d = { ...cqCopia(COTIZADOR_BASE), prestador: cqCfg().prestador, correlativo: cqCfg().correlativo }; await S.almacen.set("config/cotizador", d); S.cotizador = d; S.cq.tar = null; S.cq.confirmar = null; render(); aviso("Tarifario restaurado a los valores sugeridos."); }, "No se pudo restaurar el tarifario");
+  else if (a === "t-respaldo") cqRespaldo();
+});
+document.addEventListener("submit", (ev) => { const f = ev.target.closest("form[data-form]"); if (!f) return; if (f.dataset.form === "cq") guardarCotizacion(); else if (f.dataset.form === "tarifario") guardarTarifario(); });
+document.addEventListener("change", (ev) => {
+  const el = ev.target, id = el.id || "";
+  if (id === "cq-f-estado" || id === "cq-f-anio") { S.cq.filtro = { estado: $("#cq-f-estado").value, anio: $("#cq-f-anio").value }; render(); }
+  else if (el.classList?.contains("cq-estado-lista")) { const x = S.cotizaciones.find((z) => z.id === el.dataset.id); if (x) ocupado(async () => { const { id: _i, ...resto } = x; await S.almacen.set(`cotizaciones/${x.id}`, { ...resto, estado: el.value, actualizado: Date.now() }); aviso(`${x.nro}: ${ESTADOS_COT[el.value]}.`); }, "No se pudo cambiar el estado"); }
+  else if (id === "cq-modalidad" || id === "cq-exento" || id.startsWith("cq-per-")) { cqLeer(); render(); }
+});
+document.addEventListener("input", (ev) => {
+  const id = ev.target.id || "";
+  if (S.vista === "cotizador" && S.cq.edit && $("#cq-form") && ev.target.closest("#cq-form") && /^cq-(uf|desc|cant-|lu-)/.test(id)) {
+    const q = cqLeer(); $("#cq-totales").innerHTML = cqTotalesHtml(q);
+    q.lineas.forEach((l, i) => { const c = $("#cq-lt-" + i); if (c) c.textContent = ufTxt((+l.uf || 0) * (+l.cant || 0)); });
+  }
+});
+
 /* ------------------------------------------------------------------ respaldo y restauración */
 const FORMATO_RESPALDO = "contabilidad-completa-artefacto/1";
 const ID_VALIDO = /^[A-Za-z0-9_-]+$/;
@@ -10493,6 +10837,8 @@ async function iniciar() {
     S.prev = { uf: d?.uf || {}, parametros: d?.parametros || [], feriados: d?.feriados || [] };
     if (S.vista === "rrhh" && !S.ocupado && !S.trabEdit) render();
   }, () => {});
+  S.almacen.onDoc("config/cotizador", (d) => { S.cotizador = d || null; if (["cotizador", "tarifario"].includes(S.vista) && !S.ocupado && !S.cq.edit && !S.cq.tar) render(); }, () => {});
+  S.almacen.onCol("cotizaciones", (lista) => { S.cotizaciones = lista; if (S.vista === "cotizador" && !S.ocupado && !S.cq.edit) render(); }, () => {});
   S.almacen.onDoc("config/contador", (d) => {
     S.contador = { nombre: d?.nombre || "", rut: d?.rut || "", firma: d?.firma || "" };
     if (S.vista === "contador") render();

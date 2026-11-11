@@ -1749,7 +1749,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     recordar("posmenu", "superior"); aplicarApariencia(); ir("inicio");
     return r;
   });
-  igual("los grupos del lateral pasan a menús de la barra superior", mn.grupos, ["Registro", "Tributario", "Gestión", "Libros", "Informes", "Administración"]);
+  igual("los grupos del lateral pasan a menús de la barra superior", mn.grupos, ["Registro", "Tributario", "Gestión", "Libros", "Informes", "Comercial", "Administración"]);
   ok("los menús parten cerrados, se abren con un clic y se cierran con Esc o al hacer clic afuera", mn.cerradoAlInicio && mn.abierto && mn.cierraConEsc && mn.cierraAfuera, JSON.stringify(mn));
   ok("la barra queda fija al desplazarse por la página", mn.estiloMenu === "sticky" && mn.fijo, JSON.stringify(mn));
   ok("al elegir una pantalla el menú se cierra y el contenido usa todo el ancho", mn.tras && mn.anchoApp === "block", JSON.stringify(mn));
@@ -2396,6 +2396,59 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
 
   const ord = await page.evaluate(() => ["1.1.190.1", "1.1.20.1", "1.1.100.1", "1.1.30.1", "1.2", "1.1"].map((codigo) => ({ codigo })).sort(porCodigo).map((x) => x.codigo).join(" "));
   ok("el plan de cuentas se ordena por código en forma natural (Banco antes que Remanente IVA)", ord === "1.1 1.1.20.1 1.1.30.1 1.1.100.1 1.1.190.1 1.2", ord);
+  const cot = await page.evaluate(async () => {
+    const w = (ms = 200) => new Promise((x) => setTimeout(x, ms)), r = {}, aEnt = (x) => Math.round(x);
+    const q = { lineas: [{ per: "mensual", uf: 3, cant: 1 }, { per: "mensual", uf: 0.3, cant: 2 }, { per: "unica", uf: 4, cant: 1 }, { per: "anual", uf: 2, cant: 1 }], desc_pct: 10, modalidad: "anual", meses_pago: 10, uf_valor: 40000, exento_iva: true };
+    let c = cqCalcular(q);
+    r.calc = [c.bruto, c.descuento, c.mensual, c.unico, c.anual, c.recurrente, c.primerAnio, c.mensualClp, c.primerAnioClp, c.totalPrimerAnioClp];
+    c = cqCalcular({ ...q, exento_iva: false }); r.iva = [c.ivaPrimerAnioClp, c.totalPrimerAnioClp];
+    r.num = [cqNum("1,5"), cqNum("1.5"), cqNum("41.274,20"), cqNum("41.274"), cqNum(""), ufTxt(1234.5), ufTxt(-0.3)];
+    r.sig = cqSiguienteNumero().nro.endsWith("-001");
+    /* una cotización nueva, armada desde el formulario */
+    S.vista = "cotizador"; S.cq.edit = cqNueva(); render(); await w();
+    $("#cq-nombre").value = "Cliente de Prueba SpA"; $("#cq-rut").value = "12.345.678-5"; $("#cq-uf").value = "41.274,20";
+    $("#cq-agregar").value = "plan:pyme"; cqAgregarLinea(); await w();
+    $("#cq-agregar").value = "servicio:recons"; cqAgregarLinea(); await w();
+    $("#cq-cant-1").value = "2";
+    await guardarCotizacion(); await w(400);
+    const g = S.cotizaciones.find((x) => x.nro.endsWith("-001"));
+    r.guardada = !!g && g.cliente.rut === "12.345.678-5" && g.lineas.length === 2 && S.cotizador.correlativo.n === 1;
+    r.total = g ? cqCalcular(g).primerAnio : null;
+    r.enBd = (await S.almacen.leerCol("cotizaciones")).length;
+    /* duplicar y guardar: recibe el número siguiente */
+    cqDuplicar(g.id); await w(); r.dupBorrador = S.cq.edit.nro === "" && S.cq.edit.estado === "borrador";
+    $("#cq-nombre").value = "Segundo Cliente Ltda."; await guardarCotizacion(); await w(400);
+    r.segunda = S.cotizaciones.some((x) => x.nro.endsWith("-002") && x.cliente.nombre === "Segundo Cliente Ltda.");
+    /* estados y vigencia */
+    S.cq.edit = null; render(); await w();
+    const sel = document.querySelector(`.cq-estado-lista[data-id="${g.id}"]`); sel.value = "enviada"; sel.dispatchEvent(new Event("change", { bubbles: true })); await w(400);
+    r.enviada = S.cotizaciones.find((x) => x.id === g.id).estado === "enviada";
+    r.vencida = cqEstadoVisible({ estado: "enviada", vigencia_hasta: "2000-01-01" }) === "Enviada (vencida)" && cqEstadoVisible({ estado: "aceptada" }) === "Aceptada";
+    r.lista = /COT-\d{4}-001/.test(document.body.innerText) && /Segundo Cliente Ltda/.test(document.body.innerText) && /Cotizaciones/.test(document.getElementById("nav").innerText);
+    /* PDF: encabezado del prestador, sin empresa seleccionada */
+    S.cotizador = { ...cqCfg(), prestador: { ...cqCfg().prestador, razon_social: "Servicios de Prueba Ltda", nombre_fantasia: "Prueba Gestión", rut: "12.345.678-5", contacto: "Contador de Prueba" } };
+    const inf = informeCotizacion(S.cotizaciones.find((x) => x.id === g.id)), eidAntes = S.eid; S.eid = "__ninguna__";
+    let pdf = null; try { pdf = await aPdf(inf); } catch (e) { pdf = "ERR " + e.message; } S.eid = eidAntes;
+    r.informe = [inf.titulo, inf.emisor[0], /^Cotizacion_COT-\d{4}-001_cliente_de_prueba_spa$/.test(inf.archivo), JSON.stringify(inf.filas).includes("Cliente de Prueba SpA"), nombreArchivo(inf, "pdf").endsWith(".pdf")];
+    r.pdf = pdf && pdf.blob ? pdf.blob.size > 1500 && pdf.paginas : pdf;
+    /* tarifario: se edita y conserva el correlativo */
+    S.cq.tar = null; S.vista = "tarifario"; render(); await w(); r.tarVista = $("#t-plan-nom-0").value === "Plan Esencial" && $("#t-plan-nom-2").value === "Plan Gestión" && $("#t-plan-uf-1").value === "3";
+    document.querySelector('[data-cq="t-agregar"][data-grupo="plan"]').click(); await w();
+    $("#t-plan-nom-3").value = "Plan Prueba"; $("#t-plan-uf-3").value = "2,5"; $("#t-plan-inc-3").value = "Punto uno\nPunto dos";
+    $("#tp-razon").value = "Servicios de Prueba Ltda"; $("#tp-rut").value = "12.345.678-5";
+    await guardarTarifario(); await w(400);
+    const pl = S.cotizador.planes.find((x) => x.nombre === "Plan Prueba");
+    r.tarGuardado = !!pl && pl.uf === 2.5 && pl.incluye.length === 2 && S.cotizador.correlativo.n === 2 && S.cotizador.prestador.razon_social === "Servicios de Prueba Ltda";
+    for (const x of await S.almacen.leerCol("cotizaciones")) await S.almacen.del(`cotizaciones/${x.id}`);
+    await S.almacen.del("config/cotizador"); S.cotizador = null; S.cq.tar = null; S.cq.edit = null; S.vista = "inicio"; render(); await w();
+    return r;
+  });
+  ok("el cotizador calcula mensualidad, descuento, pago anual y total del primer año", JSON.stringify(cot.calc) === JSON.stringify([3.6, 0.36, 3.24, 4, 2, 32.4, 38.4, 129600, 1536000, 1536000]) && JSON.stringify(cot.iva) === JSON.stringify([291840, 1827840]), JSON.stringify([cot.calc, cot.iva]));
+  ok("el cotizador lee números con coma o punto y da formato a las UF", JSON.stringify(cot.num) === JSON.stringify([1.5, 1.5, 41274.2, 41274, 0, "1.234,50", "-0,30"]), JSON.stringify(cot.num));
+  ok("una cotización se guarda con número correlativo, se duplica y recibe el siguiente", cot.sig && cot.guardada && cot.total === 44 && cot.enBd === 1 && cot.dupBorrador && cot.segunda, JSON.stringify(cot));
+  ok("la lista de cotizaciones cambia de estado y avisa las vencidas", cot.enviada && cot.vencida && cot.lista, JSON.stringify(cot));
+  ok("el PDF de la cotización sale con el encabezado del prestador, sin elegir empresa", cot.informe[0] === "COTIZACIÓN DE SERVICIOS" && cot.informe[1] === "SERVICIOS DE PRUEBA LTDA" && cot.informe[2] && cot.informe[3] && cot.informe[4] && cot.pdf >= 1, JSON.stringify([cot.informe, cot.pdf]));
+  ok("el tarifario se edita, agrega planes y conserva el correlativo", cot.tarVista && cot.tarGuardado, JSON.stringify(cot));
   ok("sin errores de JavaScript en toda la sesión", !errores.length, errores.join(" | "));
   await browser.close();
   console.log(`\n${pasaron} pruebas correctas, ${fallos} con fallos.`);
