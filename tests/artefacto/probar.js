@@ -2154,6 +2154,23 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("las liquidaciones se imprimen en una copia, dos copias por hoja y dos copias en hojas separadas", Object.values(remu.pdf).every((n) => n > 2000) && remu.pdf["dos-separadas"] > remu.pdf.una, JSON.stringify(remu.pdf));
   ok("el anexo y el certificado de trabajo se generan", remu.anexo && remu.pdfAnexo === true && remu.pdfCert === true && /Ana Prueba|ANA PRUEBA/i.test(remu.cert) && /presta servicios/.test(remu.cert), JSON.stringify(remu));
 
+  console.log("IVA no recuperable en cuenta aparte");
+  const inrT = await page.evaluate(async () => {
+    const w = (ms = 150) => new Promise((x) => setTimeout(x, ms)), e0 = empresa(), per = "2031-04", ant = S.rcv, r = {};
+    const ct0 = cuentasTributarias(), otra = S.cuentas.find((c) => c.imputable && c.tipo === "GASTO" && c.id !== ct0.compras_neto).id;
+    const doc = (id, af) => ({ id, registro: "COMPRA", periodo: per, tipo_doc: 33, folio: id, fecha: per + "-10", rut: "1-9", razon_social: "P", cantidad: 1, exento: 0, neto: 100000, iva: 0, iva_no_recuperable: 19000, otros_impuestos: 0, total: 119000, activo_fijo: af, cuenta: "", asiento: "" });
+    const mapa = (pc) => Object.fromEntries(pc.lineas.map((l) => [l.cuenta, l.debe || -l.haber]));
+    S.rcv = [doc("n1", false)]; r.sin = mapa(propuestaCentralizacion(per, "COMPRA"));
+    await BD.setEmpresa(S.eid, { ...e0, tributarias: { ...(e0.tributarias || {}), compras_iva_no_recuperable: otra } }); await w(250);
+    r.con = mapa(propuestaCentralizacion(per, "COMPRA"));
+    S.rcv = [doc("n2", true)]; r.activo = mapa(propuestaCentralizacion(per, "COMPRA"));
+    await BD.setEmpresa(S.eid, e0); await w(200); S.rcv = ant;
+    r.neto = ct0.compras_neto; r.otra = otra; r.prov = ct0.proveedores; r.fijo = ct0.compras_activo_fijo; return r;
+  });
+  ok("sin la cuenta «IVA no recuperable» el IVA no recuperable va con el neto", inrT.sin[inrT.neto] === 119000, JSON.stringify(inrT));
+  ok("con la cuenta configurada, el IVA no recuperable de las compras va aparte del neto", inrT.con[inrT.neto] === 100000 && inrT.con[inrT.otra] === 19000 && inrT.con[inrT.prov] === -119000, JSON.stringify(inrT));
+  ok("en una compra de activo fijo el IVA no recuperable sigue formando parte del bien", inrT.activo[inrT.fijo] === 119000 && inrT.activo[inrT.otra] === undefined, JSON.stringify(inrT));
+
   console.log("Pago en Previred");
   const ppv = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {}, e0 = empresa();
