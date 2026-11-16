@@ -2171,6 +2171,21 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("con la cuenta configurada, el IVA no recuperable de las compras va aparte del neto", inrT.con[inrT.neto] === 100000 && inrT.con[inrT.otra] === 19000 && inrT.con[inrT.prov] === -119000, JSON.stringify(inrT));
   ok("en una compra de activo fijo el IVA no recuperable sigue formando parte del bien", inrT.activo[inrT.fijo] === 119000 && inrT.activo[inrT.otra] === undefined, JSON.stringify(inrT));
 
+  console.log("Comparación del IVA del F29 solo con el período");
+  const cmpIva = await page.evaluate(() => {
+    const ant = { rcv: S.rcv, lista: S.lista }, ct = cuentasTributarias(), per = "2032-05", r = {};
+    const venta = (asiento) => ({ id: "cv1", registro: "VENTA", periodo: per, tipo_doc: 33, folio: "1", fecha: per + "-10", rut: "1-9", razon_social: "C", cantidad: 1, exento: 0, neto: 100000, iva: 19000, iva_no_recuperable: 0, otros_impuestos: 0, total: 119000, activo_fijo: false, cuenta: "", asiento });
+    S.lista = [
+      { id: "cz1", fecha: per + "-31", glosa: "CENTRALIZACIÓN", lineas: [{ cuenta: ct.clientes, debe: 119000, haber: 0 }, { cuenta: ct.iva_debito, debe: 0, haber: 19000 }, { cuenta: ct.ventas_neto, debe: 0, haber: 100000 }] },
+      { id: "pg1", fecha: per + "-13", glosa: "PAGO F29 DE UN MES ANTERIOR", lineas: [{ cuenta: ct.iva_debito, debe: 500000, haber: 0 }, { cuenta: ct.proveedores, debe: 0, haber: 500000 }] },
+    ];
+    S.rcv = [venta("cz1")]; r.enlazado = calcularF29(per, 0, null, null, 1).comparacion.find((x) => x[0] === "IVA débito fiscal");
+    S.rcv = [venta("")]; r.sinEnlace = calcularF29(per, 0, null, null, 1).comparacion.find((x) => x[0] === "IVA débito fiscal");
+    S.rcv = ant.rcv; S.lista = ant.lista; return r;
+  });
+  igual("el IVA del F29 se compara con los asientos del período y no con los pagos de otros meses hechos en ese mes", cmpIva.enlazado, ["IVA débito fiscal", 19000, 19000]);
+  igual("sin documentos centralizados, el IVA se compara con el movimiento del mes", cmpIva.sinEnlace, ["IVA débito fiscal", 19000, -481000]);
+
   console.log("Pago en Previred");
   const ppv = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {}, e0 = empresa();
