@@ -759,7 +759,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("el pensionado no paga AFP, SIS ni cesantía", [rm.pensionado[0], rm.pensionado[1], rm.pensionado[2], rm.pensionado[3], rm.pensionado[6]], [1127155, 6622, 11338, 0, 0]);
   igual("el mayor de 65 años no paga la parte del SIS", [rm.mayor65[0], rm.mayor65[1], rm.mayor65[2]], [988235, 833, 61566]);
   igual("las horas extra al 50 % y al 100 % se suman al imponible", [rm.he[0], rm.he[2], rm.he50], [788764, 66403, [8, 4, 77778, 31111]]);
-  ok("avisa del ingreso mínimo (menor de 18 años) y del 45 % de descuentos, y no avisa sin motivo", /ingreso mínimo proporcional a la jornada \(\$412\.938\)/.test(rm.avisos.minimo[0]) && rm.avisos.art58.some((a) => /45 %/.test(a)) && rm.avisos.ninguno.length === 0, JSON.stringify(rm.avisos));
+  ok("avisa del ingreso mínimo (menor de 18 años) y del 45 % de descuentos, y no avisa sin motivo", /ingreso mínimo \(\$412\.938\)/.test(rm.avisos.minimo[0]) && rm.avisos.art58.some((a) => /45 %/.test(a)) && rm.avisos.ninguno.length === 0, JSON.stringify(rm.avisos));
   console.log("Excel con la disposición de las plantillas del SII (Anexos 1, 3, 1.1 y 3.1)");
   const xl = await page.evaluate(async () => {
     await cargarScript("exceljs");
@@ -2237,6 +2237,31 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("el contrato incluye la tabla del horario (4 columnas, 5 días, total semanal) y sin tabla si no hay horario", [hor.tabla, hor.sinTabla], [[4, 5, "9 horas"], true]);
   ok("la tabla del horario sale en el PDF, en la vista previa y en el formulario del trabajador", hor.pdf > 2500 && hor.vista && hor.form, JSON.stringify([hor.pdf, hor.vista, hor.form]));
   ok("validación del horario: coincide con la jornada, salida posterior, más de 10 horas y más de 6 días", hor.val[0] === "" && /^El horario suma 9 horas/.test(hor.val[1]) && /salida debe ser posterior/.test(hor.val[2]) && /superar 10 horas/.test(hor.val[3]) && /más de 6 días/.test(hor.val[4]), JSON.stringify(hor.val));
+
+  console.log("Jornada parcial: mínimo legal, horario y contrato");
+  const jp = await page.evaluate(() => {
+    const r = {}, imm = 553553;
+    r.max = [jornadaMaximaLegal("2024-04-25"), jornadaMaximaLegal("2024-04-26"), jornadaMaximaLegal("2026-04-25"), jornadaMaximaLegal("2026-11-19"), jornadaMaximaLegal("2028-04-26")];
+    r.minimos = [8, 9, 30, 31, 36, 42].map((h) => Math.round(sueldoMinimoJornada(imm, h, "2026-11-19")));
+    r.vh = Math.round(valorHoraSueldo(118619, 9) * 100) / 100;
+    const base = { ...trabajadorVacio(), nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2026-11-19", tipo: "indefinido", fecha_nac: "1990-01-01", nacionalidad: "Chilena", afp: "Habitat" };
+    const txt = (t) => textoContrato(t).map((x) => x.texto || "").join(" ");
+    r.parcial = /jornada a tiempo parcial, conforme a los artículos 40 bis/.test(txt({ ...base, jornada: 8, sueldo_base: 105439 })); r.completa = !/tiempo parcial/.test(txt({ ...base, jornada: 42, sueldo_base: 553553 }));
+    r.cert = textoCertificado({ ...base, jornada: 8, sueldo_base: 105439 }).map((x) => x.texto).join(" "); r.certCompleto = textoCertificado({ ...base, jornada: 42, sueldo_base: 553553 }).map((x) => x.texto).join(" ");
+    r.col = [validarHorario([{ dia: "Lunes", ent: "09:00", sal: "13:00", col: 20 }], 4), validarHorario([{ dia: "Lunes", ent: "08:00", sal: "14:00", col: 90 }], 4.5), validarHorario([{ dia: "Lunes", ent: "09:00", sal: "13:30", col: 30 }], 4)];
+    const aviso = (jornada, sueldo) => calcularLiquidacionTrabajador({ ...base, jornada, sueldo_base: sueldo }, "2026-10", { dias: 30, festivos: 0 }).avisos.filter((a) => /ingreso mínimo/.test(a));
+    r.avisos = [aviso(8, 105439).length, aviso(8, 100000).length, aviso(30, 395395).length, aviso(35, 400000).length, aviso(35, 553553).length];
+    r.ayuda = ayudaSueldoHTML(105439, 8, "2026-11-19");
+    return r;
+  });
+  igual("jornada máxima legal por fecha: 45, 44 (26-04-2024), 44, 42 (26-04-2026), 40 (26-04-2028)", jp.max, [45, 44, 44, 42, 40]);
+  igual("sueldo mínimo por jornada: proporcional hasta 30 horas y completo desde 31", jp.minimos, [105439, 118619, 395395, 553553, 553553, 553553]);
+  ok("el valor hora del sueldo sigue el reglamento 969 (sueldo × 7 ÷ (30 × horas))", jp.vh === 3075.31, String(jp.vh));
+  ok("el contrato de jornada parcial cita el artículo 40 bis y el de jornada completa no", jp.parcial && jp.completa);
+  ok("el certificado dice si la jornada es parcial", /por una jornada parcial de 8 horas semanales/.test(jp.cert) && /por una jornada de 42 horas semanales/.test(jp.certCompleto), jp.cert);
+  ok("la colación del horario va de 30 minutos y, en jornada parcial, hasta 1 hora", /al menos 30 minutos/.test(jp.col[0]) && /30 minutos a 1 hora/.test(jp.col[1]) && jp.col[2] === "", JSON.stringify(jp.col));
+  igual("el aviso de sueldo bajo el mínimo: parcial proporcional; de 31 horas en adelante, el mínimo completo", jp.avisos, [0, 1, 0, 1, 0]);
+  ok("la ayuda del sueldo muestra el mínimo, la regla y el valor hora", /\$105\.439/.test(jp.ayuda) && /jornada parcial/.test(jp.ayuda) && /Valor hora/.test(jp.ayuda), jp.ayuda);
 
   console.log("Pago en Previred");
   const ppv = await page.evaluate(async () => {
