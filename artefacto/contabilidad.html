@@ -418,7 +418,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Anticipo a proveedores",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Mercaderías",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Préstamos bancarios de corto plazo",1],["2.1.03","Documentos por pagar",1],["2.1.04","Acreedores varios",1],["2.1.05","Anticipo de clientes",1],["2.1.06","Remuneraciones por pagar",1],["2.1.07","Cotizaciones previsionales por pagar",1],["2.1.08","Retención de honorarios por pagar",1],["2.1.09","Impuesto único por pagar",1],["2.1.10","IVA débito fiscal",1],["2.1.11","PPM por pagar",1],["2.1.12","Impuesto a la renta por pagar",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.7.0";
+const VERSION = "2.8.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -4737,6 +4737,14 @@ const diasCalendario = (p) => new Date(+p.slice(0, 4), +p.slice(5, 7), 0).getDat
 function domingosDelMes(p) { let n = 0; for (let d = 1; d <= diasCalendario(p); d++) if (new Date(+p.slice(0, 4), +p.slice(5, 7) - 1, d).getDay() === 0) n++; return n; }
 const montoGuion = (v) => (v ? clp(v) : "");
 
+/* Jornada ordinaria máxima semanal según la fecha (Ley 21.561: 44 horas desde el 26-04-2024, 42 desde el 26-04-2026 y 40 desde el 26-04-2028). */
+const jornadaMaximaLegal = (fecha) => (fecha < "2024-04-26" ? 45 : fecha < "2026-04-26" ? 44 : fecha < "2028-04-26" ? 42 : 40);
+/* Jornada parcial (art. 40 bis del Código del Trabajo): hasta 30 horas semanales, sin un mínimo de horas. */
+const JORNADA_PARCIAL_MAX = 30;
+/* Sueldo base mínimo según la jornada (Dirección del Trabajo, dictamen 827/48 de 2025): en jornada parcial es el ingreso mínimo × horas ÷ jornada máxima; entre 31 horas y el máximo legal, el ingreso mínimo completo. */
+const sueldoMinimoJornada = (imm, horas, fecha) => (horas <= JORNADA_PARCIAL_MAX ? (imm * horas) / jornadaMaximaLegal(fecha) : imm);
+/* Valor de la hora del sueldo (Reglamento 969, art. 16): sueldo × 28 ÷ (30 × horas semanales × 4). */
+const valorHoraSueldo = (sueldo, horas) => (horas > 0 ? (sueldo * 7) / (30 * horas) : 0);
 /* Horario por día: cada fila es { dia, ent, sal, col } con ingreso y salida en HH:MM y la colación en minutos (no imputable a la jornada). */
 const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const aMinutos = (hhmm) => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || "")); return m ? +m[1] * 60 + +m[2] : null; };
@@ -4860,8 +4868,8 @@ function calcularLiquidacionTrabajador(t, periodo, e) {
   const empSis = pensionado || mayor65 ? 0 : r((impAfp * (pr.sis || 0)) / 100), empReforma = pensionado ? 0 : r((impAfp * Math.max((pr.reforma || 0) - (mayor65 ? pr.sis_en_reforma || 0 : 0), 0)) / 100), empMutual = r((impAfp * (m.basica + m.adicional)) / 100), empSanna = r((impAfp * m.sanna) / 100);
   const empCesantia = cotizaCesantia ? r((impAfc * (indefinido ? (once ? pr.ces_emp_11 ?? 0.8 : pr.ces_emp_indef) : pr.ces_emp_fijo)) / 100) : 0, empTrabPesado = r((impAfp * tpEmp) / 100);
   const aportes = empSis + empReforma + empCesantia + empMutual + empSanna + empTrabPesado;
-  const imm = edad != null && (edad < 18 || edad > 65) ? pr.imm_menor_mayor ?? pr.imm : pr.imm, minimo = imm * Math.min(1, (t.jornada || 42) / 42);
-  if (t.sueldo_base && t.sueldo_base < minimo - 1) avisos.push(`Sueldo base bajo el ingreso mínimo proporcional a la jornada ($${clp(r(minimo))}).`);
+  const imm = edad != null && (edad < 18 || edad > 65) ? pr.imm_menor_mayor ?? pr.imm : pr.imm, minimo = sueldoMinimoJornada(imm, t.jornada || 42, ultimoDia(periodo));
+  if (t.sueldo_base && t.sueldo_base < minimo - 1) { const j = t.jornada || 42, nota = j <= JORNADA_PARCIAL_MAX ? " proporcional a la jornada parcial" : j < jornadaMaximaLegal(ultimoDia(periodo)) ? " completo (en jornadas de más de 30 horas no se calcula en proporción)" : ""; avisos.push(`Sueldo base bajo el ingreso mínimo${nota} ($${clp(r(minimo))}).`); }
   const voluntarios = anticipos + otrosDesc + descuentosFijos;
   if (voluntarios > 0.45 * (haberes - descuentosLegales)) avisos.push("Los descuentos voluntarios superan el 45 % de la remuneración (art. 58 del Código del Trabajo).");
   if ((e.dias_licencia || 0) > 0) avisos.push(`Licencia médica de ${e.dias_licencia} día${e.dias_licencia === 1 ? "" : "s"}: el subsidio lo paga la entidad de salud (Fonasa, isapre o caja); no se paga sueldo por esos días. Decláralos en Previred con el movimiento 3.`);
@@ -4934,6 +4942,20 @@ function filasFijas(te) {
     <h3>Descuentos fijos</h3>${df ? `<div class="tabla"><table><tbody>${df}</tbody></table></div>` : `<p class="ayuda">Sin descuentos fijos (pensión de alimentos, cuota sindical, cuotas de caja de compensación, seguros).</p>`}
     <div class="acciones"><button class="btn sec" type="button" data-n="agregar-descuento-fijo">+ Descuento fijo</button></div>`;
 }
+/* Ayuda bajo el sueldo base: mínimo legal para la jornada, valor hora y si la jornada es parcial. */
+function ayudaSueldoHTML(sueldo, horas, fecha) {
+  if (!(horas > 0)) return "Escribe la jornada semanal para ver el sueldo mínimo.";
+  const imm = parametrosPrev((fecha || hoy()).slice(0, 7)).imm, min = Math.round(sueldoMinimoJornada(imm, horas, fecha || hoy())), maxJ = jornadaMaximaLegal(fecha || hoy());
+  const regla = horas <= JORNADA_PARCIAL_MAX ? `jornada parcial (hasta ${JORNADA_PARCIAL_MAX} horas): ingreso mínimo $${clp(imm)} × ${horas} ÷ ${maxJ}` : `más de ${JORNADA_PARCIAL_MAX} horas: ingreso mínimo completo, sin proporción`;
+  const estado = sueldo > 0 ? (sueldo < min ? ` <strong class="neg">El sueldo base está bajo el mínimo.</strong>` : " El sueldo base cumple el mínimo.") : "";
+  return `Mínimo legal para ${horas} horas semanales: <strong>$${clp(min)}</strong> (${regla}). Valor hora del sueldo: $${clp(Math.round(valorHoraSueldo(sueldo || min, horas)))}.${estado}${horas > maxJ ? ` <strong class="neg">Supera el máximo legal de ${maxJ} horas.</strong>` : ""}`;
+}
+function refrescarAyudaSueldo() {
+  const a = $("#tb-sueldo-ayuda"); if (!a) return;
+  const horas = Number($("#tb-jornada")?.value), sueldo = parseMonto($("#tb-sueldo_base")?.value || "0") || 0;
+  a.innerHTML = ayudaSueldoHTML(sueldo, horas, $("#tb-fecha_ingreso")?.value);
+  const vh = $("#tb-valor_hora"); if (vh && document.activeElement !== vh) vh.value = sueldo > 0 && horas > 0 ? clp(Math.round(valorHoraSueldo(sueldo, horas))) : "";
+}
 function editorHorario(te) {
   const h = te.horario || [], por = new Map(h.map((r) => [r.dia, r]));
   return `<div class="campo-largo horario-editor"><h4>Horario por día (ingreso y salida)</h4>
@@ -4966,6 +4988,8 @@ function validarHorario(h, jornada) {
     if (a == null || b == null) return `Horario del ${r.dia.toLowerCase()}: completa el ingreso y la salida.`;
     if (b <= a) return `Horario del ${r.dia.toLowerCase()}: la salida debe ser posterior al ingreso.`;
     if (r.col >= b - a) return `Horario del ${r.dia.toLowerCase()}: la colación no puede ocupar todo el turno.`;
+    if (r.col > 0 && r.col < 30) return `Horario del ${r.dia.toLowerCase()}: la colación debe ser de al menos 30 minutos (artículo 34).`;
+    if (r.col > 60 && jornada <= JORNADA_PARCIAL_MAX) return `Horario del ${r.dia.toLowerCase()}: en jornada parcial la colación va de 30 minutos a 1 hora (artículo 40 bis A).`;
     if (b - a - r.col > 600) return `Horario del ${r.dia.toLowerCase()}: la jornada ordinaria no puede superar 10 horas diarias.`;
   }
   const total = totalHorario(h);
@@ -4987,6 +5011,9 @@ function formularioTrabajador(te) {
     ${editorHorario(te)}
     <label class="campo-largo">Funciones<textarea id="tb-funciones" rows="3" placeholder="Describe las labores que realizará">${esc(te.funciones)}</textarea></label>
     <h3>Remuneración</h3><div class="form">${m("sueldo_base", "Sueldo base mensual *", te.sueldo_base)}
+      <label title="Sueldo × 7 ÷ (30 × horas semanales). Si lo cambias, se recalcula el sueldo base.">Valor hora ($)<input id="tb-valor_hora" inputmode="numeric" value="${te.sueldo_base && te.jornada ? clp(Math.round(valorHoraSueldo(te.sueldo_base, te.jornada))) : ""}"></label>
+      <p class="ayuda" id="tb-sueldo-ayuda" style="grid-column: 1 / -1; margin: 0">${ayudaSueldoHTML(te.sueldo_base, te.jornada, te.fecha_ingreso)}</p>
+      <div class="acciones" style="grid-column: 1 / -1; margin: 0"><button class="btn sec" type="button" data-n="sueldo-minimo">Usar el sueldo mínimo para esta jornada</button></div>
       <label>Gratificación<select id="tb-gratificacion"><option value="legal" ${te.gratificacion === "legal" ? "selected" : ""}>Legal (art. 50: 25 % con tope)</option><option value="fija" ${te.gratificacion === "fija" ? "selected" : ""}>Monto fijo mensual</option><option value="ninguna" ${te.gratificacion === "ninguna" ? "selected" : ""}>Sin gratificación</option></select></label>
       ${m("gratificacion_monto", "Gratificación fija mensual", te.gratificacion_monto)}${m("colacion", "Colación mensual", te.colacion)}${m("movilizacion", "Movilización mensual", te.movilizacion)}
       <label class="check"><input type="checkbox" id="tb-semana_corrida" ${te.semana_corrida ? "checked" : ""}> Remuneración variable con semana corrida (art. 45)</label>
@@ -5068,8 +5095,8 @@ async function guardarTrabajador() {
   const r = formatoRut(rut);
   if (S.trabajadores.some((t) => t.rut === r && t.id !== te.id)) return aviso(`Ya existe un trabajador con el RUT ${r}.`);
   d.rut = r;
-  const imm = parametrosPrev(d.fecha_ingreso.slice(0, 7)).imm, minimo = Math.round(imm * Math.min(d.jornada / 42, 1));
-  const advertencia = sueldo < minimo ? ` Atención: el sueldo base es menor que el ingreso mínimo proporcional a la jornada ($${clp(minimo)}).` : "";
+  const imm = parametrosPrev(d.fecha_ingreso.slice(0, 7)).imm, minimo = Math.round(sueldoMinimoJornada(imm, d.jornada, d.fecha_ingreso)), maxJ = jornadaMaximaLegal(d.fecha_ingreso);
+  const advertencia = (sueldo < minimo ? ` Atención: el sueldo base es menor que el ingreso mínimo para esta jornada ($${clp(minimo)}).` : "") + (d.jornada > maxJ ? ` Atención: la jornada supera el máximo legal de ${maxJ} horas semanales (salvo los trabajadores excluidos por el artículo 22).` : "");
   await ocupado(async () => {
     await S.almacen.set(`empresas/${S.eid}/trabajadores/${te.id || "w" + nuevoId()}`, d);
     S.trabEdit = null; render(); aviso("Trabajador guardado." + advertencia);
@@ -5088,7 +5115,8 @@ function textoContrato(t) {
   bloques.push({ tipo: "titulo", texto: "CONTRATO DE TRABAJO" });
   p(`En ${e.comuna || "__________"}, a ${fechaLarga(t.fecha_ingreso)}, entre ${may(e.razon_social)}, RUT ${e.rut || "__________"}, del giro de ${e.giro || "__________"}, ${rep}, ambos domiciliados en ${dirEmp || "__________"}, en adelante "el empleador"; y don/doña ${may(t.nombre)}, de nacionalidad ${t.nacionalidad || "__________"}${t.fecha_nac ? `, nacido(a) el ${fechaLarga(t.fecha_nac)}` : ""}, cédula nacional de identidad N° ${t.rut}, domiciliado(a) en ${[t.domicilio, t.comuna].filter(Boolean).join(", ") || "__________"}, en adelante "el trabajador", se ha convenido el siguiente contrato de trabajo:`);
   cl("PRIMERO: Naturaleza de los servicios y lugar de trabajo.", `El trabajador se obliga a desempeñar el cargo de ${t.cargo}${t.funciones ? `, cuyas funciones consisten en: ${String(t.funciones).trim().replace(/[.\s]+$/, "")}` : ""}. Los servicios se prestarán en ${t.lugar || dirEmp || "las dependencias del empleador"}, sin perjuicio de la facultad del empleador de alterar la naturaleza de los servicios o el sitio o recinto en que ellos deban prestarse, siempre que se trate de labores similares, que el nuevo sitio quede dentro del mismo lugar o ciudad y que ello no importe menoscabo para el trabajador, conforme al artículo 12 del Código del Trabajo.`);
-  const extras = "Las horas extraordinarias solo podrán pactarse por escrito, para atender necesidades o situaciones temporales de la empresa, y se pagarán con el recargo legal del 50 % sobre el sueldo convenido para la jornada ordinaria.";
+  const parcial = t.jornada > 0 && t.jornada <= JORNADA_PARCIAL_MAX ? "El trabajador queda sujeto a una jornada a tiempo parcial, conforme a los artículos 40 bis y siguientes del Código del Trabajo; la jornada ordinaria diaria será continua, pudiendo interrumpirse por un lapso no inferior a media hora ni superior a una hora para la colación. " : "";
+  const extras = parcial + "Las horas extraordinarias solo podrán pactarse por escrito, para atender necesidades o situaciones temporales de la empresa, y se pagarán con el recargo legal del 50 % sobre el sueldo convenido para la jornada ordinaria.";
   if (t.horario?.length) {
     cl("SEGUNDO: Jornada de trabajo.", `La jornada ordinaria de trabajo será de ${t.jornada} horas semanales, distribuidas de acuerdo con el siguiente horario:`);
     bloques.push(tablaHorario(t.horario));
@@ -5169,7 +5197,7 @@ function textoCertificado(t) {
   const b = [{ tipo: "titulo", texto: "CERTIFICADO DE TRABAJO" }];
   const vigente = !t.fecha_finiquito;
   b.push({ tipo: "p", texto: `${may(e.razon_social)}, RUT ${e.rut || "__________"}, certifica que don(ña) ${may(t.nombre)}, cédula nacional de identidad N° ${t.rut}, ${vigente ? "presta" : "prestó"} servicios para esta empresa desde el ${fechaLarga(t.fecha_ingreso)}${vigente ? "" : ` hasta el ${fechaLarga(t.fecha_finiquito)}`}, en el cargo de ${t.cargo || "__________"}, con contrato de trabajo ${(TIPOS_CONTRATO[t.tipo] || "").toLowerCase()}.` });
-  if (vigente && t.sueldo_base) b.push({ tipo: "p", texto: `Su remuneración mensual base es de $${clp(t.sueldo_base)}.` });
+  if (vigente && t.sueldo_base) b.push({ tipo: "p", texto: `Su remuneración mensual base es de $${clp(t.sueldo_base)}${t.jornada ? `, por una jornada ${t.jornada <= JORNADA_PARCIAL_MAX ? "parcial " : ""}de ${t.jornada} horas semanales` : ""}.` });
   b.push({ tipo: "p", texto: "Se extiende el presente certificado a petición del interesado(a), para los fines que estime convenientes." });
   b.push({ tipo: "p", texto: `${e.comuna || "__________"}, ${fechaLarga(hoy())}.` });
   return b;
@@ -7726,6 +7754,7 @@ document.addEventListener("click", (ev) => {
     case "ver-contrato": S.contratoVer = id; render(); window.scrollTo(0, 0); break;
     case "volver-trabajadores": S.contratoVer = null; render(); break;
     case "horario-sugerir": { const h = Number($("#tb-jornada")?.value); if (!Number.isFinite(h) || h < 1 || h > 45) { aviso("Escribe primero la jornada semanal (de 1 a 45 horas)."); break; } actualizarFormTrabajador((te) => { te.horario = horarioSugerido(h); te.distribucion = distribucionDesdeHorario(te.horario); }); break; }
+    case "sueldo-minimo": { const horas = Number($("#tb-jornada")?.value), fecha = $("#tb-fecha_ingreso")?.value || hoy(); if (!(horas > 0)) { aviso("Escribe primero la jornada semanal."); break; } $("#tb-sueldo_base").value = clp(Math.round(sueldoMinimoJornada(parametrosPrev(fecha.slice(0, 7)).imm, horas, fecha))); refrescarAyudaSueldo(); break; }
     case "horario-limpiar": actualizarFormTrabajador((te) => { te.horario = []; }); break;
     case "pdf-contrato": { const tr = trabajadorPorId(id); ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`contrato_${nombreSeguro(tr.nombre)}.pdf`, await pdfContrato(tr), "Contrato descargado."); }, "No se pudo generar el contrato"); break; }
     case "afc-crear": crearFichasDesdeCompras([id]); break;
@@ -7910,8 +7939,10 @@ document.addEventListener("change", (ev) => {
   else if (id === "af-cat") { const anios = CATEGORIAS_ACTIVO[+el.value]?.[1]; if (anios) $("#af-vida").value = String(anios); }
   else if (id === "formato-doc") { if (FORMATOS_DOC[el.value]) { recordar("formato-doc", el.value); aviso(`Formato del PDF: ${FORMATOS_DOC[el.value][0]}.`); } }
   else if (/^hr-\d-(on|ent|sal|col)$/.test(id)) refrescarHorario();
+  else if (id === "tb-sueldo_base" || id === "tb-fecha_ingreso") refrescarAyudaSueldo();
+  else if (id === "tb-valor_hora") { const vh = parseMonto(el.value || "0") || 0, horas = Number($("#tb-jornada")?.value); if (vh > 0 && horas > 0) { $("#tb-sueldo_base").value = clp(Math.round((vh * horas * 30) / 7)); } refrescarAyudaSueldo(); }
   else if (id === "tb-afp") { $("#tb-afp_comision").value = comaDecimal(AFPS[el.value] ?? ""); }
-  else if (id === "tb-jornada") { const d = $("#tb-distribucion"), h = Number(el.value); if (Number.isFinite(h) && h > 0 && (!d.value || d.value.startsWith("Lunes a viernes, de 09:00"))) d.value = distribucionSugerida(h); refrescarHorario(); }
+  else if (id === "tb-jornada") { const d = $("#tb-distribucion"), h = Number(el.value); if (Number.isFinite(h) && h > 0 && (!d.value || d.value.startsWith("Lunes a viernes, de 09:00"))) d.value = distribucionSugerida(h); refrescarHorario(); refrescarAyudaSueldo(); }
   else if (id === "lq-periodo" && /^\d{4}-\d{2}$/.test(el.value)) { S.liqPeriodo = el.value; S.liqPeriodoEid = S.eid; S.liqVer = null; render(); }
   else if (id === "vac-fecha" && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) { S.vacFecha = el.value; render(); }
   else if (id.startsWith("fq-") && id !== "fq-trabajador" && S.finiqEdit) { leerFiniquito(); render(); }
