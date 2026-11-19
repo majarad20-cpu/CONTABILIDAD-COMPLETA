@@ -2285,6 +2285,21 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("el formulario muestra las alternativas, el aviso legal y los botones; con dos alternativas ya no ofrece agregar; en jornada completa lo explica", alt.ids.every(Boolean) && alt.sinBoton && alt.noParcial, JSON.stringify(alt.ids));
   ok("cada alternativa debe sumar la jornada semanal", alt.val[0] === "" && /deben coincidir/.test(alt.val[1]), JSON.stringify(alt.val));
 
+  console.log("Hora de la colación en el horario");
+  const ci = await page.evaluate(() => {
+    const r = {}, dia = (d, ci) => ({ dia: d, ent: "08:00", sal: "17:00", col: 60, ci });
+    r.dist = distribucionDesdeHorario([dia("Lunes", "13:00")]); r.distSin = distribucionDesdeHorario([dia("Lunes", "")]);
+    r.agrupa = distribucionDesdeHorario([dia("Lunes", "13:00"), dia("Martes", "13:00"), dia("Miércoles", "12:30")]);
+    r.tabla = tablaHorario([dia("Lunes", "13:00")]).filas[0]; r.tablaSin = tablaHorario([dia("Lunes", "")]).filas[0];
+    r.val = [validarHorario([dia("Lunes", "13:00")], 8), validarHorario([dia("Lunes", "07:00")], 8), validarHorario([dia("Lunes", "16:30")], 8), validarHorario([{ ...dia("Lunes", "13:00"), col: 0 }], 8)];
+    r.form = formularioTrabajador({ ...trabajadorVacio(), jornada: 8, horario: [dia("Lunes", "13:00")] }).includes('id="hr-0-ci" value="13:00"');
+    return r;
+  });
+  igual("el texto del horario dice la hora de la colación y agrupa solo los días con la misma", [ci.dist, ci.distSin, ci.agrupa], ["Lunes, de 08:00 a 17:00 horas, con colación de 13:00 a 14:00 horas, no imputable a la jornada (8 horas diarias)", "Lunes, de 08:00 a 17:00 horas, con 60 minutos de colación no imputables a la jornada (8 horas diarias)", "Lunes y martes, de 08:00 a 17:00 horas, con colación de 13:00 a 14:00 horas, no imputable a la jornada (8 horas diarias); Miércoles, de 08:00 a 17:00 horas, con colación de 12:30 a 13:30 horas, no imputable a la jornada (8 horas diarias)"]);
+  igual("la tabla del contrato muestra la colación de 13:00 a 14:00, o los minutos si no hay hora", [ci.tabla, ci.tablaSin], [["Lunes", "08:00", "17:00", "13:00 a 14:00", "8 horas"], ["Lunes", "08:00", "17:00", "60 min", "8 horas"]]);
+  ok("la colación debe quedar dentro del turno y tener duración", ci.val[0] === "" && /dentro del turno/.test(ci.val[1]) && /dentro del turno/.test(ci.val[2]) && /indica cuántos minutos/.test(ci.val[3]), JSON.stringify(ci.val));
+  ok("el formulario trae la columna con el inicio de la colación", ci.form);
+
   console.log("Pago en Previred");
   const ppv = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {}, e0 = empresa();
