@@ -2202,6 +2202,20 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("en el contrato a plazo fijo el seguro de cesantía es de cargo del empleador; en el indefinido el trabajador cotiza", /cuya cotización en los contratos a plazo fijo o por obra o faena es de cargo del empleador/.test(ctr.fijo) && /cotizará en el Seguro de Cesantía/.test(ctr.indef) && !/cotizará en el Seguro de Cesantía/.test(ctr.fijo), "");
   ok("el contrato se arma en PDF aun con un nombre de empresa largo en las firmas", ctr.pdf > 2000, String(ctr.pdf));
 
+  console.log("Formatos del PDF de contratos y documentos");
+  const fmt = await page.evaluate(async () => {
+    const r = {}, base = { ...trabajadorVacio(), nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2031-01-02", tipo: "indefinido", fecha_nac: "1990-01-01", nacionalidad: "Chilena", sueldo_base: 600000, funciones: "Operar la maquinaria." };
+    r.sinPuntoDoble = !/\.\./.test(textoContrato(base).map((x) => x.texto || "").join(" "));
+    r.porDefecto = formatoDoc(); recordar("formato-doc", "moderno"); r.recordado = formatoDoc(); recordar("formato-doc", "inventado"); r.invalido = formatoDoc(); recordar("formato-doc", "clasico");
+    r.tam = {}; for (const estilo of Object.keys(FORMATOS_DOC)) r.tam[estilo] = (await pdfDocumento("Contrato", textoContrato(base), [["EMPLEADOR", "p.p. EMPRESA", "EMPLEADOR"], ["Ana", "RUT 1", "TRABAJADOR"]], { estilo, resumen: resumenContrato(base) })).size;
+    r.resumen = resumenContrato(base).map((x) => x[0]);
+    return r;
+  });
+  ok("el cargo no termina con doble punto cuando las funciones ya traen punto final", fmt.sinPuntoDoble);
+  igual("el formato del PDF: clásico por defecto, se recuerda y uno inválido vuelve al clásico", [fmt.porDefecto, fmt.recordado, fmt.invalido], ["clasico", "moderno", "clasico"]);
+  ok("los tres formatos generan el PDF y el resumen agrega la ficha", Object.values(fmt.tam).every((n) => n > 2500) && fmt.tam.resumen > fmt.tam.clasico, JSON.stringify(fmt.tam));
+  ok("la ficha resumen trae empleador, trabajador, cargo, ingreso, tipo, jornada y remuneración", ["Empleador", "Trabajador", "Cargo", "Fecha de ingreso", "Tipo de contrato", "Jornada", "Remuneración"].every((k) => fmt.resumen.includes(k)), JSON.stringify(fmt.resumen));
+
   console.log("Pago en Previred");
   const ppv = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {}, e0 = empresa();
