@@ -2263,6 +2263,28 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("el aviso de sueldo bajo el mínimo: parcial proporcional; de 31 horas en adelante, el mínimo completo", jp.avisos, [0, 1, 0, 1, 0]);
   ok("la ayuda del sueldo muestra el mínimo, la regla y el valor hora", /\$105\.439/.test(jp.ayuda) && /jornada parcial/.test(jp.ayuda) && /Valor hora/.test(jp.ayuda), jp.ayuda);
 
+  console.log("Alternativas de distribución de la jornada parcial (art. 40 bis C)");
+  const alt = await page.evaluate(async () => {
+    const r = {}, h8 = horarioSugerido(8), altB = [{ dia: "Martes", ent: "09:00", sal: "13:00", col: 0 }, { dia: "Jueves", ent: "09:00", sal: "13:00", col: 0 }];
+    r.h8 = [h8.length, h8[0].sal, totalHorario(h8)];
+    const base = { ...trabajadorVacio(), nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2026-11-19", tipo: "indefinido", fecha_nac: "1990-01-01", nacionalidad: "Chilena", sueldo_base: 105439, jornada: 8, horario: h8, horario_alt: [altB] };
+    const bl = textoContrato(base), tablas = bl.filter((x) => x.tipo === "tabla"), subs = bl.filter((x) => x.tipo === "subtitulo").map((x) => x.texto), todo = bl.map((x) => x.texto || "").join(" ");
+    r.tablas = tablas.length; r.subs = subs; r.cita = /artículo 40 bis C/.test(todo) && /antelación mínima de una semana/.test(todo) && /regirá la alternativa 1/.test(todo);
+    r.sinAlt = textoContrato({ ...base, horario_alt: [] }).filter((x) => x.tipo === "tabla").length; r.completa = textoContrato({ ...base, jornada: 42, horario_alt: [altB] }).filter((x) => x.tipo === "tabla").length;
+    r.pdf = (await pdfDocumento("Contrato", bl, [["E", "p.p. X", "EMPLEADOR"], ["T", "RUT 1", "TRABAJADOR"]], { estilo: "moderno" })).size;
+    r.vista = (vistaContrato(base).match(/class="horario"/g) || []).length;
+    r.form = formularioTrabajador(base); r.ids = ['id="ha1-1-sal" value="13:00"', "Alternativa 2: horario por día", 'data-n="horario-alt-quitar"', "¿No puedes fijar los días exactos?", 'data-n="horario-alt-agregar"'].map((x) => r.form.includes(x));
+    r.sinBoton = !formularioTrabajador({ ...base, horario_alt: [altB, altB] }).includes('data-n="horario-alt-agregar"'); r.noParcial = /solo rigen en jornada parcial/.test(formularioTrabajador({ ...base, jornada: 42 }));
+    r.val = [validarHorario(altB, 8), validarHorario(altB, 9)];
+    delete r.form; return r;
+  });
+  igual("horario sugerido de 8 horas: 5 días de 1 h 36 min, de 09:00 a 10:36", alt.h8, [5, "10:36", 480]);
+  igual("el contrato con alternativas trae una tabla por alternativa, cita el art. 40 bis C y fija la alternativa 1 por defecto", [alt.tablas, alt.subs, alt.cita], [2, ["Alternativa 1", "Alternativa 2"], true]);
+  igual("sin alternativas, o en jornada completa, el contrato lleva una sola tabla o ninguna alternativa", [alt.sinAlt, alt.completa], [1, 1]);
+  ok("las alternativas salen en el PDF y en la vista previa", alt.pdf > 2500 && alt.vista === 2, JSON.stringify([alt.pdf, alt.vista]));
+  ok("el formulario muestra las alternativas, el aviso legal y los botones; con dos alternativas ya no ofrece agregar; en jornada completa lo explica", alt.ids.every(Boolean) && alt.sinBoton && alt.noParcial, JSON.stringify(alt.ids));
+  ok("cada alternativa debe sumar la jornada semanal", alt.val[0] === "" && /deben coincidir/.test(alt.val[1]), JSON.stringify(alt.val));
+
   console.log("Pago en Previred");
   const ppv = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {}, e0 = empresa();
