@@ -2300,6 +2300,15 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   ok("la colación debe quedar dentro del turno y tener duración", ci.val[0] === "" && /dentro del turno/.test(ci.val[1]) && /dentro del turno/.test(ci.val[2]) && /indica cuántos minutos/.test(ci.val[3]), JSON.stringify(ci.val));
   ok("el formulario trae la columna con el inicio de la colación", ci.form);
 
+  console.log("Gratificación: sin pacto mensual pero con derecho si hay utilidades");
+  const gr = await page.evaluate(() => {
+    const base = { ...trabajadorVacio(), nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2026-11-19", tipo: "indefinido", fecha_nac: "1990-01-01", nacionalidad: "Chilena", sueldo_base: 105439, jornada: 8 };
+    const txt = (g) => textoContrato({ ...base, gratificacion: g }).map((x) => x.texto || "").join(" ");
+    return { ninguna: txt("ninguna"), legal: txt("legal"), form: formularioTrabajador({ ...base, gratificacion: "ninguna" }) };
+  });
+  ok("sin gratificación mensual, el contrato reconoce el derecho si hay utilidades líquidas, proporcional al tiempo trabajado", /no pactan una gratificación mensual garantizada/.test(gr.ninguna) && /obtiene utilidades líquidas, el trabajador tendrá derecho a la gratificación legal/.test(gr.ninguna) && /artículo 52/.test(gr.ninguna) && !/artículo 50/.test(gr.ninguna), gr.ninguna.slice(0, 600));
+  ok("la gratificación legal mensual sigue citando el artículo 50 y el formulario nombra la opción sin gratificación mensual", /artículo 50/.test(gr.legal) && /Sin gratificación mensual \(solo si hay utilidades\)/.test(gr.form));
+
   console.log("Pago en Previred");
   const ppv = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {}, e0 = empresa();
