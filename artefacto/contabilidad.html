@@ -418,7 +418,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Anticipo a proveedores",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Mercaderías",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Préstamos bancarios de corto plazo",1],["2.1.03","Documentos por pagar",1],["2.1.04","Acreedores varios",1],["2.1.05","Anticipo de clientes",1],["2.1.06","Remuneraciones por pagar",1],["2.1.07","Cotizaciones previsionales por pagar",1],["2.1.08","Retención de honorarios por pagar",1],["2.1.09","Impuesto único por pagar",1],["2.1.10","IVA débito fiscal",1],["2.1.11","PPM por pagar",1],["2.1.12","Impuesto a la renta por pagar",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.9.1";
+const VERSION = "2.10.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -4745,7 +4745,7 @@ const JORNADA_PARCIAL_MAX = 30;
 const sueldoMinimoJornada = (imm, horas, fecha) => (horas <= JORNADA_PARCIAL_MAX ? (imm * horas) / jornadaMaximaLegal(fecha) : imm);
 /* Valor de la hora del sueldo (Reglamento 969, art. 16): sueldo × 28 ÷ (30 × horas semanales × 4). */
 const valorHoraSueldo = (sueldo, horas) => (horas > 0 ? (sueldo * 7) / (30 * horas) : 0);
-/* Horario por día: cada fila es { dia, ent, sal, col } con ingreso y salida en HH:MM y la colación en minutos (no imputable a la jornada). */
+/* Horario por día: cada fila es { dia, ent, sal, col, ci } con ingreso y salida en HH:MM, la colación en minutos (no imputable a la jornada) y, opcional, la hora en que empieza la colación (ci). */
 const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const aMinutos = (hhmm) => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || "")); return m ? +m[1] * 60 + +m[2] : null; };
 const deMinutos = (x) => `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
@@ -4761,18 +4761,19 @@ function distribucionDesdeHorario(h) {
   const grupos = [];
   for (const r of h || []) {
     const g = grupos.at(-1), col = +r.col || 0;
-    if (g && g.ent === r.ent && g.sal === r.sal && g.col === col && DIAS_SEMANA.indexOf(g.dias.at(-1)) === DIAS_SEMANA.indexOf(r.dia) - 1) g.dias.push(r.dia);
-    else grupos.push({ dias: [r.dia], ent: r.ent, sal: r.sal, col });
+    const ci = col && r.ci ? r.ci : "";
+    if (g && g.ent === r.ent && g.sal === r.sal && g.col === col && g.ci === ci && DIAS_SEMANA.indexOf(g.dias.at(-1)) === DIAS_SEMANA.indexOf(r.dia) - 1) g.dias.push(r.dia);
+    else grupos.push({ dias: [r.dia], ent: r.ent, sal: r.sal, col, ci });
   }
   return grupos.map((g) => {
     const dias = g.dias.length === 1 ? g.dias[0] : g.dias.length === 2 ? `${g.dias[0]} y ${g.dias[1].toLowerCase()}` : `${g.dias[0]} a ${g.dias.at(-1).toLowerCase()}`;
-    return `${dias}, de ${g.ent} a ${g.sal} horas${g.col ? `, con ${g.col} minutos de colación no imputables a la jornada` : ", en jornada continua"} (${textoDuracion(minutosDia(g))} diarias)`;
+    return `${dias}, de ${g.ent} a ${g.sal} horas${g.col ? (g.ci ? `, con colación de ${g.ci} a ${deMinutos(aMinutos(g.ci) + g.col)} horas, no imputable a la jornada` : `, con ${g.col} minutos de colación no imputables a la jornada`) : ", en jornada continua"} (${textoDuracion(minutosDia(g))} diarias)`;
   }).join("; ");
 }
 function tablaHorario(h) {
   const hayCol = h.some((r) => +r.col);
   return { tipo: "tabla", columnas: ["Día", "Ingreso", "Salida", ...(hayCol ? ["Colación"] : []), "Horas trabajadas"],
-    filas: h.map((r) => [r.dia, r.ent, r.sal, ...(hayCol ? [+r.col ? `${r.col} min` : "—"] : []), textoDuracion(minutosDia(r))]),
+    filas: h.map((r) => [r.dia, r.ent, r.sal, ...(hayCol ? [+r.col ? (r.ci && aMinutos(r.ci) != null ? `${r.ci} a ${deMinutos(aMinutos(r.ci) + +r.col)}` : `${r.col} min`) : "—"] : []), textoDuracion(minutosDia(r))]),
     pie: ["Total semanal", "", "", ...(hayCol ? [""] : []), textoDuracion(totalHorario(h))] };
 }
 function distribucionSugerida(horas) {
@@ -4961,9 +4962,9 @@ function editorHorario(te, k = 0) {
   const h = k === 0 ? te.horario || [] : (te.horario_alt || [])[k - 1] || [], por = new Map(h.map((r) => [r.dia, r])), p = k === 0 ? "hr" : `ha${k}`;
   const hayAlt = (te.horario_alt || []).length > 0;
   return `<div class="campo-largo horario-editor"><h4>${hayAlt ? `Alternativa ${k + 1}: horario por día` : "Horario por día (ingreso y salida)"}</h4>
-    ${k === 0 ? `<p class="ayuda">Opcional. Si completas la tabla, el contrato la incluye en la cláusula de jornada y el texto de la distribución se arma solo. La colación no cuenta como tiempo trabajado.</p>` : ""}
-    <table><thead><tr><th>Día</th><th>Trabaja</th><th>Ingreso</th><th>Salida</th><th>Colación (min)</th><th>Horas</th></tr></thead><tbody>${DIAS_SEMANA.map((dia, i) => { const r = por.get(dia); return `<tr><td>${dia}</td><td><input type="checkbox" id="${p}-${i}-on" ${r ? "checked" : ""}></td><td><input type="time" id="${p}-${i}-ent" value="${esc(r?.ent || "09:00")}"></td><td><input type="time" id="${p}-${i}-sal" value="${esc(r?.sal || "")}"></td><td><input id="${p}-${i}-col" inputmode="numeric" value="${r?.col || 0}"></td><td id="${p}-${i}-h">${r ? esc(textoDuracion(minutosDia(r))) : "—"}</td></tr>`; }).join("")}</tbody>
-      <tfoot><tr><th colspan="5">Total semanal</th><th id="${p}-total">${h.length ? esc(textoDuracion(totalHorario(h))) : "—"}</th></tr></tfoot></table>
+    ${k === 0 ? `<p class="ayuda">Opcional. Si completas la tabla, el contrato la incluye en la cláusula de jornada y el texto de la distribución se arma solo. La colación no cuenta como tiempo trabajado; si indicas a qué hora empieza, el contrato la dice (por ejemplo, de 13:00 a 14:00).</p>` : ""}
+    <table><thead><tr><th>Día</th><th>Trabaja</th><th>Ingreso</th><th>Salida</th><th>Colación (min)</th><th>Inicio colación</th><th>Horas</th></tr></thead><tbody>${DIAS_SEMANA.map((dia, i) => { const r = por.get(dia); return `<tr><td>${dia}</td><td><input type="checkbox" id="${p}-${i}-on" ${r ? "checked" : ""}></td><td><input type="time" id="${p}-${i}-ent" value="${esc(r?.ent || "09:00")}"></td><td><input type="time" id="${p}-${i}-sal" value="${esc(r?.sal || "")}"></td><td><input id="${p}-${i}-col" inputmode="numeric" value="${r?.col || 0}"></td><td><input type="time" id="${p}-${i}-ci" value="${esc(r?.ci || "")}"></td><td id="${p}-${i}-h">${r ? esc(textoDuracion(minutosDia(r))) : "—"}</td></tr>`; }).join("")}</tbody>
+      <tfoot><tr><th colspan="6">Total semanal</th><th id="${p}-total">${h.length ? esc(textoDuracion(totalHorario(h))) : "—"}</th></tr></tfoot></table>
     <p class="ayuda" id="${p}-aviso"></p>
     <div class="acciones">${k === 0 ? `<button class="btn sec" type="button" data-n="horario-sugerir">Sugerir según la jornada semanal</button><button class="btn sec" type="button" data-n="horario-limpiar">Quitar la tabla</button>` : `<button class="btn sec" type="button" data-n="horario-alt-quitar" data-k="${k}">Quitar esta alternativa</button>`}</div></div>`;
 }
@@ -4978,7 +4979,7 @@ function editoresHorario(te) {
 function leerHorario(k = 0) {
   const p = k === 0 ? "hr" : `ha${k}`;
   if (!$(`#${p}-0-on`)) return null;
-  return DIAS_SEMANA.map((dia, i) => ($(`#${p}-${i}-on`).checked ? { dia, ent: $(`#${p}-${i}-ent`).value, sal: $(`#${p}-${i}-sal`).value, col: Math.max(Math.round(Number($(`#${p}-${i}-col`).value) || 0), 0) } : null)).filter(Boolean);
+  return DIAS_SEMANA.map((dia, i) => ($(`#${p}-${i}-on`).checked ? { dia, ent: $(`#${p}-${i}-ent`).value, sal: $(`#${p}-${i}-sal`).value, col: Math.max(Math.round(Number($(`#${p}-${i}-col`).value) || 0), 0), ci: $(`#${p}-${i}-ci`)?.value || "" } : null)).filter(Boolean);
 }
 function leerAlternativas(te) {
   if (!$("#hr-0-on")) return te.horario_alt || [];
@@ -5003,6 +5004,11 @@ function validarHorario(h, jornada) {
     if (a == null || b == null) return `Horario del ${r.dia.toLowerCase()}: completa el ingreso y la salida.`;
     if (b <= a) return `Horario del ${r.dia.toLowerCase()}: la salida debe ser posterior al ingreso.`;
     if (r.col >= b - a) return `Horario del ${r.dia.toLowerCase()}: la colación no puede ocupar todo el turno.`;
+    if (r.ci) {
+      const c = aMinutos(r.ci);
+      if (!(r.col > 0)) return `Horario del ${r.dia.toLowerCase()}: indica cuántos minutos dura la colación o borra su hora de inicio.`;
+      if (c == null || c < a || c + r.col > b) return `Horario del ${r.dia.toLowerCase()}: la colación debe quedar dentro del turno (entre el ingreso y la salida).`;
+    }
     if (r.col > 0 && r.col < 30) return `Horario del ${r.dia.toLowerCase()}: la colación debe ser de al menos 30 minutos (artículo 34).`;
     if (r.col > 60 && jornada <= JORNADA_PARCIAL_MAX) return `Horario del ${r.dia.toLowerCase()}: en jornada parcial la colación va de 30 minutos a 1 hora (artículo 40 bis A).`;
     if (b - a - r.col > 600) return `Horario del ${r.dia.toLowerCase()}: la jornada ordinaria no puede superar 10 horas diarias.`;
@@ -7966,7 +7972,7 @@ document.addEventListener("change", (ev) => {
   else if (id === "af-anio") { S.afAnio = el.value; render(); }
   else if (id === "af-cat") { const anios = CATEGORIAS_ACTIVO[+el.value]?.[1]; if (anios) $("#af-vida").value = String(anios); }
   else if (id === "formato-doc") { if (FORMATOS_DOC[el.value]) { recordar("formato-doc", el.value); aviso(`Formato del PDF: ${FORMATOS_DOC[el.value][0]}.`); } }
-  else if (/^(hr|ha[12])-\d-(on|ent|sal|col)$/.test(id)) refrescarHorario(id.startsWith("hr") ? 0 : Number(id[2]));
+  else if (/^(hr|ha[12])-\d-(on|ent|sal|col|ci)$/.test(id)) refrescarHorario(id.startsWith("hr") ? 0 : Number(id[2]));
   else if (id === "tb-sueldo_base" || id === "tb-fecha_ingreso") refrescarAyudaSueldo();
   else if (id === "tb-valor_hora") { const vh = parseMonto(el.value || "0") || 0, horas = Number($("#tb-jornada")?.value); if (vh > 0 && horas > 0) { $("#tb-sueldo_base").value = clp(Math.round((vh * horas * 30) / 7)); } refrescarAyudaSueldo(); }
   else if (id === "tb-afp") { $("#tb-afp_comision").value = comaDecimal(AFPS[el.value] ?? ""); }
