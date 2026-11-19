@@ -410,7 +410,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Anticipo a proveedores",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Mercaderías",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Préstamos bancarios de corto plazo",1],["2.1.03","Documentos por pagar",1],["2.1.04","Acreedores varios",1],["2.1.05","Anticipo de clientes",1],["2.1.06","Remuneraciones por pagar",1],["2.1.07","Cotizaciones previsionales por pagar",1],["2.1.08","Retención de honorarios por pagar",1],["2.1.09","Impuesto único por pagar",1],["2.1.10","IVA débito fiscal",1],["2.1.11","PPM por pagar",1],["2.1.12","Impuesto a la renta por pagar",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.6.4";
+const VERSION = "2.6.5";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -4731,9 +4731,11 @@ const montoGuion = (v) => (v ? clp(v) : "");
 
 function distribucionSugerida(horas) {
   const diario = horas / 5, h = Math.floor(diario), m = Math.round((diario - h) * 60);
-  const fin = 9 * 60 + Math.round(diario * 60) + 60;
+  /* La colación (artículo 34) solo corresponde cuando la jornada diaria se divide en dos partes: en jornadas cortas, de hasta 5 horas diarias, se sugiere jornada continua. */
+  const colacion = diario > 5, fin = 9 * 60 + Math.round(diario * 60) + (colacion ? 60 : 0);
   const hh = (x) => `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
-  return `Lunes a viernes, de 09:00 a ${hh(fin)} horas, con una hora de colación no imputable a la jornada (${h} hora${h === 1 ? "" : "s"}${m ? ` y ${m} minutos` : ""} diarias)`;
+  const dur = `${h} hora${h === 1 ? "" : "s"}${m ? ` y ${m} minutos` : ""} diarias`;
+  return colacion ? `Lunes a viernes, de 09:00 a ${hh(fin)} horas, con una hora de colación no imputable a la jornada (${dur})` : `Lunes a viernes, de 09:00 a ${hh(fin)} horas, en jornada continua (${dur})`;
 }
 function trabajadorVacio() {
   const e = empresa();
@@ -5016,7 +5018,7 @@ function textoContrato(t) {
   const fijos = (t.haberes_fijos || []).map((h) => `${h.concepto} de $${clp(h.monto)}${h.imponible ? "" : " (no imponible)"}`);
   const variable = t.semana_corrida ? " Como la remuneración del trabajador es variable, el empleador pagará además la semana corrida conforme al artículo 45 del Código del Trabajo." : "";
   cl("TERCERO: Remuneración.", `El empleador pagará al trabajador un sueldo base mensual de $${clp(t.sueldo_base)}.${grat}${fijos.length ? ` Además se pagará mensualmente: ${fijos.join("; ")}.` : ""}${variable}${asig.length ? ` Se pagará además una asignación de ${asig.join(" y una asignación de ")} mensual, por los días efectivamente trabajados, que conforme al artículo 41 del Código del Trabajo no constituye remuneración.` : ""} El pago se efectuará ${t.forma_pago ? t.forma_pago.charAt(0).toLowerCase() + t.forma_pago.slice(1) : "mensualmente"}. Del total se descontarán los impuestos, las cotizaciones previsionales y de salud, y las demás deducciones que autorice la ley o que el trabajador autorice por escrito.`);
-  cl("CUARTO: Previsión y salud.", `El trabajador se encuentra afiliado a la AFP ${t.afp} y a ${t.salud === "isapre" ? `la isapre ${t.isapre || "__________"}` : "Fonasa"}${t.sin_cesantia ? "" : ", y cotizará en el Seguro de Cesantía de la Ley N° 19.728"}. El empleador descontará y enterará las cotizaciones en las instituciones respectivas y pagará de su cargo la cotización adicional de la Ley N° 21.735, el seguro de accidentes del trabajo y las demás cotizaciones que corresponden al empleador.`);
+  cl("CUARTO: Previsión y salud.", `El trabajador se encuentra afiliado a la AFP ${t.afp} y a ${t.salud === "isapre" ? `la isapre ${t.isapre || "__________"}` : "Fonasa"}${t.sin_cesantia ? "" : t.tipo === "indefinido" ? ", y cotizará en el Seguro de Cesantía de la Ley N° 19.728" : ", y estará afecto al Seguro de Cesantía de la Ley N° 19.728, cuya cotización en los contratos a plazo fijo o por obra o faena es de cargo del empleador"}. El empleador descontará y enterará las cotizaciones en las instituciones respectivas y pagará de su cargo la cotización adicional de la Ley N° 21.735, el seguro de accidentes del trabajo y las demás cotizaciones que corresponden al empleador.`);
   cl("QUINTO: Duración del contrato.", t.tipo === "indefinido" ? "El presente contrato tendrá duración indefinida."
     : t.tipo === "plazo_fijo" ? `El presente contrato es a plazo fijo y terminará el ${fechaLarga(t.fecha_termino)}, sin necesidad de aviso previo, de acuerdo con el artículo 159 N° 4 del Código del Trabajo.`
     : `El presente contrato se celebra por la duración de la obra o faena: ${t.obra}, y terminará al concluir esta, de acuerdo con el artículo 159 N° 5 del Código del Trabajo.`);
@@ -5281,7 +5283,9 @@ async function pdfDocumento(titulo, bloques, firmas) {
   salto(110); y += 50;
   doc.setFont("times", "normal");
   const mitad = ancho / 2;
-  firmas.forEach(([a, b, c], i) => { const x = m + i * (mitad + 20); doc.line(x, y, x + mitad - 40, y); doc.setFontSize(10); doc.text(textoPdf(a), x, y + 14); doc.text(textoPdf(b), x, y + 27); doc.text(c, x, y + 40); });
+  /* Cada línea del bloque de firma se parte al ancho de su columna: con un nombre de empresa largo no invade la firma del lado. */
+  doc.setFontSize(10);
+  firmas.forEach((lineasFirma, i) => { const x = m + i * (mitad + 20), anchoCol = mitad - 40; doc.line(x, y, x + anchoCol, y); let yy = y + 14; for (const l of lineasFirma.flatMap((t) => doc.splitTextToSize(textoPdf(t), anchoCol))) { doc.text(l, x, yy); yy += 13; } });
   return doc.output("blob");
 }
 const pdfContrato = (t) => pdfDocumento(`Contrato de trabajo – ${t.nombre}`, textoContrato(t), [[empresa().representante || "EMPLEADOR", `p.p. ${empresa().razon_social}`, "EMPLEADOR"], [t.nombre, `RUT ${t.rut}`, "TRABAJADOR"]]);

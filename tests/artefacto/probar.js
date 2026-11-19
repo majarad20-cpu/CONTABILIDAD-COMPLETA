@@ -2186,6 +2186,22 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("el IVA del F29 se compara con los asientos del período y no con los pagos de otros meses hechos en ese mes", cmpIva.enlazado, ["IVA débito fiscal", 19000, 19000]);
   igual("sin documentos centralizados, el IVA se compara con el movimiento del mes", cmpIva.sinEnlace, ["IVA débito fiscal", 19000, -481000]);
 
+  console.log("Contrato: jornada corta, cesantía en plazo fijo y firmas largas");
+  const ctr = await page.evaluate(async () => {
+    const e0 = empresa(), r = {};
+    r.corta = distribucionSugerida(9); r.larga = distribucionSugerida(42);
+    const base = { ...trabajadorVacio(), nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2031-01-02", fecha_termino: "2031-03-31", fecha_nac: "1990-01-01", nacionalidad: "Chilena", sueldo_base: 118619, jornada: 9, afp: "Habitat" };
+    const txt = (t) => textoContrato(t).map((x) => x.texto || "").join(" ");
+    r.fijo = txt({ ...base, tipo: "plazo_fijo" }); r.indef = txt({ ...base, tipo: "indefinido" });
+    await BD.setEmpresa(S.eid, { ...e0, razon_social: "SERVICIO DE MANTENCIÓN INDUSTRIAL LUMONST SOCIEDAD POR ACCIONES" });
+    const blob = await pdfContrato({ ...base, tipo: "plazo_fijo" }); r.pdf = blob.size; await BD.setEmpresa(S.eid, e0);
+    return r;
+  });
+  ok("en una jornada de 9 horas semanales la distribución sugerida es continua, sin colación", /de 09:00 a 10:48 horas, en jornada continua \(1 hora y 48 minutos diarias\)/.test(ctr.corta) && !/colación/.test(ctr.corta), ctr.corta);
+  ok("en una jornada de 42 horas la distribución sugerida lleva la hora de colación", /de 09:00 a 18:24 horas, con una hora de colación/.test(ctr.larga), ctr.larga);
+  ok("en el contrato a plazo fijo el seguro de cesantía es de cargo del empleador; en el indefinido el trabajador cotiza", /cuya cotización en los contratos a plazo fijo o por obra o faena es de cargo del empleador/.test(ctr.fijo) && /cotizará en el Seguro de Cesantía/.test(ctr.indef) && !/cotizará en el Seguro de Cesantía/.test(ctr.fijo), "");
+  ok("el contrato se arma en PDF aun con un nombre de empresa largo en las firmas", ctr.pdf > 2000, String(ctr.pdf));
+
   console.log("Pago en Previred");
   const ppv = await page.evaluate(async () => {
     const w = (ms = 120) => new Promise((r) => setTimeout(r, ms)), r = {}, e0 = empresa();
