@@ -2206,15 +2206,37 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   const fmt = await page.evaluate(async () => {
     const r = {}, base = { ...trabajadorVacio(), nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2031-01-02", tipo: "indefinido", fecha_nac: "1990-01-01", nacionalidad: "Chilena", sueldo_base: 600000, funciones: "Operar la maquinaria." };
     r.sinPuntoDoble = !/\.\./.test(textoContrato(base).map((x) => x.texto || "").join(" "));
-    r.porDefecto = formatoDoc(); recordar("formato-doc", "moderno"); r.recordado = formatoDoc(); recordar("formato-doc", "inventado"); r.invalido = formatoDoc(); recordar("formato-doc", "clasico");
+    r.porDefecto = formatoDoc(); recordar("formato-doc", "moderno"); r.recordado = formatoDoc(); recordar("formato-doc", "inventado"); r.invalido = formatoDoc(); recordar("formato-doc", "moderno");
     r.tam = {}; for (const estilo of Object.keys(FORMATOS_DOC)) r.tam[estilo] = (await pdfDocumento("Contrato", textoContrato(base), [["EMPLEADOR", "p.p. EMPRESA", "EMPLEADOR"], ["Ana", "RUT 1", "TRABAJADOR"]], { estilo, resumen: resumenContrato(base) })).size;
     r.resumen = resumenContrato(base).map((x) => x[0]);
     return r;
   });
   ok("el cargo no termina con doble punto cuando las funciones ya traen punto final", fmt.sinPuntoDoble);
-  igual("el formato del PDF: clásico por defecto, se recuerda y uno inválido vuelve al clásico", [fmt.porDefecto, fmt.recordado, fmt.invalido], ["clasico", "moderno", "clasico"]);
+  igual("el formato del PDF: moderno por defecto, se recuerda y uno inválido vuelve al moderno", [fmt.porDefecto, fmt.recordado, fmt.invalido], ["moderno", "moderno", "moderno"]);
   ok("los tres formatos generan el PDF y el resumen agrega la ficha", Object.values(fmt.tam).every((n) => n > 2500) && fmt.tam.resumen > fmt.tam.clasico, JSON.stringify(fmt.tam));
   ok("la ficha resumen trae empleador, trabajador, cargo, ingreso, tipo, jornada y remuneración", ["Empleador", "Trabajador", "Cargo", "Fecha de ingreso", "Tipo de contrato", "Jornada", "Remuneración"].every((k) => fmt.resumen.includes(k)), JSON.stringify(fmt.resumen));
+
+  console.log("Horario por día en el contrato");
+  const hor = await page.evaluate(async () => {
+    const r = {}, h9 = horarioSugerido(9), h42 = horarioSugerido(42);
+    r.h9 = [h9.length, h9[0].ent, h9[0].sal, h9[0].col, totalHorario(h9)]; r.h42 = [h42[0].sal, h42[0].col, totalHorario(h42)];
+    r.dist9 = distribucionDesdeHorario(h9); r.dist42 = distribucionDesdeHorario(h42);
+    r.dist2 = distribucionDesdeHorario([{ dia: "Lunes", ent: "09:00", sal: "13:00", col: 0 }, { dia: "Miércoles", ent: "10:00", sal: "12:00", col: 0 }, { dia: "Jueves", ent: "10:00", sal: "12:00", col: 0 }]);
+    const base = { ...trabajadorVacio(), nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2031-01-02", tipo: "indefinido", fecha_nac: "1990-01-01", nacionalidad: "Chilena", sueldo_base: 118619, jornada: 9, horario: h9 };
+    const bl = textoContrato(base), tabla = bl.find((x) => x.tipo === "tabla");
+    r.tabla = tabla && [tabla.columnas.length, tabla.filas.length, tabla.pie.at(-1)]; r.sinTabla = !textoContrato({ ...base, horario: [] }).some((x) => x.tipo === "tabla");
+    r.pdf = (await pdfDocumento("Contrato", bl, [["E", "p.p. X", "EMPLEADOR"], ["T", "RUT 1", "TRABAJADOR"]], { estilo: "moderno" })).size;
+    r.vista = vistaContrato(base).includes('class="horario"');
+    r.val = [validarHorario(h9, 9), validarHorario(h9, 12), validarHorario([{ dia: "Lunes", ent: "09:00", sal: "08:00", col: 0 }], 1), validarHorario([{ dia: "Lunes", ent: "08:00", sal: "20:00", col: 0 }], 12), validarHorario(DIAS_SEMANA.map((dia) => ({ dia, ent: "09:00", sal: "10:00", col: 0 })), 7)];
+    r.form = formularioTrabajador({ ...trabajadorVacio(), horario: h9 }).includes('id="hr-4-sal" value="10:48"');
+    return r;
+  });
+  igual("horario sugerido para 9 horas: 5 días, ingreso 09:00, salida 10:48, sin colación, 9 horas", hor.h9, [5, "09:00", "10:48", 0, 540]);
+  igual("horario sugerido para 42 horas: sale 18:24 con una hora de colación y suma 42 horas", hor.h42, ["18:24", 60, 2520]);
+  igual("el texto de la distribución sale de la tabla, agrupando los días iguales", [hor.dist9, hor.dist42, hor.dist2], ["Lunes a viernes, de 09:00 a 10:48 horas, en jornada continua (1 hora y 48 minutos diarias)", "Lunes a viernes, de 09:00 a 18:24 horas, con 60 minutos de colación no imputables a la jornada (8 horas y 24 minutos diarias)", "Lunes, de 09:00 a 13:00 horas, en jornada continua (4 horas diarias); Miércoles y jueves, de 10:00 a 12:00 horas, en jornada continua (2 horas diarias)"]);
+  igual("el contrato incluye la tabla del horario (4 columnas, 5 días, total semanal) y sin tabla si no hay horario", [hor.tabla, hor.sinTabla], [[4, 5, "9 horas"], true]);
+  ok("la tabla del horario sale en el PDF, en la vista previa y en el formulario del trabajador", hor.pdf > 2500 && hor.vista && hor.form, JSON.stringify([hor.pdf, hor.vista, hor.form]));
+  ok("validación del horario: coincide con la jornada, salida posterior, más de 10 horas y más de 6 días", hor.val[0] === "" && /^El horario suma 9 horas/.test(hor.val[1]) && /salida debe ser posterior/.test(hor.val[2]) && /superar 10 horas/.test(hor.val[3]) && /más de 6 días/.test(hor.val[4]), JSON.stringify(hor.val));
 
   console.log("Pago en Previred");
   const ppv = await page.evaluate(async () => {
