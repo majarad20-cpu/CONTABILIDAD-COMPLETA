@@ -180,6 +180,13 @@ dl.ficha dd { margin: 0; font-family: var(--font-num); font-variant-numeric: tab
 .nivel-1 { padding-left: 22px !important; } .nivel-2 { padding-left: 36px !important; } .nivel-3 { padding-left: 50px !important; } .nivel-4 { padding-left: 64px !important; }
 .contrato { max-width: 78ch; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 28px clamp(16px, 4vw, 40px); display: grid; gap: 12px; line-height: 1.65; font-family: Georgia, "Times New Roman", serif; font-size: 15px; }
 .contrato p { text-align: justify; hyphens: auto; }
+.contrato table.horario { width: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: 14px; }
+.contrato table.horario th, .contrato table.horario td { border: 1px solid var(--line); padding: 5px 9px; text-align: center; }
+.contrato table.horario thead th, .contrato table.horario tfoot th { background: var(--surface-2, rgba(128,128,128,.14)); }
+.horario-editor table { border-collapse: collapse; margin: 6px 0; }
+.horario-editor th, .horario-editor td { padding: 3px 8px; text-align: center; }
+.horario-editor input[type=time] { width: 10.5em; }
+.horario-editor input[inputmode] { width: 6em; }
 .contrato h2 { text-align: center; font-size: 18px; letter-spacing: .08em; margin-bottom: 4px; }
 .contrato .firmas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 36px; margin-top: 48px; text-align: center; }
 .contrato .firmas div { display: grid; gap: 2px; }
@@ -411,7 +418,7 @@ tr[data-mov].sobre-abajo > td { box-shadow: inset 0 -3px 0 var(--accent); }
 const PLAN_BASE = [["1","ACTIVO",0],["1.1","ACTIVO CIRCULANTE",0],["1.1.01","Caja",1],["1.1.02","Banco",1],["1.1.03","Depósitos a plazo",1],["1.1.04","Clientes",1],["1.1.05","Documentos por cobrar",1],["1.1.06","Deudores varios",1],["1.1.07","Provisión deudores incobrables",1],["1.1.08","Anticipo a proveedores",1],["1.1.09","IVA crédito fiscal",1],["1.1.10","Pagos provisionales mensuales (PPM)",1],["1.1.11","Mercaderías",1],["1.2","ACTIVO FIJO",0],["1.2.01","Terrenos",1],["1.2.02","Construcciones",1],["1.2.03","Maquinarias y equipos",1],["1.2.04","Vehículos",1],["1.2.05","Muebles y útiles",1],["1.2.06","Equipos computacionales",1],["1.2.07","Depreciación acumulada",1],["1.3","OTROS ACTIVOS",0],["1.3.01","Garantías entregadas",1],["1.3.02","Intangibles",1],["2","PASIVO",0],["2.1","PASIVO CIRCULANTE",0],["2.1.01","Proveedores",1],["2.1.02","Préstamos bancarios de corto plazo",1],["2.1.03","Documentos por pagar",1],["2.1.04","Acreedores varios",1],["2.1.05","Anticipo de clientes",1],["2.1.06","Remuneraciones por pagar",1],["2.1.07","Cotizaciones previsionales por pagar",1],["2.1.08","Retención de honorarios por pagar",1],["2.1.09","Impuesto único por pagar",1],["2.1.10","IVA débito fiscal",1],["2.1.11","PPM por pagar",1],["2.1.12","Impuesto a la renta por pagar",1],["2.2","PASIVO DE LARGO PLAZO",0],["2.2.01","Préstamos bancarios de largo plazo",1],["2.2.02","Obligaciones por leasing",1],["3","PATRIMONIO",0],["3.1","CAPITAL Y RESERVAS",0],["3.1.01","Capital",1],["3.1.02","Utilidades retenidas",1],["3.1.03","Pérdidas acumuladas",1],["3.1.04","Resultado del ejercicio",1],["3.1.05","Retiros de socios",1],["4","INGRESOS",0],["4.1","INGRESOS DE EXPLOTACIÓN",0],["4.1.01","Ventas",1],["4.1.02","Ingresos por servicios",1],["4.2","INGRESOS NO OPERACIONALES",0],["4.2.01","Intereses ganados",1],["4.2.02","Otros ingresos",1],["5","GASTOS",0],["5.1","COSTOS DE EXPLOTACIÓN",0],["5.1.01","Costo de ventas",1],["5.2","GASTOS DE ADMINISTRACIÓN Y VENTAS",0],["5.2.01","Remuneraciones",1],["5.2.02","Leyes sociales (aporte patronal)",1],["5.2.03","Honorarios",1],["5.2.04","Arriendos",1],["5.2.05","Servicios básicos",1],["5.2.06","Gastos de oficina",1],["5.2.07","Publicidad",1],["5.2.08","Mantención y reparaciones",1],["5.2.09","Seguros",1],["5.2.10","Depreciación del ejercicio",1],["5.2.11","Patentes y contribuciones",1],["5.2.12","Gastos generales",1],["5.3","GASTOS NO OPERACIONALES",0],["5.3.01","Intereses y gastos bancarios",1],["5.3.02","Multas e intereses fiscales",1],["5.3.03","Otros gastos",1],["5.4","IMPUESTO A LA RENTA",0],["5.4.01","Impuesto a la renta de primera categoría",1]];
 const TIPO_POR_DIGITO = { "1": "ACTIVO", "2": "PASIVO", "3": "PATRIMONIO", "4": "INGRESO", "5": "GASTO" };
 /* Número de versión del artefacto: súbelo con cada cambio (README, sección «Versiones»). */
-const VERSION = "2.6.6";
+const VERSION = "2.7.0";
 const NOMBRE_TIPO = { ACTIVO: "Activo", PASIVO: "Pasivo", PATRIMONIO: "Patrimonio", INGRESO: "Ingreso (ganancia)", GASTO: "Gasto (pérdida)" };
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RESULTADO = new Set(["INGRESO", "GASTO"]);
@@ -4730,6 +4737,36 @@ const diasCalendario = (p) => new Date(+p.slice(0, 4), +p.slice(5, 7), 0).getDat
 function domingosDelMes(p) { let n = 0; for (let d = 1; d <= diasCalendario(p); d++) if (new Date(+p.slice(0, 4), +p.slice(5, 7) - 1, d).getDay() === 0) n++; return n; }
 const montoGuion = (v) => (v ? clp(v) : "");
 
+/* Horario por día: cada fila es { dia, ent, sal, col } con ingreso y salida en HH:MM y la colación en minutos (no imputable a la jornada). */
+const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const aMinutos = (hhmm) => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || "")); return m ? +m[1] * 60 + +m[2] : null; };
+const deMinutos = (x) => `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
+const minutosDia = (r) => { const a = aMinutos(r.ent), b = aMinutos(r.sal); return a == null || b == null ? 0 : Math.max(b - a - (+r.col || 0), 0); };
+const totalHorario = (h) => (h || []).reduce((n, r) => n + minutosDia(r), 0);
+const textoDuracion = (min) => { const h = Math.floor(min / 60), m = min % 60, p = []; if (h) p.push(`${h} hora${h === 1 ? "" : "s"}`); if (m) p.push(`${m} minuto${m === 1 ? "" : "s"}`); return p.join(" y ") || "0 horas"; };
+function horarioSugerido(horas) {
+  const diario = Math.round((horas / 5) * 60), col = diario > 300 ? 60 : 0;
+  return DIAS_SEMANA.slice(0, 5).map((dia) => ({ dia, ent: deMinutos(540), sal: deMinutos(540 + diario + col), col }));
+}
+/* Texto corrido del horario: agrupa los días seguidos con el mismo ingreso, salida y colación. */
+function distribucionDesdeHorario(h) {
+  const grupos = [];
+  for (const r of h || []) {
+    const g = grupos.at(-1), col = +r.col || 0;
+    if (g && g.ent === r.ent && g.sal === r.sal && g.col === col && DIAS_SEMANA.indexOf(g.dias.at(-1)) === DIAS_SEMANA.indexOf(r.dia) - 1) g.dias.push(r.dia);
+    else grupos.push({ dias: [r.dia], ent: r.ent, sal: r.sal, col });
+  }
+  return grupos.map((g) => {
+    const dias = g.dias.length === 1 ? g.dias[0] : g.dias.length === 2 ? `${g.dias[0]} y ${g.dias[1].toLowerCase()}` : `${g.dias[0]} a ${g.dias.at(-1).toLowerCase()}`;
+    return `${dias}, de ${g.ent} a ${g.sal} horas${g.col ? `, con ${g.col} minutos de colación no imputables a la jornada` : ", en jornada continua"} (${textoDuracion(minutosDia(g))} diarias)`;
+  }).join("; ");
+}
+function tablaHorario(h) {
+  const hayCol = h.some((r) => +r.col);
+  return { tipo: "tabla", columnas: ["Día", "Ingreso", "Salida", ...(hayCol ? ["Colación"] : []), "Horas trabajadas"],
+    filas: h.map((r) => [r.dia, r.ent, r.sal, ...(hayCol ? [+r.col ? `${r.col} min` : "—"] : []), textoDuracion(minutosDia(r))]),
+    pie: ["Total semanal", "", "", ...(hayCol ? [""] : []), textoDuracion(totalHorario(h))] };
+}
 function distribucionSugerida(horas) {
   const diario = horas / 5, h = Math.floor(diario), m = Math.round((diario - h) * 60);
   /* La colación (artículo 34) solo corresponde cuando la jornada diaria se divide en dos partes: en jornadas cortas, de hasta 5 horas diarias, se sugiere jornada continua. */
@@ -4897,6 +4934,43 @@ function filasFijas(te) {
     <h3>Descuentos fijos</h3>${df ? `<div class="tabla"><table><tbody>${df}</tbody></table></div>` : `<p class="ayuda">Sin descuentos fijos (pensión de alimentos, cuota sindical, cuotas de caja de compensación, seguros).</p>`}
     <div class="acciones"><button class="btn sec" type="button" data-n="agregar-descuento-fijo">+ Descuento fijo</button></div>`;
 }
+function editorHorario(te) {
+  const h = te.horario || [], por = new Map(h.map((r) => [r.dia, r]));
+  return `<div class="campo-largo horario-editor"><h4>Horario por día (ingreso y salida)</h4>
+    <p class="ayuda">Opcional. Si completas la tabla, el contrato la incluye en la cláusula de jornada y el texto de la distribución se arma solo. La colación no cuenta como tiempo trabajado.</p>
+    <table><thead><tr><th>Día</th><th>Trabaja</th><th>Ingreso</th><th>Salida</th><th>Colación (min)</th><th>Horas</th></tr></thead><tbody>${DIAS_SEMANA.map((dia, i) => { const r = por.get(dia); return `<tr><td>${dia}</td><td><input type="checkbox" id="hr-${i}-on" ${r ? "checked" : ""}></td><td><input type="time" id="hr-${i}-ent" value="${esc(r?.ent || "09:00")}"></td><td><input type="time" id="hr-${i}-sal" value="${esc(r?.sal || "")}"></td><td><input id="hr-${i}-col" inputmode="numeric" value="${r?.col || 0}"></td><td id="hr-${i}-h">${r ? esc(textoDuracion(minutosDia(r))) : "—"}</td></tr>`; }).join("")}</tbody>
+      <tfoot><tr><th colspan="5">Total semanal</th><th id="hr-total">${h.length ? esc(textoDuracion(totalHorario(h))) : "—"}</th></tr></tfoot></table>
+    <p class="ayuda" id="hr-aviso"></p>
+    <div class="acciones"><button class="btn sec" type="button" data-n="horario-sugerir">Sugerir según la jornada semanal</button><button class="btn sec" type="button" data-n="horario-limpiar">Quitar la tabla</button></div></div>`;
+}
+/* Lee la tabla del formulario; devuelve las filas marcadas como «Trabaja». */
+function leerHorario() {
+  if (!$("#hr-0-on")) return null;
+  return DIAS_SEMANA.map((dia, i) => ($(`#hr-${i}-on`).checked ? { dia, ent: $(`#hr-${i}-ent`).value, sal: $(`#hr-${i}-sal`).value, col: Math.max(Math.round(Number($(`#hr-${i}-col`).value) || 0), 0) } : null)).filter(Boolean);
+}
+/* Recalcula horas por día, total semanal y el aviso frente a la jornada; arma el texto de la distribución. */
+function refrescarHorario() {
+  const h = leerHorario(); if (!h) return;
+  DIAS_SEMANA.forEach((dia, i) => { const r = h.find((x) => x.dia === dia); const c = $(`#hr-${i}-h`); if (c) c.textContent = r ? textoDuracion(minutosDia(r)) : "—"; });
+  const total = totalHorario(h), jornada = Number($("#tb-jornada")?.value);
+  $("#hr-total").textContent = h.length ? textoDuracion(total) : "—";
+  const av = $("#hr-aviso");
+  if (av) av.textContent = !h.length ? "" : Number.isFinite(jornada) && Math.abs(total - jornada * 60) > 5 ? `El horario suma ${textoDuracion(total)} y la jornada semanal es de ${jornada} horas: deben coincidir.` : "El horario coincide con la jornada semanal.";
+  if (h.length && $("#tb-distribucion")) $("#tb-distribucion").value = distribucionDesdeHorario(h);
+}
+function validarHorario(h, jornada) {
+  if (!h?.length) return "";
+  if (h.length > 6) return "El horario no puede repartirse en más de 6 días a la semana.";
+  for (const r of h) {
+    const a = aMinutos(r.ent), b = aMinutos(r.sal);
+    if (a == null || b == null) return `Horario del ${r.dia.toLowerCase()}: completa el ingreso y la salida.`;
+    if (b <= a) return `Horario del ${r.dia.toLowerCase()}: la salida debe ser posterior al ingreso.`;
+    if (r.col >= b - a) return `Horario del ${r.dia.toLowerCase()}: la colación no puede ocupar todo el turno.`;
+    if (b - a - r.col > 600) return `Horario del ${r.dia.toLowerCase()}: la jornada ordinaria no puede superar 10 horas diarias.`;
+  }
+  const total = totalHorario(h);
+  return Math.abs(total - jornada * 60) > 5 ? `El horario suma ${textoDuracion(total)} y la jornada semanal es de ${jornada} horas: deben coincidir.` : "";
+}
 function formularioTrabajador(te) {
   const c = (id, rotulo, valor, extra = "") => `<label>${rotulo}<input id="tb-${id}" value="${esc(valor)}" ${extra}></label>`;
   const m = (id, rotulo, valor) => `<label>${rotulo}<input id="tb-${id}" inputmode="numeric" value="${valor ? clp(valor) : ""}"></label>`;
@@ -4910,6 +4984,7 @@ function formularioTrabajador(te) {
       ${c("obra", "Obra o faena (si es por obra)", te.obra)}${c("lugar", "Lugar de trabajo", te.lugar)}${c("centro_costo", "Centro de costo (aparece en la liquidación)", te.centro_costo || "")}
       <label>Jornada semanal (horas)<input id="tb-jornada" inputmode="numeric" value="${esc(te.jornada)}"></label>
       <label class="campo-largo">Distribución de la jornada<input id="tb-distribucion" value="${esc(te.distribucion)}"></label></div>
+    ${editorHorario(te)}
     <label class="campo-largo">Funciones<textarea id="tb-funciones" rows="3" placeholder="Describe las labores que realizará">${esc(te.funciones)}</textarea></label>
     <h3>Remuneración</h3><div class="form">${m("sueldo_base", "Sueldo base mensual *", te.sueldo_base)}
       <label>Gratificación<select id="tb-gratificacion"><option value="legal" ${te.gratificacion === "legal" ? "selected" : ""}>Legal (art. 50: 25 % con tope)</option><option value="fija" ${te.gratificacion === "fija" ? "selected" : ""}>Monto fijo mensual</option><option value="ninguna" ${te.gratificacion === "ninguna" ? "selected" : ""}>Sin gratificación</option></select></label>
@@ -4960,7 +5035,7 @@ function leerTrabajador() {
   const haberes = lista("hf", (i) => ({ concepto: v(`hf-con-${i}`).trim(), monto: parseMonto(v(`hf-monto-${i}`) || "0") || 0, imponible: $(`#tb-hf-imp-${i}`).checked, proporcional: $(`#tb-hf-prop-${i}`).checked }));
   const descuentos = lista("df", (i) => { const tipo = v(`df-tipo-${i}`); const x = decimal(v(`df-valor-${i}`)); return { concepto: v(`df-con-${i}`).trim(), tipo, valor: x == null || Number.isNaN(x) ? 0 : x }; });
   const d = { nombre: v("nombre").trim(), rut: v("rut").trim(), nacionalidad: v("nacionalidad").trim(), fecha_nac: v("fecha_nac"), domicilio: v("domicilio").trim(), comuna: v("comuna").trim(), cargo: v("cargo").trim(), funciones: v("funciones").trim(),
-    lugar: v("lugar").trim(), centro_costo: v("centro_costo").trim(), fecha_ingreso: v("fecha_ingreso"), tipo: v("tipo"), fecha_termino: v("fecha_termino"), obra: v("obra").trim(), jornada: Number(v("jornada")), distribucion: v("distribucion").trim(),
+    lugar: v("lugar").trim(), centro_costo: v("centro_costo").trim(), fecha_ingreso: v("fecha_ingreso"), tipo: v("tipo"), fecha_termino: v("fecha_termino"), obra: v("obra").trim(), jornada: Number(v("jornada")), distribucion: v("distribucion").trim(), horario: leerHorario() ?? (te.horario || []),
     sueldo_base: parseMonto(v("sueldo_base") || "0"), gratificacion: v("gratificacion"), gratificacion_monto: parseMonto(v("gratificacion_monto") || "0"), colacion: parseMonto(v("colacion") || "0"), movilizacion: parseMonto(v("movilizacion") || "0"),
     semana_corrida: !!$("#tb-semana_corrida")?.checked, cargas: Number(v("cargas") || 0), forma_pago: v("forma_pago").trim(), afp: v("afp"), afp_comision: decimal(v("afp_comision")), salud: v("salud"), isapre: v("isapre").trim(), plan_uf: decimal(v("plan_uf")) || 0,
     trabajo_pesado: v("trabajo_pesado") || "ninguno", apv_monto: parseMonto(v("apv_monto") || "0"), apv_regimen: v("apv_regimen") || "B", sin_cesantia: !!$("#tb-sin_cesantia")?.checked, pensionado: !!$("#tb-pensionado")?.checked, afp_voluntaria: !!$("#tb-pensionado")?.checked && !!$("#tb-afp_voluntaria")?.checked, sexo: v("sexo") || "", anios_previos: Number(v("anios_previos") || 0),
@@ -4980,6 +5055,7 @@ async function guardarTrabajador() {
   for (const [n, x] of [["Sueldo base", sueldo], ["Gratificación fija", d.gratificacion_monto], ["Colación", d.colacion], ["Movilización", d.movilizacion], ["APV", d.apv_monto]]) if (Number.isNaN(x) || x < 0) return aviso(`${n}: ingresa un monto en pesos enteros, sin decimales.`);
   if (sueldo <= 0) return aviso("Ingresa el sueldo base mensual.");
   if (!Number.isFinite(jornada) || jornada < 1 || jornada > 45) return aviso("La jornada semanal debe estar entre 1 y 45 horas.");
+  const errHorario = validarHorario(d.horario, jornada); if (errHorario) return aviso(errHorario);
   if (comision == null || Number.isNaN(comision) || comision < 0 || comision > 5) return aviso("Comisión de la AFP: ingresa un porcentaje, por ejemplo 1,27.");
   if (Number.isNaN(plan) || (plan ?? 0) < 0) return aviso("Plan de isapre: ingresa las UF, por ejemplo 3,5.");
   if (d.salud === "isapre" && !d.plan_uf) return aviso("Ingresa el valor del plan de isapre en UF.");
@@ -5012,7 +5088,12 @@ function textoContrato(t) {
   bloques.push({ tipo: "titulo", texto: "CONTRATO DE TRABAJO" });
   p(`En ${e.comuna || "__________"}, a ${fechaLarga(t.fecha_ingreso)}, entre ${may(e.razon_social)}, RUT ${e.rut || "__________"}, del giro de ${e.giro || "__________"}, ${rep}, ambos domiciliados en ${dirEmp || "__________"}, en adelante "el empleador"; y don/doña ${may(t.nombre)}, de nacionalidad ${t.nacionalidad || "__________"}${t.fecha_nac ? `, nacido(a) el ${fechaLarga(t.fecha_nac)}` : ""}, cédula nacional de identidad N° ${t.rut}, domiciliado(a) en ${[t.domicilio, t.comuna].filter(Boolean).join(", ") || "__________"}, en adelante "el trabajador", se ha convenido el siguiente contrato de trabajo:`);
   cl("PRIMERO: Naturaleza de los servicios y lugar de trabajo.", `El trabajador se obliga a desempeñar el cargo de ${t.cargo}${t.funciones ? `, cuyas funciones consisten en: ${String(t.funciones).trim().replace(/[.\s]+$/, "")}` : ""}. Los servicios se prestarán en ${t.lugar || dirEmp || "las dependencias del empleador"}, sin perjuicio de la facultad del empleador de alterar la naturaleza de los servicios o el sitio o recinto en que ellos deban prestarse, siempre que se trate de labores similares, que el nuevo sitio quede dentro del mismo lugar o ciudad y que ello no importe menoscabo para el trabajador, conforme al artículo 12 del Código del Trabajo.`);
-  cl("SEGUNDO: Jornada de trabajo.", `La jornada ordinaria de trabajo será de ${t.jornada} horas semanales, distribuidas así: ${t.distribucion || "__________"}. Las horas extraordinarias solo podrán pactarse por escrito, para atender necesidades o situaciones temporales de la empresa, y se pagarán con el recargo legal del 50 % sobre el sueldo convenido para la jornada ordinaria.`);
+  const extras = "Las horas extraordinarias solo podrán pactarse por escrito, para atender necesidades o situaciones temporales de la empresa, y se pagarán con el recargo legal del 50 % sobre el sueldo convenido para la jornada ordinaria.";
+  if (t.horario?.length) {
+    cl("SEGUNDO: Jornada de trabajo.", `La jornada ordinaria de trabajo será de ${t.jornada} horas semanales, distribuidas de acuerdo con el siguiente horario:`);
+    bloques.push(tablaHorario(t.horario));
+    p(`${t.horario.some((r) => +r.col) ? "El tiempo de colación no es imputable a la jornada. " : ""}${extras}`);
+  } else cl("SEGUNDO: Jornada de trabajo.", `La jornada ordinaria de trabajo será de ${t.jornada} horas semanales, distribuidas así: ${t.distribucion || "__________"}. ${extras}`);
   const grat = t.gratificacion === "legal" ? ` El empleador pagará gratificación legal conforme al artículo 50 del Código del Trabajo, a razón del 25 % de lo devengado en el respectivo ejercicio por concepto de remuneraciones mensuales, con el tope de 4,75 ingresos mínimos mensuales, pagadera mensualmente en forma proporcional.`
     : t.gratificacion === "fija" ? ` Además, el empleador pagará una gratificación mensual garantizada de $${clp(t.gratificacion_monto)}, que se imputará a la gratificación legal.` : " Las partes no pactan gratificación mensual, sin perjuicio de lo dispuesto en los artículos 46 y siguientes del Código del Trabajo.";
   const asig = [t.colacion ? `colación de $${clp(t.colacion)}` : "", t.movilizacion ? `movilización de $${clp(t.movilizacion)}` : ""].filter(Boolean);
@@ -5037,7 +5118,7 @@ function vistaContrato(t) {
   <div class="barra"><button class="btn sec" type="button" data-n="volver-trabajadores">← Volver</button><label class="inline" title="Se aplica a los PDF de contrato, anexo, certificado, finiquito y cartas, en este navegador">Formato del PDF <select id="formato-doc">${Object.entries(FORMATOS_DOC).map(([k, v]) => `<option value="${k}" ${k === formatoDoc() ? "selected" : ""}>${esc(v[0])}</option>`).join("")}</select></label>${S.descargas ? `<button class="btn" type="button" data-n="pdf-contrato" data-id="${esc(t.id)}">Descargar PDF</button><button class="btn sec" type="button" data-n="pdf-certificado" data-id="${esc(t.id)}">Certificado de trabajo (PDF)</button>` : ""}${S.puedeEscribir ? `<button class="btn sec" type="button" data-n="anexo-abrir" data-id="${esc(t.id)}">Anexo de modificación…</button>` : ""}</div>
   ${S.anexoEdit?.trabajador === t.id ? formularioAnexo(t) : ""}
   <div class="aviso">${aviso5} Es un modelo general: revísalo con un abogado laboral antes de firmarlo, sobre todo si el trabajador tiene pactos especiales. ${t.tipo === "plazo_fijo" ? "Un contrato a plazo fijo no puede durar más de un año, y su segunda renovación lo convierte en indefinido." : ""}</div>
-  <article class="contrato">${bloques.map((b) => b.tipo === "titulo" ? `<h2>${esc(b.texto)}</h2>` : b.tipo === "cl" ? `<p><strong>${esc(b.rotulo)}</strong> ${esc(b.texto)}</p>` : `<p>${esc(b.texto)}</p>`).join("")}
+  <article class="contrato">${bloques.map((b) => b.tipo === "tabla" ? `<table class="horario"><thead><tr>${b.columnas.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${b.filas.map((f) => `<tr>${f.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody><tfoot><tr>${b.pie.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></tfoot></table>` : b.tipo === "titulo" ? `<h2>${esc(b.texto)}</h2>` : b.tipo === "cl" ? `<p><strong>${esc(b.rotulo)}</strong> ${esc(b.texto)}</p>` : `<p>${esc(b.texto)}</p>`).join("")}
     <div class="firmas"><div><span></span>${esc(empresa().representante || "EMPLEADOR")}<small>p.p. ${esc(empresa().razon_social)}<br>EMPLEADOR</small></div><div><span></span>${esc(t.nombre)}<small>RUT ${esc(t.rut)}<br>TRABAJADOR</small></div></div></article>`;
 }
 /* ---------- anexo de contrato y certificado de trabajo ---------- */
@@ -5261,10 +5342,10 @@ const FORMATOS_DOC = {
   moderno: ["Moderno: encabezado y cláusulas con título propio", "Encabezado con la empresa en cada hoja, tipografía sin serifa y cada cláusula con su título en línea aparte."],
   resumen: ["Con cuadro resumen al comienzo", "Ficha con los datos clave (partes, cargo, jornada, remuneración, plazo) antes del texto del contrato."],
 };
-const formatoDoc = () => { const f = recuerdo("formato-doc", "clasico"); return FORMATOS_DOC[f] ? f : "clasico"; };
+const formatoDoc = () => { const f = recuerdo("formato-doc", "moderno"); return FORMATOS_DOC[f] ? f : "moderno"; };
 async function pdfDocumento(titulo, bloques, firmas, opciones = {}) {
   const estilo = FORMATOS_DOC[opciones.estilo] ? opciones.estilo : formatoDoc(), moderno = estilo === "moderno", conResumen = !!(estilo === "resumen" && opciones.resumen?.length);
-  await cargarScript("jspdf"); if (conResumen) await cargarScript("autotable");
+  await cargarScript("jspdf"); if (conResumen || bloques.some((b) => b.tipo === "tabla")) await cargarScript("autotable");
   const { jsPDF } = window.jspdf, e = empresa();
   const doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 2.5 * CM, ancho = W - 2 * m, tam = moderno ? 10.5 : 11, interlinea = moderno ? 14.5 : 15, fuente = moderno ? "helvetica" : "times", fin = H - m + 6;
@@ -5296,6 +5377,13 @@ async function pdfDocumento(titulo, bloques, firmas, opciones = {}) {
       doc.setFont(fuente, "normal"); doc.setFontSize(tam); continue;
     }
     doc.setFontSize(tam);
+    if (b.tipo === "tabla") {
+      salto(Math.min((b.filas.length + 3) * 20, 220));
+      doc.autoTable({ startY: y, head: [b.columnas.map(textoPdf)], body: b.filas.map((f) => f.map(textoPdf)), foot: [b.pie.map(textoPdf)], theme: "grid", margin: { left: m, right: m, top: arriba },
+        styles: { font: fuente, fontSize: 10, cellPadding: 4, halign: "center", lineColor: [150, 150, 150], lineWidth: 0.4, textColor: 20 },
+        headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: "bold" }, footStyles: { fillColor: [235, 235, 235], textColor: 20, fontStyle: "bold" }, columnStyles: { 0: { halign: "left" } } });
+      y = doc.lastAutoTable.finalY + 12; doc.setFont(fuente, "normal"); doc.setFontSize(tam); continue;
+    }
     if (b.tipo === "cl") {
       const rot = textoPdf(b.rotulo), texto = textoPdf(b.texto);
       if (moderno) {
@@ -7637,6 +7725,8 @@ document.addEventListener("click", (ev) => {
       ocupado(async () => { await S.almacen.del(`empresas/${S.eid}/trabajadores/${id}`); S.confirmar = null; render(); aviso("Trabajador eliminado."); }, "No se pudo eliminar el trabajador"); break;
     case "ver-contrato": S.contratoVer = id; render(); window.scrollTo(0, 0); break;
     case "volver-trabajadores": S.contratoVer = null; render(); break;
+    case "horario-sugerir": { const h = Number($("#tb-jornada")?.value); if (!Number.isFinite(h) || h < 1 || h > 45) { aviso("Escribe primero la jornada semanal (de 1 a 45 horas)."); break; } actualizarFormTrabajador((te) => { te.horario = horarioSugerido(h); te.distribucion = distribucionDesdeHorario(te.horario); }); break; }
+    case "horario-limpiar": actualizarFormTrabajador((te) => { te.horario = []; }); break;
     case "pdf-contrato": { const tr = trabajadorPorId(id); ocupado(async () => { aviso("Generando PDF…"); await descargarBlob(`contrato_${nombreSeguro(tr.nombre)}.pdf`, await pdfContrato(tr), "Contrato descargado."); }, "No se pudo generar el contrato"); break; }
     case "afc-crear": crearFichasDesdeCompras([id]); break;
     case "afc-crear-todas": crearFichasDesdeCompras(comprasActivoSinFicha().map((d) => d.id)); break;
@@ -7819,8 +7909,9 @@ document.addEventListener("change", (ev) => {
   else if (id === "af-anio") { S.afAnio = el.value; render(); }
   else if (id === "af-cat") { const anios = CATEGORIAS_ACTIVO[+el.value]?.[1]; if (anios) $("#af-vida").value = String(anios); }
   else if (id === "formato-doc") { if (FORMATOS_DOC[el.value]) { recordar("formato-doc", el.value); aviso(`Formato del PDF: ${FORMATOS_DOC[el.value][0]}.`); } }
+  else if (/^hr-\d-(on|ent|sal|col)$/.test(id)) refrescarHorario();
   else if (id === "tb-afp") { $("#tb-afp_comision").value = comaDecimal(AFPS[el.value] ?? ""); }
-  else if (id === "tb-jornada") { const d = $("#tb-distribucion"), h = Number(el.value); if (Number.isFinite(h) && h > 0 && (!d.value || d.value.startsWith("Lunes a viernes, de 09:00"))) d.value = distribucionSugerida(h); }
+  else if (id === "tb-jornada") { const d = $("#tb-distribucion"), h = Number(el.value); if (Number.isFinite(h) && h > 0 && (!d.value || d.value.startsWith("Lunes a viernes, de 09:00"))) d.value = distribucionSugerida(h); refrescarHorario(); }
   else if (id === "lq-periodo" && /^\d{4}-\d{2}$/.test(el.value)) { S.liqPeriodo = el.value; S.liqPeriodoEid = S.eid; S.liqVer = null; render(); }
   else if (id === "vac-fecha" && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) { S.vacFecha = el.value; render(); }
   else if (id.startsWith("fq-") && id !== "fq-trabajador" && S.finiqEdit) { leerFiniquito(); render(); }
