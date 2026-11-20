@@ -2297,6 +2297,15 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("cinco alternativas de un día salen en una sola tabla compacta", [cmp.n, cmp.subs, cmp.col, cmp.filas, cmp.pie.length === cmp.col.length], [1, 0, ["Alternativa", "Día", "Ingreso", "Salida", "Colación", "Horas trabajadas"], ["1:Lunes", "2:Martes", "3:Miércoles", "4:Jueves", "5:Viernes"], true]);
   ok("con más de dos alternativas el formulario advierte la pérdida de certeza, y el tope es de seis alternativas", cmp.aviso4 && !cmp.aviso2 && cmp.tope, JSON.stringify(cmp));
 
+  console.log("Alternativas en fin de semana");
+  const fs2 = await page.evaluate(() => {
+    const d = (x) => [{ dia: x, ent: "08:00", sal: "18:00", col: 60, ci: "13:00" }];
+    const base = { ...trabajadorVacio(), nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2026-11-19", tipo: "indefinido", jornada: 9, sueldo_base: 118619, horario: d("Lunes"), horario_alt: ["Martes", "Miércoles", "Jueves", "Viernes"].map(d) };
+    const txt = (x) => textoContrato(x).map((y) => y.texto || "").join(" ");
+    return { sin: /artículos 35 y 38/.test(txt(base)), con: /artículos 35 y 38/.test(txt({ ...base, horario_alt: [...base.horario_alt, d("Sábado"), d("Domingo")] })) };
+  });
+  igual("si hay alternativa en sábado o domingo, el contrato cita el descanso y los festivos (arts. 35 y 38)", [fs2.sin, fs2.con], [false, true]);
+
   console.log("Hora de la colación en el horario");
   const ci = await page.evaluate(() => {
     const r = {}, dia = (d, ci) => ({ dia: d, ent: "08:00", sal: "17:00", col: 60, ci });
