@@ -2274,7 +2274,7 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
     r.pdf = (await pdfDocumento("Contrato", bl, [["E", "p.p. X", "EMPLEADOR"], ["T", "RUT 1", "TRABAJADOR"]], { estilo: "moderno" })).size;
     r.vista = (vistaContrato(base).match(/class="horario"/g) || []).length;
     r.form = formularioTrabajador(base); r.ids = ['id="ha1-1-sal" value="13:00"', "Alternativa 2: horario por día", 'data-n="horario-alt-quitar"', "¿No puedes fijar los días exactos?", 'data-n="horario-alt-agregar"'].map((x) => r.form.includes(x));
-    r.sinBoton = !formularioTrabajador({ ...base, horario_alt: [altB, altB] }).includes('data-n="horario-alt-agregar"'); r.noParcial = /solo rigen en jornada parcial/.test(formularioTrabajador({ ...base, jornada: 42 }));
+    r.sinBoton = !formularioTrabajador({ ...base, horario_alt: [altB, altB, altB, altB, altB, altB] }).includes('data-n="horario-alt-agregar"'); r.noParcial = /solo rigen en jornada parcial/.test(formularioTrabajador({ ...base, jornada: 42 }));
     r.val = [validarHorario(altB, 8), validarHorario(altB, 9)];
     delete r.form; return r;
   });
@@ -2282,8 +2282,20 @@ const igual = (nombre, real, esperado) => ok(nombre, JSON.stringify(real) === JS
   igual("el contrato con alternativas trae una tabla por alternativa, cita el art. 40 bis C y fija la alternativa 1 por defecto", [alt.tablas, alt.subs, alt.cita], [2, ["Alternativa 1", "Alternativa 2"], true]);
   igual("sin alternativas, o en jornada completa, el contrato lleva una sola tabla o ninguna alternativa", [alt.sinAlt, alt.completa], [1, 1]);
   ok("las alternativas salen en el PDF y en la vista previa", alt.pdf > 2500 && alt.vista === 2, JSON.stringify([alt.pdf, alt.vista]));
-  ok("el formulario muestra las alternativas, el aviso legal y los botones; con dos alternativas ya no ofrece agregar; en jornada completa lo explica", alt.ids.every(Boolean) && alt.sinBoton && alt.noParcial, JSON.stringify(alt.ids));
+  ok("el formulario muestra las alternativas, el aviso legal y los botones; con seis alternativas ya no ofrece agregar; en jornada completa lo explica", alt.ids.every(Boolean) && alt.sinBoton && alt.noParcial, JSON.stringify(alt.ids));
   ok("cada alternativa debe sumar la jornada semanal", alt.val[0] === "" && /deben coincidir/.test(alt.val[1]), JSON.stringify(alt.val));
+
+  console.log("Alternativas de un solo día: tabla compacta");
+  const cmp = await page.evaluate(() => {
+    const d = (x) => [{ dia: x, ent: "08:00", sal: "18:00", col: 60, ci: "13:00" }];
+    const base = { ...trabajadorVacio(), nombre: "Ana Prueba", rut: "12.345.678-5", cargo: "Operaria", fecha_ingreso: "2026-11-19", tipo: "indefinido", jornada: 9, sueldo_base: 118619, horario: d("Lunes"), horario_alt: ["Martes", "Miércoles", "Jueves", "Viernes"].map(d) };
+    const bl = textoContrato(base), tablas = bl.filter((x) => x.tipo === "tabla"), subs = bl.filter((x) => x.subtitulo || x.tipo === "subtitulo").length;
+    const form = formularioTrabajador({ ...base, horario_alt: [...base.horario_alt, d("Sábado"), d("Domingo")] });
+    const f4 = formularioTrabajador(base);
+    return { n: tablas.length, subs, col: tablas[0].columnas, filas: tablas[0].filas.map((f) => f[0] + ":" + f[1]), pie: tablas[0].pie, aviso4: /tantas alternativas/.test(f4), aviso2: /tantas alternativas/.test(formularioTrabajador({ ...base, horario_alt: [d("Martes")] })), tope: !form.includes('data-n="horario-alt-agregar"') };
+  });
+  igual("cinco alternativas de un día salen en una sola tabla compacta", [cmp.n, cmp.subs, cmp.col, cmp.filas, cmp.pie.length === cmp.col.length], [1, 0, ["Alternativa", "Día", "Ingreso", "Salida", "Colación", "Horas trabajadas"], ["1:Lunes", "2:Martes", "3:Miércoles", "4:Jueves", "5:Viernes"], true]);
+  ok("con más de dos alternativas el formulario advierte la pérdida de certeza, y el tope es de seis alternativas", cmp.aviso4 && !cmp.aviso2 && cmp.tope, JSON.stringify(cmp));
 
   console.log("Hora de la colación en el horario");
   const ci = await page.evaluate(() => {
